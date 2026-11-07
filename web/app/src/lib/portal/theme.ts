@@ -9,11 +9,12 @@ const THEME_EVENT = "mycelium-theme-change";
 
 function currentTheme(): Theme {
   if (typeof document === "undefined") {
-    return "light";
+    return "dark";
   }
-  return document.documentElement.getAttribute("data-theme") === "dark"
-    ? "dark"
-    : "light";
+  // Night Forest is the default; only an explicit light choice turns it off.
+  return document.documentElement.getAttribute("data-theme") === "light"
+    ? "light"
+    : "dark";
 }
 
 function applyTheme(theme: Theme): void {
@@ -48,7 +49,7 @@ export function useTheme() {
   const theme = useSyncExternalStore<Theme>(
     subscribe,
     currentTheme,
-    () => "light",
+    () => "dark",
   );
 
   const setTheme = useCallback((next: Theme) => applyTheme(next), []);

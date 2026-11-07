@@ -21,6 +21,91 @@
   box-sizing: border-box;
 }
 
+/*
+ * Night Forest — the workspace look chosen in `/labs` (see docs/styles.md).
+ *
+ * The shared token sheet already carries the dark-forest palette; the app adds
+ * the pieces the workspace needs on top of it: a deeper night ground (the front
+ * page's own), a glass surface for the header and menus, a link tone, and the
+ * opportunity gold as a text colour that passes AA in both themes. These stay
+ * here rather than in @mycelium/config so the public site is untouched.
+ */
+:root {
+  --radius: 0.75rem;
+  --raise: #efe7d7;
+  --glass: rgb(255 253 248 / 74%);
+  --header-glass: rgb(248 244 236 / 82%);
+  --border-soft: rgb(94 122 62 / 20%);
+  --link: #4d6733;
+  --glow: #8da66f;
+  /* Opportunity gold, darkened enough to pass AA as text on cream. */
+  --gold: #8c6a2a;
+  --gold-soft: rgb(201 163 90 / 18%);
+  --focus: #5e7a3e;
+}
+
+[data-theme="dark"] {
+  --background: #10140e;
+  --raise: #253021;
+  --glass: rgb(29 36 26 / 62%);
+  --header-glass: rgb(16 20 14 / 78%);
+  --border-soft: rgb(141 166 111 / 18%);
+  --link: #b8d99a;
+  --glow: #b8d99a;
+  --gold: #d3ae66;
+  --gold-soft: rgb(211 174 102 / 13%);
+  --focus: #b8d99a;
+}
+
+/*
+ * Density: compact, comfortable (default) or open. `data-density` on <html> is
+ * written before first paint (`ThemeScript`) and changed from Settings →
+ * Appearance (`lib/portal/appearance.ts`). Workspace layout reads these instead
+ * of fixed sizes, so one choice reaches every page.
+ */
+:root,
+[data-density="comfortable"] {
+  --d-fs: 14px;
+  --d-title: 16px;
+  --d-pad: 16px;
+  --d-gap: 12px;
+  --d-section: 28px;
+  --d-page-title: 31px;
+}
+
+[data-density="compact"] {
+  --d-fs: 13px;
+  --d-title: 14.5px;
+  --d-pad: 12px;
+  --d-gap: 8px;
+  --d-section: 18px;
+  --d-page-title: 24px;
+}
+
+[data-density="open"] {
+  --d-fs: 15px;
+  --d-title: 17.5px;
+  --d-pad: 22px;
+  --d-gap: 18px;
+  --d-section: 40px;
+  --d-page-title: 38px;
+}
+
+/* Motion: None stops everything, the way reduced motion does. Subtle keeps
+   fades and drops movement. */
+[data-motion="none"] *,
+[data-motion="none"] *::before,
+[data-motion="none"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+:focus-visible {
+  outline-color: var(--focus);
+}
+
 body {
   margin: 0;
   background: var(--background);
@@ -157,112 +242,41 @@ body {
 }
 
 /*
- * The workspace's botanical ground (see `motion/section-ground.tsx`).
- *
- * Fixed behind the scrolling section rather than tiled through it, held to
- * roughly a third of the marketing site's strength, and masked out of the
- * middle third of the page — that band is where the cards and their text sit,
- * and the style guide is explicit that the motif must not compete with the
- * content. What is left reads as growth in the outer margins.
+ * The workspace background (see `motion/workspace-ground.tsx`): a contour map
+ * at 35 % strength, fixed behind the scroll area and masked mostly out of the
+ * centre band where cards and their text sit.
  */
-.portal-ground {
+.ws-ground {
   position: absolute;
   inset: 0;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  /* Clear of the content column at every width. */
+  opacity: 0.35;
   mask-image: linear-gradient(
     to right,
     #000 0,
-    #000 14%,
-    transparent 30%,
-    transparent 70%,
-    #000 86%,
+    #000 16%,
+    rgb(0 0 0 / 30%) 36%,
+    rgb(0 0 0 / 30%) 64%,
+    #000 84%,
     #000 100%
   );
 }
 
-/*
- * The workspace ground grows with the feed.
- *
- * `--ground-progress` runs 0 → 1 across the whole scroll length of the panel
- * (written by `PortalGround`), so the growth advances over hundreds of pixels
- * rather than seconds: roots reaching further down, leaves opening one at a
- * time, spores drifting slowly up past the reader. Nothing loops — the page is
- * still whenever the reader is, which is the whole difference between this and
- * a decoration that fidgets at someone trying to work.
- *
- * Initial value 1 — fully grown. Reduced motion, or no script, and the ground
- * simply renders finished.
- */
-@property --ground-progress {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 1;
-}
-
-.portal-ground {
-  /* Spread across almost the whole feed, so there is always something still
-     growing wherever the reader has stopped, and scrolling back up reverses it. */
-  --grow: clamp(0, calc(var(--ground-progress) / 0.9), 1);
-  --late: clamp(0, calc((var(--ground-progress) - 0.1) / 0.75), 1);
-  --drift: calc(var(--ground-progress) * 2 - 1);
-}
-
-.portal-ground-line path {
-  stroke-dasharray: 1;
-  stroke-dashoffset: calc(1 - var(--grow));
-}
-
-.portal-ground-leaf use {
-  --open: clamp(0, calc((var(--grow) * 9) - var(--i, 0)), 1);
-}
-
-.portal-ground-art {
+.ws-ground svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
 
-.portal-ground-line path {
+.ws-contour path {
   fill: none;
-  stroke: var(--brand-secondary);
-  stroke-width: 1.4;
-  stroke-linecap: round;
+  stroke: var(--primary);
+  stroke-width: 1;
+  opacity: 0.45;
   vector-effect: non-scaling-stroke;
-  opacity: 0.22;
-}
-
-.portal-ground-leaf use {
-  fill: var(--brand-secondary);
-  opacity: calc(0.1 * var(--open, 1));
-}
-
-.portal-ground-node circle {
-  fill: var(--brand-accent);
-  transform-box: fill-box;
-  transform-origin: center;
-  /* Spore fields drift; a tip at the end of a drawn line swells in behind it.
-     `--i` is the per-spore rate, set in the markup. */
-  opacity: calc(0.26 * var(--late));
-  /* Displacement is gated on `--ground-driven`, which the component sets only
-     when it is actually writing progress. In the static fallback every spore
-     sits exactly where it was composed rather than at one end of its drift. */
-  transform: translateY(
-    calc(var(--drift) * var(--rise, 0px) * var(--i, 1) * var(--ground-driven, 0))
-  );
-}
-
-.portal-ground-line ~ .portal-ground-node circle {
-  transform: scale(var(--late));
-}
-
-/* The spore field has no lines, so its nodes are the drift, not tips. */
-.portal-ground-art:not(:has(.portal-ground-line)) .portal-ground-node circle {
-  --rise: -90px;
-  opacity: calc(0.26 * clamp(0.4, var(--late), 1));
 }
 
 /*
@@ -325,3 +339,4 @@ body {
       opacity 0.34s ease 0.5s;
   }
 }
+

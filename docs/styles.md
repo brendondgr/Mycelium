@@ -205,6 +205,15 @@ App surfaces should support:
 
 Every app view should account for loading, empty, populated, error, permission denied, job running, and stale-data states.
 
+**The workspace wears Night Forest too.** It defaults to the dark-forest palette on the front page's night ground (`#10140e`), with Daylight kept as the reader's alternative. The workspace's look was chosen in the `/labs` playground and is the reference for any workspace change:
+
+- **Background:** a still contour map at about a third of full strength. It is fixed behind the scroll area and masked away from the centre band where text sits, never blank and never animated.
+- **Density:** compact, comfortable (the default) or open. This is a reader setting that reaches every page through the `--d-*` variables, not a per-page choice.
+- **Chrome:** the workspace switcher is a header dropdown, the section navigation is a left rail that collapses to icons, and settings are listed in the account menu.
+- **Feeds:** one page that scrolls through the cards. On wide screens the opened item is pinned on the right at the visible height and scrolls on its own. Below that it opens as a drawer. Every feed has search, sort, filter menus and grouping by theme.
+- **Cards:** Mylo's reason sits on one line with his portrait, then the caveat, who the item suits and why, the key facts and the themes. There are no percent, position or verdict marks on a card, as stated above.
+- **Loading:** a placeholder in the shape of the page, which cross-fades into the content. Spinners are not used for a page's first load.
+
 ## Voice And Copy
 
 Mycelium should speak like a calm research assistant, not a toy and not a hype machine.
@@ -228,7 +237,7 @@ The voice should be confident, concise, source-aware, and useful. When uncertain
 
 Motion should be slow, soft, subtle, and purposeful. Good motion includes gentle Mylo movement, softly pulsing nodes, graph lines drawing in, feature bubbles fading in, and cards lifting slightly on hover.
 
-Avoid fast motion, constant bouncing, distracting backgrounds, or animation that makes research work feel less serious. Respect reduced-motion preferences.
+Avoid fast motion, constant bouncing, distracting backgrounds, or animation that makes research work feel less serious. Respect reduced-motion preferences, and the workspace's own Motion setting (Full, Subtle, None), where None stops everything.
 
 ## Accessibility And Responsiveness
 

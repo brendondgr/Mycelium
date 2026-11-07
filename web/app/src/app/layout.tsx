@@ -47,6 +47,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${inter.variable} h-full antialiased`}
+      data-theme="dark"
+      data-density="comfortable"
+      data-motion="full"
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>

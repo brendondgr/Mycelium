@@ -7,12 +7,11 @@ import { PortalHeader } from "@/components/portal/portal-header";
 import { PortalSidebar } from "@/components/portal/portal-sidebar";
 import { ScopeGuard } from "@/components/portal/scope-guard";
 import { WorkspacePalette } from "@/components/portal/workspace-palette";
-import { WorkspaceRail } from "@/components/portal/workspace-rail";
 import {
   PortalProvider,
   type PortalUser,
 } from "@/components/portal/portal-context";
-import { PortalGround } from "@/components/portal/motion/section-ground";
+import { WorkspaceGround } from "@/components/portal/motion/workspace-ground";
 import { SectionStage } from "@/components/portal/section-stage";
 
 /**
@@ -33,7 +32,7 @@ export function WorkspaceShell({
     <PortalProvider user={user}>
       <div
         className="flex h-screen flex-col overflow-hidden bg-background text-foreground"
-        style={{ fontFamily: "var(--font-inter)" }}
+        style={{ fontFamily: "var(--font-inter)", fontSize: "var(--d-fs)" }}
       >
         <ScopeGuard />
         <WorkspacePalette />
@@ -45,7 +44,6 @@ export function WorkspaceShell({
           chrome is one row instead of two.
         */}
         <div className="flex min-h-0 flex-1">
-          <WorkspaceRail />
           <PortalSidebar />
           {/*
             The ground sits in a wrapper that does not itself scroll, so it
@@ -64,8 +62,8 @@ export function WorkspaceShell({
               classes it always had and the row can still shrink to the screen.
           */}
           <div className="relative flex min-h-0 min-w-0 flex-1">
-            <PortalGround pathname={pathname} />
-            <main className="relative min-w-0 flex-1 overflow-y-auto px-4 py-7 sm:px-6 lg:px-9 lg:py-8">
+            <WorkspaceGround />
+            <main className="ws-main relative min-w-0 flex-1 overflow-y-auto px-4 py-7 sm:px-6 lg:px-9 lg:py-8">
               <SectionStage stageKey={pathname}>{children}</SectionStage>
             </main>
           </div>
