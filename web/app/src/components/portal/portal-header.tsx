@@ -6,6 +6,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { GlobalSearch } from "@/components/portal/global-search";
 import { NotificationBell } from "@/components/portal/notification-bell";
+import { ThemeToggle } from "@/components/portal/theme-toggle";
 import { UserMenu } from "@/components/portal/user-menu";
 import { WorkspaceSheet } from "@/components/portal/workspace-sheet";
 import { WorkspaceSwitcher } from "@/components/portal/workspace-switcher";
@@ -68,6 +69,7 @@ export function PortalHeader() {
 
       <div className="flex shrink-0 items-center gap-2.5">
         <NotificationBell />
+        <ThemeToggle />
         <UserMenu />
       </div>
     </header>
