@@ -197,6 +197,29 @@ def invite_to_lab(
     return invitation
 
 
+def ensure_lab_has_room(lab: Lab, user: User) -> None:
+    """Refuse a *new* member past ``limits.lab_members`` (unlimited by default).
+
+    An existing member re-joining is never refused. Under subscriptions an active
+    plan's seat ceiling still applies on top, through ``seat_sync``.
+    """
+    from apps.billing.entitlements import lab_member_cap
+
+    cap = lab_member_cap()
+    if cap is None or LabMembership.objects.filter(lab=lab, user=user).exists():
+        return
+    if LabMembership.objects.filter(lab=lab).count() >= cap:
+        raise ValidationError(
+            {
+                "detail": [
+                    f"This lab is full: it already has {cap} members, the most "
+                    "this instance allows. An administrator can raise "
+                    "limits.lab_members."
+                ]
+            }
+        )
+
+
 @transaction.atomic
 def accept_invitation(invitation: LabInvitation, user: User) -> LabMembership:
     """Accept: add the lab membership, grant a seat, and mark the invite accepted.
@@ -211,6 +234,7 @@ def accept_invitation(invitation: LabInvitation, user: User) -> LabMembership:
     from apps.billing.seat_sync import sync_lab_member
     from apps.billing.seats import SeatCeilingExceeded
 
+    ensure_lab_has_room(invitation.lab, user)
     membership, _ = LabMembership.objects.get_or_create(
         lab=invitation.lab,
         user=user,
@@ -306,6 +330,7 @@ def add_lab_member(
     if role not in dict(LabMembership.Role.choices):
         role = LabMembership.Role.MEMBER
     with transaction.atomic():
+        ensure_lab_has_room(lab, user)
         membership, _ = LabMembership.objects.get_or_create(
             lab=lab, user=user, defaults={"role": role}
         )

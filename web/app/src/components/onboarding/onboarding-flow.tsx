@@ -214,15 +214,14 @@ export function OnboardingFlow({
   const queryClient = useQueryClient();
   const editing = mode === "edit";
 
-  // Tier caps drive the interactive limits in the organizer and the watch step,
-  // so a user is told their plan's limits up front instead of discovering them
-  // through a rejected save. Falls back to the Free plan (3 clusters × 2 topics =
-  // 6) until the entitlements load, so a brand-new account is never briefly
-  // shown a laxer limit than it actually has.
+  // Instance limits drive the organizer and the watch step, so a user is told
+  // the limits up front instead of discovering them through a rejected save.
+  // `null` (unlimited) and still-loading both mean "no limit shown"; the server
+  // enforces whatever the instance configures either way.
   const { data: entitlements } = useEntitlements();
-  const clusterCap = entitlements?.cluster_cap ?? 3;
-  const clusterTopicCap = entitlements?.cluster_topic_cap ?? 2;
-  const topicCap = entitlements?.topic_cap ?? 6;
+  const clusterCap = entitlements?.cluster_cap ?? undefined;
+  const clusterTopicCap = entitlements?.cluster_topic_cap ?? undefined;
+  const topicCap = entitlements?.topic_cap ?? undefined;
   const [screen, setScreen] = useState<
     "verify" | "intake" | "synthesizing" | "building" | "matching"
   >(editing || verified ? "intake" : "verify");

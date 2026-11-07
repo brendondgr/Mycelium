@@ -9,10 +9,6 @@ import { composeClusters, proposeClusters } from "@/lib/auth-client";
 import type { ClusterGroup } from "@/lib/auth-types";
 import { cn } from "@/lib/utils";
 
-/** UI/validation sanity cap on clusters per profile — mirrors the backend's
- * `MAX_CLUSTERS` (apps.content.clustering, Open Decision D-C3). */
-const MAX_CLUSTERS = 6;
-
 /** Client-side sentinel for the "Unsorted" tray — never sent to the backend
  * and never appears in a `ClusterGroup.id`. */
 const UNSORTED_ID = "__unsorted__";
@@ -34,10 +30,9 @@ export type ClusterOrganizerProps = {
    * interest inside the organizer. When omitted, the area list is read-only and
    * only the move affordances show (the organizer can't invent or drop areas). */
   onAreasChange?: (areas: string[]) => void;
-  /** Tier cap on how many clusters may exist (defaults to the structural max). */
+  /** Limit on how many clusters may exist (omitted = unlimited). */
   maxClusters?: number;
-  /** Tier cap on how many interests one cluster may hold (defaults to no limit).
-   * The Free plan sets this to 2, so a cluster is a tight "one search, two terms". */
+  /** Limit on how many interests one cluster may hold (omitted = unlimited). */
   maxTopicsPerCluster?: number;
 };
 
@@ -49,7 +44,7 @@ export type ClusterOrganizerProps = {
  */
 export function clampClustersToCaps(
   clusters: ClusterGroup[],
-  { maxClusters, maxTopicsPerCluster }: { maxClusters: number; maxTopicsPerCluster: number },
+  { maxClusters, maxTopicsPerCluster }: { maxClusters?: number; maxTopicsPerCluster?: number },
 ): ClusterGroup[] {
   return clusters.slice(0, maxClusters).map((cluster) => ({
     ...cluster,
@@ -134,8 +129,9 @@ export function ClusterOrganizer({
   maxTopicsPerCluster,
 }: ClusterOrganizerProps) {
   const canEditAreas = typeof onAreasChange === "function";
-  // Effective caps — a missing prop means "structural default / no tier limit".
-  const clusterLimit = maxClusters ?? MAX_CLUSTERS;
+  // Effective limits — a missing prop means unlimited.
+  const clusterLimit = maxClusters ?? Infinity;
+  const hasClusterLimit = Number.isFinite(clusterLimit);
   const perClusterLimit = maxTopicsPerCluster ?? Infinity;
   const hasPerClusterLimit = Number.isFinite(perClusterLimit);
   const sanitized = useMemo(
@@ -165,7 +161,7 @@ export function ClusterOrganizer({
   /** The "cluster is full" message shown when a move/add is blocked by the cap. */
   const clusterFullMessage = `Each cluster can hold up to ${perClusterLimit} ${
     perClusterLimit === 1 ? "topic" : "topics"
-  } on your plan. Remove one first, or upgrade to widen a search.`;
+  } on this instance. Remove one first; an administrator can raise the limit.`;
 
   function handleRename(id: string, label: string) {
     emit(sanitized.map((cluster) => (cluster.id === id ? { ...cluster, label } : cluster)));
@@ -496,10 +492,8 @@ export function ClusterOrganizer({
   }
 
   const canCreateMore = sanitized.length < clusterLimit;
-  // Show the plan-limit banner only when a tier cap was actually passed in — the
-  // profile-edit / unrestricted usage keeps just the structural cluster ceiling.
-  const showPlanLimits =
-    maxClusters !== undefined || maxTopicsPerCluster !== undefined;
+  // Show the limits banner only when a limit actually applies.
+  const showPlanLimits = hasClusterLimit || hasPerClusterLimit;
 
   return (
     <div className="space-y-4">
@@ -533,22 +527,30 @@ export function ClusterOrganizer({
           className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-[var(--text-secondary)]"
         >
           <span className="font-semibold text-[var(--text-primary)]">
-            Your plan:
+            Limits:
           </span>
           <span>
-            up to <strong>{clusterLimit}</strong>{" "}
-            {clusterLimit === 1 ? "cluster" : "clusters"}
+            {hasClusterLimit ? (
+              <>
+                up to <strong>{clusterLimit}</strong>{" "}
+                {clusterLimit === 1 ? "cluster" : "clusters"}
+              </>
+            ) : (
+              "any number of clusters"
+            )}
             {hasPerClusterLimit ? (
               <>
                 , with <strong>{perClusterLimit}</strong>{" "}
                 {perClusterLimit === 1 ? "topic" : "topics"} in each
               </>
             ) : null}
-            . Mylo runs one search per cluster — upgrade to add more.
+            . Mylo runs one search per cluster.
           </span>
-          <span className="text-[var(--text-muted)]">
-            ({sanitized.length}/{clusterLimit} clusters used)
-          </span>
+          {hasClusterLimit ? (
+            <span className="text-[var(--text-muted)]">
+              ({sanitized.length}/{clusterLimit} clusters used)
+            </span>
+          ) : null}
         </div>
       ) : null}
 

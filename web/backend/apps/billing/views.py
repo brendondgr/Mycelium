@@ -24,11 +24,13 @@ from apps.accounts.permissions import (
 from .addons import mylo_included
 from .entitlements import (
     active_seat_count,
+    billing_enabled,
     cluster_cap,
     cluster_topic_cap,
     covering_subscriptions,
     effective_features,
     effective_tier,
+    instance_limit,
     pi_cap,
     topic_cap,
 )
@@ -129,6 +131,7 @@ def entitlements_payload(user) -> dict:
         .distinct()
     )
     return {
+        "billing_mode": "subscriptions" if billing_enabled() else "off",
         "tier": tier,
         "features": sorted(effective_features(user)),
         "topic_cap": topic_cap(user),
@@ -136,7 +139,7 @@ def entitlements_payload(user) -> dict:
         "cluster_topic_cap": cluster_topic_cap(user),
         "topics_used": topics_used,
         "seat_count": seat_count,
-        "pi_cap": pi_cap(tier),
+        "pi_cap": pi_cap(tier) if billing_enabled() else instance_limit("lab_leads"),
         "addons": addon_slugs,
         "plans": user_plans_payload(user),
     }

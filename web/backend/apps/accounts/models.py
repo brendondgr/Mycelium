@@ -143,6 +143,29 @@ class LabMembership(models.Model):
     def __str__(self) -> str:
         return f"{self.user} @ {self.lab} ({self.role})"
 
+    def clean(self) -> None:
+        """Refuse a lead past ``limits.lab_leads`` (or the lab plan's tier PI cap
+        under subscriptions). The app itself keeps one lead per lab, so this is
+        the check Django admin edits go through."""
+        super().clean()
+        if not self.is_lead or self.lab_id is None:
+            return
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        from apps.billing.entitlements import lab_lead_cap
+
+        cap = lab_lead_cap(self.lab)
+        if cap is None:
+            return
+        others = LabMembership.objects.filter(lab_id=self.lab_id, is_lead=True)
+        if self.pk:
+            others = others.exclude(pk=self.pk)
+        if others.count() >= cap:
+            raise DjangoValidationError(
+                {"is_lead": f"This lab already has {cap} PI(s), the most allowed "
+                            "(limits.lab_leads)."}
+            )
+
 
 class DeptMembership(models.Model):
     """Direct department membership for people not attached via a lab.

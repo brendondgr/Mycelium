@@ -52,8 +52,9 @@ from rest_framework import serializers
 CURRENT_VERSION = 2
 SUPPORTED_VERSIONS = (1, 2)
 
-# UI/validation sanity cap on clusters per profile (Open Decision D-C3). Kept in
-# sync with apps.content.clustering.MAX_CLUSTERS.
+# The cluster count when no person is in context (fixtures, commands). A person's
+# own limit comes from apps.billing.entitlements.cluster_cap. Kept in sync with
+# apps.content.clustering.MAX_CLUSTERS, the number Mylo proposes by default.
 MAX_CLUSTERS = 6
 
 # Broad fellowship-field buckets (matches Illinois Fellowship Finder vocabulary).
@@ -244,13 +245,26 @@ class InterestsContract(serializers.Serializer):
             )
         return value
 
+    def _cluster_cap(self) -> int | None:
+        """The saving person's cluster limit (``limits.clusters``, or their tier's
+        under subscriptions; ``None`` = unlimited). With no person in context —
+        a fixture, a management command — the historical ``MAX_CLUSTERS``."""
+        request = (self.context or {}).get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return MAX_CLUSTERS
+        from apps.billing.entitlements import cluster_cap
+
+        return cluster_cap(user)
+
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """Enforce the cluster partition: every area in exactly one cluster.
 
         Only runs when ``clusters`` is present; a clusterless payload is a valid
         v1 profile. Rules (brief Phase 0): union of ``clusters[].areas`` equals
         ``areas`` exactly (no orphan area, no cluster area outside ``areas``), no
-        area in two clusters, cluster ids unique, and at most ``MAX_CLUSTERS``.
+        area in two clusters, cluster ids unique, and no more clusters than the
+        saving person's limit (:meth:`_cluster_cap`).
         Comparison is case-insensitive on whitespace-normalized strings so the
         cluster areas need only match the declared areas up to trivial drift.
         """
@@ -258,9 +272,10 @@ class InterestsContract(serializers.Serializer):
         if not clusters:
             return attrs
 
-        if len(clusters) > MAX_CLUSTERS:
+        cap = self._cluster_cap()
+        if cap is not None and len(clusters) > cap:
             raise serializers.ValidationError(
-                {"clusters": [f"at most {MAX_CLUSTERS} clusters allowed"]}
+                {"clusters": [f"at most {cap} clusters allowed"]}
             )
 
         ids = [str(c.get("id", "")).strip() for c in clusters]

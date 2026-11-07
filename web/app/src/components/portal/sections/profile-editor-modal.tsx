@@ -192,10 +192,11 @@ function ProfileEditorForm({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  // `null` (unlimited) and still-loading both mean no client-side limit.
   const { data: entitlements } = useEntitlements();
-  const clusterCap = entitlements?.cluster_cap ?? 3;
-  const clusterTopicCap = entitlements?.cluster_topic_cap ?? 2;
-  const topicCap = entitlements?.topic_cap ?? 6;
+  const clusterCap = entitlements?.cluster_cap ?? undefined;
+  const clusterTopicCap = entitlements?.cluster_topic_cap ?? undefined;
+  const topicCap = entitlements?.topic_cap ?? undefined;
 
   const interests = profile?.interests;
 

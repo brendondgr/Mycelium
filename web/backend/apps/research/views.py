@@ -88,7 +88,10 @@ def _over_cap_ids(projects) -> set:
     return over
 
 
-def _cap_for(scope_field: str, owner_id) -> int:
+_SCOPE_NOUN = {"user": "account", "lab": "lab", "department": "department"}
+
+
+def _cap_for(scope_field: str, owner_id) -> int | None:
     """The numeric active-project cap for one resolved scope owner."""
     if scope_field == "scope_user":
         return personal_scope_cap(User.objects.get(pk=owner_id)).cap
@@ -222,8 +225,9 @@ class ProjectListView(ListCreateAPIView):
             raise PermissionDenied(
                 {
                     "detail": (
-                        "You have reached your plan's project limit "
-                        f"({cap.cap}). Archive a project or upgrade to add more."
+                        f"This {_SCOPE_NOUN.get(cap.scope, cap.scope)} has reached "
+                        f"its limit of {cap.cap} active projects. Archive one to "
+                        "add another; an administrator can raise the limit."
                     ),
                     "code": "project_cap_reached",
                     "scope": cap.scope,

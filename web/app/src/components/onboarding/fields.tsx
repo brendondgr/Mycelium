@@ -126,14 +126,14 @@ export function TokenField({
             }
           }}
           onBlur={() => add()}
-          placeholder={atCap ? "Plan limit reached" : placeholder}
+          placeholder={atCap ? "Limit reached" : placeholder}
           className="min-w-40 flex-1 bg-transparent px-1 py-1 text-sm text-foreground outline-none disabled:cursor-not-allowed disabled:text-[var(--text-muted)]"
         />
       </div>
       {atCap ? (
         <p className="text-xs text-[var(--text-muted)]">
-          You&rsquo;ve reached your plan&rsquo;s limit of {maxItems} watch
-          topics. Remove one to add another, or upgrade for more.
+          You&rsquo;ve reached this instance&rsquo;s limit of {maxItems} watch
+          topics. Remove one to add another; an administrator can raise it.
         </p>
       ) : null}
     </div>

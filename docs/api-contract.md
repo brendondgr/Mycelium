@@ -1671,15 +1671,19 @@ The caller's resolved entitlements — what the UI locks affordances against
 instead of discovering limits through 403s.
 
 ```json
-{ "tier": "spore", "features": ["deadline_reminders", "…"],
-  "topic_cap": 10, "cluster_cap": 5, "cluster_topic_cap": 4,
+{ "billing_mode": "subscriptions", "tier": "spore",
+  "features": ["deadline_reminders", "…"],
+  "topic_cap": 20, "cluster_cap": 6, "cluster_topic_cap": 10,
   "topics_used": 4, "seat_count": 1, "pi_cap": null,
   "addons": ["mylo_server"],
   "plans": [{ "tier": "spore", "status": "active", "expires_at": "…" }] }
 ```
 
-`tier` is the maximum across every covering plan, with expired plans excluded at
-read time. A Free account is capped at 3 clusters × 2 topics.
+`billing_mode` is the instance's `billing.mode` (`mycelium.toml`). Every cap is
+`null` when unlimited. With `billing_mode: "off"` the caps come from the
+instance's `[limits]` (unlimited by default) and `features` lists everything;
+with `"subscriptions"` they come from `[limits.tiers.<tier>]`. `tier` is the
+maximum across every covering plan, with expired plans excluded at read time.
 
 ### `GET | POST /api/labs/<slug>/billing/[activate/]` · `/api/departments/<id>/billing/…`
 

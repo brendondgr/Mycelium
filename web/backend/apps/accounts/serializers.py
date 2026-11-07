@@ -259,13 +259,16 @@ class DeptProfileSerializer(_ContractInterestsMixin):
 class WatchPreferenceSerializer(serializers.ModelSerializer):
     """Read/update what Mylo keeps an eye on for the caller (own only).
 
-    The watch-topic count is capped **per tier** (Free 6, Spore 10, Lab/Canopy 15);
-    ``categories`` keeps the generous structural cap. The read payload also reports
-    the caller's ``topic_cap`` and whether they are ``topics_over_cap`` (which only
-    happens after a downgrade — the excess is honoured on read, never deleted).
+    The watch-topic count is capped by ``limits.watch_topics`` (or the tier's
+    number under subscriptions; ``None`` = unlimited); ``categories`` keeps only
+    the structural sanity cap. The read payload also reports the caller's
+    ``topic_cap`` and whether they are ``topics_over_cap`` (which only happens
+    after a limit is lowered — the excess is honoured on read, never deleted).
     """
 
-    _MAX_ITEMS = 50
+    # A request-size sanity bound, not a policy: each topic is one nightly search,
+    # and the nightly budget is what bounds spend.
+    _MAX_ITEMS = 200
 
     topic_cap = serializers.SerializerMethodField()
     topics_over_cap = serializers.SerializerMethodField()
@@ -341,19 +344,15 @@ class WatchPreferenceSerializer(serializers.ModelSerializer):
 
         return topic_cap(user)
 
-    def get_topic_cap(self, obj) -> int:
-        from apps.billing.entitlements import topic_cap
-
-        user = self._request_user()
-        if user is None or not user.is_authenticated:
-            from apps.billing.entitlements import TOPIC_CAPS, Tier
-
-            return TOPIC_CAPS[Tier.FREE]
-        return topic_cap(user)
+    def get_topic_cap(self, obj) -> int | None:
+        """The caller's watch-topic cap; ``None`` = unlimited (or no caller)."""
+        return self._topic_cap()
 
     def get_topics_over_cap(self, obj) -> bool:
+        from apps.billing.entitlements import within
+
         cap = self.get_topic_cap(obj)
-        return len(getattr(obj, "topics", None) or []) > cap
+        return not within(len(getattr(obj, "topics", None) or []), cap)
 
     def validate_topics(self, value: object) -> list[str]:
         cleaned = self._clean_string_list(value, "topics")
@@ -362,8 +361,9 @@ class WatchPreferenceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {
                     "topics": [
-                        f"Your plan allows at most {cap} watch topics. "
-                        "Upgrade to monitor more."
+                        f"At most {cap} watch topics are allowed here. "
+                        "Remove one, or ask an administrator to raise "
+                        "limits.watch_topics."
                     ]
                 }
             )

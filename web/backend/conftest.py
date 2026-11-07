@@ -10,19 +10,66 @@ temporary default would have meant deleting or inverting roughly fifty entitleme
 tests — and then turning the switch back on would be a change with no test coverage
 standing behind it.
 
-So gating is **on** here, which is exactly the behaviour every one of those tests was
-written against. Tests about the switch itself opt out explicitly with
+So billing and gating are **on** here (the ``institution`` profile), which is
+exactly the behaviour every one of those tests was written against. Tests about the
+switch itself opt out explicitly with
 ``override_settings(BILLING_ENFORCE_ENTITLEMENTS=False)``; see
 ``apps/billing/tests/test_entitlement_switch.py``.
 """
 
+from pathlib import Path
+
 import pytest
+
+from config import instance
+
+# The suite runs against the ``institution`` profile — the subscription-era
+# behaviour every billing, cap and entitlement test was written for — resolved
+# with no file and no environment, so a developer's own mycelium.toml or .env
+# never changes a result. Tests about billing being off (the default profile)
+# opt out with the ``billing_off`` fixture below.
+_SUITE = instance.resolve(
+    Path("/nonexistent"), {}, file_values={"instance.profile": "institution"}
+)
+
+
+def _limits(cfg):
+    flat = {
+        key.removeprefix("limits."): value
+        for key, value in cfg.values.items()
+        if key.startswith("limits.") and not key.startswith("limits.tiers.")
+    }
+    tiers: dict = {}
+    for key, value in cfg.values.items():
+        if key.startswith("limits.tiers."):
+            tier, name = key.removeprefix("limits.tiers.").split(".")
+            tiers.setdefault(tier, {})[name] = value
+    return flat, tiers
 
 
 @pytest.fixture(autouse=True)
 def _enforce_entitlements(settings):
-    """Pin tier gating on for every test, whatever the deployment default is."""
+    """Pin billing on and tier gating on for every test, whatever the deployment
+    configures."""
+    flat, tiers = _limits(_SUITE)
+    settings.BILLING_MODE = "subscriptions"
+    settings.BILLING_ENABLED = True
+    settings.INSTANCE_LIMITS = flat
+    settings.INSTANCE_TIER_LIMITS = tiers
     settings.BILLING_ENFORCE_ENTITLEMENTS = True
+
+
+@pytest.fixture
+def billing_off(settings):
+    """Run one test as a default (``lab``) instance: no billing, no limits."""
+    cfg = instance.resolve(Path("/nonexistent"), {}, file_values={})
+    flat, tiers = _limits(cfg)
+    settings.BILLING_MODE = "off"
+    settings.BILLING_ENABLED = False
+    settings.INSTANCE_LIMITS = flat
+    settings.INSTANCE_TIER_LIMITS = tiers
+    settings.BILLING_ENFORCE_ENTITLEMENTS = False
+    return settings
 
 
 @pytest.fixture(autouse=True)

@@ -26,9 +26,10 @@ from __future__ import annotations
 
 import os
 import tomllib
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 #: ``limit`` values use ``None`` for "unlimited".
 UNLIMITED = None
@@ -360,7 +361,9 @@ def _coerce(setting: Setting, raw: Any, origin: str) -> Any:
         try:
             return int(str(raw).strip())
         except ValueError:
-            raise ConfigError(f"{where}: expected a whole number, got {raw!r}.")
+            raise ConfigError(
+                f"{where}: expected a whole number, got {raw!r}."
+            ) from None
     if kind == "limit":
         if raw is None:
             return UNLIMITED
@@ -376,7 +379,7 @@ def _coerce(setting: Setting, raw: Any, origin: str) -> Any:
         except ValueError:
             raise ConfigError(
                 f"{where}: expected a number or \"unlimited\", got {raw!r}."
-            )
+            ) from None
         if value < 0:
             raise ConfigError(f"{where}: a limit cannot be negative.")
         return value

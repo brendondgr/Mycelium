@@ -25,11 +25,13 @@ class EntitlementSerializer(serializers.Serializer):
     visibility.
     """
 
+    billing_mode = serializers.ChoiceField(choices=["off", "subscriptions"])
     tier = serializers.CharField()
     features = serializers.ListField(child=serializers.CharField())
-    topic_cap = serializers.IntegerField()
-    cluster_cap = serializers.IntegerField()
-    cluster_topic_cap = serializers.IntegerField()
+    # Every cap is null when unlimited.
+    topic_cap = serializers.IntegerField(allow_null=True)
+    cluster_cap = serializers.IntegerField(allow_null=True)
+    cluster_topic_cap = serializers.IntegerField(allow_null=True)
     topics_used = serializers.IntegerField()
     seat_count = serializers.IntegerField()
     pi_cap = serializers.IntegerField(allow_null=True)

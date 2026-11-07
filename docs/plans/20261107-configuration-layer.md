@@ -247,7 +247,7 @@ in any profile; the profile is only the starting point.
 1. **Config loader.** ✅ A typed loader (`web/backend/config/instance.py`) that
    reads defaults → profile → `mycelium.toml` → env, validates, and records the
    source of every value. `settings.py` reads it; env names keep working.
-2. **Limits off the tier dicts.** One resolver answers "what is this user's /
+2. **Limits off the tier dicts.** ✅ One resolver answers "what is this user's /
    lab's / department's limit": billing off → `[limits]` plus admin overrides;
    billing on → `[limits.tiers.*]`. `entitlements.py`, `research/limits.py`,
    `ambient/eligibility.py` and `collab/matcher.py` call it instead of reading

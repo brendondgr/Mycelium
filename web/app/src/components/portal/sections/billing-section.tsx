@@ -177,15 +177,15 @@ function CurrentPlanCard() {
           <dl className="grid grid-cols-2 gap-y-1.5 text-sm">
             <dt className="text-[var(--text-secondary)]">Subjects watched</dt>
             <dd className="text-right font-medium text-[var(--text-primary)]">
-              {data.topics_used} / {data.topic_cap}
+              {data.topics_used} / {data.topic_cap ?? "unlimited"}
             </dd>
             <dt className="text-[var(--text-secondary)]">Research clusters</dt>
             <dd className="text-right font-medium text-[var(--text-primary)]">
-              {data.cluster_cap}
+              {data.cluster_cap ?? "Unlimited"}
             </dd>
             <dt className="text-[var(--text-secondary)]">Topics per cluster</dt>
             <dd className="text-right font-medium text-[var(--text-primary)]">
-              {data.cluster_topic_cap}
+              {data.cluster_topic_cap ?? "Unlimited"}
             </dd>
           </dl>
           {data.tier === "free" ? (

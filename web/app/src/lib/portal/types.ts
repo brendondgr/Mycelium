@@ -1428,13 +1428,16 @@ export type PlanSummary = {
 };
 
 export type Entitlements = {
+  /** "off": no plans or tiers; limits come from the instance's mycelium.toml. */
+  billing_mode: "off" | "subscriptions";
   tier: "free" | "spore" | "lab" | "canopy";
   features: string[];
-  topic_cap: number;
-  /** How many interest clusters (distinct searches) the tier allows. */
-  cluster_cap: number;
-  /** How many search terms one cluster may hold under the tier. */
-  cluster_topic_cap: number;
+  /** Every cap below is `null` when unlimited. */
+  topic_cap: number | null;
+  /** How many interest clusters (distinct searches) are allowed. */
+  cluster_cap: number | null;
+  /** How many search terms one cluster may hold. */
+  cluster_topic_cap: number | null;
   topics_used: number;
   seat_count: number;
   pi_cap: number | null;

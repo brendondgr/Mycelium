@@ -30,7 +30,7 @@ from django.db import transaction
 
 from apps.accounts.services import record_audit_event
 from apps.billing.models import Subscription
-from apps.billing.services import provision_workspace
+from apps.billing.services import provision_workspace, signup_grant_tier
 
 #: The only place the admin password may come from (loaded from .env by settings).
 ADMIN_PASSWORD_ENV = "ADMIN_USER_PASS"
@@ -139,6 +139,11 @@ class Command(BaseCommand):
             )
 
     def _ensure_workspace(self, user: User) -> None:
-        """Give the admin a personal workspace (subscription + seat) if absent."""
+        """Give the admin a personal workspace (subscription + seat) if absent.
+
+        On the same personal tier a new sign-up gets (``billing.signup_tier``),
+        so the operator who just ran setup is never the most limited account on
+        their own instance. With billing off the tier decides nothing anyway.
+        """
         if not Subscription.objects.filter(scope_user=user).exists():
-            provision_workspace(user, "personal")
+            provision_workspace(user, "personal", personal_tier=signup_grant_tier())

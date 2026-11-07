@@ -5,8 +5,6 @@ from django.contrib.auth.models import User
 
 from apps.accounts.models import Department, Lab
 from apps.billing.entitlements import (
-    DEPARTMENT_PROJECT_CAP,
-    LAB_PROJECT_CAP,
     department_project_cap,
     lab_project_cap,
     personal_project_cap,
@@ -32,7 +30,7 @@ def test_lab_cap_requires_team_workspace() -> None:
     # No subscription — a Free lab cannot hold projects.
     assert lab_project_cap(lab) == 0
     Subscription.objects.create(tier=Tier.LAB, scope_lab=lab)
-    assert lab_project_cap(lab) == LAB_PROJECT_CAP == 10
+    assert lab_project_cap(lab) == 10
 
 
 @pytest.mark.django_db
@@ -41,7 +39,7 @@ def test_department_cap_requires_department_routing() -> None:
     dept = Department.objects.create(owner=owner, name="Neuroscience")
     assert department_project_cap(dept) == 0
     Subscription.objects.create(tier=Tier.CANOPY, scope_department=dept)
-    assert department_project_cap(dept) == DEPARTMENT_PROJECT_CAP == 30
+    assert department_project_cap(dept) == 30
 
 
 @pytest.mark.django_db

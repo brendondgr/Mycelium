@@ -17,12 +17,14 @@ The vocabulary mirrors the pricing matrix:
 Add-ons are orthogonal to tiers (A4): the Mylo-server capability is granted by a
 :class:`~apps.billing.models.SubscriptionAddOn`, never by a tier.
 
-**Gating is currently off.** ``BILLING_ENFORCE_ENTITLEMENTS`` defaults to false, and
-while it is false the three resolvers here return :data:`ALL_FEATURES` for everyone —
-see :func:`enforcing`. Plans are still created, priced and billed; a tier simply
-cannot withhold a capability. The numeric caps below (watch topics, clusters, PIs,
-seats, projects) are *not* part of that switch and stay enforced, because they bound
-how much work the nightly run does rather than what a plan is worth.
+**Billing is a module the instance switches on.** With ``billing.mode = "off"`` in
+``mycelium.toml`` (the default — see ``config/instance.py``) no tier decides
+anything: every feature is granted, and every limit comes from the instance's
+``[limits]`` table (``None`` = unlimited). With ``billing.mode = "subscriptions"``
+the limits come from ``[limits.tiers.<tier>]`` keyed on the user's effective tier,
+and features are withheld only if ``billing.enforce_features`` is also on — see
+:func:`billing_enabled` and :func:`enforcing`. Every limit function here returns
+``int | None``; ``None`` always means unlimited.
 """
 
 from django.conf import settings
@@ -155,66 +157,39 @@ def enforcing() -> bool:
 
     Deliberately *not* cached in a module global: it is read per call so a test
     (or a running process) can flip the setting with ``override_settings`` and see
-    the change immediately. Subscriptions, seats, prices, invoices and the numeric
-    caps further down are untouched by this — billing still bills.
+    the change immediately. Only meaningful while the billing module is on: with
+    ``billing.mode = "off"`` nothing is ever withheld.
     """
-    return bool(getattr(settings, "BILLING_ENFORCE_ENTITLEMENTS", False))
+    return billing_enabled() and bool(
+        getattr(settings, "BILLING_ENFORCE_ENTITLEMENTS", False)
+    )
 
 
-# Per-tier PI caps (how many lab leads a tier allows). ``None`` means unlimited.
-PI_CAPS: dict[str, int | None] = {
-    Tier.FREE: 1,
-    Tier.SPORE: 1,
-    Tier.LAB: 5,
-    Tier.CANOPY: None,
-}
+def billing_enabled() -> bool:
+    """Whether the subscription module decides anything on this instance.
 
-# Per-tier interest-cluster caps. Mylo runs one literature search per cluster, so
-# ``CLUSTER_CAPS`` is "how many distinct searches you get" and ``CLUSTER_TOPIC_CAPS``
-# is "how many search terms each of those searches may carry". Free is deliberately
-# tight — 3 clusters × 2 terms — and ``TOPIC_CAPS`` below is the flat projection of
-# that (clusters × per-cluster) so the two limits never disagree. Paid tiers keep
-# the structural cluster ceiling and let the flat topic cap govern per-cluster
-# breadth (so no paid user is newly boxed in by the per-cluster number).
-CLUSTER_CAPS: dict[str, int] = {
-    Tier.FREE: 3,
-    Tier.SPORE: 6,
-    Tier.LAB: 6,
-    Tier.CANOPY: 6,
-}
+    ``billing.mode = "subscriptions"`` in ``mycelium.toml``. Read per call so
+    ``override_settings`` (and a test) sees a flip immediately.
+    """
+    return bool(getattr(settings, "BILLING_ENABLED", False))
 
-CLUSTER_TOPIC_CAPS: dict[str, int] = {
-    Tier.FREE: 2,
-    Tier.SPORE: 10,
-    Tier.LAB: 15,
-    Tier.CANOPY: 15,
-}
 
-# Per-tier watch-topic caps — **per member** for Lab/Canopy, so the same number
-# applies to each user's own WatchPreference and the lookup stays uniform (A5).
-# Free is CLUSTER_CAPS × CLUSTER_TOPIC_CAPS (3 × 2 = 6): the flat count a user who
-# fills every cluster to the brim lands on, so the watch-save never rejects a
-# grouping the organizer let them build.
-TOPIC_CAPS: dict[str, int] = {
-    Tier.FREE: 6,
-    # Spore is what sign-up grants now (``SIGNUP_GRANT_TIER``), so this is the
-    # number almost every real account lands on. 20 rather than the original 10:
-    # each topic is one more literature search per night, so it is a cost ceiling
-    # rather than a tier boundary, and it stays enforced while feature gating does
-    # not (see :func:`enforcing`).
-    Tier.SPORE: 20,
-    Tier.LAB: 15,
-    Tier.CANOPY: 15,
-}
+def instance_limit(name: str) -> int | None:
+    """One ``[limits]`` value from ``mycelium.toml`` (``None`` = unlimited)."""
+    return (getattr(settings, "INSTANCE_LIMITS", None) or {}).get(name)
 
-# Per-tier member ceilings — the hard cap on how many seats a subscription may
-# hold. ``None`` means unlimited (Canopy). Used to guard seat creation (P0).
-TIER_MEMBER_CAPS: dict[str, int | None] = {
-    Tier.FREE: 1,
-    Tier.SPORE: 1,
-    Tier.LAB: 15,
-    Tier.CANOPY: None,
-}
+
+def tier_limit(tier: str, name: str) -> int | None:
+    """One ``[limits.tiers.<tier>]`` value; an unknown tier reads as Free."""
+    table = getattr(settings, "INSTANCE_TIER_LIMITS", None) or {}
+    row = table.get(tier) or table.get(Tier.FREE) or {}
+    return row.get(name)
+
+
+def within(count: int, cap: int | None) -> bool:
+    """Whether ``count`` fits under ``cap`` (``None`` = unlimited)."""
+    return cap is None or count <= cap
+
 
 _TIER_RANK = {Tier.FREE: 0, Tier.SPORE: 1, Tier.LAB: 2, Tier.CANOPY: 3}
 
@@ -325,73 +300,79 @@ def active_seat_count(subscription: Subscription) -> int:
 
 
 def pi_cap(tier: str) -> int | None:
-    return PI_CAPS.get(tier, 1)
+    """PIs (lab leads) a tier allows, under subscriptions."""
+    return tier_limit(tier, "leads")
 
 
 def within_pi_cap(lead_count: int, tier: str) -> bool:
     """Whether ``lead_count`` PIs is allowed under ``tier`` (None cap = unlimited)."""
-    cap = pi_cap(tier)
-    return cap is None or lead_count <= cap
+    return within(lead_count, pi_cap(tier))
 
 
-def topic_cap_for_tier(tier: str) -> int:
-    return TOPIC_CAPS.get(tier, TOPIC_CAPS[Tier.FREE])
+def topic_cap_for_tier(tier: str) -> int | None:
+    return tier_limit(tier, "watch_topics")
 
 
 def watch_topic_override(user: User) -> int | None:
-    """An admin-granted per-user watch-topic cap, or ``None`` for the tier default.
+    """An admin-granted per-user watch-topic cap, or ``None`` for the default.
 
     Stored on ``Profile.watch_topic_limit`` and set only from the admin dashboard;
-    when present it wins over the tier cap so an operator can widen (or narrow) how
-    many subjects one user may monitor without changing their plan.
+    when present it wins over the instance or tier limit so an operator can widen
+    (or narrow) how many subjects one user may monitor.
     """
     profile = getattr(user, "profile", None)
     limit = getattr(profile, "watch_topic_limit", None)
     return limit if isinstance(limit, int) else None
 
 
-def topic_cap(user: User) -> int:
-    """The watch-topic cap for a user: the admin override if set, else the tier cap
-    (per member for Lab/Canopy)."""
+def topic_cap(user: User) -> int | None:
+    """The watch-topic cap for a user: the admin override if set, else the tier
+    limit under subscriptions, else the instance limit."""
     override = watch_topic_override(user)
     if override is not None:
         return override
-    return topic_cap_for_tier(effective_tier(user))
+    if billing_enabled():
+        return topic_cap_for_tier(effective_tier(user))
+    return instance_limit("watch_topics")
 
 
-def cluster_cap_for_tier(tier: str) -> int:
+def cluster_cap_for_tier(tier: str) -> int | None:
     """How many interest clusters (distinct searches) ``tier`` allows."""
-    return CLUSTER_CAPS.get(tier, CLUSTER_CAPS[Tier.FREE])
+    return tier_limit(tier, "clusters")
 
 
-def cluster_cap(user: User) -> int:
-    """The interest-cluster cap for a user's effective tier."""
-    return cluster_cap_for_tier(effective_tier(user))
+def cluster_cap(user: User) -> int | None:
+    """How many interest clusters a user may have (``None`` = unlimited)."""
+    if billing_enabled():
+        return cluster_cap_for_tier(effective_tier(user))
+    return instance_limit("clusters")
 
 
-def cluster_topic_cap_for_tier(tier: str) -> int:
+def cluster_topic_cap_for_tier(tier: str) -> int | None:
     """How many search terms one cluster may hold under ``tier``."""
-    return CLUSTER_TOPIC_CAPS.get(tier, CLUSTER_TOPIC_CAPS[Tier.FREE])
+    return tier_limit(tier, "topics_per_cluster")
 
 
-def cluster_topic_cap(user: User) -> int:
-    """The per-cluster search-term cap for a user's effective tier."""
-    return cluster_topic_cap_for_tier(effective_tier(user))
+def cluster_topic_cap(user: User) -> int | None:
+    """How many search terms one of a user's clusters may hold."""
+    if billing_enabled():
+        return cluster_topic_cap_for_tier(effective_tier(user))
+    return instance_limit("topics_per_cluster")
 
 
 def within_topic_cap(user: User, count: int) -> bool:
-    """Whether ``count`` watch topics is allowed under the user's tier cap."""
-    return count <= topic_cap(user)
+    """Whether ``count`` watch topics is allowed for the user."""
+    return within(count, topic_cap(user))
 
 
 def effective_watch_topics(user: User) -> list[str]:
     """The watch topics a user is entitled to act on — the first ``topic_cap`` of
-    their stored topics.
+    their stored topics (all of them when unlimited).
 
-    A downgrade (e.g. Spore → Free) can leave more stored topics than the new cap
-    allows. We never delete the excess (that would be unrecoverable data loss on a
-    billing event); instead every consumer reads through here, honouring only the
-    first N. :func:`topics_over_cap` reports the overflow so the UI can surface it.
+    A lowered limit can leave more stored topics than it allows. We never delete
+    the excess (that would be unrecoverable data loss); instead every consumer
+    reads through here, honouring only the first N. :func:`topics_over_cap`
+    reports the overflow so the UI can surface it.
     """
     watch = getattr(user, "watch", None)
     topics = list(getattr(watch, "topics", None) or [])
@@ -399,21 +380,39 @@ def effective_watch_topics(user: User) -> list[str]:
 
 
 def topics_over_cap(user: User) -> bool:
-    """Whether a user has more stored watch topics than their current tier allows."""
+    """Whether a user has more stored watch topics than their limit allows."""
     watch = getattr(user, "watch", None)
     topics = getattr(watch, "topics", None) or []
-    return len(topics) > topic_cap(user)
+    return not within(len(topics), topic_cap(user))
 
 
 def member_cap(tier: str) -> int | None:
-    """The seat ceiling for a tier (``None`` = unlimited)."""
-    return TIER_MEMBER_CAPS.get(tier, 1)
+    """The seat ceiling for a tier under subscriptions (``None`` = unlimited)."""
+    return tier_limit(tier, "members")
 
 
 def within_member_cap(seat_count: int, tier: str) -> bool:
     """Whether ``seat_count`` seats is allowed under ``tier`` (None cap = unlimited)."""
-    cap = member_cap(tier)
-    return cap is None or seat_count <= cap
+    return within(seat_count, member_cap(tier))
+
+
+def lab_member_cap() -> int | None:
+    """Members per lab (``limits.lab_members``). Applies in both billing modes;
+    under subscriptions an active plan's seat ceiling applies on top."""
+    return instance_limit("lab_members")
+
+
+def lab_lead_cap(lab) -> int | None:
+    """PIs a lab may have: ``limits.lab_leads``, tightened under subscriptions by
+    the tier of the lab's active plan (if it has one)."""
+    caps = [instance_limit("lab_leads")]
+    if billing_enabled():
+        tiers = list(_lab_subscriptions(lab).values_list("tier", flat=True))
+        if tiers:
+            best = max(tiers, key=lambda tier: _TIER_RANK.get(tier, 0))
+            caps.append(pi_cap(best))
+    numbers = [cap for cap in caps if cap is not None]
+    return min(numbers) if numbers else None
 
 
 # --------------------------------------------------------------------------- #
@@ -430,26 +429,19 @@ def within_member_cap(seat_count: int, tier: str) -> bool:
 # stays free of a research import; here we only publish the numbers.
 # --------------------------------------------------------------------------- #
 
-PERSONAL_PROJECT_CAPS: dict[str, int] = {
-    Tier.FREE: 2,
-    Tier.SPORE: 5,
-    Tier.LAB: 5,
-    Tier.CANOPY: 5,
-}
-LAB_PROJECT_CAP = 10
-DEPARTMENT_PROJECT_CAP = 30
+def personal_project_cap(user: User) -> int | None:
+    """How many active personal projects a user may have (``None`` = unlimited)."""
+    if billing_enabled():
+        return tier_limit(effective_tier(user), "personal_projects")
+    return instance_limit("personal_projects")
 
 
-def personal_project_cap(user: User) -> int:
-    """How many active personal projects a user's effective tier allows."""
-    return PERSONAL_PROJECT_CAPS.get(
-        effective_tier(user), PERSONAL_PROJECT_CAPS[Tier.FREE]
-    )
-
-
-def lab_project_cap(lab) -> int:
-    """A lab may hold projects only while it carries the team-workspace feature."""
-    return LAB_PROJECT_CAP if lab_has_feature(lab, Feature.TEAM_WORKSPACE) else 0
+def lab_project_cap(lab) -> int | None:
+    """``limits.lab_projects``; under subscriptions only while the lab carries the
+    team-workspace feature (an unentitled lab gets 0)."""
+    if billing_enabled() and not lab_has_feature(lab, Feature.TEAM_WORKSPACE):
+        return 0
+    return instance_limit("lab_projects")
 
 
 def _department_subscriptions(department) -> QuerySet[Subscription]:
@@ -480,13 +472,14 @@ def department_has_feature(department, feature: str) -> bool:
     return feature in department_features(department)
 
 
-def department_project_cap(department) -> int:
-    """A department may hold projects only while it carries department routing."""
-    return (
-        DEPARTMENT_PROJECT_CAP
-        if department_has_feature(department, Feature.DEPARTMENT_ROUTING)
-        else 0
-    )
+def department_project_cap(department) -> int | None:
+    """``limits.department_projects``; under subscriptions only while the
+    department carries department routing (otherwise 0)."""
+    if billing_enabled() and not department_has_feature(
+        department, Feature.DEPARTMENT_ROUTING
+    ):
+        return 0
+    return instance_limit("department_projects")
 
 
 def bot_server_addon() -> AddOn | None:
@@ -544,9 +537,13 @@ def can_dm(user: User) -> bool:
 
 def ambient_enabled(tier: str) -> bool:
     """Whether ``tier`` includes the ambient profile: listening, suggestions,
-    questions (ambient Plan 06, step 15). Every paid tier does; free does not.
+    questions (ambient Plan 06, step 15). Under subscriptions every paid tier
+    does and Free does not; with billing off there are no tiers, so everyone
+    does (consent and ``features.ambient`` still decide).
 
     Not a :class:`Feature`: it must hold whatever ``BILLING_ENFORCE_ENTITLEMENTS``
     says, because it bounds whose conversation is read at all.
     """
+    if not billing_enabled():
+        return True
     return tier != Tier.FREE

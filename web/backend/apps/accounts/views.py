@@ -1393,7 +1393,6 @@ class ProposeClustersView(APIView):
 
     def post(self, request: Request) -> Response:
         from apps.billing.entitlements import (
-            cluster_cap,
             cluster_topic_cap,
             topic_cap,
         )
@@ -1417,7 +1416,7 @@ class ProposeClustersView(APIView):
                 statement=str(data.get("statement") or ""),
                 existing_clusters=existing,
                 watch_topics=data.get("watch_topics") or [],
-                max_clusters=cluster_cap(request.user),
+                max_clusters=_proposal_cluster_count(request.user),
                 max_areas_per_cluster=cluster_topic_cap(request.user),
             )
         elif existing and unsorted:
@@ -1527,13 +1526,13 @@ class SynthesizeView(APIView):
         # structured draft is the deterministic fallback when no model is up.
         # Clamp to the caller's plan so the organize step opens with a grouping
         # they can save outright rather than an overflowing Unsorted tray.
-        from apps.billing.entitlements import cluster_cap, cluster_topic_cap
+        from apps.billing.entitlements import cluster_topic_cap
 
         draft, interests = synthesize_interests(
             site_draft=site_draft,
             resume_text=resume_text,
             provenance=provenance,
-            max_clusters=cluster_cap(request.user),
+            max_clusters=_proposal_cluster_count(request.user),
             max_areas_per_cluster=cluster_topic_cap(request.user),
         )
         return Response(
@@ -1640,6 +1639,17 @@ class LabIntakeSynthesizeView(APIView):
 # someone is a lab or a department, so this is where those exist now, and the
 # gate is the same one for both: an account that has not answered its own mailbox
 # does not get to stand up an org and start mailing strangers from it.
+
+
+def _proposal_cluster_count(user) -> int:
+    """How many clusters Mylo may propose for ``user``: their limit, or the
+    usual handful (``MAX_CLUSTERS``) when they have none. Unlimited means the
+    person may add more themselves, not that Mylo should invent dozens."""
+    from apps.billing.entitlements import cluster_cap
+    from apps.content.clustering import MAX_CLUSTERS
+
+    cap = cluster_cap(user)
+    return MAX_CLUSTERS if cap is None else cap
 
 
 class MyDepartmentsView(APIView):

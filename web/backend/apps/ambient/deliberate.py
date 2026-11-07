@@ -379,8 +379,9 @@ def budget(user, held: Holdings, observations_by_concept: dict, now) -> dict:
         "clusters": len(clusters),
         "cluster_cap": cap,
         "cluster_topic_cap": topic_cap,
-        "room_for_cluster": len(clusters) < cap,
-        "room_for_topic": any(len(c.get("areas") or []) < topic_cap for c in clusters)
+        "room_for_cluster": cap is None or len(clusters) < cap,
+        "room_for_topic": topic_cap is None
+        or any(len(c.get("areas") or []) < topic_cap for c in clusters)
         or not clusters,
         "swap_candidate": None,
     }
