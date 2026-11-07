@@ -348,6 +348,7 @@ Files below are inside `web/backend/apps/content/`.
 | Admin bootstrap (`make admin NAME=…`) | `ops/setup/create_admin.py` |
 | Every root command | `Makefile` (`make help`) |
 | README banner (generated, committed) | `docs/assets/header.svg`, written by `ops/readme/make_header.py` from `web/art/logo/logo-colored.svg`; re-run it when the logo or the README's first sentence changes |
+| README screenshots (committed) | `docs/assets/screenshot-{hero,report,feeds}.webp`, captured from the landing dev server by `ops/readme/screenshots.py` |
 
 ## Management commands
 

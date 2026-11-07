@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://mycelium.brendondgr.com"><b>Live site</b></a> ·
   <a href="#quickstart">Quickstart</a> ·
   <a href="docs/README.md">Docs</a> ·
   <a href="docs/research/">Research record</a> ·
@@ -32,12 +33,44 @@ are built on top of that layer. The feeds and reports are the first of them.
 If you want to **use** it, start at [Quickstart](#quickstart). If you want to
 **check the research**, start at [Research and evaluation](#research-and-evaluation).
 
-**Contents:** [What it does today](#what-it-does-today) ·
+**Contents:** [See it](#see-it) · [What it does today](#what-it-does-today) ·
 [Quickstart](#quickstart) · [Configuration](#configuration) ·
 [Day-to-day commands](#day-to-day-commands) · [How it's built](#how-its-built) ·
 [Repository layout](#repository-layout) ·
 [Research and evaluation](#research-and-evaluation) · [Roadmap](#roadmap) ·
 [Documentation](#documentation) · [Contributing and license](#contributing-and-license)
+
+## See it
+
+Try the hosted instance at **[mycelium.brendondgr.com](https://mycelium.brendondgr.com)**.
+Signing up there needs a sign-up code; to try it without one, run your own with
+the [Quickstart](#quickstart). The screenshots below are from the public site and
+show sample content for a fictional lab.
+
+<p align="center">
+  <a href="https://mycelium.brendondgr.com">
+    <img src="docs/assets/screenshot-hero.webp" width="880"
+         alt="The Mycelium front page: the wordmark on a dark forest background with glowing threads, the line 'While you sleep, Mylo reads the field', and Sign up and Run it yourself buttons." />
+  </a>
+</p>
+
+**The morning report.** One written pass through the night, grouped by research
+theme. Each item says where it sits in its theme, a verdict, and why it might not
+be worth your time. Deadlines are flagged in gold.
+
+<p align="center">
+  <img src="docs/assets/screenshot-report.webp" width="880"
+       alt="A sample daily report for a fictional Clinical NLP Lab. Papers are grouped under Retrieval grounding and Plasticity mechanisms, each with a rank and a Read or Skim verdict, followed by a caveat and a gold deadline notice for a grant closing in 18 days." />
+</p>
+
+<details>
+<summary><b>The feed cards</b>: papers, grants, fellowships and conferences</summary>
+<br />
+<p align="center">
+  <img src="docs/assets/screenshot-feeds.webp" width="880"
+       alt="A sample paper card in the Papers feed. It shows the title, source and authors, a New badge and its theme, a summary, Mylo's note on why it fits the lab, a Worth knowing caveat, and a Read paper link." />
+</p>
+</details>
 
 ## What it does today
 
