@@ -88,6 +88,7 @@ Paths are relative to the repository root.
 | Labs / members / lab settings | `web/app/src/components/portal/sections/{labs-section,members-section,lab-settings-section}.tsx` |
 | Reports page (briefing history) | `web/app/src/components/portal/sections/reports-section.tsx` |
 | Account page (identity, email, password + subscription) | `web/app/src/components/portal/sections/account-section.tsx`; route `/app/account` |
+| Settings navigation and Appearance (theme, density, motion) | `web/app/src/components/portal/settings-shell.tsx` (`SettingsShell`, `useSettingsEntries`, `AppearanceCard`) — wraps the Account, Profile, Mylo & you and Members pages in `src/app/app/(workspace)/*/page.tsx`; the avatar menu lists the same entries |
 | Subscription management (the Account page's money half) | `web/app/src/components/portal/sections/billing-section.tsx`; `/app/billing` redirects to `/app/account` |
 | Admin page | `web/app/src/components/portal/sections/admin-section.tsx` |
 | Notification bell | `web/app/src/components/portal/notification-bell.tsx` |
