@@ -7,6 +7,7 @@ import { ProjectsNav } from "@/components/portal/projects-nav";
 import { SidebarNavItem } from "@/components/portal/sidebar-nav-item";
 import { WorkspaceMark } from "@/components/portal/workspace-mark";
 import { useEntitlements } from "@/lib/portal/hooks";
+import { useRailCollapsed } from "@/lib/portal/use-rail";
 import { navGroupsFor } from "@/lib/portal/nav";
 import { KIND_LABEL, type Workspace } from "@/lib/portal/workspace";
 import { cn } from "@/lib/utils";
@@ -68,10 +69,13 @@ function WorkspaceIdentity({ workspace }: { workspace: Workspace }) {
 }
 
 /**
- * The left section navigation (desktop). The workspace rail sits to its left and
- * chooses *which* workspace; this lists what that workspace can reach, from the
- * single scope→sections model in `lib/portal/nav.ts` that the mobile sheet also
+ * The left section navigation (desktop). The header's dropdown chooses *which*
+ * workspace; this lists what that workspace can reach, from the single
+ * scope→sections model in `lib/portal/nav.ts` that the mobile sheet also
  * renders — so the two can never drift.
+ *
+ * It collapses to icons (the default; the header's toggle expands it), so the
+ * page keeps its width and the sections stay one click away.
  */
 export function PortalSidebar() {
   const {
@@ -84,6 +88,7 @@ export function PortalSidebar() {
     user,
   } = usePortal();
   const { data: entitlements } = useEntitlements();
+  const { collapsed } = useRailCollapsed();
 
   // Personal research entries only populate on a paid personal plan; a lab is on
   // its own (paid) plan, so lab research entries are always shown to members.
@@ -104,18 +109,29 @@ export function PortalSidebar() {
   const mainGroups = groups.filter((group) => group.label !== "Account");
 
   return (
-    <aside className="hidden h-full w-[244px] shrink-0 flex-col overflow-y-auto border-r border-[var(--divider)] px-3.5 pb-6 pt-[18px] lg:flex">
-      <WorkspaceIdentity workspace={currentWorkspace} />
+    <aside
+      aria-label="Sections"
+      data-collapsed={collapsed || undefined}
+      className={cn(
+        "relative z-[1] hidden h-full shrink-0 flex-col overflow-y-auto border-r border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--background)_55%,transparent)] pb-6 pt-[18px] transition-[width] duration-200 lg:flex",
+        collapsed ? "w-[64px] px-2.5" : "w-[244px] px-3.5",
+      )}
+    >
+      {collapsed ? null : <WorkspaceIdentity workspace={currentWorkspace} />}
 
-      {mainGroups.map((group) => (
+      {mainGroups.map((group, index) => (
         <div key={group.label}>
-          <GroupLabel>{group.label}</GroupLabel>
-          <nav className="mb-[18px] flex flex-col gap-0.5">
+          {collapsed ? (
+            index > 0 ? <span className="mx-auto mb-3 block h-px w-6 bg-[var(--divider)]" aria-hidden /> : null
+          ) : (
+            <GroupLabel>{group.label}</GroupLabel>
+          )}
+          <nav aria-label={group.label} className="mb-[18px] flex flex-col gap-0.5">
             {group.items.map((item) =>
               // Projects owns its own expandable sub-list of the reader's
               // projects, so it renders itself rather than as a flat row.
               item.key === "projects" ? (
-                <ProjectsNav key="projects" />
+                <ProjectsNav key="projects" collapsed={collapsed} />
               ) : (
                 <SidebarNavItem
                   key={`${group.label}-${item.key}`}
@@ -123,6 +139,7 @@ export function PortalSidebar() {
                   label={item.label}
                   active={section === item.key}
                   onClick={() => goToSection(item.key)}
+                  collapsed={collapsed}
                 />
               ),
             )}
@@ -130,7 +147,7 @@ export function PortalSidebar() {
         </div>
       ))}
 
-      {scope.kind === "department" ? (
+      {scope.kind === "department" && !collapsed ? (
         <p className="-mt-3 mb-[18px] px-3.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
           Research feeds are matched to a lab or to you. A department&apos;s
           Opportunities lists the calls only a department can take on.
@@ -146,6 +163,7 @@ export function PortalSidebar() {
               label={item.label}
               active={section === item.key}
               onClick={() => goToSection(item.key)}
+              collapsed={collapsed}
             />
           ))}
         </nav>

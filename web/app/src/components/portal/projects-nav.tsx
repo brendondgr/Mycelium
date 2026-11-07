@@ -7,6 +7,7 @@ import {
 } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import { statusDotColor } from "@/components/portal/project-status";
+import { SidebarNavItem } from "@/components/portal/sidebar-nav-item";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,7 +15,7 @@ import { cn } from "@/lib/utils";
  * count, an expand toggle, and — when open — an "All projects" link plus one row
  * per visible project, each a colored status dot and a click into its detail.
  */
-export function ProjectsNav() {
+export function ProjectsNav({ collapsed = false }: { collapsed?: boolean }) {
   const {
     section,
     activeProjectId,
@@ -28,6 +29,19 @@ export function ProjectsNav() {
 
   const active = section === "projects";
   const allActive = active && activeProjectId == null;
+
+  // Collapsed rail: one icon that opens the project list.
+  if (collapsed) {
+    return (
+      <SidebarNavItem
+        icon={<FolderIcon size={18} />}
+        label="Projects"
+        active={active}
+        onClick={openProjectsList}
+        collapsed
+      />
+    );
+  }
 
   return (
     <div>

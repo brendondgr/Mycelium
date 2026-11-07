@@ -1,18 +1,32 @@
 "use client";
 
 import Image from "next/image";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { GlobalSearch } from "@/components/portal/global-search";
 import { NotificationBell } from "@/components/portal/notification-bell";
-import { ThemeToggle } from "@/components/portal/theme-toggle";
 import { UserMenu } from "@/components/portal/user-menu";
-import { WorkspaceCaption } from "@/components/portal/workspace-caption";
 import { WorkspaceSheet } from "@/components/portal/workspace-sheet";
+import { WorkspaceSwitcher } from "@/components/portal/workspace-switcher";
+import { useRailCollapsed } from "@/lib/portal/use-rail";
 
-/** The sticky top bar: brand, workspace switcher, search, and account actions. */
+/**
+ * The sticky top bar: the rail toggle, brand, workspace dropdown, search, and
+ * account actions — night glass over the ground, as on the front page.
+ */
 export function PortalHeader() {
+  const { collapsed, toggle } = useRailCollapsed();
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-4 border-b border-[var(--divider)] bg-[color-mix(in_srgb,var(--surface)_90%,transparent)] px-4 py-3 backdrop-blur-md sm:px-6">
+    <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-[var(--border-soft)] bg-[var(--header-glass)] px-4 py-2.5 backdrop-blur-md sm:gap-4 sm:px-6">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-expanded={!collapsed}
+        className="hidden h-9 w-9 shrink-0 place-items-center rounded-[10px] text-[var(--text-secondary)] transition-colors hover:bg-surface-alt hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:grid"
+      >
+        {collapsed ? <PanelLeftOpen size={18} aria-hidden /> : <PanelLeftClose size={18} aria-hidden />}
+      </button>
       <div className="flex shrink-0 items-center gap-2.5">
         <Image
           src="/logo-colored.svg"
@@ -27,9 +41,9 @@ export function PortalHeader() {
         </span>
       </div>
 
-      {/* Desktop: the rail says which workspace, this names it. Mobile: the
+      {/* Desktop: a dropdown names and switches the workspace. Mobile: the
           sheet is the entire navigation. */}
-      <WorkspaceCaption />
+      <WorkspaceSwitcher />
       <WorkspaceSheet />
 
       <div className="hidden flex-1 md:flex">
@@ -38,7 +52,6 @@ export function PortalHeader() {
 
       <div className="flex shrink-0 items-center gap-2.5">
         <NotificationBell />
-        <ThemeToggle />
         <UserMenu />
       </div>
     </header>
