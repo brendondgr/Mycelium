@@ -261,6 +261,10 @@ in any profile; the profile is only the starting point.
    all with `--json`. `make setup` asks for (or takes) the profile.
 5. **Agent skill.** ✅ `docs/skills/configure.md`: interview → `config recommend
    --json` → show the proposed file with reasons → `config set` on agreement.
+5b. **Nightly budget.** ✅ `apps/core/llm_budget.py`: the nightly orchestrator
+   records where the run starts in the LLM ledger and hands it to every stage;
+   `LLMClient.complete` refuses calls past `nightly.model_calls` and every caller
+   already degrades to its deterministic output. Never applies outside the run.
 6. **App follows config.** `/api/instance/` (mode + effective limits);
    frontend drops tier names and Free fallbacks, hides plan UI when billing is
    off, and cap messages name the config key instead of "upgrade". Admin page

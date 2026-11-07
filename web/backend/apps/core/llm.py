@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Protocol
 
-from apps.core import llm_usage
+from apps.core import llm_budget, llm_usage
 
 
 class LLMConfigurationError(RuntimeError):
@@ -350,6 +350,12 @@ class LLMClient:
         if body:
             payload["extra_body"] = body
         payload.update(kwargs)
+
+        # The nightly run's budget (``nightly.model_calls``) refuses the call
+        # before it is made, so a refusal is neither billed nor counted; every
+        # caller already degrades on a failed call. Outside the nightly run this
+        # never refuses (see apps.core.llm_budget).
+        llm_budget.check()
 
         # Count the call either way. A failure here is exactly the number the
         # analytics report needs, so the ledger write brackets the request and

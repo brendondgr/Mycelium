@@ -181,7 +181,14 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _runner import ensure_ready, have_uv, run_host, run_manage  # noqa: E402
+import _runner  # noqa: E402
+from _runner import (  # noqa: E402
+    capture_manage,
+    ensure_ready,
+    have_uv,
+    run_host,
+    run_manage,
+)
 
 # The Discord error reporter and the shared run-state writer are optional
 # plumbing: if they can't be imported for any reason, the daily run must still
@@ -668,6 +675,22 @@ def preflight_llm(base: list[str]) -> bool:
     return True
 
 
+def start_model_budget(base: list[str]) -> None:
+    """Record where tonight's ``nightly.model_calls`` budget starts counting.
+
+    Every later stage gets the starting point as environment, so they all draw on
+    one budget (``apps.core.llm_budget``). With no budget configured the values
+    are harmless; if the command fails the run simply goes unbudgeted.
+    """
+    import json
+
+    raw = capture_manage("nightly_budget", ["--start"], base=base)
+    try:
+        _runner.EXTRA_ENV.update({str(k): str(v) for k, v in json.loads(raw).items()})
+    except (TypeError, ValueError):
+        print("  · nightly model-call budget not started; running unbudgeted", flush=True)
+
+
 def main() -> int:
     if any(arg in ("-h", "--help") for arg in sys.argv[1:]):
         print(__doc__)
@@ -714,6 +737,8 @@ def main() -> int:
             exit_code=1,
         )
         return 1
+
+    start_model_budget(base)
 
     # Weekly housekeeping, ahead of stage 1: the conference resolve stage
     # inside collect_opportunities reads whatever registry cache already

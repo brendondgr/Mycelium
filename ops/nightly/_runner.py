@@ -13,6 +13,7 @@ The repository root is two levels up (this file lives at
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSE_FILE = ROOT / "compose.yaml"
 BACKEND_SERVICE = "backend"
+
+#: Environment every stage of one run shares — the nightly model-call budget's
+#: starting point (see ``apps.core.llm_budget``), set once the run begins.
+EXTRA_ENV: dict[str, str] = {}
 
 # The command prefix as invoked inside the backend container (matches the
 # service's own ``uv run`` entrypoint in compose.yaml). Append the management
@@ -95,7 +100,8 @@ def run_host(command: list[str], intro: str | None = None) -> int:
     if intro:
         print(intro, flush=True)
     print(f"\n$ {' '.join(command)}", flush=True)
-    return subprocess.run(command, cwd=ROOT).returncode
+    env = {**os.environ, **EXTRA_ENV} if EXTRA_ENV else None
+    return subprocess.run(command, cwd=ROOT, env=env).returncode
 
 
 def run_manage(
@@ -119,9 +125,23 @@ def run_manage(
     # Allocate no TTY when we're not attached to one (e.g. piped or CI), so
     # `docker compose exec` doesn't fail with "the input device is not a TTY".
     exec_flags = [] if sys.stdin.isatty() else ["-T"]
-    cmd = [*base, "exec", *exec_flags, BACKEND_SERVICE, *MANAGE_PREFIX, command, *passthrough]
+    env_flags = [flag for key, value in EXTRA_ENV.items() for flag in ("-e", f"{key}={value}")]
+    cmd = [
+        *base, "exec", *exec_flags, *env_flags, BACKEND_SERVICE,
+        *MANAGE_PREFIX, command, *passthrough,
+    ]
 
     if intro and not passthrough:
         print(intro, flush=True)
     print(f"\n$ {' '.join(cmd)}", flush=True)
     return subprocess.run(cmd, cwd=ROOT).returncode
+
+
+def capture_manage(command: str, args: list[str], *, base: list[str]) -> str | None:
+    """Run a ``manage.py`` command in the backend container and return its stdout,
+    or ``None`` if it failed. For small machine-readable answers (JSON)."""
+    cmd = [*base, "exec", "-T", BACKEND_SERVICE, *MANAGE_PREFIX, command, *args]
+    result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip().splitlines()[-1] if result.stdout.strip() else ""
