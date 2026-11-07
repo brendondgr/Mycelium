@@ -1,0 +1,6 @@
+---
+description: Apply when setting up a Mycelium instance or changing its sign-up, email, limits, billing, or nightly budget.
+alwaysApply: false
+---
+
+Canonical instructions live in `docs/skills/configure.md`. Use this rule when an operator wants their instance configured, opened up, locked down, or asks why they are limited.

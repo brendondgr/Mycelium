@@ -259,7 +259,7 @@ in any profile; the profile is only the starting point.
    `[email].provider` selects Resend, SMTP or none.
 4. **CLI.** ✅ `ops/mycelium config init|show|explain|set|validate|diff|recommend`,
    all with `--json`. `make setup` asks for (or takes) the profile.
-5. **Agent skill.** `docs/skills/configure.md`: interview → `config recommend
+5. **Agent skill.** ✅ `docs/skills/configure.md`: interview → `config recommend
    --json` → show the proposed file with reasons → `config set` on agreement.
 6. **App follows config.** `/api/instance/` (mode + effective limits);
    frontend drops tier names and Free fallbacks, hides plan UI when billing is

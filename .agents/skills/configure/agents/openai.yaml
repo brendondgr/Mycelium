@@ -1,0 +1,4 @@
+interface:
+  display_name: "Configure"
+  short_description: "Set up and tune a Mycelium instance through mycelium.toml"
+  default_prompt: "Use this skill to interview the operator, recommend a deployment profile with `ops/mycelium config recommend --json`, and apply what they agree to."
