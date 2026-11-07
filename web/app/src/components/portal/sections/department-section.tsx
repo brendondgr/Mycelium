@@ -15,6 +15,7 @@ import { usePortal } from "@/components/portal/portal-context";
 import {
   useDeptBilling,
   useDeptLabs,
+  useEntitlements,
   useDeptManagement,
   useDeptMembers,
 } from "@/lib/portal/hooks";
@@ -36,13 +37,20 @@ export function DepartmentSection() {
   const billing = useDeptBilling(deptId);
   const canManage = Boolean(billing.data?.can_manage);
   const deptName = billing.data?.scope_name ?? "Department";
+  // No plan to show when the instance runs without billing (mycelium.toml).
+  const { data: entitlements } = useEntitlements();
+  const billingOn = entitlements?.billing_mode !== "off";
 
   return (
     <div>
       <SectionHeader
         eyebrow="Workspace"
         title={`${deptName} settings`}
-        subtitle="Manage the department's members, labs, and subscription plan."
+        subtitle={
+          billingOn
+            ? "Manage the department's members, labs, and subscription plan."
+            : "Manage the department's members and labs."
+        }
       />
       <div className="grid items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-4">
@@ -58,7 +66,7 @@ export function DepartmentSection() {
           <DeptLabsCard deptId={deptId} canManage={canManage} />
         </div>
         <div className="space-y-4">
-          <DeptPlanCard deptId={deptId} />
+          {billingOn ? <DeptPlanCard deptId={deptId} /> : null}
         </div>
       </div>
       {canManage ? (

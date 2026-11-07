@@ -14,6 +14,7 @@ import {
   useAdminLabs,
   useAdminUser,
   useAdminUsers,
+  useEntitlements,
   useUpdateAdminLab,
   useUpdateAdminUser,
 } from "@/lib/portal/hooks";
@@ -153,6 +154,8 @@ type Context = "users" | "labs";
 export function AdminSection() {
   const { user } = usePortal();
   const [context, setContext] = React.useState<Context>("users");
+  const { data: entitlements } = useEntitlements();
+  const billingOff = entitlements?.billing_mode === "off";
 
   if (!isPlatformAdmin(user)) {
     return (
@@ -178,6 +181,18 @@ export function AdminSection() {
             : "Manage each lab's subscription — tier, how the plan ends, and whether Mylo is part of it."
         }
       />
+
+      {billingOff ? (
+        <p
+          role="note"
+          className="mb-4 rounded-xl border border-dashed border-border bg-[var(--surface-alt)] px-4 py-3 text-[12.5px] leading-relaxed text-[var(--text-secondary)]"
+        >
+          Billing is off on this instance (<code>billing.mode</code> in{" "}
+          <code>mycelium.toml</code>), so plans and tiers below decide nothing:
+          limits come from the instance configuration. A person&apos;s watch
+          limit set here still applies.
+        </p>
+      ) : null}
 
       <ContextSwitch value={context} onChange={setContext} />
 

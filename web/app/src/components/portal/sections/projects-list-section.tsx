@@ -101,8 +101,9 @@ export function ProjectsListSection() {
         <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-dashed border-clay bg-clay-soft px-4 py-3 text-[12.5px] leading-relaxed text-clay">
           <AlertTriangleIcon size={16} className="mt-[1px] shrink-0" />
           <span>
-            Some projects are over your plan&apos;s limit and have paused
-            getting new recommendations. Archive or upgrade to resume.
+            Some projects are over this instance&apos;s project limit and have
+            paused getting new recommendations. Archive one to resume, or ask
+            an administrator to raise the limit.
           </span>
         </div>
       ) : null}
@@ -255,7 +256,7 @@ function ProjectRow({
         onError: (err) => {
           onError(
             err instanceof ProjectCapReachedError
-              ? `Restoring "${project.name}" would exceed your plan's limit of ${err.cap} projects — archive another first, or upgrade.`
+              ? `Restoring "${project.name}" would exceed the limit of ${err.cap} active projects — archive another first.`
               : (err as Error).message,
           );
         },

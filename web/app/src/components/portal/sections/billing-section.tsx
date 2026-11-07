@@ -62,7 +62,60 @@ function SubsectionHeader({
  */
 export function BillingSection() {
   const { currentLab } = usePortal();
+  const { data } = useEntitlements();
+  // With billing off (the instance's mycelium.toml) there are no plans, prices or
+  // seats to manage — only the limits the operator set, if any.
+  if (data?.billing_mode === "off") {
+    return currentLab ? null : <InstanceLimits entitlements={data} />;
+  }
   return currentLab ? <LabBilling lab={currentLab} /> : <PersonalBilling />;
+}
+
+/** One limit, read as people say it: "4 of 20", or "4 · no limit". */
+function limitText(used: number | null, cap: number | null): string {
+  if (cap === null) {
+    return used === null ? "No limit" : `${used} · no limit`;
+  }
+  return used === null ? String(cap) : `${used} of ${cap}`;
+}
+
+/**
+ * The Account page's last section when the instance runs without billing: what
+ * this person may track, set by whoever runs the instance — never a plan.
+ */
+function InstanceLimits({ entitlements }: { entitlements: Entitlements }) {
+  const unlimited =
+    entitlements.topic_cap === null &&
+    entitlements.cluster_cap === null &&
+    entitlements.cluster_topic_cap === null;
+  return (
+    <div>
+      <SubsectionHeader
+        title="Limits"
+        subtitle={
+          unlimited
+            ? "This instance sets no limits on what you track."
+            : "Set by whoever runs this instance, in its configuration."
+        }
+      />
+      <Card className="max-w-xl p-[22px]">
+        <dl className="grid grid-cols-2 gap-y-1.5 text-sm">
+          <dt className="text-[var(--text-secondary)]">Subjects watched</dt>
+          <dd className="text-right font-medium text-[var(--text-primary)]">
+            {limitText(entitlements.topics_used, entitlements.topic_cap)}
+          </dd>
+          <dt className="text-[var(--text-secondary)]">Research clusters</dt>
+          <dd className="text-right font-medium text-[var(--text-primary)]">
+            {limitText(null, entitlements.cluster_cap)}
+          </dd>
+          <dt className="text-[var(--text-secondary)]">Topics per cluster</dt>
+          <dd className="text-right font-medium text-[var(--text-primary)]">
+            {limitText(null, entitlements.cluster_topic_cap)}
+          </dd>
+        </dl>
+      </Card>
+    </div>
+  );
 }
 
 // -- personal -----------------------------------------------------------------

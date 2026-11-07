@@ -62,7 +62,7 @@ export function AccountSection() {
       <SectionHeader
         eyebrow="Workspace"
         title="Account"
-        subtitle="Who you are on Mycelium, how we reach you, and what your plan covers."
+        subtitle="Who you are on Mycelium, how we reach you, and what you can track."
       />
 
       {failed ? (

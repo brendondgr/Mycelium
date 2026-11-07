@@ -165,9 +165,9 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
         onError: (err) => {
           if (err instanceof ProjectCapReachedError) {
             setSubmitError(
-              `You've reached your plan's limit of ${err.cap} project${
+              `You've reached the limit of ${err.cap} active project${
                 err.cap === 1 ? "" : "s"
-              } — archive one or upgrade to add more.`,
+              } — archive one to add another.`,
             );
           } else {
             setSubmitError((err as Error).message);

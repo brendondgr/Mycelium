@@ -265,10 +265,15 @@ in any profile; the profile is only the starting point.
    records where the run starts in the LLM ledger and hands it to every stage;
    `LLMClient.complete` refuses calls past `nightly.model_calls` and every caller
    already degrades to its deterministic output. Never applies outside the run.
-6. **App follows config.** `/api/instance/` (mode + effective limits);
-   frontend drops tier names and Free fallbacks, hides plan UI when billing is
-   off, and cap messages name the config key instead of "upgrade". Admin page
-   gains per-lab / per-department overrides.
+6. **App follows config.** ✅ (partly) `GET /api/billing/me/` carries
+   `billing_mode` and nullable caps, so no separate `/api/instance/` was needed;
+   the frontend dropped its Free fallbacks, replaces the plan/seat UI with a
+   "Limits" card when billing is off, hides the department plan card, notes on
+   the admin page that plans decide nothing, and limit messages no longer say
+   "upgrade". **Not done:** per-lab / per-department limit overrides on the
+   admin page (only the per-person watch limit exists) — needs nullable fields,
+   a migration, and admin UI; and the UI changes were type-checked and linted
+   but not exercised in a browser.
 7. **Migrate and document.** A `mycelium.toml` that reproduces the hosted
    instance exactly; `docs/configuration.md`; README, repo map, architecture,
    tests per profile.

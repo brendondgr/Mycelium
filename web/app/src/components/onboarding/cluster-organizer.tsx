@@ -290,7 +290,7 @@ export function ClusterOrganizer({
       target.areas.length + source.areas.length > perClusterLimit
     ) {
       setError(
-        `That merge would exceed the ${perClusterLimit}-topic limit per cluster on your plan.`,
+        `That merge would exceed the ${perClusterLimit}-topic limit per cluster.`,
       );
       return;
     }

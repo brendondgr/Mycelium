@@ -487,7 +487,7 @@ function ProjectSettingsCard({
     const onError = (err: unknown) =>
       setError(
         err instanceof ProjectCapReachedError
-          ? `Restoring this project would exceed your plan's limit of ${err.cap} projects — archive another first, or upgrade.`
+          ? `Restoring this project would exceed the limit of ${err.cap} active projects — archive another first.`
           : (err as Error).message,
       );
     if (project.is_archived) {
@@ -566,8 +566,8 @@ function ProjectSettingsCard({
           </h2>
           <p className="mb-[14px] text-[12.5px] text-[var(--text-secondary)]">
             {project.is_archived
-              ? "Restoring puts this project back into the daily run. It has to fit within your plan's project limit."
-              : "Archiving keeps everything Mylo has already found but stops new search work, and frees a slot against your plan's limit. Nothing is deleted."}
+              ? "Restoring puts this project back into the daily run. It has to fit within the project limit."
+              : "Archiving keeps everything Mylo has already found but stops new search work, and frees a slot against the project limit. Nothing is deleted."}
           </p>
           <div className="flex flex-wrap gap-2">
             <button
