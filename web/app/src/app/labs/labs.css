@@ -786,7 +786,7 @@
 
 .lx-main {
   /* A size container, so a page can be exactly as tall as the visible area
-     (100cqh) — what lets the reading pane fill the height and scroll alone. */
+     (100cqh) — what lets the sticky reading pane match the visible height. */
   container-type: size;
   flex: 1;
   min-width: 0;
@@ -2435,75 +2435,31 @@
   }
 }
 
-/* ============================================ preview: full-height reader */
+/* ============================================ preview: sticky reader pane */
 
 /*
- * List + reading pane on a wide screen is an app layout, not a document: the
- * head and toolbar stay put, and the list and the opened item each fill the
- * remaining height and scroll on their own. 100cqh is the scroll area's
- * content height (see .lx-main).
+ * List + reading pane on a wide screen: the page scrolls as a whole through
+ * the cards, and the opened item stays pinned beside them. The pane is
+ * exactly as tall as the visible area (less a small inset) and scrolls on its
+ * own when the item is longer than that. 100cqh is the scroll area's content
+ * height (see .lx-main).
  */
 @container lxapp (min-width: 980px) {
-  .lx-main:has(> .lx-content > .lx-feedpage[data-layout="reader"]) {
-    padding-bottom: 14px;
-  }
-
-  .lx-feedpage[data-layout="reader"] {
-    display: flex;
-    flex-direction: column;
-    height: 100cqh;
-  }
-
-  .lx-feedpage[data-layout="reader"] > .lx-page-head {
-    margin-bottom: calc(var(--lx-section) * 0.6);
-  }
-
-  .lx-feedpage[data-layout="reader"] .lx-feed-body {
-    flex: 1;
-    min-height: 0;
-  }
-
-  .lx-feedpage[data-layout="reader"] .lx-feed-body[data-rail] {
-    align-items: stretch;
-  }
-
-  .lx-feedpage[data-layout="reader"] .lx-filter-rail {
-    position: static;
-    height: 100%;
-    overflow-y: auto;
-    scrollbar-width: thin;
-  }
-
   .lx-feedpage[data-layout="reader"] .lx-feed-wrap {
-    height: 100%;
-    min-height: 0;
-    grid-template-rows: minmax(0, 1fr);
-    align-items: stretch;
-  }
-
-  .lx-feedpage[data-layout="reader"] .lx-feed {
-    min-height: 0;
-    padding: 2px 6px 24px 2px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--lx-border) transparent;
+    align-items: start;
   }
 
   .lx-feedpage[data-layout="reader"] .lx-reading-pane {
-    position: static;
-    height: 100%;
-    max-height: none;
+    position: sticky;
+    top: 12px;
+    /* Sticky honours the scroll area's top padding, so the pane sits at
+       padding + 12px; the visible height left is the content height plus
+       the bottom padding (56px), less a 12px inset at each end. */
+    height: calc(100cqh + 56px - 24px);
     overflow-y: auto;
     overscroll-behavior: contain;
+    scrollbar-width: thin;
     scrollbar-color: var(--lx-border) transparent;
-  }
-
-  .lx-feedpage[data-layout="reader"] .lx-feed-group .lx-group-label {
-    position: sticky;
-    top: -2px;
-    z-index: 1;
-    padding: 6px 0;
-    background: var(--lx-bg);
   }
 }
 
