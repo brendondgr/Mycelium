@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 
 import type { OptionValue } from "@/components/labs/schema";
 import {
+  FELLOWSHIPS,
   FOUND,
   GRANTS,
   PAPERS,
@@ -12,7 +13,7 @@ import {
   THEMES,
   type Scope,
 } from "@/components/labs/preview/fixtures";
-import { DeadlinePill, PageHead, ThemeTag, usePreview } from "@/components/labs/preview/parts";
+import { BestFor, DeadlinePill, MyloMark, PageHead, ThemeTag, usePreview } from "@/components/labs/preview/parts";
 
 function Panel({ title, action, children, className = "" }: {
   title: string;
@@ -119,10 +120,14 @@ function TodayByTheme({ perTheme }: { perTheme: number }) {
               <ul className="lx-compact-list">
                 {items.map((p) => (
                   <li key={p.id}>
-                    <button type="button" className="lx-compact-title" onClick={() => open({ kind: "paper", item: p })}>
+                    <button type="button" className="lx-compact-title" onClick={() => open(p)}>
                       {p.title}
                     </button>
-                    <p className="lx-compact-why">{p.reason}</p>
+                    <p className="lx-compact-why">
+                      {p.byMylo ? <MyloMark size={16} /> : null}
+                      {p.reason}
+                    </p>
+                    <BestFor item={p} />
                   </li>
                 ))}
               </ul>
@@ -137,15 +142,18 @@ function TodayByTheme({ perTheme }: { perTheme: number }) {
 function ClosingSoon({ deadline }: { deadline: string }) {
   const { open } = usePreview();
   return (
-    <Panel title="Closing soon" action="All grants">
+    <Panel title="Closing soon" action="All deadlines">
       <ul className="lx-compact-list">
-        {GRANTS.filter((g) => g.closesIn <= 45).map((g) => (
+        {[...GRANTS, ...FELLOWSHIPS]
+          .filter((g) => g.closesIn <= 30)
+          .sort((a, b) => a.closesIn - b.closesIn)
+          .map((g) => (
           <li key={g.id}>
-            <DeadlinePill grant={g} mode={deadline} />
-            <button type="button" className="lx-compact-title" onClick={() => open({ kind: "grant", item: g })}>
+            <DeadlinePill closesIn={g.closesIn} closesOn={g.closesOn} mode={deadline} />
+            <button type="button" className="lx-compact-title" onClick={() => open(g)}>
               {g.title}
             </button>
-            <p className="lx-meta-text">{g.funder}</p>
+            <p className="lx-meta-text">{g.kind === "grant" ? g.funder : `${g.sponsor} · fellowship`}</p>
           </li>
         ))}
       </ul>
@@ -196,7 +204,7 @@ export function OverviewPage({
   return (
     <div className="lx-overview" data-layout={layout}>
       <PageHead
-        kicker="Friday, 7 November"
+        kicker="Saturday, 7 November"
         title={scope.kind === "personal" ? "Good morning." : scope.name}
         lede={scope.kind === "personal" ? "Here is what changed in your field overnight." : "What changed in the lab's field overnight."}
       />

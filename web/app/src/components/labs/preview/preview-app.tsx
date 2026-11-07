@@ -24,10 +24,9 @@ import {
 import type { LabsState, PageKey } from "@/components/labs/schema";
 import { SCOPES, type Scope } from "@/components/labs/preview/fixtures";
 import { Ground } from "@/components/labs/preview/ground";
-import { DetailBody, PreviewContext, type Detail } from "@/components/labs/preview/parts";
-import { GrantsPage } from "@/components/labs/preview/pages/grants";
+import { ItemDetail, PreviewContext, useDismiss, type Detail } from "@/components/labs/preview/parts";
+import { FeedPage } from "@/components/labs/preview/pages/feed";
 import { OverviewPage } from "@/components/labs/preview/pages/overview";
-import { PapersPage } from "@/components/labs/preview/pages/papers";
 import { SearchPage } from "@/components/labs/preview/pages/search";
 
 type NavEntry = { key: string; label: string; icon: LucideIcon; page?: PageKey };
@@ -45,8 +44,8 @@ const NAV: { label: string; items: NavEntry[] }[] = [
     items: [
       { key: "papers", label: "Papers", icon: FileText, page: "papers" },
       { key: "grants", label: "Grants", icon: Landmark, page: "grants" },
-      { key: "fellowships", label: "Fellowships", icon: Award },
-      { key: "conferences", label: "Conferences", icon: Presentation },
+      { key: "fellowships", label: "Fellowships", icon: Award, page: "fellowships" },
+      { key: "conferences", label: "Conferences", icon: Presentation, page: "conferences" },
     ],
   },
   {
@@ -60,24 +59,7 @@ const NAV: { label: string; items: NavEntry[] }[] = [
 ];
 
 const ALL_NAV = NAV.flatMap((g) => g.items);
-const MOBILE_TABS = ["overview", "papers", "grants", "search"];
-
-/** Close a popover on outside click or Escape. */
-function useDismiss(open: boolean, close: () => void, ref: React.RefObject<HTMLElement | null>) {
-  React.useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close();
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, close, ref]);
-}
+const MOBILE_TABS = ["overview", "papers", "grants", "fellowships", "search"];
 
 function ScopeMenu({ scope, setScope }: { scope: Scope; setScope: (s: Scope) => void }) {
   const [open, setOpen] = React.useState(false);
@@ -239,9 +221,9 @@ export function PreviewApp({
   const ctx = React.useMemo(
     () => ({
       g,
-      open: (d: Detail) => {
-        if (g.detail === "inline") setExpanded((cur) => (cur === d.item.id ? null : d.item.id));
-        else setDetail(d);
+      open: (item: Detail["item"]) => {
+        if (g.detail === "inline") setExpanded((cur) => (cur === item.id ? null : item.id));
+        else setDetail({ item });
       },
       isExpanded: (id: string) => g.detail === "inline" && expanded === id,
     }),
@@ -250,7 +232,9 @@ export function PreviewApp({
 
   React.useEffect(() => {
     if (!detail) return;
-    detailRef.current?.focus();
+    // preventScroll: the drawer is still off-canvas when this runs, and a
+    // plain focus() would scroll the whole preview sideways to reveal it.
+    detailRef.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDetail(null);
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -262,12 +246,10 @@ export function PreviewApp({
       <Placeholder label={ALL_NAV.find((n) => n.key === other)?.label ?? other} />
     ) : state.page === "overview" ? (
       <OverviewPage o={pageOptions.overview} scope={scope} deadline={pageOptions.grants.deadline as string} />
-    ) : state.page === "papers" ? (
-      <PapersPage o={pageOptions.papers} />
-    ) : state.page === "grants" ? (
-      <GrantsPage o={pageOptions.grants} />
-    ) : (
+    ) : state.page === "search" ? (
       <SearchPage o={pageOptions.search} />
+    ) : (
+      <FeedPage key={state.page} feed={state.page} o={pageOptions[state.page]} />
     );
 
   const style = {
@@ -411,7 +393,7 @@ export function PreviewApp({
             <button type="button" className="lx-icon-btn lx-detail-close" aria-label="Close" tabIndex={detail ? 0 : -1} onClick={() => setDetail(null)}>
               <X size={16} aria-hidden="true" />
             </button>
-            {detail ? <DetailBody detail={detail} /> : null}
+            {detail ? <ItemDetail key={detail.item.id} item={detail.item} /> : null}
           </div>
         </div>
       </div>

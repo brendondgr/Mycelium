@@ -51,7 +51,9 @@ export type OptionDef =
 
 export type OptionValue = string | boolean | number | string[];
 
-export type PageKey = "overview" | "papers" | "grants" | "search";
+export type PageKey = "overview" | FeedKey | "search";
+
+export type FeedKey = "papers" | "grants" | "fellowships" | "conferences";
 
 export type PageDef = {
   key: PageKey;
@@ -91,7 +93,7 @@ export const GLOBAL_OPTIONS: OptionDef[] = [
       { value: "spores", label: "Spores", hint: "Slow drifting specks" },
       { value: "contour", label: "Contour", hint: "Faint field-map lines" },
     ],
-    default: "threads",
+    default: "contour",
   },
   {
     kind: "range",
@@ -101,7 +103,7 @@ export const GLOBAL_OPTIONS: OptionDef[] = [
     max: 100,
     step: 5,
     unit: "%",
-    default: 50,
+    default: 35,
   },
   {
     kind: "choice",
@@ -130,7 +132,7 @@ export const GLOBAL_OPTIONS: OptionDef[] = [
     kind: "toggle",
     id: "railCollapsed",
     label: "Side rail starts collapsed",
-    default: false,
+    default: true,
   },
   {
     kind: "choice",
@@ -152,7 +154,7 @@ export const GLOBAL_OPTIONS: OptionDef[] = [
       { value: "cards", label: "Soft cards", hint: "Filled panels, thin border" },
       { value: "glass", label: "Night glass", hint: "Translucent panels, like the front page" },
     ],
-    default: "glass",
+    default: "cards",
   },
   {
     kind: "choice",
@@ -206,9 +208,80 @@ export const GLOBAL_OPTIONS: OptionDef[] = [
       { value: "subtle", label: "Subtle", hint: "Fades only" },
       { value: "none", label: "None" },
     ],
-    default: "subtle",
+    default: "full",
   },
 ];
+
+/**
+ * The four feeds share one page design — a searchable, filterable list on the
+ * left, the opened item on the right — so they share one set of options. The
+ * few that only make sense for one kind (a board of grant statuses, grouping
+ * papers by the day they were found) are added per kind.
+ */
+function feedPage(
+  key: FeedKey,
+  label: string,
+  route: string,
+  noun: "paper" | "grant" | "fellowship" | "conference",
+): PageDef {
+  const layouts: Choice[] = [
+    { value: "reader", label: "List + reading pane", hint: "Opens on the right; a drawer on phones" },
+    { value: "list", label: "List", hint: "Opens the way “Opening an item” says" },
+    { value: "grid", label: "Two-up cards" },
+  ];
+  if (key === "grants") layouts.push({ value: "board", label: "Board", hint: "New · Closing soon · Saved" });
+
+  const groups: Choice[] = [
+    { value: "theme", label: "Theme" },
+    { value: "none", label: "Nothing" },
+  ];
+  if (key === "papers") groups.push({ value: "day", label: "Day found" });
+  else groups.push({ value: "month", label: key === "conferences" ? "Event month" : "Closing month" });
+
+  const options: OptionDef[] = [
+    { kind: "choice", id: "layout", label: "Layout", choices: layouts, default: "reader" },
+    {
+      kind: "choice",
+      id: "filters",
+      label: "Search & filters",
+      help: "Every feed gets a search box; this is where the filters live.",
+      choices: [
+        { value: "bar", label: "Filter bar", hint: "A dropdown per filter, active ones as chips" },
+        { value: "rail", label: "Filter column", hint: "Always open on the left (wide screens)" },
+        { value: "drawer", label: "Behind a button", hint: "One “Filters” sheet" },
+      ],
+      default: "bar",
+    },
+    { kind: "choice", id: "groupBy", label: "Group by", choices: groups, default: "theme" },
+    {
+      kind: "multi",
+      id: "card",
+      label: "Each card shows",
+      choices: [
+        { value: "reason", label: "Mylo's reason" },
+        { value: "caveat", label: "Why it might not fit" },
+        { value: "who", label: "Who it's best for" },
+        { value: "facts", label: noun === "paper" ? "Venue and authors" : "Amount, checks and dates" },
+        { value: "themes", label: "Theme badges" },
+      ],
+      default: ["reason", "caveat", "who", "facts", "themes"],
+    },
+  ];
+  if (key !== "papers") {
+    options.push({
+      kind: "choice",
+      id: "deadline",
+      label: "Dates shown as",
+      choices: [
+        { value: "countdown", label: "Countdown" },
+        { value: "date", label: "Date" },
+        { value: "both", label: "Both" },
+      ],
+      default: "both",
+    });
+  }
+  return { key, label, route, options };
+}
 
 export const PAGES: PageDef[] = [
   {
@@ -236,7 +309,7 @@ export const PAGES: PageDef[] = [
           { value: "tiles", label: "Number tiles" },
           { value: "table", label: "Recency table", hint: "Today / week / month / year (today)" },
         ],
-        default: "strip",
+        default: "table",
       },
       {
         kind: "multi",
@@ -264,88 +337,10 @@ export const PAGES: PageDef[] = [
       },
     ],
   },
-  {
-    key: "papers",
-    label: "Papers",
-    route: "/app/research-papers",
-    options: [
-      {
-        kind: "choice",
-        id: "layout",
-        label: "Layout",
-        choices: [
-          { value: "list", label: "List" },
-          { value: "grid", label: "Two-up grid" },
-          { value: "reader", label: "List + reading pane", hint: "Wide screens only; a list on phones" },
-        ],
-        default: "list",
-      },
-      {
-        kind: "choice",
-        id: "filters",
-        label: "Filters",
-        choices: [
-          { value: "chips", label: "Theme chips", hint: "One scrolling row above the feed" },
-          { value: "panel", label: "Collapsible panel" },
-          { value: "drawer", label: "Behind a button" },
-        ],
-        default: "chips",
-      },
-      {
-        kind: "choice",
-        id: "groupBy",
-        label: "Group by",
-        choices: [
-          { value: "none", label: "Nothing" },
-          { value: "theme", label: "Theme" },
-          { value: "day", label: "Day found" },
-        ],
-        default: "none",
-      },
-      {
-        kind: "choice",
-        id: "summary",
-        label: "Each paper shows",
-        choices: [
-          { value: "brief", label: "Title + why it fits" },
-          { value: "full", label: "Why + caveat + abstract" },
-        ],
-        default: "brief",
-      },
-      { kind: "toggle", id: "caveat", label: "Show the caveat line", default: true },
-    ],
-  },
-  {
-    key: "grants",
-    label: "Grants",
-    route: "/app/grants",
-    options: [
-      {
-        kind: "choice",
-        id: "layout",
-        label: "Layout",
-        choices: [
-          { value: "timeline", label: "Timeline", hint: "Grouped by the month they close" },
-          { value: "list", label: "List" },
-          { value: "board", label: "Board", hint: "New · Closing soon · Saved" },
-        ],
-        default: "timeline",
-      },
-      {
-        kind: "choice",
-        id: "deadline",
-        label: "Deadline shown as",
-        choices: [
-          { value: "countdown", label: "Countdown" },
-          { value: "date", label: "Date" },
-          { value: "both", label: "Both" },
-        ],
-        default: "both",
-      },
-      { kind: "toggle", id: "eligibility", label: "Show eligibility checks", default: true },
-      { kind: "toggle", id: "amount", label: "Show award amount", default: true },
-    ],
-  },
+  feedPage("papers", "Papers", "/app/research-papers", "paper"),
+  feedPage("grants", "Grants", "/app/grants", "grant"),
+  feedPage("fellowships", "Fellowships", "/app/fellowships", "fellowship"),
+  feedPage("conferences", "Conferences", "/app/conferences", "conference"),
   {
     key: "search",
     label: "Search",
@@ -371,7 +366,7 @@ export const PAGES: PageDef[] = [
           { value: "threads", label: "Threads under the box" },
           { value: "vine", label: "Vine around it", hint: "Today's version, for comparison" },
         ],
-        default: "glow",
+        default: "none",
       },
       {
         kind: "choice",
@@ -466,7 +461,7 @@ function describe(o: OptionDef, v: OptionValue): string {
     case "range":
       return `${v}${o.unit ?? ""}`;
     case "multi": {
-      const list = (v as string[])
+      const list = ((v as string[] | undefined) ?? [])
         .map((x) => o.choices.find((c) => c.value === x)?.label ?? x)
         .join(", ");
       return list || "None";
@@ -474,7 +469,7 @@ function describe(o: OptionDef, v: OptionValue): string {
   }
 }
 
-function raw(v: OptionValue): string {
+function raw(v: OptionValue | undefined): string {
   return Array.isArray(v) ? v.join("+") || "none" : String(v);
 }
 

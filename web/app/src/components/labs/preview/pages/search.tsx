@@ -4,8 +4,18 @@ import * as React from "react";
 import { Search as SearchIcon, UserRound } from "lucide-react";
 
 import type { OptionValue } from "@/components/labs/schema";
-import { GRANTS, PAPERS, PEOPLE, SEARCH_SUGGESTIONS } from "@/components/labs/preview/fixtures";
-import { GrantItem, PaperItem } from "@/components/labs/preview/parts";
+import { FEEDS, PEOPLE, SEARCH_SUGGESTIONS, type FeedKind } from "@/components/labs/preview/fixtures";
+import { searchText } from "@/components/labs/preview/feeds";
+import { FeedCard } from "@/components/labs/preview/parts";
+
+const KINDS: { kind: FeedKind; label: string }[] = [
+  { kind: "paper", label: "Papers" },
+  { kind: "grant", label: "Grants" },
+  { kind: "fellowship", label: "Fellowships" },
+  { kind: "conference", label: "Conferences" },
+];
+
+const CARD = ["reason", "who", "themes"];
 
 function matches(text: string, q: string) {
   const words = q.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
@@ -44,10 +54,12 @@ export function SearchPage({ o }: { o: Record<string, OptionValue> }) {
   const [query, setQuery] = React.useState("sea surface height");
   const centered = o.entry === "centered";
 
-  const papers = PAPERS.filter((p) => matches(`${p.title} ${p.reason} ${p.abstract}`, query));
-  const grants = GRANTS.filter((g) => matches(`${g.title} ${g.reason}`, query));
+  const results = KINDS.map((k) => ({
+    ...k,
+    items: FEEDS[k.kind].filter((i) => matches(searchText(i), query)),
+  }));
   const people = PEOPLE.filter((p) => matches(`${p.name} ${p.why}`, query));
-  const total = papers.length + grants.length + people.length;
+  const total = results.reduce((n, r) => n + r.items.length, 0) + people.length;
 
   const peopleList = (
     <ul className="lx-people">
@@ -106,47 +118,36 @@ export function SearchPage({ o }: { o: Record<string, OptionValue> }) {
 
       {o.results === "grouped" ? (
         <div className="lx-result-groups">
-          {papers.length ? (
-            <section className="lx-feed-group" aria-label="Papers">
-              <h2 className="lx-group-label">Papers <span className="lx-count">{papers.length}</span></h2>
-              <div className="lx-feed-items">
-                {papers.map((p) => (
-                  <PaperItem key={p.id} paper={p} summary="brief" caveat={false} />
-                ))}
-              </div>
-            </section>
-          ) : null}
-          {grants.length ? (
-            <section className="lx-feed-group" aria-label="Grants">
-              <h2 className="lx-group-label">Grants <span className="lx-count">{grants.length}</span></h2>
-              <div className="lx-feed-items">
-                {grants.map((g) => (
-                  <GrantItem key={g.id} grant={g} deadline="both" eligibility={false} amount={false} />
-                ))}
-              </div>
-            </section>
-          ) : null}
+          {results.map((r) =>
+            r.items.length ? (
+              <section key={r.kind} className="lx-feed-group" aria-label={r.label}>
+                <h2 className="lx-group-label">
+                  {r.label} <span className="lx-count">{r.items.length}</span>
+                </h2>
+                <div className="lx-feed-items">
+                  {r.items.map((i) => (
+                    <FeedCard key={i.id} item={i} show={CARD} />
+                  ))}
+                </div>
+              </section>
+            ) : null,
+          )}
           {people.length ? (
             <section className="lx-feed-group" aria-label="People">
-              <h2 className="lx-group-label">People <span className="lx-count">{people.length}</span></h2>
+              <h2 className="lx-group-label">
+                People <span className="lx-count">{people.length}</span>
+              </h2>
               {peopleList}
             </section>
           ) : null}
         </div>
       ) : (
         <div className="lx-feed-items">
-          {papers.slice(0, 2).map((p) => (
-            <PaperItem key={p.id} paper={p} summary="brief" caveat={false} />
-          ))}
-          {grants.slice(0, 1).map((g) => (
-            <GrantItem key={g.id} grant={g} deadline="both" eligibility={false} amount={false} />
-          ))}
-          {papers.slice(2).map((p) => (
-            <PaperItem key={p.id} paper={p} summary="brief" caveat={false} />
-          ))}
-          {grants.slice(1).map((g) => (
-            <GrantItem key={g.id} grant={g} deadline="both" eligibility={false} amount={false} />
-          ))}
+          {results
+            .flatMap((r) => r.items)
+            .map((i) => (
+              <FeedCard key={i.id} item={i} show={CARD} />
+            ))}
           {people.length ? peopleList : null}
         </div>
       )}

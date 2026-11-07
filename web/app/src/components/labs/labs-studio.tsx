@@ -7,7 +7,8 @@ import { ControlPanel } from "@/components/labs/control-panel";
 import { PreviewApp } from "@/components/labs/preview/preview-app";
 import { defaultState, mergeState, type LabsState, type PageKey } from "@/components/labs/schema";
 
-const STORAGE_KEY = "mycelium-labs-v1";
+const STORAGE_KEY = "mycelium-labs-v2";
+const LEGACY_KEY = "mycelium-labs-v1";
 const VIEW_KEY = "mycelium-labs-view-v1";
 
 type Device = "desktop" | "tablet" | "phone";
@@ -31,6 +32,22 @@ function writeJson(key: string, value: unknown) {
 }
 
 /**
+ * Saved choices, migrated from the first version when that is all there is.
+ * v1 → v2 (2026-11-07): the four feeds became one design, and Grants' board
+ * gave way to the list + reading pane the reviewer asked for; everything else
+ * carries over as it was.
+ */
+function loadState(): LabsState {
+  const current = readJson<Partial<LabsState>>(STORAGE_KEY);
+  if (current) return mergeState(current);
+  const legacy = readJson<Partial<LabsState>>(LEGACY_KEY);
+  if (!legacy) return mergeState(null);
+  const migrated = mergeState(legacy);
+  if (migrated.pages.grants.layout === "board") migrated.pages.grants.layout = "reader";
+  return migrated;
+}
+
+/**
  * Mycelium Labs: a design playground for the authenticated workspace.
  *
  * The left is a working mock of the workspace, drawn from fictional data and
@@ -41,9 +58,7 @@ function writeJson(key: string, value: unknown) {
 export function LabsStudio() {
   // The studio renders on the client only (see `labs-client.tsx`), so the
   // stored state can be read straight into the initial render.
-  const [state, setState] = React.useState<LabsState>(() =>
-    mergeState(readJson<Partial<LabsState>>(STORAGE_KEY)),
-  );
+  const [state, setState] = React.useState<LabsState>(loadState);
   const [view] = React.useState(() => readJson<{ device?: Device; panelOpen?: boolean }>(VIEW_KEY));
   const [device, setDevice] = React.useState<Device>(view?.device ?? "desktop");
   const [panelOpen, setPanelOpen] = React.useState(view?.panelOpen ?? true);
