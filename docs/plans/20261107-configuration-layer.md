@@ -49,6 +49,24 @@ Second round (2026-11-07):
    get. The `institution` profile reproduces it; the hosted server is a
    separate deployment that keeps it.
 
+Third round (2026-11-07):
+
+10. **Billing is a self-contained module, off unless switched on.** Tiers,
+    seats, plan activation and the tier-keyed limits keep working exactly as
+    today, but only when `billing.mode = "subscriptions"`. With it off, no
+    billing code decides anything: an operator hosting for fun never meets a
+    plan, a seat or a tier limit. Only the `institution` profile switches it
+    on, carrying today's tier numbers.
+11. **Every limit is off by default and can be switched back on.** Each
+    `[limits]` key defaults to `"unlimited"` in `personal`, `lab` and
+    `department`; setting a number turns that one limit on. The generated file
+    shows today's numbers in comments as the suggested values.
+12. **`department` ships unlimited**, like `lab`; its suggested numbers (today's
+    Lab and Canopy values) sit in comments for an operator who wants them.
+13. **PI caps are kept as `limits.lab_leads`**, unlimited by default, and are
+    actually enforced (on lead assignment) when set. Under billing, the
+    per-tier numbers (1 / 1 / 5 / unlimited) apply.
+
 ## Audit (Phase 0)
 
 ### What actually restricts a self-hoster today
@@ -183,6 +201,7 @@ personal_projects = "unlimited"
 lab_projects = "unlimited"
 department_projects = "unlimited"
 lab_members = "unlimited"
+lab_leads = "unlimited"    # PIs per lab; set a number to enforce it
 
 [limits.tiers.free]        # used only when billing.mode = "subscriptions"
 clusters = 3               # ... today's numbers, moved out of Python
@@ -209,18 +228,18 @@ llm_concurrency = 12
 Key names are a draft; the CLI's `explain` text and the comments in the
 generated file are the documentation.
 
-### Profiles (`institution` = today's hosted configuration; `department` to confirm)
+### Profiles (`institution` = today's hosted configuration)
 
 | | personal | lab | department | institution |
 | --- | --- | --- | --- | --- |
-| clusters × topics | unlimited | unlimited | *to confirm* | 6 × 10 (Spore today) |
-| watch topics | unlimited | unlimited | *to confirm* | 20 |
-| personal / lab / dept projects | unlimited | unlimited | *to confirm* | 5 / 10 / 30 |
-| lab members | unlimited | unlimited | unlimited | 15 per lab plan |
+| billing module | off | off | off | on (`subscriptions`) |
+| limits | all unlimited | all unlimited | all unlimited, suggested numbers commented | today's tier numbers |
 | sign-up | closed after admin | invite | invite | code |
 | verify email | off | off | off | on (Resend) |
-| billing | off | off | off | today's (see open question) |
 | nightly budgets | host-sized | generous | budgeted | today's |
+
+Any single limit, the billing module, or verification can be turned on or off
+in any profile; the profile is only the starting point.
 
 ## Phases
 
@@ -252,10 +271,5 @@ generated file are the documentation.
 
 ## Open questions
 
-1. **`institution` and billing.** Today the hosted instance has subscription
-   rows (orgs start inactive, seats, a 15-member lab ceiling) but feature
-   gating off. Should the `institution` profile keep that subscription layer,
-   or carry today's numbers as flat limits with billing off?
-2. **`department` numbers**: between `lab` (unlimited) and `institution`.
-3. **`PI_CAPS`** is published but never enforced: drop it, or enforce it as
-   `lab_leads`?
+None blocking Phase 1. Key names, the exact `nightly.model_calls`
+degradation order, and the CLI wording get settled as each phase lands.
