@@ -1408,7 +1408,9 @@ class ConfirmIntakeView(APIView):
 
     def post(self, request: Request) -> Response:
         interests = request.data.get("interests") or {}
-        validated = validate_interests(interests)  # 400 on contract violation
+        validated = validate_interests(  # 400 on contract violation
+            interests, user=request.user
+        )
         profile = request.user.profile
         profile.interests = validated
         # Scope the write to interests + the columns the pre_save embed hook

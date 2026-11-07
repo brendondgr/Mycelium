@@ -125,3 +125,38 @@ def test_lab_lead_limit(billing_off):
     billing_off.INSTANCE_LIMITS = {**billing_off.INSTANCE_LIMITS, "lab_leads": 1}
     with pytest.raises(DjangoValidationError):
         second.clean()
+
+
+@pytest.mark.django_db
+def test_profile_save_takes_more_than_six_clusters_when_unlimited(billing_off, free_user):
+    """Regression: the contract validator used to ignore the person and cap at 6."""
+    from apps.accounts.interests import validate_interests
+
+    areas = [f"area {i}" for i in range(8)]
+    interests = {
+        "areas": areas,
+        "clusters": [{"id": f"c-{i}", "label": f"T{i}", "areas": [a]}
+                     for i, a in enumerate(areas)],
+    }
+    assert len(validate_interests(interests, user=free_user)["clusters"]) == 8
+    assert len(validate_interests(interests)["clusters"]) == 8  # no person: instance
+
+    billing_off.INSTANCE_LIMITS = {**billing_off.INSTANCE_LIMITS, "clusters": 6}
+    with pytest.raises(ValidationError):
+        validate_interests(interests, user=free_user)
+
+
+@pytest.mark.django_db
+def test_free_user_is_capped_at_three_clusters_under_subscriptions(free_user):
+    from apps.accounts.interests import validate_interests
+
+    areas = [f"area {i}" for i in range(4)]
+    interests = {
+        "areas": areas,
+        "clusters": [{"id": f"c-{i}", "label": f"T{i}", "areas": [a]}
+                     for i, a in enumerate(areas)],
+    }
+    with pytest.raises(ValidationError):
+        validate_interests(interests, user=free_user)
+    # A lab or project focus is nobody's personal profile: the historical 6.
+    assert len(validate_interests(interests)["clusters"]) == 4

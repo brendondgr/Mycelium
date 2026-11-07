@@ -193,7 +193,9 @@ def apply_answers(*, now=None) -> dict:
                 continue
             after, field = edited
             try:
-                after = validate_interests(_provenance(after, suggestion, field, topic))
+                after = validate_interests(
+                    _provenance(after, suggestion, field, topic), user=suggestion.user
+                )
             except Exception as exc:  # noqa: BLE001 - a refused edit is reported
                 logger.warning("ambient: could not apply %s (%s)", suggestion.pk, exc)
                 counts["refused"] += 1
@@ -271,7 +273,7 @@ def revert(change: AppliedChange, *, by) -> None:
                 if row.get("suggestion") != change.suggestion_id
             ]
             restored["sources"] = sources
-        profile.interests = validate_interests(restored)
+        profile.interests = validate_interests(restored, user=change.user)
         profile.save(update_fields=["interests"])
 
 

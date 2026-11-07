@@ -176,9 +176,13 @@ export function AdminSection() {
       <SectionHeader
         title="Admin"
         subtitle={
-          context === "users"
-            ? "Manage users, their subscription plan and duration, and how many subjects Mylo watches for them."
-            : "Manage each lab's subscription — tier, how the plan ends, and whether Mylo is part of it."
+          billingOff
+            ? context === "users"
+              ? "Manage users and how many subjects Mylo watches for each of them."
+              : "Manage each lab's project and member limits."
+            : context === "users"
+              ? "Manage users, their subscription plan and duration, and how many subjects Mylo watches for them."
+              : "Manage each lab's subscription — tier, how the plan ends, whether Mylo is part of it — and its limits."
         }
       />
 

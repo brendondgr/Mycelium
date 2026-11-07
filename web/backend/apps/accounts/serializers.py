@@ -143,7 +143,12 @@ class _ContractInterestsMixin(serializers.ModelSerializer):
 
     def validate_interests(self, value):
         # Raises rest_framework ValidationError on any contract violation.
-        return _validate_interests_contract(value)
+        return _validate_interests_contract(value, user=self._cluster_owner())
+
+    def _cluster_owner(self):
+        """Whose cluster limit applies. A lab or department profile is nobody's
+        personal profile, so its editor's limit does not; the instance's does."""
+        return None
 
     def update(self, instance, validated_data):
         """Persist only the fields this request changed (plus derived columns).
@@ -207,6 +212,16 @@ def _country_code(value: str) -> str:
     if code and (len(code) != 2 or not code.isascii() or not code.isalpha()):
         raise serializers.ValidationError("Use a two-letter country code, e.g. US.")
     return code
+
+    def _cluster_owner(self):
+        """A person's own profile: its owner's cluster limit applies (the
+        requester's, for a profile being created)."""
+        owner = getattr(self.instance, "user", None)
+        if owner is not None:
+            return owner
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        return user if user is not None and user.is_authenticated else None
 
 
 class LabProfileSerializer(_ContractInterestsMixin):

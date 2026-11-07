@@ -247,15 +247,23 @@ class InterestsContract(serializers.Serializer):
 
     def _cluster_cap(self) -> int | None:
         """The saving person's cluster limit (``limits.clusters``, or their tier's
-        under subscriptions; ``None`` = unlimited). With no person in context —
-        a fixture, a management command — the historical ``MAX_CLUSTERS``."""
-        request = (self.context or {}).get("request")
-        user = getattr(request, "user", None)
-        if user is None or not user.is_authenticated:
-            return MAX_CLUSTERS
-        from apps.billing.entitlements import cluster_cap
+        under subscriptions; ``None`` = unlimited).
 
-        return cluster_cap(user)
+        With no person in context — a project's focus, an importer, a command —
+        the instance's ``limits.clusters`` while billing is off, and the
+        historical ``MAX_CLUSTERS`` under subscriptions.
+        """
+        from apps.billing.entitlements import (
+            billing_enabled,
+            cluster_cap,
+            instance_limit,
+        )
+
+        context = self.context or {}
+        user = context.get("user") or getattr(context.get("request"), "user", None)
+        if user is not None and user.is_authenticated:
+            return cluster_cap(user)
+        return MAX_CLUSTERS if billing_enabled() else instance_limit("clusters")
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """Enforce the cluster partition: every area in exactly one cluster.
@@ -314,15 +322,16 @@ class InterestsContract(serializers.Serializer):
         return attrs
 
 
-def validate_interests(data: Any) -> dict[str, Any]:
+def validate_interests(data: Any, *, user=None) -> dict[str, Any]:
     """Return a validated, version-stamped interests dict, or raise.
 
     Raises :class:`rest_framework.serializers.ValidationError` (a DRF/Django
     ``ValidationError``) on any contract violation, so the same gate produces a
-    400 from the API and a friendly admin-form error.
+    400 from the API and a friendly admin-form error. ``user`` is the person
+    whose profile this is, so their own cluster limit applies.
     """
 
-    serializer = InterestsContract(data=data)
+    serializer = InterestsContract(data=data, context={"user": user})
     serializer.is_valid(raise_exception=True)
     validated = dict(serializer.validated_data)
     validated.setdefault("version", CURRENT_VERSION)
