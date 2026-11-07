@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 
+import { Portal } from "@/components/portal/feed/reader";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 
 /**
@@ -14,7 +15,11 @@ import { useDismissable } from "@/lib/portal/use-dismissable";
  * test it applies, so counts, chips and filtering all come from one place.
  */
 
-export type FacetOption<T> = { value: string; label: string; test: (item: T) => boolean };
+export type FacetOption<T> = {
+  value: string;
+  label: string;
+  test: (item: T) => boolean;
+};
 
 export type Facet<T> = {
   id: string;
@@ -26,15 +31,27 @@ export type Facet<T> = {
 
 export type FilterState = Record<string, string[]>;
 
-export type SortOption<T> = { value: string; label: string; cmp: (a: T, b: T) => number };
+export type SortOption<T> = {
+  value: string;
+  label: string;
+  cmp: (a: T, b: T) => number;
+};
 
 /** Keep the items every active facet accepts (multi: any ticked option; single: the picked one). */
-export function applyFacets<T>(items: T[], facets: Facet<T>[], filters: FilterState): T[] {
+export function applyFacets<T>(
+  items: T[],
+  facets: Facet<T>[],
+  filters: FilterState,
+): T[] {
   return items.filter((item) =>
     facets.every((f) => {
-      const picked = (filters[f.id] ?? []).filter((v) => !(f.mode === "single" && v === "any"));
+      const picked = (filters[f.id] ?? []).filter(
+        (v) => !(f.mode === "single" && v === "any"),
+      );
       if (picked.length === 0) return true;
-      return picked.some((v) => f.options.find((o) => o.value === v)?.test(item) ?? true);
+      return picked.some(
+        (v) => f.options.find((o) => o.value === v)?.test(item) ?? true,
+      );
     }),
   );
 }
@@ -53,9 +70,13 @@ function countFor<T>(items: T[], facet: Facet<T>, value: string) {
 }
 
 function selectedLabel<T>(facet: Facet<T>, picked: string[]) {
-  if (picked.length === 0 || (facet.mode === "single" && picked[0] === "any")) return null;
-  if (facet.mode === "single") return facet.options.find((o) => o.value === picked[0])?.label ?? null;
-  return picked.length === 1 ? (facet.options.find((o) => o.value === picked[0])?.label ?? null) : `${picked.length}`;
+  if (picked.length === 0 || (facet.mode === "single" && picked[0] === "any"))
+    return null;
+  if (facet.mode === "single")
+    return facet.options.find((o) => o.value === picked[0])?.label ?? null;
+  return picked.length === 1
+    ? (facet.options.find((o) => o.value === picked[0])?.label ?? null)
+    : `${picked.length}`;
 }
 
 function FacetFields<T>({
@@ -85,7 +106,11 @@ function FacetFields<T>({
             onChange={() => toggle(facet, o.value)}
           />
           <span className="ws-check-text">{o.label}</span>
-          {single && o.value === "any" ? null : <span className="ws-check-count">{countFor(items, facet, o.value)}</span>}
+          {single && o.value === "any" ? null : (
+            <span className="ws-check-count">
+              {countFor(items, facet, o.value)}
+            </span>
+          )}
         </label>
       ))}
     </fieldset>
@@ -119,7 +144,12 @@ function FacetMenu<T>({
       >
         {facet.label}
         {active ? <span className="ws-facet-value">{active}</span> : null}
-        <ChevronDown size={13} aria-hidden="true" className="ws-caret" data-open={open || undefined} />
+        <ChevronDown
+          size={13}
+          aria-hidden="true"
+          className="ws-caret"
+          data-open={open || undefined}
+        />
       </button>
       {open ? (
         <div className="ws-menu ws-facet-menu">
@@ -161,7 +191,11 @@ export function useFeedControls<T>({
       setFilters((prev) => {
         const cur = prev[facet.id] ?? [];
         const next =
-          facet.mode === "single" ? [value] : cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+          facet.mode === "single"
+            ? [value]
+            : cur.includes(value)
+              ? cur.filter((v) => v !== value)
+              : [...cur, value];
         return { ...prev, [facet.id]: next };
       }),
     [],
@@ -169,14 +203,20 @@ export function useFeedControls<T>({
 
   const visible = React.useMemo(() => {
     const sorter = sorts.find((s) => s.value === sort) ?? sorts[0];
-    const rows = applyFacets(items, facets, filters).filter((i) => matchesQuery(text(i), query));
+    const rows = applyFacets(items, facets, filters).filter((i) =>
+      matchesQuery(text(i), query),
+    );
     return sorter ? [...rows].sort(sorter.cmp) : rows;
   }, [items, facets, filters, query, sort, sorts, text]);
 
   const active = facets.flatMap((f) =>
     (filters[f.id] ?? [])
       .filter((v) => !(f.mode === "single" && v === "any"))
-      .map((v) => ({ facet: f, value: v, label: f.options.find((x) => x.value === v)?.label ?? v })),
+      .map((v) => ({
+        facet: f,
+        value: v,
+        label: f.options.find((x) => x.value === v)?.label ?? v,
+      })),
   );
 
   const clear = React.useCallback(() => {
@@ -184,7 +224,18 @@ export function useFeedControls<T>({
     setQuery("");
   }, []);
 
-  return { query, setQuery, sort, setSort, filters, setFilters, toggle, visible, active, clear };
+  return {
+    query,
+    setQuery,
+    sort,
+    setSort,
+    filters,
+    setFilters,
+    toggle,
+    visible,
+    active,
+    clear,
+  };
 }
 
 export type FeedControls<T> = ReturnType<typeof useFeedControls<T>>;
@@ -207,12 +258,23 @@ export function FeedToolbar<T>({
   noun: string;
   idPrefix: string;
 }) {
-  const { query, setQuery, sort, setSort, filters, setFilters, toggle, visible, active } = controls;
+  const {
+    query,
+    setQuery,
+    sort,
+    setSort,
+    filters,
+    setFilters,
+    toggle,
+    visible,
+    active,
+  } = controls;
   const [sheetOpen, setSheetOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!sheetOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSheetOpen(false);
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && setSheetOpen(false);
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [sheetOpen]);
@@ -280,7 +342,9 @@ export function FeedToolbar<T>({
             key={`${a.facet.id}-${a.value}`}
             type="button"
             className="ws-chip ws-chip-active"
-            onClick={() => toggle(a.facet, a.facet.mode === "single" ? "any" : a.value)}
+            onClick={() =>
+              toggle(a.facet, a.facet.mode === "single" ? "any" : a.value)
+            }
             aria-label={`Remove filter ${a.facet.label}: ${a.label}`}
           >
             <span className="ws-meta-text">{a.facet.label}:</span> {a.label}
@@ -288,61 +352,78 @@ export function FeedToolbar<T>({
           </button>
         ))}
         {active.length ? (
-          <button type="button" className="ws-link" onClick={() => setFilters({})}>
+          <button
+            type="button"
+            className="ws-link"
+            onClick={() => setFilters({})}
+          >
             Clear all
           </button>
         ) : null}
       </div>
 
       {facets.length ? (
-        <div className="ws-sheet-layer" data-open={sheetOpen || undefined}>
-          <button
-            type="button"
-            className="ws-scrim"
-            aria-label="Close filters"
-            tabIndex={sheetOpen ? 0 : -1}
-            onClick={() => setSheetOpen(false)}
-          />
-          <div className="ws-sheet" role="dialog" aria-modal="true" aria-label="Filters" aria-hidden={!sheetOpen}>
-            <div className="ws-sheet-head">
-              <h2 className="ws-h ws-panel-title">Filters</h2>
-              <button
-                type="button"
-                className="ws-icon-btn"
-                aria-label="Close filters"
-                tabIndex={sheetOpen ? 0 : -1}
-                onClick={() => setSheetOpen(false)}
-              >
-                <X size={16} aria-hidden="true" />
-              </button>
-            </div>
-            <div className="ws-sheet-fields">
-              {facets.map((f) => (
-                <FacetFields
-                  key={f.id}
-                  facet={f}
-                  items={items}
-                  picked={filters[f.id] ?? []}
-                  toggle={toggle}
-                  name={`${idPrefix}-${f.id}-sheet`}
-                />
-              ))}
-            </div>
-            <div className="ws-sheet-foot">
-              <button type="button" className="ws-link" tabIndex={sheetOpen ? 0 : -1} onClick={() => setFilters({})}>
-                Clear all
-              </button>
-              <button
-                type="button"
-                className="ws-btn ws-btn-solid"
-                tabIndex={sheetOpen ? 0 : -1}
-                onClick={() => setSheetOpen(false)}
-              >
-                Show {visible.length} {noun}
-              </button>
+        <Portal>
+          <div className="ws-sheet-layer" data-open={sheetOpen || undefined}>
+            <button
+              type="button"
+              className="ws-scrim"
+              aria-label="Close filters"
+              tabIndex={sheetOpen ? 0 : -1}
+              onClick={() => setSheetOpen(false)}
+            />
+            <div
+              className="ws-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Filters"
+              aria-hidden={!sheetOpen}
+            >
+              <div className="ws-sheet-head">
+                <h2 className="ws-h ws-panel-title">Filters</h2>
+                <button
+                  type="button"
+                  className="ws-icon-btn"
+                  aria-label="Close filters"
+                  tabIndex={sheetOpen ? 0 : -1}
+                  onClick={() => setSheetOpen(false)}
+                >
+                  <X size={16} aria-hidden="true" />
+                </button>
+              </div>
+              <div className="ws-sheet-fields">
+                {facets.map((f) => (
+                  <FacetFields
+                    key={f.id}
+                    facet={f}
+                    items={items}
+                    picked={filters[f.id] ?? []}
+                    toggle={toggle}
+                    name={`${idPrefix}-${f.id}-sheet`}
+                  />
+                ))}
+              </div>
+              <div className="ws-sheet-foot">
+                <button
+                  type="button"
+                  className="ws-link"
+                  tabIndex={sheetOpen ? 0 : -1}
+                  onClick={() => setFilters({})}
+                >
+                  Clear all
+                </button>
+                <button
+                  type="button"
+                  className="ws-btn ws-btn-solid"
+                  tabIndex={sheetOpen ? 0 : -1}
+                  onClick={() => setSheetOpen(false)}
+                >
+                  Show {visible.length} {noun}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       ) : null}
     </>
   );

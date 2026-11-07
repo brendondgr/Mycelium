@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import * as React from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { GlobalSearch } from "@/components/portal/global-search";
@@ -16,8 +17,23 @@ import { useRailCollapsed } from "@/lib/portal/use-rail";
  */
 export function PortalHeader() {
   const { collapsed, toggle } = useRailCollapsed();
+  const ref = React.useRef<HTMLElement>(null);
+
+  // The pinned reading pane fills exactly the height below this bar, so the
+  // bar publishes its own height (it changes with density and wrapping).
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const write = () =>
+      document.documentElement.style.setProperty("--ws-chrome-h", `${el.offsetHeight}px`);
+    write();
+    const ro = new ResizeObserver(write);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-[var(--border-soft)] bg-[var(--header-glass)] px-4 py-2.5 backdrop-blur-md sm:gap-4 sm:px-6">
+    <header ref={ref} className="sticky top-0 z-30 flex items-center gap-3 border-b border-[var(--border-soft)] bg-[var(--header-glass)] px-4 py-2.5 backdrop-blur-md sm:gap-4 sm:px-6">
       <button
         type="button"
         onClick={toggle}

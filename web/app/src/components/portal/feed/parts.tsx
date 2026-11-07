@@ -22,7 +22,13 @@ import type { RecommendedMember } from "@/lib/portal/types";
 export function MyloMark({ size = 18 }: { size?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- static mascot art
-    <img src="/mylo-portrait-64.webp" alt="" width={size} height={size} className="ws-mylo-mark" />
+    <img
+      src="/mylo-portrait-64.webp"
+      alt=""
+      width={size}
+      height={size}
+      className="ws-mylo-mark"
+    />
   );
 }
 
@@ -55,7 +61,10 @@ export type ThemeRef = { id: string; label: string };
 /** A theme, named and colour-coded — colour is never the only signal. */
 export function ThemeTag({ theme }: { theme: ThemeRef }) {
   return (
-    <span className="ws-theme" style={{ "--tone": clusterAccentVar(theme.id) } as React.CSSProperties}>
+    <span
+      className="ws-theme"
+      style={{ "--tone": clusterAccentVar(theme.id) } as React.CSSProperties}
+    >
       <span className="ws-theme-dot" aria-hidden="true" />
       {theme.label}
     </span>
@@ -63,7 +72,13 @@ export function ThemeTag({ theme }: { theme: ThemeRef }) {
 }
 
 /** The theme an item was matched to, then "Also …" for the others it reaches. */
-export function ThemeRow({ theme, also = [] }: { theme: ThemeRef | null; also?: ThemeRef[] }) {
+export function ThemeRow({
+  theme,
+  also = [],
+}: {
+  theme: ThemeRef | null;
+  also?: ThemeRef[];
+}) {
   if (!theme && also.length === 0) return null;
   const alsoText = also.map((a) => a.label).join(", ");
   return (
@@ -93,14 +108,24 @@ export function daysUntil(iso: string | null | undefined): number | null {
 function shortDate(iso: string): string {
   const d = new Date(`${iso.slice(0, 10)}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 /**
  * A closing date in opportunity gold — the one place gold is spent. Shows the
  * date and the days left; within two weeks it reads as urgent.
  */
-export function DeadlinePill({ date, prefix = "" }: { date: string | null | undefined; prefix?: string }) {
+export function DeadlinePill({
+  date,
+  prefix = "",
+}: {
+  date: string | null | undefined;
+  prefix?: string;
+}) {
   if (!date) return null;
   const days = daysUntil(date);
   if (days === null) return null;
@@ -139,7 +164,8 @@ export function BestFor({ members }: { members?: RecommendedMember[] }) {
         ))}
       </span>
       <span>
-        <span className="ws-bestfor-label">Best for</span> {members.map((m) => firstName(m.name)).join(", ")}
+        <span className="ws-bestfor-label">Best for</span>{" "}
+        {members.map((m) => firstName(m.name)).join(", ")}
       </span>
     </span>
   );
@@ -184,16 +210,26 @@ export function FeedCard({
   selected?: boolean;
   onOpen: () => void;
 }) {
-  const hasFoot = Boolean((members && members.length) || theme || (also && also.length));
+  const hasFoot = Boolean(
+    (members && members.length) || theme || (also && also.length),
+  );
   return (
-    <article className="ws-item ws-rise" data-selected={selected || undefined} data-new={isNew || undefined}>
+    <article
+      className="ws-item ws-rise"
+      data-selected={selected || undefined}
+      data-new={isNew || undefined}
+    >
       <div className="ws-item-meta">
         {signal}
         {isNew ? <span className="ws-new">New</span> : null}
         {actions ? <div className="ws-actions">{actions}</div> : null}
       </div>
       <h3 className="ws-item-title">
-        <button type="button" onClick={onOpen} aria-current={selected || undefined}>
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-current={selected || undefined}
+        >
           {title}
         </button>
       </h3>
@@ -202,7 +238,9 @@ export function FeedCard({
         <p className="ws-why">
           {byMylo ? <MyloMark /> : null}
           <span className="ws-clamp">
-            <span className="ws-sr">{byMylo ? "Mylo's reason: " : "Why it matched: "}</span>
+            <span className="ws-sr">
+              {byMylo ? "Mylo's reason: " : "Why it matched: "}
+            </span>
             {reason}
           </span>
         </p>
@@ -289,7 +327,11 @@ export function ItemDetail({
   source?: React.ReactNode;
   children?: React.ReactNode;
 }) {
-  const take = beats.filter(Boolean).length ? beats.filter(Boolean) : reason ? [reason] : [];
+  const take = beats.filter(Boolean).length
+    ? beats.filter(Boolean)
+    : reason
+      ? [reason]
+      : [];
   return (
     <div className="ws-detail-body">
       {signal ? <div className="ws-item-meta">{signal}</div> : null}
@@ -315,14 +357,18 @@ export function ItemDetail({
           ) : null}
           {byMylo ? null : (
             <p className="ws-meta-text">
-              Matched by similarity to the theme; Mylo has not written a judgement for it.
+              Matched by similarity to the theme; Mylo has not written a
+              judgement for it.
             </p>
           )}
         </div>
       ) : null}
 
       {members && members.length ? (
-        <DetailSection title="Best suited to" icon={<Users size={13} aria-hidden="true" />}>
+        <DetailSection
+          title="Best suited to"
+          icon={<Users size={13} aria-hidden="true" />}
+        >
           <ul className="ws-people-why">
             {members.map((m) => (
               <li key={m.username}>
@@ -331,15 +377,22 @@ export function ItemDetail({
                 </span>
                 <span>
                   <span className="ws-person">{m.name}</span>
-                  {m.reason ? <span className="ws-person-why">{m.reason}</span> : null}
+                  {m.reason ? (
+                    <span className="ws-person-why">{m.reason}</span>
+                  ) : null}
                 </span>
               </li>
             ))}
           </ul>
         </DetailSection>
       ) : showMembers ? (
-        <DetailSection title="Best suited to" icon={<Users size={13} aria-hidden="true" />}>
-          <p className="ws-meta-text">Mylo has not matched this to anyone in the lab yet.</p>
+        <DetailSection
+          title="Best suited to"
+          icon={<Users size={13} aria-hidden="true" />}
+        >
+          <p className="ws-meta-text">
+            Mylo has not matched this to anyone in the lab yet.
+          </p>
         </DetailSection>
       ) : null}
 

@@ -13,7 +13,7 @@
   --ws-maxw: 74rem;
   /* The sticky header's height and the scroll area's top padding — what the
      pinned reading pane subtracts to fill exactly the visible height. */
-  --ws-chrome-h: 57px;
+  --ws-chrome-h: 61px; /* measured live by PortalHeader */
   --ws-main-pt: 28px;
   --ws-header-h: 56px;
 }
@@ -2091,11 +2091,6 @@ html[data-density="comfortable"] .ws-compact-why .ws-clamp {
 
   .ws-reading-pane {
     display: block;
-    position: sticky;
-    top: 0;
-    max-height: calc(100dvh - 150px);
-    overflow-y: auto;
-    scrollbar-width: thin;
   }
 
   .ws-reading-pane .ws-detail-body {

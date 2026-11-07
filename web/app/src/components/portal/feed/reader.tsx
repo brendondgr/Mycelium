@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 /**
@@ -15,6 +16,19 @@ import { X } from "lucide-react";
  */
 
 const ITEM_PARAM = "item";
+
+/**
+ * Overlays render at the end of <body>: the page's fade-in makes its wrapper a
+ * stacking context, which would otherwise trap a drawer beneath the header.
+ */
+export function Portal({ children }: { children: React.ReactNode }) {
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  return mounted ? createPortal(children, document.body) : null;
+}
 
 function readItemParam(): string | null {
   if (typeof window === "undefined") return null;
@@ -33,14 +47,22 @@ function paneVisible(pane: HTMLElement | null): boolean {
   return Boolean(pane && pane.offsetParent !== null);
 }
 
-export function useReader<T>(items: T[], getId: (item: T) => string, first: T | undefined) {
-  const [selected, setSelected] = React.useState<string | null>(() => readItemParam());
+export function useReader<T>(
+  items: T[],
+  getId: (item: T) => string,
+  first: T | undefined,
+) {
+  const [selected, setSelected] = React.useState<string | null>(() =>
+    readItemParam(),
+  );
   const [drawerId, setDrawerId] = React.useState<string | null>(null);
   const paneRef = React.useRef<HTMLElement | null>(null);
 
   // Nothing picked (or the pick was filtered away): the first card shown.
   const current = items.find((i) => getId(i) === selected) ?? first;
-  const drawerItem = drawerId ? items.find((i) => getId(i) === drawerId) : undefined;
+  const drawerItem = drawerId
+    ? items.find((i) => getId(i) === drawerId)
+    : undefined;
 
   const open = React.useCallback(
     (item: T) => {
@@ -54,7 +76,14 @@ export function useReader<T>(items: T[], getId: (item: T) => string, first: T | 
 
   const closeDrawer = React.useCallback(() => setDrawerId(null), []);
 
-  return { current, open, paneRef, drawerItem, closeDrawer, isSelected: (item: T) => current === item };
+  return {
+    current,
+    open,
+    paneRef,
+    drawerItem,
+    closeDrawer,
+    isSelected: (item: T) => current === item,
+  };
 }
 
 export type Reader<T> = ReturnType<typeof useReader<T>>;
@@ -74,7 +103,8 @@ export function groupByTheme<T>(
   for (const item of items) {
     const t = theme(item);
     const key = t?.id ?? "__none";
-    if (!groups.has(key)) groups.set(key, { key, label: t?.label ?? otherLabel, items: [] });
+    if (!groups.has(key))
+      groups.set(key, { key, label: t?.label ?? otherLabel, items: [] });
     groups.get(key)!.items.push(item);
   }
   const list = [...groups.values()];
@@ -97,7 +127,10 @@ export function ReaderLayout<T>({
 }: {
   reader: Reader<T>;
   groups: FeedGroup<T>[];
-  renderCard: (item: T, state: { selected: boolean; onOpen: () => void }) => React.ReactNode;
+  renderCard: (
+    item: T,
+    state: { selected: boolean; onOpen: () => void },
+  ) => React.ReactNode;
   renderDetail: (item: T) => React.ReactNode;
   getId: (item: T) => string;
   /** Under the list: the load-more sentinel, the held-back tail. */
@@ -106,7 +139,8 @@ export function ReaderLayout<T>({
   empty?: React.ReactNode;
   label: string;
 }) {
-  const { current, open, paneRef, drawerItem, closeDrawer, isSelected } = reader;
+  const { current, open, paneRef, drawerItem, closeDrawer, isSelected } =
+    reader;
   const drawerRef = React.useRef<HTMLDivElement>(null);
   const returnFocus = React.useRef<HTMLElement | null>(null);
   const drawerOpen = Boolean(drawerItem);
@@ -136,16 +170,24 @@ export function ReaderLayout<T>({
             ? empty
             : groups.map((g) =>
                 g.items.length ? (
-                  <section key={g.key} className="ws-feed-group" aria-label={g.label || label}>
+                  <section
+                    key={g.key}
+                    className="ws-feed-group"
+                    aria-label={g.label || label}
+                  >
                     {g.label ? (
                       <h2 className="ws-group-label">
-                        {g.label} <span className="ws-count">{g.items.length}</span>
+                        {g.label}{" "}
+                        <span className="ws-count">{g.items.length}</span>
                       </h2>
                     ) : null}
                     <div className="ws-feed-items">
                       {g.items.map((item) => (
                         <React.Fragment key={getId(item)}>
-                          {renderCard(item, { selected: isSelected(item), onOpen: () => open(item) })}
+                          {renderCard(item, {
+                            selected: isSelected(item),
+                            onOpen: () => open(item),
+                          })}
                         </React.Fragment>
                       ))}
                     </div>
@@ -166,29 +208,40 @@ export function ReaderLayout<T>({
         ) : null}
       </div>
 
-      <div className="ws-detail-layer" data-kind="drawer" data-open={drawerOpen || undefined}>
-        <button
-          type="button"
-          className="ws-scrim"
-          aria-label="Close"
-          tabIndex={drawerOpen ? 0 : -1}
-          onClick={closeDrawer}
-        />
+      <Portal>
         <div
-          ref={drawerRef}
-          className="ws-detail"
-          role="dialog"
-          aria-modal="true"
-          aria-label={drawerItem ? "Opened item" : undefined}
-          aria-hidden={!drawerOpen}
-          tabIndex={-1}
+          className="ws-detail-layer"
+          data-kind="drawer"
+          data-open={drawerOpen || undefined}
         >
-          <button type="button" className="ws-icon-btn ws-detail-close" aria-label="Close" onClick={closeDrawer}>
-            <X size={16} aria-hidden="true" />
-          </button>
-          {drawerItem ? renderDetail(drawerItem) : null}
+          <button
+            type="button"
+            className="ws-scrim"
+            aria-label="Close"
+            tabIndex={drawerOpen ? 0 : -1}
+            onClick={closeDrawer}
+          />
+          <div
+            ref={drawerRef}
+            className="ws-detail"
+            role="dialog"
+            aria-modal="true"
+            aria-label={drawerItem ? "Opened item" : undefined}
+            aria-hidden={!drawerOpen}
+            tabIndex={-1}
+          >
+            <button
+              type="button"
+              className="ws-icon-btn ws-detail-close"
+              aria-label="Close"
+              onClick={closeDrawer}
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+            {drawerItem ? renderDetail(drawerItem) : null}
+          </div>
         </div>
-      </div>
+      </Portal>
     </>
   );
 }

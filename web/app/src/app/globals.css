@@ -284,6 +284,16 @@ body {
 
 /* ------------------------------------------------------------------ chrome */
 
+/* The section rail width comes from `data-rail` on <html>, set before
+   first paint, so it never jumps while the page hydrates. */
+.ws-rail {
+  width: 64px;
+}
+
+html[data-rail="expanded"] .ws-rail {
+  width: 244px;
+}
+
 /* The header's workspace dropdown (`workspace-switcher.tsx`). */
 .ws-scope {
   position: relative;

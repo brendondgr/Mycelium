@@ -113,8 +113,8 @@ export function PortalSidebar() {
       aria-label="Sections"
       data-collapsed={collapsed || undefined}
       className={cn(
-        "relative z-[1] hidden h-full shrink-0 flex-col overflow-y-auto border-r border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--background)_55%,transparent)] pb-6 pt-[18px] transition-[width] duration-200 lg:flex",
-        collapsed ? "w-[64px] px-2.5" : "w-[244px] px-3.5",
+        "ws-rail relative z-[1] hidden h-full shrink-0 flex-col overflow-y-auto overflow-x-hidden whitespace-nowrap border-r border-[var(--border-soft)] bg-[color-mix(in_srgb,var(--background)_55%,transparent)] pb-6 pt-[18px] lg:flex",
+        collapsed ? "px-2.5" : "px-3.5",
       )}
     >
       {collapsed ? null : <WorkspaceIdentity workspace={currentWorkspace} />}
