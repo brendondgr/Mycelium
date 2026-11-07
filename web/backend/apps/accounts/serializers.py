@@ -26,7 +26,8 @@ RESERVED_USERNAMES = frozenset(
 
 
 def user_to_dict(user: User) -> dict[str, object]:
-    profile = getattr(user, "profile", None)
+    from .permissions import user_email_verified
+
     return {
         "id": user.pk,
         "username": user.username,
@@ -38,8 +39,9 @@ def user_to_dict(user: User) -> dict[str, object]:
         "onboarding_completed": is_onboarding_complete(user),
         # Verification is activation: until it is true, the organization
         # endpoints refuse. The app reads it to show the lock up front rather
-        # than let someone fill in a lab form that will 403 on save.
-        "is_verified": bool(profile and profile.is_verified),
+        # than let someone fill in a lab form that will 403 on save. On an
+        # instance that does not ask for verification it is true at once.
+        "is_verified": user_email_verified(user),
         **institution_fields(user),
     }
 

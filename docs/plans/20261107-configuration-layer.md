@@ -253,7 +253,7 @@ in any profile; the profile is only the starting point.
    `ambient/eligibility.py` and `collab/matcher.py` call it instead of reading
    tiers. Billing off also creates orgs active and seats nobody. The first
    admin no longer lands on Free.
-3. **Sign-up and email policy.** `[signup].mode` replaces the bare access
+3. **Sign-up and email policy.** ✅ `[signup].mode` replaces the bare access
    code (all five modes); drop the hardcoded fallback; `verify_email` off makes
    accounts active at creation; admin-created accounts are always active;
    `[email].provider` selects Resend, SMTP or none.

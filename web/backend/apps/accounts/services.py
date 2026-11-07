@@ -436,7 +436,9 @@ def transfer_lab_ownership(lab: Lab, new_owner: User, *, actor: User) -> LabMemb
         raise ValidationError(
             {"username": ["Add them to the lab before handing it over."]}
         )
-    if not getattr(getattr(new_owner, "profile", None), "is_verified", False):
+    from .permissions import user_email_verified
+
+    if not user_email_verified(new_owner):
         raise ValidationError(
             {
                 "username": [

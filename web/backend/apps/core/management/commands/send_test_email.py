@@ -40,18 +40,24 @@ class Command(BaseCommand):
         recipient = str(options["to"])
         template = str(options["template"])
 
-        self.stdout.write(f"EMAIL_ENABLED   {settings.EMAIL_ENABLED}")
+        provider = settings.EMAIL_PROVIDER
+        self.stdout.write(f"email.provider  {provider}")
         self.stdout.write(f"EMAIL_BACKEND   {settings.EMAIL_BACKEND}")
         self.stdout.write(f"From            {settings.DEFAULT_FROM_EMAIL}")
         self.stdout.write(f"App base URL    {settings.EMAIL_APP_BASE_URL}")
-        if not settings.EMAIL_ENABLED:
+        if provider == "none":
             self.stdout.write(
                 self.style.WARNING(
-                    "EMAIL_ENABLED is off — the message will be printed, not sent."
+                    'email.provider is "none" — the message will be printed, '
+                    "not sent."
                 )
             )
-        elif not mail.is_configured():
-            raise CommandError("EMAIL_ENABLED is on but RESEND_API_KEY is unset.")
+        elif provider == "resend" and not mail.is_configured():
+            raise CommandError(
+                'email.provider is "resend" but RESEND_API_KEY is unset.'
+            )
+        elif provider == "smtp" and not settings.EMAIL_HOST:
+            raise CommandError('email.provider is "smtp" but email.smtp_host is unset.')
 
         if not mail.normalize_recipients(recipient):
             raise CommandError(f"{recipient!r} is not a valid email address.")

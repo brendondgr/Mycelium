@@ -30,7 +30,8 @@ routes clients depend on most.
 |---|---|---|
 | `csrf/` | GET | Ensure the CSRF cookie is set |
 | `login/` `logout/` `me/` | POST / POST / GET | Session lifecycle + current user |
-| `register/` | POST | Create one solo account (access code **or** invite token) |
+| `signup-policy/` | GET | The instance's sign-up mode, whether it verifies email, allowed domains |
+| `register/` | POST | Create one solo account (per the sign-up mode, or an invite token) |
 | `account/` | GET, PATCH | Name, affiliation, career stage, verification state |
 | `email/verify/` `email/resend/` | POST | Submit a six-digit code; ask for a new one |
 | `email/change/` | POST | Start a move to a new address (code to the new one) |
@@ -262,7 +263,7 @@ session.
   "username": "string", "email": "string",
   "password": "string", "password_confirm": "string",
   "first_name": "string (optional)", "last_name": "string (optional)",
-  "access_code": "string (unless invite_token)",
+  "access_code": "string (mode \"code\", unless invite_token)",
   "invite_token": "string (optional)"
 }
 ```
@@ -272,16 +273,22 @@ and a self-paid seat. It no longer takes `account_type` / `org_name`; labs come
 from `POST /api/auth/labs/` and departments from `POST /api/auth/departments/`,
 both of which require a verified account.
 
-Getting past the gate takes one of two proofs. `access_code` is the invite-only
-sign-up code — a constant-time compare with a per-IP failure counter and a
-one-hour shadow ban, enforced before any other validation. `invite_token` is a
-live join link (see **Join invitations**) and stands in for it, because an
-invitation the beta gate can refuse is not an invitation.
+Who gets in follows the instance's `signup.mode` (`mycelium.toml`; read it
+from `GET /api/auth/signup-policy/` → `{ "mode", "verify_email", "domains" }`):
+`closed` refuses everyone (`403`, `reason: "signup_closed"`); `invite` needs an
+`invite_token` (`403`, `reason: "invite_required"`); `code` needs the shared
+`access_code` — a constant-time compare with a per-IP failure counter and a
+one-hour shadow ban, enforced before any other validation; `domain` needs an
+address at an allowed domain (`400`, `reason: "domain_required"`); `open` needs
+nothing. A live `invite_token` (see **Join invitations**) is accepted in every
+mode but `closed`.
 
-Neither proves a mailbox on its own, so the account is created **unverified**
-and a six-digit code is mailed to the address given. The exception is an
-`email`-kind invite redeemed by the address it was addressed to: that is the
-same proof the code asks for, so the account is activated and no code is sent.
+When the instance verifies email (`signup.verify_email`, and always in `domain`
+mode) the account is created **unverified** and a six-digit code is mailed; it
+is active once answered. Otherwise it is active at once and nothing is mailed —
+`is_verified` in the user summary means *active*, while the account endpoint's
+`is_verified` still records whether the address itself was proved. An
+`email`-kind invite redeemed by its own address proves it either way.
 A redeemed invite also creates the lab or department membership, inside the same
 transaction — a `400` there creates no account.
 

@@ -2,13 +2,34 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { buildApiUrl, getServerApiBase } from "@/lib/api-url";
-import type { AuthUser } from "@/lib/auth-types";
+import type { AuthUser, SignupPolicy } from "@/lib/auth-types";
 
 async function parseJson<T>(response: Response): Promise<T | null> {
   try {
     return (await response.json()) as T;
   } catch {
     return null;
+  }
+}
+
+/**
+ * The instance's sign-up policy, read on the server so the page renders the
+ * right form on first paint. If the API cannot be reached the form falls back to
+ * asking for a code, which is the strictest form that can still succeed.
+ */
+export async function getSignupPolicy(): Promise<SignupPolicy> {
+  const fallback: SignupPolicy = { mode: "code", verify_email: true, domains: [] };
+  try {
+    const response = await fetch(
+      buildApiUrl(getServerApiBase(), "auth", "signup-policy"),
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      return fallback;
+    }
+    return (await parseJson<SignupPolicy>(response)) ?? fallback;
+  } catch {
+    return fallback;
   }
 }
 

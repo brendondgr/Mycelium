@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { checkEmailAvailable, previewInvite, register } from "@/lib/auth-client";
-import type { InvitePreview } from "@/lib/auth-types";
+import type { InvitePreview, SignupPolicy } from "@/lib/auth-types";
 import { institutionForEmail, loadInstitutions } from "@/lib/institutions";
 
 const fieldClass =
@@ -27,7 +27,7 @@ type FieldErrors = Partial<Record<FieldKey, string>>;
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-export function SignupForm() {
+export function SignupForm({ policy }: { policy: SignupPolicy }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite")?.trim() ?? "";
@@ -55,8 +55,8 @@ export function SignupForm() {
   // An email invitation is spendable by exactly one address, so the form fills
   // that address in and stops anyone editing it into a refusal.
   const lockedEmail = invite?.kind === "email" ? invite.email : "";
-  // A live invitation is itself an invitation, so no beta code is asked for.
-  const needsAccessCode = invite === null;
+  // Only a code instance asks for the code, and never of someone invited.
+  const needsAccessCode = policy.mode === "code" && invite === null && !inviteToken;
 
   /**
    * Read what the `?invite=` token leads to, so the form can name the lab or
@@ -90,13 +90,21 @@ export function SignupForm() {
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
     if (needsAccessCode && !accessCode.trim()) {
-      errors.access_code = "Enter your verification code.";
+      errors.access_code = "Enter the sign-up code.";
     }
     if (!username.trim()) {
       errors.username = "Choose a username.";
     }
     if (!EMAIL_RE.test(email.trim())) {
       errors.email = "Enter a valid email.";
+    } else if (policy.mode === "domain" && !inviteToken) {
+      const host = email.trim().toLowerCase().split("@").pop() ?? "";
+      const allowed = policy.domains.some(
+        (domain) => host === domain || host.endsWith(`.${domain}`),
+      );
+      if (!allowed) {
+        errors.email = `Use your address at ${policy.domains.join(", ")}.`;
+      }
     }
     if (password.length < 8) {
       errors.password = "At least 8 characters.";
@@ -215,6 +223,36 @@ export function SignupForm() {
           : "Sign-up failed. Check your details and try again.",
       );
     }
+  }
+
+  // An instance that admits no self sign-up says so instead of showing a form
+  // that can only fail. An invite link still opens the form (except when closed).
+  const refusal =
+    policy.mode === "closed"
+      ? "Sign-up is closed on this instance. Ask its administrator for an account."
+      : policy.mode === "invite" && !inviteToken
+        ? "Sign-up here is by invitation. Ask someone already on this instance to invite you; the link they send brings you back here."
+        : null;
+  if (refusal) {
+    return (
+      <div className="space-y-4">
+        <p
+          className="rounded-2xl border border-border bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]"
+          role="status"
+        >
+          {refusal}
+        </p>
+        <p className="text-center text-sm text-[var(--text-secondary)]">
+          Already have an account?{" "}
+          <a
+            className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            href="/login"
+          >
+            Sign in
+          </a>
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -456,15 +494,14 @@ export function SignupForm() {
       {needsAccessCode ? (
         <div>
           <label className={labelClass} htmlFor="access_code">
-            Verification code
+            Sign-up code
           </label>
           <input
             id="access_code"
             name="access_code"
             type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="6-digit code"
+            autoComplete="off"
+            placeholder="Code"
             required
             value={accessCode}
             disabled={isBusy}
@@ -481,7 +518,8 @@ export function SignupForm() {
             </p>
           ) : (
             <p className="mt-1.5 text-xs text-[var(--text-muted)]" id="access_code-hint">
-              Mycelium is invite-only right now — use the code you were given.
+              This instance admits people with its sign-up code. Ask its
+              administrator if you do not have it.
             </p>
           )}
         </div>

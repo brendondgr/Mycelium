@@ -192,7 +192,7 @@ graph phase has not started.
 | TypeSafe | `TYPESAFE_API_KEY`, `TYPESAFE_MODEL` (pinned version, never `jev-latest`), `TYPESAFE_BASE_URL`, `TYPESAFE_TIMEOUT`, `TYPESAFE_MAX_RETRIES` |
 | Slate reranker switch | `RERANK_METHOD` (`typesafe` default, or `local`), `TYPESAFE_RERANK_WINDOW`, `TYPESAFE_RERANK_CONTENT_TYPES`, `TYPESAFE_RERANK_CONCURRENCY`; `OPPORTUNITY_LLM_CONCURRENCY` for the opportunity scorer and `WRITEUP_LLM_CONCURRENCY` for the précis and per-theme write-up calls |
 | Embedding | `EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`), `EMBEDDING_BATCH_SIZE_CPU`, `EMBEDDING_BATCH_SIZE_GPU` |
-| Sign-up gate | `SIGNUP_ACCESS_CODE`, `SIGNUP_CODE_MAX_FAILURES`, `SIGNUP_CODE_FAILURE_WINDOW_SECONDS`, `SIGNUP_CODE_LOCKOUT_SECONDS` |
+| Sign-up | `[signup]` in `mycelium.toml` (`mode` = `closed`/`invite`/`code`/`domain`/`open`, `allowed_domains`, `verify_email`); the code mode's secret `SIGNUP_ACCESS_CODE` (no default) and its ban `SIGNUP_CODE_MAX_FAILURES`, `SIGNUP_CODE_FAILURE_WINDOW_SECONDS`, `SIGNUP_CODE_LOCKOUT_SECONDS`. Logic in `apps/accounts/signup_policy.py` |
 | Discord (`.env-mylo`) | `DISCORD_API_KEY`, `ERROR_CHANNEL`, `ACTIVATION_CHANNEL`, `SUMMARY_CHANNEL` |
 | Email | `[email]` in `mycelium.toml` (`provider` = `none`/`resend`/`smtp`, `from`, `reply_to`, `smtp_*`); secrets `RESEND_API_KEY`, `EMAIL_HOST_PASSWORD`; `EMAIL_APP_BASE_URL`. The old `EMAIL_ENABLED=true` still means `resend` |
 | Run analytics | `RUN_ANALYTICS_JSON_PATH`, `RUN_ANALYTICS_PDF_DIR`, `RUN_ANALYTICS_RETENTION_DAYS` |

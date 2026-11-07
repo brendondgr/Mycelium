@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import { SignupForm } from "@/components/auth/signup-form";
 import { LoginQuerySanitizer } from "@/components/auth/login-query-sanitizer";
-import { getCurrentUser } from "@/lib/auth-server";
+import { getCurrentUser, getSignupPolicy } from "@/lib/auth-server";
 
 export const metadata = {
   title: "Create your account · Mycelium",
@@ -11,7 +11,7 @@ export const metadata = {
 };
 
 const CHECKLIST = [
-  "No credit card — tiers assigned, never charged yet",
+  "Open source — nothing to pay",
   "Onboarding tunes your research radar instantly",
   "Start a lab or department later, once you are in",
 ];
@@ -21,6 +21,7 @@ export default async function SignupPage() {
   if (user) {
     redirect("/app/overview");
   }
+  const policy = await getSignupPolicy();
 
   return (
     <main
@@ -74,7 +75,7 @@ export default async function SignupPage() {
             in.
           </p>
           <div className="mt-7">
-            <SignupForm />
+            <SignupForm policy={policy} />
           </div>
         </div>
       </div>

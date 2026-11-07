@@ -150,16 +150,23 @@ UNVERIFIED_MESSAGE = (
 
 
 def user_email_verified(user: UserOrAnon) -> bool:
-    """Whether ``user`` has answered a code sent to their own address.
+    """Whether ``user``'s account is active.
 
-    Verification is what activates an account. Staff are exempt because they are
-    created by an operator, not by the sign-up form, and there may be no mailbox
-    behind the address at all.
+    Verification is what activates an account *when the instance asks for it*
+    (``signup.verify_email``, or ``signup.mode = "domain"``); otherwise every
+    account is active at creation. Staff are exempt because they are created by
+    an operator, not by the sign-up form, and there may be no mailbox behind the
+    address at all. ``Profile.is_verified`` still records whether the address was
+    actually proved — this function answers a different question.
     """
     if not user.is_authenticated:
         return False
     if user.is_superuser or user.is_staff:
         return True
+    from .signup_policy import verification_required
+
+    if not verification_required():
+        return True  # the instance does not ask for verification
     profile = getattr(user, "profile", None)
     return bool(profile and profile.is_verified)
 

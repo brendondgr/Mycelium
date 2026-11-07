@@ -38,7 +38,14 @@ from apps.billing.services import (
     signup_grant_tier,
 )
 
-from . import email_verification, institution, invites, password_reset, signup_gate
+from . import (
+    email_verification,
+    institution,
+    invites,
+    password_reset,
+    signup_gate,
+    signup_policy,
+)
 from .author_works import store_author_works
 from .intake import (
     AuthorImportError,
@@ -159,6 +166,15 @@ def login_view(request: Request) -> Response:
     return Response(user_to_dict(user))
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def signup_policy_view(request: Request) -> Response:
+    """How this instance lets people in (``[signup]`` in ``mycelium.toml``), so
+    the sign-up page shows a code field, a domain hint, or "ask for an invite"
+    instead of a form that can only fail."""
+    return Response(signup_policy.public_policy())
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @throttle_classes([RegisterRateThrottle])
@@ -195,8 +211,21 @@ def register_view(request: Request) -> Response:
     account is already activated and is not asked twice.
     """
     subject = signup_gate.client_subject(request)
-    banned = signup_gate.is_shadow_banned(subject)
+    current_mode = signup_policy.mode()
+    # Only the code mode has a secret to guess, so only it consults the ban (which
+    # also fails closed when Redis is down — no reason to lock out an open or
+    # invite-only instance over a cache outage).
+    banned = current_mode == signup_policy.CODE and signup_gate.is_shadow_banned(
+        subject
+    )
     token = str(request.data.get("invite_token", "") or "").strip()
+
+    if current_mode == signup_policy.CLOSED:
+        reason, message = signup_policy.REFUSALS[signup_policy.CLOSED]
+        return Response(
+            {"non_field_errors": [message], "reason": reason},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     invite = None
     if token and not banned:
@@ -208,8 +237,20 @@ def register_view(request: Request) -> Response:
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    if invite is None and (
-        banned or not signup_gate.code_matches(request.data.get("access_code", ""))
+    if invite is None and current_mode == signup_policy.INVITE:
+        reason, message = signup_policy.REFUSALS[signup_policy.INVITE]
+        return Response(
+            {"non_field_errors": [message], "reason": reason},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if (
+        invite is None
+        and current_mode == signup_policy.CODE
+        and (
+            banned
+            or not signup_gate.code_matches(request.data.get("access_code", ""))
+        )
     ):
         # Only a genuine miss adds a strike; an attempt made while already banned
         # neither extends the ban nor tells the caller anything new.
@@ -236,6 +277,17 @@ def register_view(request: Request) -> Response:
                 {"email": [str(exc)], "reason": exc.reason},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+    elif current_mode == signup_policy.DOMAIN and not signup_policy.domain_allowed(
+        data["email"]
+    ):
+        domains = ", ".join(signup_policy.allowed_domains())
+        return Response(
+            {
+                "email": [f"Sign up with an address at {domains}."],
+                "reason": "domain_required",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     elif settings.SIGNUP_REQUIRE_INSTITUTION_EMAIL and not institution.resolve_email(
         data["email"]
     ):
@@ -303,7 +355,7 @@ def register_view(request: Request) -> Response:
     # Outside the transaction: `issue` mails on commit, so a rollback can never
     # leave a live code in a real inbox for an account that does not exist. An
     # account activated by its invitation has nothing left to prove.
-    if not user.profile.is_verified:
+    if signup_policy.verification_required() and not user.profile.is_verified:
         email_verification.issue(user, user.email)
 
     login(request, user)  # set the session immediately, same as login_view

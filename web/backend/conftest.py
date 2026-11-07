@@ -59,6 +59,18 @@ def _enforce_entitlements(settings):
     settings.BILLING_ENFORCE_ENTITLEMENTS = True
 
 
+@pytest.fixture(autouse=True)
+def _institution_signup(settings):
+    """Sign-up as the institution profile has it: a shared code, verified email.
+
+    The code is pinned here because a fresh clone has none — there is no default
+    code any more, by design."""
+    settings.SIGNUP_MODE = _SUITE["signup.mode"]
+    settings.SIGNUP_VERIFY_EMAIL = _SUITE["signup.verify_email"]
+    settings.SIGNUP_ALLOWED_DOMAINS = []
+    settings.SIGNUP_ACCESS_CODE = "test-signup-code"
+
+
 @pytest.fixture
 def billing_off(settings):
     """Run one test as a default (``lab``) instance: no billing, no limits."""

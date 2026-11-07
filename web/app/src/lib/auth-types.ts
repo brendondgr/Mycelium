@@ -65,13 +65,22 @@ export type RegisterInput = {
   first_name?: string;
   last_name?: string;
   /**
-   * Invite-only verification code. Required unless an `invite_token` covers it —
-   * someone already inside asked for this person by name, and a beta gate that
-   * can turn their invitation away is a gate that makes invitations useless.
+   * The instance's shared sign-up code, when its policy is `mode: "code"`. Never
+   * needed with an `invite_token` — someone already inside asked for this person
+   * by name.
    */
   access_code?: string;
   /** A join link's token, from `/join/<token>`. */
   invite_token?: string;
+};
+
+/** How this instance lets people in — `[signup]` in the operator's mycelium.toml. */
+export type SignupPolicy = {
+  mode: "closed" | "invite" | "code" | "domain" | "open";
+  /** Whether a new account must answer a mailed code before it is active. */
+  verify_email: boolean;
+  /** The allowed email domains, for `mode: "domain"`. */
+  domains: string[];
 };
 
 /** What an invitation link says about itself, before anyone has an account. */
