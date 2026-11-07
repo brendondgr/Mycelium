@@ -347,6 +347,7 @@ Files below are inside `web/backend/apps/content/`.
 | First-time setup (`make setup`: writes `.env`, builds, migrates, first admin) | `ops/setup/bootstrap.py` |
 | Admin bootstrap (`make admin NAME=…`) | `ops/setup/create_admin.py` |
 | Every root command | `Makefile` (`make help`) |
+| README banner (generated, committed) | `docs/assets/header.svg`, written by `ops/readme/make_header.py` from `web/art/logo/logo-colored.svg`; re-run it when the logo or the README's first sentence changes |
 
 ## Management commands
 

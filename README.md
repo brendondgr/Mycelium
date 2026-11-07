@@ -1,5 +1,23 @@
-# Mycelium
+<p align="center">
+  <img src="docs/assets/header.svg" width="880"
+       alt="Mycelium banner: a green-capped mushroom logo with a rising line chart on its stem, above the words 'Mycelium — an open-source academic research assistant that any lab can run on its own computers.' Built with Python, TypeScript, Astro and CSS, on Django, Next.js, Postgres with pgvector, and Docker Compose." />
+</p>
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-5e7a3e" alt="License: Apache 2.0" /></a>
+  <img src="https://img.shields.io/badge/python-3.13-3572a5" alt="Python 3.13" />
+  <img src="https://img.shields.io/badge/self--hosted-Docker%20Compose-2496ed" alt="Self-hosted with Docker Compose" />
+</p>
+
+<p align="center">
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="docs/README.md">Docs</a> ·
+  <a href="docs/research/">Research record</a> ·
+  <a href="#roadmap">Roadmap</a>
+</p>
+
+<!-- The first sentence below is also the banner's tagline. If you change it,
+     edit TAGLINE in ops/readme/make_header.py and re-run that script. -->
 Mycelium is an open-source academic research assistant that any lab can run on
 its own computers. It keeps a profile of your lab and its members, reads new
 papers, grants, fellowships and conference calls every night, and leaves each
@@ -14,7 +32,17 @@ are built on top of that layer. The feeds and reports are the first of them.
 If you want to **use** it, start at [Quickstart](#quickstart). If you want to
 **check the research**, start at [Research and evaluation](#research-and-evaluation).
 
+**Contents:** [What it does today](#what-it-does-today) ·
+[Quickstart](#quickstart) · [Configuration](#configuration) ·
+[Day-to-day commands](#day-to-day-commands) · [How it's built](#how-its-built) ·
+[Repository layout](#repository-layout) ·
+[Research and evaluation](#research-and-evaluation) · [Roadmap](#roadmap) ·
+[Documentation](#documentation) · [Contributing and license](#contributing-and-license)
+
 ## What it does today
+
+<img src="web/art/Mylo/MyloHeadshot-e1.png" width="130" align="right"
+     alt="Mylo, Mycelium's mascot: a painted mushroom scout with a green spotted cap." />
 
 - **Profiles.** Import a person's publications from OpenAlex, Semantic Scholar,
   Google Scholar or ORCID, optionally add a résumé, and Mycelium drafts themed
@@ -120,6 +148,21 @@ model calls. To run it every morning, install the systemd units with
 the Discord bot at boot.
 
 ## How it's built
+
+```mermaid
+flowchart LR
+    S["Sources<br/>papers · grants<br/>fellowships · conferences"] --> N["Nightly run<br/>collect → rank → slate"]
+    P["Profiles<br/>people · labs · projects"] --> N
+    N --> DB[("Postgres + pgvector<br/>corpus · graph · vectors")]
+    DB --> A["Web app<br/>feeds · search · reports"]
+    DB --> D["Mylo in Discord<br/>digests · reminders"]
+    L["Your language model<br/>(OpenAI-compatible)"] -. written reasons .-> N
+```
+
+Every night the run collects new items, ranks the whole corpus against each
+profile, and keeps a top slate per research theme. Only items that newly enter a
+slate are sent to the language model for a written reason. Everything lands in
+Postgres, which the app and the Discord bot both read.
 
 | Layer | Technology | Location |
 |---|---|---|
