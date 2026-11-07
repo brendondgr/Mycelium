@@ -19,6 +19,3 @@ file once the items below are done.
    department settings without a plan card, the admin-page note, and the
    sign-up page in each mode were type-checked and linted, not exercised in a
    running app.
-2. **Stale numbers in older docs.** Some prose still quotes tier numbers as
-   if they were universal (e.g. "Free is 3 clusters × 2 topics"); they are now
-   the `institution` profile's tier defaults. Fix them as they are touched.

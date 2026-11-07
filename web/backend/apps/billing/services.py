@@ -130,11 +130,10 @@ def create_department_workspace(
 def signup_grant_tier() -> str:
     """The personal tier a successful sign-up is provisioned on.
 
-    Registration is invite-only, so getting this far already means the caller
-    presented the shared access code (or an invitation, which is the documented
-    alternative to it). Rather than land every new account on Free and make them
-    ask for an upgrade, the gate itself is treated as the entitlement: passing it
-    grants ``settings.SIGNUP_GRANT_TIER``.
+    Getting past the instance's sign-up gate is treated as the entitlement:
+    rather than land every new account on Free and make them ask for an upgrade,
+    it grants ``settings.SIGNUP_GRANT_TIER`` (``billing.signup_tier`` in
+    mycelium.toml). It only decides anything while billing is on.
 
     Falls back to Free when the configured value is not a tier sold to a personal
     scope, because a typo in an env var must not 500 the sign-up endpoint — and

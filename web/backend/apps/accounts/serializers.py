@@ -76,9 +76,10 @@ class RegisterSerializer(serializers.Serializer):
     Password strength is checked through the project's ``AUTH_PASSWORD_VALIDATORS``
     so the policy stays in one place.
 
-    Two write-only fields are *declared* here but judged in the view: the
-    invite-only ``access_code`` (``apps.accounts.signup_gate``) and the
-    ``invite_token`` that is the other way past it. Both are checked before any of
+    Two write-only fields are *declared* here but judged in the view, per the
+    instance's sign-up mode (``apps.accounts.signup_policy``): the shared
+    ``access_code`` (``apps.accounts.signup_gate``) and the ``invite_token``
+    that stands in for it. Both are checked before any of
     this runs, so a bad one costs a strike and never leaks which other fields
     would also have failed.
     """

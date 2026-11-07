@@ -1,6 +1,8 @@
-"""The invite-only sign-up gate: verification code + brute-force shadow ban.
+"""The shared-code sign-up gate: the code + a brute-force shadow ban.
 
-Registration is closed unless the caller presents ``settings.SIGNUP_ACCESS_CODE``.
+Used only when the instance's ``signup.mode`` is ``"code"`` (see
+``apps.accounts.signup_policy`` for the other modes); then registration is
+closed unless the caller presents ``settings.SIGNUP_ACCESS_CODE``.
 Because that is a single shared secret on a public endpoint, it needs a guessing
 budget: three consecutive misses from the same client trip a one-hour **shadow**
 ban.

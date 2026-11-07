@@ -187,16 +187,14 @@ def register_view(request: Request) -> Response:
     them. Labs and departments are created from inside the app by an account that
     has verified its address — see ``MyLabsView`` and ``MyDepartmentsView``.
 
-    Getting in takes one of two proofs, checked before any other validation so a
-    bad one costs a strike and reveals nothing about the rest of the payload:
-
-    * the live invite-only ``access_code``, or
-    * an ``invite_token`` — someone already inside asked for this person by name.
-      An invitation the beta gate can turn away is not an invitation, so a live
-      token stands in for the code.
-
-    Three consecutive misses shadow-ban the client for an hour; see
-    ``signup_gate`` for why every outcome shares one message.
+    Who gets in follows ``signup.mode`` (``apps.accounts.signup_policy``):
+    ``closed`` refuses everyone, ``invite`` needs an ``invite_token``, ``code``
+    needs the shared ``access_code`` (checked before any other validation, so a
+    bad one costs a strike and reveals nothing else), ``domain`` needs an
+    allowed address, ``open`` needs nothing. A live ``invite_token`` — someone
+    already inside asked for this person by name — works in every mode but
+    ``closed``. In the code mode, three consecutive misses shadow-ban the client
+    for an hour; see ``signup_gate`` for why every outcome shares one message.
 
     After the gate, everything happens inside one transaction — the ``User`` (its
     post_save signal creates the ``Profile``), the personal subscription and
@@ -314,9 +312,9 @@ def register_view(request: Request) -> Response:
             last_name=data.get("last_name", ""),
         )  # post_save signal creates the Profile
 
-        # Passing the invite-only gate is itself the entitlement: a new account is
-        # provisioned on the granted tier rather than on Free, so nobody has to ask
-        # for an upgrade they already proved they were invited to.
+        # Getting in is itself the entitlement: a new account starts on
+        # billing.signup_tier rather than on Free (it only matters while billing
+        # is on), so nobody has to ask for an upgrade.
         result = provision_workspace(
             user, "personal", personal_tier=signup_grant_tier()
         )

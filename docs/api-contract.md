@@ -195,7 +195,7 @@ routes clients depend on most.
 | `understanding/` | GET | What Mylo knows about me: every knowledge-core edge with its source, and the developments I may see |
 | `understanding/<concept_id>/<relation>/` | PATCH, DELETE | Reword (`{"label"}`, it becomes mine) or delete one thing Mylo understood from conversation |
 | `understanding/<concept_id>/<relation>/reopen/` | POST | Include a declined or faded topic after all |
-| `settings/` | GET, PUT | Listening on Discord (and on Slack and Teams, `listening_slack` / `listening_teams`, once linked), Mylo's questions on/off, a quiet period; a free plan may turn things off only. GET also says whether transcripts are on |
+| `settings/` | GET, PUT | Listening on Discord (and on Slack and Teams, `listening_slack` / `listening_teams`, once linked), Mylo's questions on/off, a quiet period; a free plan (under subscriptions) may turn things off only. GET also says whether transcripts are on |
 | `observations/delete/` | POST | `{"confirm": true}` — delete every summary and everything derived from them |
 | `projects/<id>/developments/` | GET | A project's development timeline, for anyone who can see the project; private ones for their speaker only |
 | `labs/<slug>/changes/` | GET | A lab's "What changed": lab-visible changes to its shared projects; members only |
