@@ -175,6 +175,7 @@ The stack must be up first (``mycelium start``). Requires Docker Compose, plus
 
 from __future__ import annotations
 
+import json
 import socket
 import sys
 import time
@@ -227,81 +228,66 @@ REGISTRY_CACHE_PATH = ROOT / "data" / "collect" / "registry" / "dblp_venues.json
 #: answer (plan D5a: "weekly is ample").
 REGISTRY_REFRESH_INTERVAL_DAYS = 7
 
-# The backend rank/briefing stages, in order, run inside the container. The scrape
-# stage (stage 1) is handled separately on the host. The order is the product rule:
-# collect everything, rank it all by preference, take each target's slate per theme
-# per category, diff each theme against yesterday's, and report only what entered.
+# The backend rank/briefing stages, in order, run inside the container. The
+# scrape stage (stage 1) is handled separately on the host. The order is the
+# product rule: collect everything, rank it all by preference, take each
+# target's slate per theme per category, diff each theme against yesterday's,
+# and report only what entered.
 #
-# Ordering matters for reminders (R2): opportunities ingest with ``--no-prune`` so
-# the ContentDeadline projection is rebuilt but nothing is deleted yet, then the
-# reminder tick fires against live deadlines, then a separate prune stage deletes
-# expired items. A deadline that moved earlier into the past is therefore always
-# seen by the tick before its item can be pruned out from under a live reminder.
-# Each entry is (command, passthrough_args, intro).
-CONTAINER_STAGES = [
-    ("run_daily_suggestions", [], "Searching and ranking research papers for all targets…"),
-    (
-        "run_daily_opportunities",
-        ["--no-prune"],
-        "Ranking every grant/conference/fellowship for all targets…",
-    ),
-    ("run_reminder_tick", [], "Firing due deadline reminders…"),
-    ("prune_opportunities", [], "Pruning expired opportunities…"),
-    # Alongside the opportunity prune: both are pure deletions of expired rows, so
-    # neither rewrites or rescores anything the earlier stages just wrote. Keeping
-    # the briefing sweep in the daily chain is what stops the Reports page history
-    # from drifting past its retention window.
-    ("prune_briefings", [], "Pruning daily briefings past the retention window…"),
-    # Before the briefings and after scoring, because it needs both: it reads the
-    # day's slates, and the briefing reads the day's alerts.
-    (
-        "evaluate_project_alerts",
-        [],
-        "Deciding what today changes for each project…",
-    ),
-    # After scoring (member fit is written with it) and before the briefings,
-    # whose lab report slims each opportunity kind to one "announced → #channel"
-    # line. Both commands exit 0 even when a target fails, so an announcement
-    # problem never stops the briefings, and both do nothing while
-    # OPPORTUNITY_ANNOUNCEMENTS_ENABLED is off.
-    (
-        "announce_opportunities",
-        [],
-        "Announcing newly fitting grants, fellowships and conferences…",
-    ),
-    (
-        "announce_opportunity_updates",
-        [],
-        "Updating announced opportunities and the closing-soon lists…",
-    ),
-    ("generate_daily_briefing", [], "Writing each user's and lab's daily briefing…"),
-    (
-        "send_daily_discord_reports",
-        [],
-        "DMing each linked user their daily PDF report…",
-    ),
-    # After the briefings, and last alongside the personal report: both only queue
-    # messages, so a failure here costs a day's post rather than the day's data.
-    (
-        "send_lab_digests",
-        [],
-        "Posting each lab's digest to its Discord updates channel…",
-    ),
-    # Monday only, and no-ops on every other day. It runs after the dailies for
-    # the same reason the dailies run after the briefings: the weekly is written
-    # from what the day already settled, and cadence decides whether the Monday
-    # *push* is the weekly instead of the daily — which it is, for both cadences.
-    (
-        "generate_weekly_briefing",
-        [],
-        "Writing the Monday weekly for each target…",
-    ),
-    (
-        "send_weekly_reports",
-        [],
-        "Queueing the Monday weekly to Discord…",
-    ),
-]
+# Each stage is declared by the tool that owns its command (``Tool.stages`` in
+# tools/<name>/tool.py, or ``PLATFORM_STAGES`` in tools/_framework/nightly.py
+# for one the platform still owns) with a phase; tools/_framework/nightly.py
+# orders them, and a golden test holds the order to the one this file used to
+# list by hand.
+#
+# Ordering matters for reminders (R2): opportunities ingest with ``--no-prune``
+# so the ContentDeadline projection is rebuilt but nothing is deleted yet, then
+# the reminder tick fires against live deadlines (phase ``remind``), then a
+# separate prune stage deletes expired items (phase ``prune``). A deadline that
+# moved earlier into the past is therefore always seen by the tick before its
+# item can be pruned out from under a live reminder.
+#
+# A tool the container's import script did not LOAD contributes no stage: its
+# stages are skipped tonight and reported (see ``tool_load_state``).
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
+from tools._framework import nightly as _tool_nightly  # noqa: E402
+
+
+def planned_container_stages(loaded: list[str] | None = None):
+    """``(command, passthrough_args, intro)`` per stage, in run order.
+
+    ``loaded=None`` plans every installed tool (the static view); pass the
+    container's loaded tool names to plan tonight's run.
+    """
+    run, _skipped = _tool_nightly.plan_for(loaded)
+    return _tool_nightly.as_tuples(run)
+
+
+CONTAINER_STAGES = planned_container_stages()
+
+
+def tool_load_state(base: list[str]) -> tuple[list[str], list[tuple[str, str, str]]] | None:
+    """Ask the container which tools loaded: ``(loaded, [(tool, state, reason)])``.
+
+    ``None`` if the import script could not run at all, which means Django
+    itself cannot start in the container.
+    """
+    raw = capture_manage("tools", ["check", "--json", "--lenient"], base=base)
+    if not raw:
+        return None
+    try:
+        report = json.loads(raw)
+    except ValueError:
+        return None
+    tools = report.get("tools", {})
+    loaded = [n for n in report.get("order", []) if tools[n]["state"] == "LOADED"]
+    others = [
+        (n, tools[n]["state"], (tools[n].get("reason") or "").splitlines()[0]
+         if tools[n].get("reason") else "")
+        for n in report.get("order", []) if tools[n]["state"] != "LOADED"
+    ]
+    return loaded, others
 
 
 def _notify(kind: str, title: str, body: str = "", **kwargs) -> None:
@@ -720,7 +706,37 @@ def main() -> int:
         _write_run_state(ok=False, scrape_ran=False, stages_run=[], failed_stage="startup", exit_code=1)
         raise
 
-    total = 1 + len(CONTAINER_STAGES)
+    # The import script: which tools may run tonight. A tool that is not LOADED
+    # (disabled, broken, or missing a dependency) contributes no stage; each
+    # one set aside is reported, never skipped silently.
+    state = tool_load_state(base)
+    if state is None:
+        _notify(
+            "error",
+            "Daily run could not start — the tools import script failed",
+            "`manage.py tools check` did not run in the backend container, so "
+            "Django itself cannot start there.",
+            stage="tools",
+            action=f"Run `make tools-check` on {HOST} and read the error.",
+        )
+        _write_run_state(ok=False, scrape_ran=False, stages_run=[], failed_stage="tools", exit_code=1)
+        return 1
+    loaded_tools, set_aside = state
+    stages = planned_container_stages(loaded_tools)
+    skipped = [cmd for cmd, *_ in CONTAINER_STAGES if cmd not in {c for c, *_ in stages}]
+    for name, tool_state, reason in set_aside:
+        print(f"Tool {name} is {tool_state}: {reason}", file=sys.stderr, flush=True)
+    if set_aside:
+        _notify(
+            "warn",
+            "Daily run: tools set aside",
+            "\n".join(f"{n}: {st} — {why}" for n, st, why in set_aside),
+            stage="tools",
+            fields={"Skipped stages": ", ".join(skipped) or "none"},
+            action=f"Run `make tools-check` on {HOST}.",
+        )
+
+    total = 1 + len(stages)
 
     # Pre-flight — the entire pipeline (paper rankings, opportunity scoring,
     # briefings) depends on the LLM. If it is unreachable, do NOT run the search
@@ -758,7 +774,7 @@ def main() -> int:
 
     # Stages 2..N — recommend, remind, prune, and brief inside the backend container.
     stages_run: list[str] = []
-    for offset, (command, passthrough, intro) in enumerate(CONTAINER_STAGES):
+    for offset, (command, passthrough, intro) in enumerate(stages):
         step = 2 + offset
         print(f"\n=== {step}/{total} · {intro} ===", flush=True)
         code = run_manage(command, passthrough, intro=None, base=base)

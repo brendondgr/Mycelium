@@ -6,6 +6,36 @@
 once the work ships and record the outcome in `docs/changelog.md` and the
 canonical docs listed under [Documentation](#documentation-re-registration).
 
+## Decisions taken since the draft (2026-11-08)
+
+These supersede the matching parts of the decisions below.
+
+- **Location.** Tools live in `tools/` at the repository root (not
+  `web/tools/`), one folder each, with `tools/README.md` as the guide.
+- **Delivery becomes a tool** (Phase 4 is in scope).
+- **URLs stay exactly as they are.** No `/app/t/<tool>/` route and no frontend
+  move in this refactor. Tools mount their API routes at the prefix and
+  position they had (golden URL table). Per-tool URLs are a later discussion.
+- **Tools may use the platform freely.** D7 rule 2's fixed registry of platform
+  doors is dropped: the platform is the host. The strict rules are tool→tool
+  (only declared dependencies, only their `exports`) and platform→tool (a
+  shrinking allowlist).
+- **A bad value in a tool's section fails that tool, not the instance** (D4
+  said `ConfigError`). This is consistent with "a tool that cannot load does
+  not run".
+- **Retrieval keeps the `content` app label.** `collab` and `knowledge`
+  (platform) have foreign keys to `ContentItem`, and their migration history
+  depends on `content` migrations. The retrieval tool therefore owns the
+  `content` label and its whole migration history, and no table is renamed.
+  Recommendation and delivery models leave it by state-only migrations, under
+  their own labels, with their `db_table` unchanged.
+- **Existing settings keep their names.** A tool's `Setting` carries its old
+  environment variable (`env=`) and Django name (`django=`), so deployments,
+  call sites and `override_settings` are unchanged.
+- **The probe does not touch the database**, so a database outage at boot
+  cannot disable tools. Migration state is checked by
+  `manage.py tools migrations` instead.
+
 ## Objective
 
 Make every research tool a **self-contained module**: one folder holds all of a

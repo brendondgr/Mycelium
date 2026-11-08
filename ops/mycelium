@@ -11,6 +11,8 @@ Usage:
     mycelium migrate         apply database migrations against the running stack
     mycelium install-service copy .service files to /etc/systemd/system/ and enable boot startup
     mycelium config ...      read, explain, change and check mycelium.toml (`mycelium config -h`)
+    mycelium tools ...       the tools import script in the running stack: `tools check`,
+                             `tools plan`, `tools migrations` (see tools/README.md)
 
 Flags:
     --keep-cache   skip the frontend cache wipe on start/restart/build
@@ -166,6 +168,16 @@ def _backend_exec(base: list[str], manage_args: str) -> subprocess.CompletedProc
         capture_output=True,
         text=True,
     )
+
+
+def cmd_tools(base: list[str], args: list[str]) -> int:
+    """``manage.py tools <args>`` in the backend container, output passed through."""
+    import shlex
+
+    r = _backend_exec(base, "tools " + " ".join(shlex.quote(a) for a in (args or ["check"])))
+    sys.stdout.write(r.stdout)
+    sys.stderr.write(r.stderr)
+    return r.returncode
 
 
 def _pending_migrations(base: list[str]) -> list[str] | None:
@@ -446,7 +458,7 @@ def cmd_status(base: list[str]) -> int:
     print(bold("  Mylo (Discord bot)"))
     print(dim("  " + "─" * 54))
     if not _mylo_installed():
-        print(yellow(f"  Not installed — run: sudo mycelium install-service"))
+        print(yellow("  Not installed — run: sudo mycelium install-service"))
     elif _mylo_is_active():
         print(f"  {green('●')} {MYLO_UNIT:<22} {dim('active')}")
     else:
@@ -570,7 +582,7 @@ def cmd_install_service() -> int:
     import os
     if os.geteuid() != 0:
         print(red("  install-service must be run with sudo:"), file=sys.stderr)
-        print(f"    sudo mycelium install-service", file=sys.stderr)
+        print("    sudo mycelium install-service", file=sys.stderr)
         return 1
 
     print()
@@ -713,6 +725,7 @@ def main() -> int:
         "logs":    lambda: cmd_logs(base),
         "build":   lambda: cmd_start(base, build=True, **opts),
         "migrate": lambda: cmd_migrate(base),
+        "tools":   lambda: cmd_tools(base, args[1:]),
     }
 
     fn = dispatch.get(action)
@@ -720,7 +733,7 @@ def main() -> int:
         print(f"Unknown command: {action!r}", file=sys.stderr)
         print(
             "Valid commands: start, stop, restart, status, logs, build, migrate, "
-            "install-service, config",
+            "tools, install-service, config",
             file=sys.stderr,
         )
         return 1

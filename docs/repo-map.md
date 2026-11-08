@@ -325,12 +325,31 @@ Files below are inside `web/backend/apps/content/`.
 | Health endpoint, exactly-one-FK helper | `web/backend/apps/core/{views,db}.py` |
 | Django settings / URLs / Celery | `web/backend/config/` |
 
+## Tools (`tools/`)
+
+| Task | Path |
+|---|---|
+| What a tool is, the load states, config and import rules | [`tools/README.md`](../tools/README.md); agent rules in [`skills/tools.md`](skills/tools.md) |
+| The declaration vocabulary (`Tool`, `Setting`, `Stage`, `Beat`, `Mount`, phases) | `tools/_framework/spec.py` |
+| Finding tools on disk | `tools/_framework/discovery.py` |
+| The import script (states, dependency order, probe, cached report) | `tools/_framework/loader.py`, subprocess half `tools/_framework/probe.py` |
+| Per-tool `[tools.<name>]` configuration | `tools/_framework/config.py`, merged by `web/backend/config/instance.py` |
+| Wiring loaded tools into Django (apps, settings, Beat, URL splicing) | `tools/_framework/host.py`, called from `web/backend/config/settings.py` and `urls.py`; tool `AppConfig` base in `tools/_framework/appconfig.py` |
+| Events between tools | `tools/_framework/events.py` |
+| Nightly stage plan from loaded tools | `tools/_framework/nightly.py` (`PLATFORM_STAGES` for stages not yet in a tool), read by `ops/nightly/manual_all.py` |
+| `manage.py tools check / plan / migrations / uninstall`, `GET /api/tools/` | `tools/_framework/management/commands/tools.py`, `tools/_framework/views.py` |
+| Import rules and the platform-import ratchet | `tools/_framework/boundaries.py`, `tools/_framework/platform_imports.txt` |
+| Golden snapshots (URLs, tasks, Beat, commands, tables, stages, config) | `tools/_framework/golden.py`, `tools/_framework/golden/` |
+| Scaffolding a tool (`make new-tool NAME=…`) | `tools/_framework/scaffold.py`, `tools/_framework/template/` |
+| Framework tests and fixture tools (one per load state) | `tools/_framework/tests/`, `tools/_framework/tests/fixtures/` |
+| Suite-wide pytest fixtures (platform and tools) | `web/backend/config/pytest_plugin.py` (loaded by `-p` in `web/backend/pyproject.toml`) |
+
 ## Host runners & operations
 
 | Task | Path |
 |---|---|
 | Full-stack start/stop | `ops/mycelium` (start/stop/restart/status/migrate — wipes frontend caches, waits for the API, applies migrations, restarts Mylo), `Makefile` (`make up`/`down`/`status`), `compose.yaml`, `ops/compose.gpu.yaml` |
-| Nightly research run | `ops/nightly/manual_all.py` (fired by `mylo-daily.timer`) |
+| Nightly research run | `ops/nightly/manual_all.py` (fired by `mylo-daily.timer`); its container stages come from the loaded tools (`tools/_framework/nightly.py`) |
 | On-demand re-score everyone | `ops/nightly/manual_mylo.py` |
 | Illinois fellowship scrape → import (host, Playwright) | `ops/scrapers/scrape_fellowships.py` |
 | Per-stage manual runners | `ops/nightly/` |
@@ -354,7 +373,7 @@ Files below are inside `web/backend/apps/content/`.
 | First-time setup (`make setup [PROFILE=…]`: picks a profile and writes `mycelium.toml`, writes `.env`, builds, migrates, first admin) | `ops/setup/bootstrap.py` |
 | Changing the instance configuration (`ops/mycelium config` / `make config ARGS=…`: profiles, init, show, explain, get, set, unset, validate, diff, recommend; all `--json`) | `ops/setup/config_cli.py`; tests `web/backend/apps/core/test_config_cli.py` |
 | Admin bootstrap (`make admin NAME=…`) | `ops/setup/create_admin.py` |
-| Every root command | `Makefile` (`make help`) |
+| Every root command | `Makefile` (`make help`); tools: `make tools-check`, `tools-plan`, `tools-matrix`, `new-tool` |
 | README banner (generated, committed) | `docs/assets/header.svg`, written by `ops/readme/make_header.py` from `web/art/logo/logo-colored.svg`; re-run it when the logo or the README's first sentence changes |
 | README screenshots (committed) | `docs/assets/screenshot-{hero,report,feeds}.webp`, captured from the landing dev server by `ops/readme/screenshots.py` |
 

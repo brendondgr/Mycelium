@@ -60,10 +60,25 @@ gpu-up: ## Start the stack with CUDA embedding (needs nvidia-container-toolkit)
 # ── Development ──────────────────────────────────────────────────────────────
 
 test: ## Backend test suite
-	uv run --project web/backend pytest web/backend
+	uv run --directory web/backend pytest
 
 test-mylo: ## Mylo bot and daily-run tests
 	uv run python -m unittest discover -s mylo/tests -t .
+
+tools-check: ## The tools import script in the running stack: every tool's load state
+	@$(STACK) tools check
+
+tools-plan: ## The nightly stage plan the loaded tools produce, in run order
+	@$(STACK) tools plan
+
+tools-matrix: ## Delete-each / break-each: remove or break every tool in turn, check the rest
+	uv run --directory web/backend pytest -c pyproject.toml ../../tools/_framework/tests/test_delete_matrix.py
+
+new-tool: ## Scaffold a tool from the template: make new-tool NAME=my_tool
+ifndef NAME
+	$(error NAME is required, e.g. make new-tool NAME=screening)
+endif
+	@$(PYTHON) tools/_framework/scaffold.py "$(NAME)"
 
 lint: ## Astro check, Next.js eslint, backend ruff
 	npm run lint

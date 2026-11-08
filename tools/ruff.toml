@@ -1,0 +1,6 @@
+# Lint settings for tools/: the backend's, so a tool is held to the same
+# standard as the platform. Paths in per-file-ignores are relative to tools/.
+extend = "../web/backend/pyproject.toml"
+
+[lint.per-file-ignores]
+"**/migrations/*.py" = ["E501"]

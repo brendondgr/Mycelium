@@ -15,13 +15,24 @@ profile, writes `.env` with generated secrets, builds and starts the stack,
 applies migrations, and creates the first admin. Without a terminal it asks
 nothing, so an agent passes the model endpoint as `LLM_BASE_URL`, `LLM_API_KEY`
 and `LLM_MODEL` in the environment (and `PROFILE=…`, default `lab`). `make help`
-lists every other command; `make test` runs the backend suite.
+lists every other command; `make test` runs the backend suite and every tool's
+tests; `make tools-check` shows which tools loaded.
 
 Operator policy — sign-up, email, billing, limits, optional features, the
 nightly budget — lives in `mycelium.toml`, not in code or `.env.example`. Change
 it with `ops/mycelium config` and follow `docs/skills/configure.md` when a user
 asks to set up or reconfigure their instance. A new operator-facing setting is
-added as a key in `web/backend/config/instance.py`, not as a bare env var.
+added as a key in `web/backend/config/instance.py`, not as a bare env var — or,
+if a tool owns it, as a `Setting` in that tool's `tool.py` (its
+`[tools.<name>]` section).
+
+## Tools
+
+Research capabilities are modular **tools**, one folder each under `tools/` at
+the repository root. A tool is declared by one class in `tools/<name>/tool.py`
+and loaded by discovery; a tool that cannot load never runs. Read
+`docs/skills/tools.md` and `tools/README.md` before adding, changing or moving
+code into a tool, and start a new one with `make new-tool NAME=<name>`.
 
 ## Navigating the code
 

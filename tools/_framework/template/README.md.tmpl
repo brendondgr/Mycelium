@@ -1,0 +1,20 @@
+# {{Title}}
+
+One paragraph: what this tool does, for whom, and what it reads from Mycelium.
+
+| | |
+|---|---|
+| Depends on | — |
+| Exports | `read`, `service`, `events` |
+| Config | `[tools.{{name}}]` in `mycelium.toml` |
+| Nightly stages | — |
+| API | — |
+
+## Doors
+
+- `read.py` —
+- `service.py` —
+
+## Tests
+
+`uv run --directory web/backend pytest -c pyproject.toml ../../tools/{{name}}`

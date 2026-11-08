@@ -114,3 +114,9 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
+# The platform's tests and every tool's (tools/ at the repository root). Run
+# with no path arguments from web/backend — `make test` does — so both are
+# collected; `config.pytest_plugin` gives them the same suite-wide fixtures.
+testpaths = [".", "../../tools"]
+pythonpath = [".", "../.."]
+addopts = ["-p", "config.pytest_plugin"]

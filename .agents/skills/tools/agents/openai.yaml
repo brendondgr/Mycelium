@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tools"
+  short_description: "Build, move code into, or debug a modular Mycelium tool"
+  default_prompt: "Use this skill to scaffold or change a tool under tools/, keep its imports behind doors, and verify it with make test and make tools-check."

@@ -52,6 +52,8 @@ mycelium/
 │   ├── systemd/                   # unit templates installed by `mycelium install-service`
 │   ├── loadtest/                  # onboarding load test
 │   └── research/                  # research-record tooling behind `make validate-research`
+├── tools/                         # modular research tools, one folder each (see "Tools" below)
+│   └── _framework/                # discovery, the import script, config, events, nightly planner
 ├── mylo/                          # host Discord bot package + daily-run observability
 ├── eval/                          # retrieval evaluation harness (own uv project)
 ├── docs/                          # direction, reference, skills, changelog
@@ -65,6 +67,41 @@ mycelium/
     │   └── apps/                  # Django apps (see boundaries below)
     └── infra/nginx/               # gateway config
 ```
+
+## Tools
+
+Research capabilities are **tools**: one folder each under `tools/`, declared by
+one `Tool` class in `tools/<name>/tool.py`, discovered rather than wired in. The
+platform (`web/backend/apps/`) is the host and does not import tools. A tool
+reads another only through the modules it `exports`, and only if it lists it in
+`depends_on`. A foundation tool publishes events instead of calling up into
+what is built on it. These rules are AST-checked, and the platform's remaining
+imports of tools are a shrinking allowlist (`tools/_framework/platform_imports.txt`).
+
+**The import script decides what runs.** Before Django starts,
+`tools/_framework/loader.py` walks the tools in dependency order. It checks each
+one's declaration, configuration and secrets, then probes it: Django is
+started in a subprocess with only that tool and its dependencies installed, and
+the tool's modules are imported and its health check run. Each tool ends
+`LOADED`, `DISABLED`, `MISSING`, `BLOCKED` or `FAILED`. Only `LOADED` tools
+enter `INSTALLED_APPS`, the URL table (spliced at the position their include
+always had), the Beat schedule, the Django settings namespace and the nightly
+plan.
+
+- **Isolation.** A tool that does not load contributes nothing, and neither does
+  anything that depends on it. The nightly run reports each skipped stage.
+- **Strict mode.** Production is lenient; `tools.strict` (on in the test suite)
+  makes any failure fatal. A `core` tool stops startup in every mode.
+- **Caching.** The report is cached in `data/tools/` under a fingerprint of the
+  code and the configuration, so only a change re-probes.
+
+**Configuration** is the same four-layer merge as the rest of `mycelium.toml`.
+The universal `[tools]` section sits alongside one `[tools.<name>]` section per
+installed tool. A tool's keys keep their old environment-variable names and are
+published under their old Django setting names while the tool is loaded.
+
+The folder guide is [`tools/README.md`](../tools/README.md); agent rules are in
+[`skills/tools.md`](skills/tools.md).
 
 ## Service boundaries
 

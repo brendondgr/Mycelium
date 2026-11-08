@@ -56,6 +56,8 @@ features.high_signal	bool	False	HIGH_SIGNAL_DELIVERY_ENABLED
 features.rerank	bool	False	RERANK_ENABLED
 features.slack	bool	False	SLACK_ENABLED
 features.teams	bool	False	TEAMS_ENABLED
+tools.strict	bool	False	MYCELIUM_TOOLS_STRICT
+tools.disabled	list	[]	MYCELIUM_TOOLS_DISABLED
 nightly.model_calls	limit	None	NIGHTLY_MODEL_CALLS
 nightly.llm_concurrency	int	32	OPPORTUNITY_LLM_CONCURRENCY
 nightly.writeup_concurrency	int	32	WRITEUP_LLM_CONCURRENCY

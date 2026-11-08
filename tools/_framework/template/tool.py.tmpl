@@ -1,0 +1,14 @@
+"""The {{name}} tool's declaration. Standard library and spec imports only."""
+
+from tools._framework.spec import Setting, Tool
+
+
+class {{Class}}(Tool):
+    name = "{{name}}"
+    summary = "One sentence: what {{name}} does for a lab."
+    depends_on = ()  # e.g. ("retrieval", "recommendation")
+    settings = (
+        # Setting("example_limit", "int", 10, "What it limits.", env="{{NAME}}_EXAMPLE_LIMIT"),
+    )
+    stages = ()  # nightly stages: Stage("command", "phase", "Intro line…")
+    mounts = ()  # API routes: Mount("api/tools/{{name}}/")

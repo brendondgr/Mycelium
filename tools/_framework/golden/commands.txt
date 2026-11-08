@@ -90,4 +90,5 @@ startproject
 sweep_ambient_retention
 test
 testserver
+tools
 typesafe_check

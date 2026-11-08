@@ -31,6 +31,11 @@ change a limit or a policy — that is exactly what this layer exists to prevent
   setting one key turns on that one limit and nothing else.
 - **Secrets never go in the file**: `RESEND_API_KEY`, `EMAIL_HOST_PASSWORD`,
   `SIGNUP_ACCESS_CODE`, `LLM_API_KEY` live in `.env`.
+- **Tools have their own sections.** `[tools]` holds the policy for all of
+  them (`strict`, `disabled`); each installed tool adds `[tools.<name>]` with
+  `enabled` and the keys its `tool.py` declares (`config explain tools.<name>`
+  lists them). A bad value fails only that tool; a section for a tool that is
+  not installed is only a warning. `make tools-check` shows what loaded.
 - The backend reads the file at start, so a change needs `make restart`.
 
 ## The conversation

@@ -113,9 +113,51 @@ def jsonable(value: Any) -> Any:
 
 def parse_cli_value(key: str, raw: str) -> Any:
     """A command-line string as the TOML value it should be written as."""
+    tool = tool_key(key)
+    if tool is not None:
+        cls, setting = tool
+        if setting is None:  # tools.<name>.enabled
+            value = raw.strip().lower()
+            if value in {"1", "true", "yes", "on"}:
+                return True
+            if value in {"0", "false", "no", "off"}:
+                return False
+            raise inst.ConfigError(f"{key} must be true or false, not {raw!r}.")
+        try:
+            return setting.parse(raw, source="the command line")
+        except ValueError as exc:
+            raise inst.ConfigError(str(exc)) from None
     setting = inst.BY_KEY[key]
     value = inst._coerce(setting, raw, "the command line")
     return value
+
+
+def installed_tools() -> dict[str, Any]:
+    """Every installed tool's declaration class, by name (stdlib discovery)."""
+    framework = inst._tool_framework()
+    if framework is None:
+        return {}
+    return {
+        name: item.cls
+        for name, item in framework[1].discover().items()
+        if item.cls is not None
+    }
+
+
+def tool_key(key: str):
+    """``(class, Setting or None for 'enabled')`` for a ``tools.<name>.<key>``."""
+    if not key.startswith("tools.") or key in inst.BY_KEY:
+        return None
+    _prefix, name, sub = (key.split(".", 2) + ["", ""])[:3]
+    cls = installed_tools().get(name)
+    if cls is None or not sub:
+        return None
+    if sub == "enabled":
+        return cls, None
+    for setting in cls.settings:
+        if setting.key == sub:
+            return cls, setting
+    return None
 
 
 def emit(data: Any, as_json: bool) -> None:
@@ -132,7 +174,7 @@ def die(message: str, as_json: bool, code: int = 1) -> int:
 
 
 def known_key(key: str) -> bool:
-    return key in inst.BY_KEY
+    return key in inst.BY_KEY or tool_key(key) is not None
 
 
 def matching_keys(prefix: str) -> list[str]:
@@ -309,12 +351,40 @@ def cmd_show(args) -> int:
         source = cfg.sources[key]
         tag = dim(source) if source == "default" else yellow(source)
         print(f"  {inst.BY_KEY[key].name:<28} {shown(cfg[key]):<24} {tag}")
-    problems = cfg.problems(environment())
+    for name, tool_cfg in sorted(cfg.tools.items()):
+        if args.changed and all(s == "default" for s in tool_cfg.sources.values()) \
+                and tool_cfg.enabled:
+            continue
+        print(f"\n{bold('[tools.' + name + ']')}")
+        print(f"  {'enabled':<28} {shown(tool_cfg.enabled):<24}")
+        for key, value in tool_cfg.values.items():
+            source = tool_cfg.sources[key]
+            tag = dim(source) if source == "default" else yellow(source)
+            print(f"  {key:<28} {shown(value):<24} {tag}")
+    problems = cfg.problems(environment()) + tool_problems(cfg)
     if problems:
         print()
         for problem in problems:
             print(yellow(f"! {problem}"))
     return 0
+
+
+def tool_problems(cfg) -> list[str]:
+    """Problems in tool sections (each fails only its tool) and warnings."""
+    out = [p for c in cfg.tools.values() for p in c.problems]
+    return out + list(cfg.warnings)
+
+
+def _explain_tool(cls, setting) -> dict:
+    return {
+        "key": f"tools.{cls.name}.{setting.key}", "type": setting.kind,
+        "help": setting.help, "env": setting.env,
+        "choices": list(setting.choices) or None,
+        "default": setting.default, "suggested": None,
+        "by_profile": {name: inst.PROFILES[name].get(
+            f"tools.{cls.name}.{setting.key}", setting.default)
+            for name in inst.PROFILE_NAMES},
+    }
 
 
 def _explain_one(key: str) -> dict:
@@ -336,9 +406,14 @@ def _explain_one(key: str) -> dict:
 def cmd_explain(args) -> int:
     target = args.key or ""
     keys = matching_keys(target) if target else list(inst.BY_KEY)
-    if not keys:
-        return die(f"No key or section named {target!r}.", args.json)
     rows = [_explain_one(k) for k in keys]
+    for cls in installed_tools().values():
+        for setting in cls.settings:
+            full = f"tools.{cls.name}.{setting.key}"
+            if not target or full == target or full.startswith(target.rstrip(".") + "."):
+                rows.append(_explain_tool(cls, setting))
+    if not rows:
+        return die(f"No key or section named {target!r}.", args.json)
     if args.json:
         emit(rows, True)
         return 0
@@ -368,12 +443,31 @@ def cmd_get(args) -> int:
         cfg = resolve()
     except inst.ConfigError as exc:
         return die(str(exc), args.json)
+    value, source = value_and_source(cfg, args.key)
     if args.json:
-        emit({"key": args.key, "value": jsonable(cfg[args.key]),
-              "source": cfg.sources[args.key]}, True)
+        emit({"key": args.key, "value": jsonable(value), "source": source}, True)
     else:
-        print(shown(cfg[args.key]))
+        print(shown(value))
     return 0
+
+
+def value_and_source(cfg, key: str) -> tuple[Any, str]:
+    """A key's resolved value and the layer it came from, platform or tool."""
+    tool = tool_key(key)
+    if tool is None:
+        return cfg[key], cfg.sources[key]
+    tool_cfg = cfg.tools[tool[0].name]
+    sub = key.split(".", 2)[2]
+    if sub == "enabled":
+        return tool_cfg.enabled, "mycelium.toml"
+    return tool_cfg.values[sub], tool_cfg.sources[sub]
+
+
+def _env_name(key: str) -> str | None:
+    tool = tool_key(key)
+    if tool is None:
+        return inst.BY_KEY[key].env
+    return tool[1].env if tool[1] is not None else None
 
 
 def _apply(changes: dict[str, Any], removals: set[str], args) -> int:
@@ -385,19 +479,22 @@ def _apply(changes: dict[str, Any], removals: set[str], args) -> int:
         return die(str(exc), args.json)
     CONFIG.write_text(edit_file(CONFIG.read_text(), changes, removals))
     env = environment()
+    touched = list(changes) + sorted(removals)
+    resolved = {key: value_and_source(after, key) for key in touched}
     overridden = [
-        f"{key} is overridden by env {inst.BY_KEY[key].env}"
-        for key in list(changes) + sorted(removals)
-        if after.sources[key].startswith("env:")
+        f"{key} is overridden by env {_env_name(key)}"
+        for key in touched
+        if resolved[key][1].startswith("env:")
     ]
-    problems = after.problems(env)
+    problems = after.problems(env) + tool_problems(after)
     if args.json:
         emit({"ok": True,
-              "changed": {k: jsonable(after[k]) for k in list(changes) + sorted(removals)},
+              "changed": {k: jsonable(resolved[k][0]) for k in touched},
               "warnings": overridden, "problems": problems}, True)
         return 0
-    for key in list(changes) + sorted(removals):
-        print(green(f"✓ {key} = {shown(after[key])}") + dim(f"  ({after.sources[key]})"))
+    for key in touched:
+        value, source = resolved[key]
+        print(green(f"✓ {key} = {shown(value)}") + dim(f"  ({source})"))
     for line in overridden:
         print(yellow(f"! {line}; the file value will not take effect"))
     for problem in problems:
@@ -435,9 +532,12 @@ def cmd_validate(args) -> int:
         cfg = resolve()
     except inst.ConfigError as exc:
         return die(str(exc), args.json)
-    problems = cfg.problems(environment())
+    problems = cfg.problems(environment()) + [
+        p for c in cfg.tools.values() for p in c.problems
+    ]
     if args.json:
-        emit({"ok": not problems, "profile": cfg.profile, "problems": problems}, True)
+        emit({"ok": not problems, "profile": cfg.profile, "problems": problems,
+              "warnings": list(cfg.warnings)}, True)
     elif problems:
         for problem in problems:
             print(red(f"✗ {problem}"))

@@ -24,6 +24,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = Path(__file__).resolve().parent / "golden"
+# Run as a script, this folder would be sys.path[0] and its modules (config.py
+# among them) would shadow real packages; drop it.
+sys.path[:] = [p for p in sys.path if Path(p or ".").resolve() != GOLDEN.parent]
 sys.path.insert(0, str(ROOT / "web" / "backend"))
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
@@ -63,7 +66,9 @@ def _beat() -> list[str]:
     from django.conf import settings
 
     sched = getattr(settings, "CELERY_BEAT_SCHEDULE", {}) or {}
-    return [f"{k}\t{v.get('task')}\t{v.get('schedule')!r}" for k, v in sorted(sched.items())]
+    return [
+        f"{k}\t{v.get('task')}\t{v.get('schedule')!r}" for k, v in sorted(sched.items())
+    ]
 
 
 def _commands() -> list[str]:
@@ -87,9 +92,11 @@ def _stages() -> list[str]:
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)  # type: ignore[union-attr]
-    stages = module.planned_container_stages() if hasattr(
-        module, "planned_container_stages"
-    ) else module.CONTAINER_STAGES
+    stages = (
+        module.planned_container_stages()
+        if hasattr(module, "planned_container_stages")
+        else module.CONTAINER_STAGES
+    )
     return [f"{cmd}\t{' '.join(args)}" for cmd, args, _intro in stages]
 
 

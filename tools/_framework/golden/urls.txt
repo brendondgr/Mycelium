@@ -602,3 +602,5 @@ api/collab/searches/<int:search_id>/feedback/	collab-match-feedback	MatchFeedbac
 api/collab/settings/	collab-settings	CollaborationSettingView
 api/collab/preview/	collab-preview	CollaborationPreviewView
 api/collab/calls/<uuid:content_id>/slot-feedback/	collab-slot-feedback	SlotFeedbackView
+api/tools/	tools-status	tools_status
+api/tools	-	tools_status

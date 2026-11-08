@@ -112,6 +112,25 @@ INSTALLED_APPS = [
     "apps.collab",
 ]
 
+# Modular tools (tools/ at the repository root). The import script decides,
+# before Django starts, which tools may run: only LOADED ones are installed,
+# routed, scheduled and configured; a tool that is disabled, broken, or missing
+# a dependency contributes nothing, and neither does anything depending on it.
+# See tools/README.md.
+import sys as _sys  # noqa: E402
+
+if str(ROOT_DIR.parent) not in _sys.path:
+    _sys.path.append(str(ROOT_DIR.parent))
+from tools._framework import host as _tools_host  # noqa: E402
+from tools._framework.loader import ToolsLoadError as _ToolsLoadError  # noqa: E402
+
+try:
+    TOOLS_REPORT = _tools_host.boot(INSTANCE)
+except _ToolsLoadError as _exc:
+    raise SystemExit(str(_exc)) from None
+INSTALLED_APPS += [_tools_host.FRAMEWORK_APP, *_tools_host.installed_apps(TOOLS_REPORT)]
+TOOLS_URL_MOUNTS = _tools_host.url_mounts(TOOLS_REPORT)
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -1434,3 +1453,9 @@ TEAMS_TOKEN_URL = env_str(
 )
 TEAMS_OUTBOX_MAX_ATTEMPTS = env.int("TEAMS_OUTBOX_MAX_ATTEMPTS", default=5)
 TEAMS_OUTBOX_RETRY_SECONDS = env.int("TEAMS_OUTBOX_RETRY_SECONDS", default=300)
+
+
+# Each loaded tool's own settings, published last under their Django names so
+# a tool's [tools.<name>] section (or the env var it answers to) always wins.
+_tools_host.publish_settings(globals(), TOOLS_REPORT, INSTANCE)
+CELERY_BEAT_SCHEDULE.update(_tools_host.beat_schedule(TOOLS_REPORT, INSTANCE))

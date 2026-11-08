@@ -25,6 +25,7 @@ site never has to know which layer a value came from.
 from __future__ import annotations
 
 import os
+import sys
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -242,6 +243,16 @@ SETTINGS: tuple[Setting, ...] = (
             env="SLACK_ENABLED"),
     Setting("features.teams", "bool", False, "The Microsoft Teams integration.",
             env="TEAMS_ENABLED"),
+    # ---- tools (universal policy; each tool adds its own [tools.<name>]) --
+    Setting("tools.strict", "bool", False,
+            "Stop startup when any tool fails to load, instead of setting the "
+            "broken tool (and whatever depends on it) aside. Tests and CI turn "
+            "this on.",
+            env="MYCELIUM_TOOLS_STRICT"),
+    Setting("tools.disabled", "list", [],
+            "Tools to keep switched off without deleting their folders, e.g. "
+            "[\"screening\"]. A core tool cannot be disabled.",
+            env="MYCELIUM_TOOLS_DISABLED"),
     # ---- nightly (cost controls) ----------------------------------------
     Setting("nightly.model_calls", "limit", UNLIMITED,
             "Most language-model calls one nightly run may make. Past it the run "
@@ -296,6 +307,8 @@ SECTION_HELP = {
     "features": "Optional features, all off unless switched on.",
     "nightly": "Cost controls for the nightly run: how many model calls and how "
                "much parallelism it may use.",
+    "tools": "The modular tools under tools/. These keys govern all of them; each "
+             "installed tool also reads its own [tools.<name>] section below.",
 }
 
 
@@ -424,6 +437,9 @@ class Instance:
     profile: str
     path: Path | None
     warnings: list[str] = field(default_factory=list)
+    #: Each installed tool's resolved ``[tools.<name>]`` section
+    #: (:class:`tools._framework.config.ToolConfig`), keyed by tool name.
+    tools: dict[str, Any] = field(default_factory=dict)
 
     def __getitem__(self, key: str) -> Any:
         return self.values[key]
@@ -513,6 +529,7 @@ def resolve(
     path = config_path(root, env)
     raw_file = dict(read_file(path) if file_values is None else file_values)
 
+    raw_file, tool_file = _split_tool_keys(raw_file)
     unknown = sorted(k for k in raw_file if k not in BY_KEY)
     if unknown:
         raise ConfigError(
@@ -557,8 +574,61 @@ def resolve(
         values[key] = value
         sources[key] = source
 
+    tools, warnings = _resolve_tool_sections(
+        tool_file,
+        {k: v for k, v in layer.items() if k.startswith("tools.")},
+        env,
+        values["tools.disabled"],
+    )
     return Instance(values=values, sources=sources, profile=profile,
-                    path=path if path and path.is_file() else None)
+                    path=path if path and path.is_file() else None,
+                    warnings=warnings, tools=tools)
+
+
+# --------------------------------------------------------------------------- #
+# Per-tool sections — delegated to tools/_framework/config.py
+# --------------------------------------------------------------------------- #
+
+
+def _tool_framework():
+    """``tools._framework`` (config, discovery), or None if ``tools/`` is absent.
+
+    The repository root is put on ``sys.path`` the same way settings.py does,
+    so the host CLI, Django and the tests all see one tools directory.
+    """
+    root = Path(__file__).resolve().parents[3]
+    if (root / "tools" / "_framework").is_dir() and str(root) not in sys.path:
+        sys.path.append(str(root))
+    try:
+        from tools._framework import config, discovery
+    except ImportError:
+        return None
+    return config, discovery
+
+
+def _split_tool_keys(flat: Mapping[str, Any]):
+    fw = _tool_framework()
+    if fw is None:
+        rest = {k: v for k, v in flat.items() if not k.startswith("tools.")
+                or k in BY_KEY}
+        return rest, {}
+    return fw[0].split_tool_keys(flat)
+
+
+def _resolve_tool_sections(file_values, profile_flat, environ, disabled):
+    fw = _tool_framework()
+    if fw is None:
+        return {}, []
+    config, discovery = fw
+    _rest, profile_values = config.split_tool_keys(profile_flat)
+    classes = [d.cls for d in discovery.discover().values() if d.cls is not None]
+    return config.resolve_tools(
+        classes,
+        file_values=file_values,
+        profile_values=profile_values,
+        environ=environ,
+        disabled=disabled,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -571,7 +641,7 @@ def _toml_value(value: Any) -> str:
         return '"unlimited"'
     if isinstance(value, bool):
         return "true" if value else "false"
-    if isinstance(value, int):
+    if isinstance(value, (int, float)):
         return str(value)
     if isinstance(value, list):
         return "[" + ", ".join(f'"{item}"' for item in value) + "]"
@@ -641,5 +711,36 @@ def render(profile: str, overrides: Mapping[str, Any] | None = None) -> str:
         if notes:
             line = f"{line:<40} # {'; '.join(notes)}"
         out.append(line)
+    out.extend(_render_tool_sections())
     out.append("")
     return "\n".join(out)
+
+
+def _render_tool_sections() -> list[str]:
+    """One ``[tools.<name>]`` section per installed tool.
+
+    ``enabled`` is written as a value; every other key is written commented
+    out at its default, so the file documents what can be set without pinning
+    a tool's defaults into the operator's file.
+    """
+    fw = _tool_framework()
+    if fw is None:
+        return []
+    out: list[str] = []
+    for item in fw[1].discover().values():
+        cls = item.cls
+        if cls is None:
+            continue
+        out.append("")
+        out.extend(_wrap(f"{cls.name}: {cls.summary}".strip()))
+        out.append(f"[tools.{cls.name}]")
+        out.append("enabled = true")
+        for setting in cls.settings:
+            value = setting.default
+            text = (str(value) if isinstance(value, float)
+                    else _toml_value(value))
+            line = f"# {setting.key} = {text}"
+            if setting.env:
+                line = f"{line:<40} # env {setting.env}"
+            out.append(line)
+    return out

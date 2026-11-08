@@ -144,6 +144,16 @@ slack = false                            # env SLACK_ENABLED
 # The Microsoft Teams integration.
 teams = false                            # env TEAMS_ENABLED
 
+# The modular tools under tools/. These keys govern all of them; each
+# installed tool also reads its own [tools.<name>] section below.
+[tools]
+# Stop startup when any tool fails to load, instead of setting the broken tool
+# (and whatever depends on it) aside. Tests and CI turn this on.
+strict = false                           # env MYCELIUM_TOOLS_STRICT
+# Tools to keep switched off without deleting their folders, e.g.
+# ["screening"]. A core tool cannot be disabled.
+disabled = []                            # env MYCELIUM_TOOLS_DISABLED
+
 # Cost controls for the nightly run: how many model calls and how much
 # parallelism it may use.
 [nightly]

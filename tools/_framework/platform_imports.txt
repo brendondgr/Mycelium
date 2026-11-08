@@ -1,0 +1,5 @@
+# Platform files that still import a tool (tab-separated: file, tool.module).
+# A ratchet: tools/_framework/tests/test_boundaries.py fails on any import
+# not listed here AND on any entry that no longer matches, so this list only
+# shrinks, and only on purpose. Regenerate after removing an import with
+#   uv run --no-sync --project web/backend python -m tools._framework.boundaries --write

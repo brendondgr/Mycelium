@@ -21,6 +21,7 @@ entrypoints.
 | ADA compliance | [ada-compliance.md](./ada-compliance.md) | `ada-compliance/` | WCAG 2.2 AA work |
 | Discord bot (discord.py) | [discord-bot.md](./discord-bot.md) | `discord-bot/` | Anything touching `mylo/` or slash commands |
 | Configure an instance | [configure.md](./configure.md) | `configure/` | Setting up an instance, or changing its sign-up, email, limits, billing or nightly budget |
+| Tools | [tools.md](./tools.md) | `tools/` | Adding, changing, moving code into, disabling or removing a tool under `tools/` |
 
 Most canonical skills are a single document. `discord-bot` additionally ships
 verified reference implementations in [`discord-bot/`](./discord-bot/) — copy

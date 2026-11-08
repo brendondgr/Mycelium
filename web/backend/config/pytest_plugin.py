@@ -1,4 +1,8 @@
-"""Suite-wide defaults.
+"""Suite-wide defaults, loaded as a pytest plugin (``-p config.pytest_plugin``).
+
+A plugin rather than ``web/backend/conftest.py`` because a conftest only
+reaches tests below its own folder, and the tools' tests live in ``tools/`` at
+the repository root. Every test — platform or tool — gets these fixtures.
 
 **Why the suite enforces entitlements when the deployment does not.**
 
@@ -17,9 +21,15 @@ switch itself opt out explicitly with
 ``apps/billing/tests/test_entitlement_switch.py``.
 """
 
+import os
 from pathlib import Path
 
 import pytest
+
+# A tool that fails to load fails the suite (tools.strict) rather than being
+# silently set aside, so a broken tool can never produce a green run. Set before
+# pytest-django configures Django, which is when settings.py boots the tools.
+os.environ.setdefault("MYCELIUM_TOOLS_STRICT", "1")
 
 from config import instance
 

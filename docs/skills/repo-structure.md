@@ -18,6 +18,10 @@ top-level areas move. For the *why* behind the boundaries, see
   contributing guide, `CLAUDE.md`, `Makefile`, `compose.yaml`, `package.json`,
   the Python project files, and the env templates. Everything that runs on the
   host goes in `ops/`; runtime state goes in the git-ignored `data/`.
+- Research capabilities live in `tools/`, one self-contained folder per tool,
+  loaded by discovery (see [`tools.md`](tools.md)). The platform — identity,
+  organizations, profiles, projects, billing, integrations, the app shell —
+  stays in `web/backend/apps/` and does not import tools.
 - Build and run workflows should be designed from the repository root.
 - Prefer a named module over a catch-all. `web/scripts/` (the dev gateway and the
   art sync) is grandfathered; do not add new catch-alls, and do not add scripts
@@ -29,6 +33,7 @@ top-level areas move. For the *why* behind the boundaries, see
 mycelium/
 ├── CLAUDE.md, README.md, CONTRIBUTING.md, LICENSE, NOTICE
 ├── Makefile, package.json, compose.yaml, pyproject.toml, uv.lock, .env.example, .env-mylo.example
+├── tools/                     # modular research tools, one folder each; _framework/ loads them
 ├── ops/                       # host-side: stack CLI, setup, nightly run, scrapers, systemd, loadtest, research tooling
 ├── mylo/                      # host Discord bot + daily-run observability
 ├── eval/                      # retrieval evaluation harness (own uv project)

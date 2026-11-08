@@ -6,9 +6,7 @@ pre_delete hook is the backstop that stops a reminder firing on an orphaned snap
 
 from __future__ import annotations
 
-import re
 from datetime import date, timedelta
-from pathlib import Path
 
 import pytest
 from django.contrib.auth.models import User
@@ -124,29 +122,23 @@ def test_delete_with_missing_projection_row_marks_stale(user) -> None:
 
 
 def test_tick_runs_before_prune_in_the_daily_chain() -> None:
-    """Assert the ordering config, not just the behavior."""
-    root = Path(__file__).resolve().parents[5]
-    source = (root / "ops" / "nightly" / "manual_all.py").read_text()
-    # Anchor to the outer list close (``]`` at line start); inner ``[]`` args have
-    # indented brackets, so a plain ``\n]`` matches only the outer bracket.
-    match = re.search(r"CONTAINER_STAGES\s*=\s*\[(.*?)\n\]", source, re.DOTALL)
-    assert match, "CONTAINER_STAGES not found in manual_all.py"
-    block = match.group(1)
-    order = [
-        name
-        for name in (
-            "run_daily_opportunities",
-            "run_reminder_tick",
-            "prune_opportunities",
-        )
-        if name in block
-    ]
+    """Assert the ordering config, not just the behavior.
+
+    The nightly stages are declared per tool and assembled by
+    ``tools._framework.nightly``; this reads the assembled plan, which is what
+    ``ops/nightly/manual_all.py`` runs.
+    """
+    from tools._framework import nightly
+
+    planned = nightly.as_tuples(nightly.plan_for()[0])
+    names = [command for command, _args, _intro in planned]
+    watched = ("run_daily_opportunities", "run_reminder_tick", "prune_opportunities")
+    order = [name for name in names if name in watched]
     assert order == [
         "run_daily_opportunities",
         "run_reminder_tick",
         "prune_opportunities",
     ]
     # Opportunities must ingest without pruning so the tick sees live deadlines.
-    start = block.index("run_daily_opportunities")
-    opp = block[start : block.index("run_reminder_tick")]
-    assert "--no-prune" in opp
+    args = dict((command, a) for command, a, _intro in planned)
+    assert "--no-prune" in args["run_daily_opportunities"]
