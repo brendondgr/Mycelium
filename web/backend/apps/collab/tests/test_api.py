@@ -2,10 +2,10 @@
 
 import pytest
 from rest_framework.test import APIClient
+from tools.retrieval.models import RelevanceScore
 
 from apps.collab import team_fit
 from apps.collab.models import SlotFeedback
-from apps.content.models import RelevanceScore
 from apps.content.serializers import GrantSerializer
 from apps.content.targets import target_for_lab
 

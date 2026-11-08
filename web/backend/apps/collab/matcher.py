@@ -48,8 +48,8 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
+from tools.retrieval.embeddings import embed_texts
 
-from apps.content.embeddings import embed_texts
 from apps.core.people import display_name
 from apps.knowledge.read import (
     WorkView,

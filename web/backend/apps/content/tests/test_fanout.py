@@ -9,10 +9,10 @@ sharer is never suggested to themselves, below-floor members get audited abstent
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
+from tools.retrieval.models import ContentItem, MemberSuggestion, ProjectShare
 
 from apps.accounts.models import Lab, LabMembership, Profile
 from apps.content.fanout import fan_out_relevance
-from apps.content.models import ContentItem, MemberSuggestion, ProjectShare
 from apps.research.models import Project, ProjectMember
 
 

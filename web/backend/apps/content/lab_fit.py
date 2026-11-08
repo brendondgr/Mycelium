@@ -14,9 +14,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from django.conf import settings
+from tools.retrieval.models import ContentItem
 
 from apps.content.fanout import cosine
-from apps.content.models import ContentItem
 
 #: Labs a department post names under "Labs that could lead".
 MAX_LABS = 3
@@ -35,8 +35,9 @@ def candidates(department) -> list[LabCandidate]:
     it, otherwise its canonical text embedded now by the same model the items use
     (nothing writes a stored lab vector today). Labs with no profile text, or no
     embedder installed, are left out."""
+    from tools.retrieval import embeddings
+
     from apps.accounts.models import Lab
-    from apps.content import embeddings
     from apps.content.targets import target_for_lab
 
     found: list[tuple] = []

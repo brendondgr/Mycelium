@@ -3,8 +3,7 @@
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
-
-from apps.content.models import ContentItem, RelevanceScore
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 
 @pytest.fixture

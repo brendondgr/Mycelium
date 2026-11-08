@@ -332,7 +332,7 @@ def embed_phrases(texts: Iterable[str]) -> list[list[float]] | None:
     embedder is unavailable. For a caller comparing its own words with the
     graph's concepts (the ambient attribution pass) without reaching into the
     matching layer itself."""
-    from apps.content.embeddings import embed_texts
+    from tools.retrieval.embeddings import embed_texts
 
     return embed_texts(list(texts))
 

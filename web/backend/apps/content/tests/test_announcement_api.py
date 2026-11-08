@@ -14,10 +14,10 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
+from tools.retrieval.models import AnnouncementSettings, ContentItem, RelevanceScore
 
 from apps.accounts.models import Lab, LabMembership
 from apps.content import announce, discord_announcements
-from apps.content.models import AnnouncementSettings, ContentItem, RelevanceScore
 from apps.integrations.testing import add_route, bind
 
 TODAY = timezone.localdate()
@@ -271,7 +271,7 @@ def test_a_carried_forward_body_loses_its_opportunity_sections():
 
 @pytest.mark.django_db
 def test_an_opened_thread_link_is_counted_only_for_someone_who_can_see_it(world):
-    from apps.content.models import AnnouncementPost, AnnouncementReaction
+    from tools.retrieval.models import AnnouncementPost, AnnouncementReaction
 
     lab, _binding, _owner, member = world
     _post_some(lab)

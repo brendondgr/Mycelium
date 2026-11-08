@@ -10,16 +10,16 @@ from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.accounts.models import Lab, LabMembership
-from apps.content import discord_commands as cmd
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     DailyBriefing,
     ReminderSubscription,
     SavedOpportunity,
 )
+
+from apps.accounts.models import Lab, LabMembership
+from apps.content import discord_commands as cmd
 from apps.content.reminders import create_subscription
 from apps.content.tests.entitle import entitle_user, paid_plan
 from apps.integrations.models import DiscordIdentity

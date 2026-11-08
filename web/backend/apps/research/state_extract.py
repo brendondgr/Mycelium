@@ -7,7 +7,7 @@ applied until a person accepts it, and a stated field is never overwritten by it
 (plan H9 / invariant 9).
 
 It is deliberately the same shape as
-:mod:`apps.scraper.collect.extract`, which is the pattern this codebase already
+:mod:`tools.retrieval.collect.extract`, which is the pattern this codebase already
 trusts for turning prose into structure:
 
 1. **A fixed schema.** The model is asked for named fields, not for a description.

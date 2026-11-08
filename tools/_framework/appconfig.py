@@ -17,6 +17,15 @@ class ToolAppConfig(AppConfig):
     """
 
     default_auto_field = "django.db.models.BigAutoField"
+    #: Not a candidate itself. Django picks the single AppConfig subclass in a
+    #: tool's apps.py only if exactly one has ``default`` true; this base is
+    #: imported into that module too, so it opts out and every subclass opts in.
+    default = False
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if "default" not in cls.__dict__:
+            cls.default = True
 
     def tool_class(self):
         package = self.name

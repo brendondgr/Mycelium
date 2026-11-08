@@ -9,7 +9,7 @@ and their in-cap active projects — the same target set as the Celery task.
 
 Runs inline by default (best for a smoke test); ``--async`` dispatches the Celery
 task. This command never scrapes — collection is its own scheduled stage
-(``apps.scraper.collect``, run by ``manual_all.py`` before this command, plan
+(``tools.retrieval.collect``, run by ``manual_all.py`` before this command, plan
 Phase 12); matching always runs over whatever that stage last wrote.
 ``--no-prune`` keeps expired grants/conferences instead of deleting them,
 via :func:`apps.content.opportunities.run_daily_opportunities_batch`.

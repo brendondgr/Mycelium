@@ -270,8 +270,9 @@ def test_last_weeks_changes_are_not_this_weeks(world):
 def test_answers_and_waiting_proposals_are_counted(world):
     from datetime import timedelta
 
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.ambient.models import PendingSuggestion
-    from apps.content.models import ReflectionProposal
 
     ada = world["ada"]
     for surface in ("dm", "dm", "web"):

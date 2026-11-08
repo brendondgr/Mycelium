@@ -1,7 +1,7 @@
 """Generalize the matcher's scoring target from the user to any interest surface.
 
 The daily pipelines were written for one target — the signed-in user. But the
-schema (:class:`apps.content.models.RelevanceScore`) already scores against a
+schema (:class:`tools.retrieval.models.RelevanceScore`) already scores against a
 user, a project, a lab, or a department. A :class:`MatchTarget` captures
 everything the retrieve → fuse → score → persist core needs about *whatever* it is
 scoring for, so the same engine personalizes a lab or a lab project without being
@@ -136,11 +136,11 @@ def _merge_team_interests(project, interests: dict) -> dict:
     """Broaden a project's interests with its recomputed team profile (Feature D).
 
     A project's declared focus leads; its members' aggregated areas/keywords (from
-    :class:`~apps.content.models.ProjectProfile`) are appended and deduped, so the
+    :class:`~tools.retrieval.models.ProjectProfile`) are appended and deduped, so the
     fusion retrieval reflects the whole team, not just the declared focus. A no-op
     until the team profile has been recomputed.
     """
-    from .models import ProjectProfile
+    from tools.retrieval.models import ProjectProfile
 
     # An unsaved project can't have a team profile yet — skip the query so building
     # a target stays pure for callers that never touch the DB.

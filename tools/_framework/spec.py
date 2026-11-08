@@ -63,6 +63,9 @@ class Setting:
     env: str | None = None
     django: str | None = None
     choices: tuple[str, ...] = ()
+    #: A secret (an API key) is read from the environment only: it may not be
+    #: set in mycelium.toml and is never written there or shown by the CLI.
+    secret: bool = False
 
     def parse(self, raw: Any, *, source: str) -> Any:
         """Coerce a file or environment value to this setting's kind."""
@@ -204,6 +207,8 @@ class Tool:
             if setting.key in seen or setting.key == "enabled":
                 problems.append(f"{cls.name}.{setting.key}: duplicate or reserved key.")
             seen.add(setting.key)
+            if setting.secret and not setting.env:
+                problems.append(f"{cls.name}.{setting.key}: a secret needs env=.")
             if setting.kind == "choice" and setting.default not in setting.choices:
                 problems.append(f"{cls.name}.{setting.key}: default not in choices.")
         commands = [stage.command for stage in cls.stages]

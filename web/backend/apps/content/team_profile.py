@@ -3,13 +3,13 @@
 Blends a project's declared focus, its members' interest vectors, and their recent
 weighted engagement into one team vector, written to ``research.Project.embedding``
 so the recommendation pipeline reads it as the project's query vector. Interest terms
-are aggregated onto :class:`~apps.content.models.ProjectProfile`.
+are aggregated onto :class:`~tools.retrieval.models.ProjectProfile`.
 
 Hard principles: **normalize every vector before fusing** (never after), and **never
 mutate an individual** :class:`~apps.accounts.models.Profile` — the team signal updates
 the project, not the member. All vector math is pure-Python (no numpy dependency); the
-only model call is :func:`~apps.content.embeddings.embed_text`, which returns ``None``
-when no embedder is installed, so recompute degrades gracefully.
+only model call is :func:`~tools.retrieval.embeddings.embed_text`, which returns
+``None`` when no embedder is installed, so recompute degrades gracefully.
 """
 
 from __future__ import annotations
@@ -19,11 +19,10 @@ from collections import Counter
 
 from django.conf import settings
 from django.utils import timezone
+from tools.retrieval import embeddings
+from tools.retrieval.models import ProjectProfile, RelevanceEvent
 
 from apps.accounts.embedding import canonical_text
-
-from . import embeddings
-from .models import ProjectProfile, RelevanceEvent
 
 
 def _unit(vec) -> list[float] | None:
@@ -78,7 +77,7 @@ def _decay(age_days: float, halflife: float) -> float:
 
 def _focus_component(project) -> list[float] | None:
     """The declared-focus unit vector, from the project's interest text."""
-    from .targets import target_for_project
+    from apps.content.targets import target_for_project
 
     text = target_for_project(project).embedding_text
     if not text.strip():
@@ -126,7 +125,7 @@ def _engagement_component(project, *, halflife: float, now) -> list[float] | Non
 
 def _aggregate_interests(project, users) -> dict:
     """Union of the focus + members' interest terms, most-common first."""
-    from .targets import target_for_project
+    from apps.content.targets import target_for_project
 
     areas: Counter = Counter()
     keywords: Counter = Counter()

@@ -21,9 +21,9 @@ from django.contrib.auth.models import User
 from django.db import connection
 from django.utils import timezone
 from rest_framework.test import APIClient
+from tools.retrieval import embeddings
+from tools.retrieval.models import ContentItem, RelevanceScore, SavedOpportunity
 
-from apps.content import embeddings
-from apps.content.models import ContentItem, RelevanceScore, SavedOpportunity
 from apps.content.opportunities import match_fellowships_for_user
 
 # ---- fixtures ------------------------------------------------------------------

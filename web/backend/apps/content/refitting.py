@@ -29,9 +29,9 @@ from dataclasses import asdict, dataclass, field
 
 from django.contrib.auth.models import User
 
-from .opportunities import run_opportunities_for_user
-from .pipeline import recommend_for_user
-from .suggest import CompleteFn
+from apps.content.opportunities import run_opportunities_for_user
+from apps.content.pipeline import recommend_for_user
+from apps.content.suggest import CompleteFn
 
 logger = logging.getLogger(__name__)
 
@@ -172,9 +172,9 @@ def refit_target(
     go to the model (the rest are filled deterministically). ``None`` keeps each
     pipeline's own default (top 10).
     """
-    from .member_fit import annotate_for_target
-    from .opportunities import run_opportunities_for_target
-    from .pipeline import recommend_for_target
+    from apps.content.member_fit import annotate_for_target
+    from apps.content.opportunities import run_opportunities_for_target
+    from apps.content.pipeline import recommend_for_target
 
     # Only pass the limit through when set, so ``None`` defers to each pipeline's
     # own default rather than overriding it with a hardcoded number here.
@@ -213,7 +213,7 @@ def refit_target(
 
 def refit_lab(lab, **kwargs) -> RefitResult:
     """Re-personalize one lab's recommendations over the existing store."""
-    from .targets import target_for_lab
+    from apps.content.targets import target_for_lab
 
     return refit_target(target_for_lab(lab), **kwargs)
 
@@ -226,7 +226,7 @@ def refit_project(project, **kwargs) -> RefitResult:
     the categories the project has opted into (``goals.watch_categories``, default
     all four) — so toggling a category off stops that feed on the next reseed.
     """
-    from .targets import project_watch_categories, target_for_project
+    from apps.content.targets import project_watch_categories, target_for_project
 
     if "areas" not in kwargs:
         chosen = set(project_watch_categories(project))

@@ -108,8 +108,7 @@ select = ["E", "F", "I", "UP", "B"]
 # behavioural gain. Only E501 is forgiven — every real-defect class (F, B,
 # E7xx, etc.) still applies, since this tree is otherwise held to the same
 # standard as the rest of the backend.
-"apps/scraper/collect/**" = ["E501"]
-"apps/scraper/tests/collect/**" = ["E501"]
+# (Now tools/retrieval/collect/; the same exemption lives in tools/ruff.toml.)
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"

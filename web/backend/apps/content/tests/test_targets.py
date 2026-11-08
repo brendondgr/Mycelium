@@ -10,10 +10,10 @@ import math
 import pytest
 from django.contrib.auth.models import User
 from django.db import connection
+from tools.retrieval import embeddings
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.accounts.models import Lab, WatchPreference
-from apps.content import embeddings
-from apps.content.models import ContentItem, RelevanceScore
 from apps.content.opportunities import match_opportunities_for_target
 from apps.content.pipeline import recommend_for_lab, recommend_for_project
 from apps.content.targets import (
@@ -208,8 +208,9 @@ def test_project_interests_carries_v2_clusters():
 
 def test_clustered_project_team_merge_keeps_partition(db):
     """Team-signal broadening must not orphan areas outside a project's clusters."""
+    from tools.retrieval.models import ProjectProfile
+
     from apps.content.clustering import cluster_interests
-    from apps.content.models import ProjectProfile
 
     lab = Lab.objects.create(name="L", slug="l-merge")
     project = Project.objects.create(

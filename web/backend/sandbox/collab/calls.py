@@ -170,7 +170,7 @@ def generate(calls, path: Path, *, complete=None, workers: int = 12) -> dict:
 
 
 def seed(calls, texts) -> dict:
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     from .bootstrap import assert_sandboxed
 
@@ -195,7 +195,7 @@ def seed(calls, texts) -> dict:
 
 def existing(calls) -> dict:
     """The calls already seeded, for re-marking coverage without re-reading."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     return {
         c.key: ContentItem.objects.get(source=SOURCE, external_id=c.key) for c in calls
@@ -204,10 +204,10 @@ def existing(calls) -> dict:
 
 def run(items: dict, world, *, read: bool = True) -> dict:
     from django.contrib.auth import get_user_model
+    from tools.retrieval.models import RelevanceScore
 
     from apps.accounts.models import Lab
     from apps.collab import slots, team_fit
-    from apps.content.models import RelevanceScore
     from apps.content.targets import target_for_lab, target_for_user
 
     from .run import CountingModel
@@ -287,8 +287,9 @@ def _rate(n: int, d: int):
 
 
 def score(world, calls, texts, items, run: dict) -> dict:
+    from tools.retrieval.models import RelevanceScore
+
     from apps.collab.models import RequirementSlots
-    from apps.content.models import RelevanceScore
 
     people = {p.key: p for p in world.people}
     labs = {lab.key: lab for lab in world.labs}

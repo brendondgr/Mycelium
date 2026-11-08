@@ -31,10 +31,10 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, RelevanceScore
 
-from .digest_selection import priority_first
-from .models import ContentItem, RelevanceScore
-from .top_feed import top_n
+from apps.content.digest_selection import priority_first
+from apps.content.top_feed import top_n
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ _SYSTEM_PROMPT = {
 def load_prior_llm_verdicts(persist_kwargs: dict, content_type: str) -> dict[str, dict]:
     """Prior-run LLM verdicts for ``persist_kwargs``'s target, keyed by content id.
 
-    The carry-forward store: :class:`~apps.content.models.RelevanceScore` rows
+    The carry-forward store: :class:`~tools.retrieval.models.RelevanceScore` rows
     persist across nightly runs (only the *read* layer filters to the latest
     ``run_at``), so a row from any earlier run whose signals show it was actually
     scored by the model (``source == "llm"``, a real ``match_percent``) is a
@@ -423,7 +423,7 @@ def _profile_text(interests: dict, profile_meta: dict) -> str:
     # A confirmed career direction reaches grant and fellowship judgement
     # beside ``seeking`` and stage (ambient Plan 05, step 12); the eligibility
     # gate is unchanged. Absent, the prompt is byte-identical.
-    from .understanding import lines as understanding_lines
+    from apps.content.understanding import lines as understanding_lines
 
     bits.extend(understanding_lines(interests))
     return "\n".join(bits) or "(no profile details)"

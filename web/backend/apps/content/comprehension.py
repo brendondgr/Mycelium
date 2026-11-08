@@ -30,7 +30,7 @@ import logging
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
-from .models import ContentItem, ItemComprehension
+from tools.retrieval.models import ContentItem, ItemComprehension
 
 logger = logging.getLogger(__name__)
 

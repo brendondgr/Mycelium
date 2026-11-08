@@ -14,11 +14,10 @@ from django.contrib.auth.models import User
 from django.db import connection
 from django.utils import timezone
 from rest_framework.test import APIClient
-
-from apps.content import embeddings
-from apps.content.models import ContentItem, SavedOpportunity
-from apps.content.query_embedding import embed_query
-from apps.content.search import (
+from tools.retrieval import embeddings
+from tools.retrieval.models import ContentItem, SavedOpportunity
+from tools.retrieval.query_embedding import embed_query
+from tools.retrieval.search import (
     DEFAULT_RRF_K,
     SearchFilters,
     clamp_limit,

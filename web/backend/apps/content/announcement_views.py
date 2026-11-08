@@ -33,6 +33,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from tools.retrieval.models import Announcement, AnnouncementSettings
 
 from apps.accounts.models import Department, Lab
 from apps.accounts.permissions import (
@@ -43,7 +44,6 @@ from apps.accounts.permissions import (
 )
 from apps.content import announce, announce_facts
 from apps.content.discord_announcements import followers
-from apps.content.models import Announcement, AnnouncementSettings
 from apps.integrations.services import resolve
 
 #: How far back the announced list reaches.
@@ -263,7 +263,7 @@ class LinkClickView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        from apps.content.models import AnnouncementPost, AnnouncementReaction
+        from tools.retrieval.models import AnnouncementPost, AnnouncementReaction
 
         url = str(request.data.get("thread_url") or "")
         surface = str(request.data.get("surface") or "")

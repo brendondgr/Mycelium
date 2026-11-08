@@ -3,7 +3,7 @@ stage after it (plan D1, D9, D10, D11).
 
 Every surface is a forum thread. An announcement is posted once per live server
 binding of its target that routes that kind; each post is an
-:class:`~apps.content.models.AnnouncementPost` holding its thread id. All sends go
+:class:`~tools.retrieval.models.AnnouncementPost` holding its thread id. All sends go
 through the durable outbox (:mod:`apps.integrations.services.outbox`), whose
 ``forum_thread`` and ``thread_update`` modes this module is the producer for.
 
@@ -25,9 +25,7 @@ from datetime import date, timedelta
 
 from django.conf import settings
 from django.utils import timezone
-
-from apps.content import announce_facts, usability
-from apps.content.models import (
+from tools.retrieval.models import (
     Announcement,
     AnnouncementNudge,
     AnnouncementPost,
@@ -36,6 +34,8 @@ from apps.content.models import (
     ClosingSoonPost,
     ContentItem,
 )
+
+from apps.content import announce_facts, usability
 from apps.integrations.services import outbox, resolve
 
 GOLD, SAGE, MOSS, BARK, ALERT = 0xC9A35A, 0x8DA66F, 0x5E7A3E, 0x8A6E4B, 0xB5523B

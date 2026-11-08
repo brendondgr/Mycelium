@@ -13,6 +13,8 @@ first and the starved theme's best paper nowhere near the top.
 
 import uuid
 
+from tools.retrieval.models import ContentItem
+
 from apps.content.fusion import (
     ClusteredHit,
     SpreadPolicy,
@@ -23,7 +25,6 @@ from apps.content.fusion import (
     mmr_clusters,
     quota_clusters,
 )
-from apps.content.models import ContentItem
 
 
 def _hit(name: str, per_cluster: dict[str, float]) -> ClusteredHit:

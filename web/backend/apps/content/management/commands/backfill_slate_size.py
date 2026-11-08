@@ -14,8 +14,8 @@ count it just derived from the rows as they stand.
 from collections import Counter, defaultdict
 
 from django.core.management.base import BaseCommand
+from tools.retrieval.models import RelevanceScore
 
-from apps.content.models import RelevanceScore
 from apps.content.slates import cluster_entries
 
 #: The four fields a `RelevanceScore` can hang off; a row uses exactly one.

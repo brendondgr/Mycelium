@@ -27,6 +27,8 @@ def test_the_rules_catch_what_they_claim_to():
     )
     # ok_dependent declares ok_leaf and imports only its read module: clean.
     assert "ok_dependent" not in problems
+    # Locating the repository by counting parents breaks when a tool moves.
+    assert "forbidden_import/paths.py: locates the repository" in problems
 
 
 def test_internal_module_of_a_dependency_is_rejected(tmp_path):

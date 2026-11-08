@@ -12,8 +12,8 @@ scraped conference title from pinging a whole guild.
 from __future__ import annotations
 
 import pytest
+from tools.retrieval.models import ReminderMention, ReminderSubscription
 
-from apps.content.models import ReminderMention, ReminderSubscription
 from apps.content.reminders_discord import _resolve_mentions, reminder_embed
 from apps.integrations.services.discord_api import create_message
 

@@ -3,9 +3,9 @@
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
+from tools.retrieval.models import CollectionItem, ContentItem
 
 from apps.accounts.models import Department, Lab, LabMembership
-from apps.content.models import CollectionItem, ContentItem
 from apps.research.models import Project, ProjectMember
 
 

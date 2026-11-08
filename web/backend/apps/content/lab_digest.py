@@ -39,11 +39,11 @@ from pathlib import Path
 
 from django.conf import settings
 from django.utils import timezone
+from tools.retrieval.models import DailyBriefing
 
 from apps.content import delivery, discord_embeds
 from apps.content.daily_report import ReportData, compile_report_for_lab
 from apps.content.daily_report_pdf import render_report_pdf
-from apps.content.models import DailyBriefing
 from apps.integrations.services import outbox, resolve
 
 logger = logging.getLogger(__name__)

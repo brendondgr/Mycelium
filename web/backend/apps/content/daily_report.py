@@ -34,11 +34,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from django.utils import timezone
+from tools.retrieval.models import DailyBriefing, RelevanceScore, SavedOpportunity
 
 from apps.content import briefing
 from apps.content.briefing_sections import SECTION_NOUN, apply_narrative
 from apps.content.fellowship_bands import OPEN as OPEN_BAND
-from apps.content.models import DailyBriefing, RelevanceScore, SavedOpportunity
 from apps.content.report_stats import (
     DEFAULT_DEADLINE_WINDOW_DAYS,
     ReportStats,
@@ -90,7 +90,7 @@ class ReportItem:
     deadline_date: str
     #: This item entered the reader's slate on this run — the report's "new" badge.
     is_new: bool
-    #: The underlying :class:`~apps.content.models.ContentItem` id, as a string.
+    #: The underlying :class:`~tools.retrieval.models.ContentItem` id, as a string.
     #: Carried so a surface that needs to join back — the deadline horizon, a
     #: reader's saves — can do it without re-reading the score rows the report was
     #: already built from. Defaults to empty for the hand-built sample items,
@@ -332,7 +332,7 @@ def _source_line(content_type: str, meta: dict) -> str:
         return ""
     if content_type == "conference":
         # ``place_text`` (not ``location``) since plan Phase 3: the open collector's
-        # mapper (``apps.scraper.collect.mapping.map_conference``) never writes a
+        # mapper (``tools.retrieval.collect.mapping.map_conference``) never writes a
         # "location" key — that was Pivot's field name, carried in ``pivot/records.py``
         # off "Conference Location". The collector's equivalent free-text venue
         # string is ``place_text``; reading the old key here silently dropped the

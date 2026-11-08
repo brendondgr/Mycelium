@@ -19,13 +19,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.utils import timezone
-
-from apps.accounts.models import LabMembership
-from apps.accounts.permissions import (
-    user_can_edit_lab_profile,
-    user_has_lab_access,
-)
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     ReminderFire,
@@ -33,6 +27,12 @@ from apps.content.models import (
     ReminderOffset,
     ReminderSubscription,
     SavedOpportunity,
+)
+
+from apps.accounts.models import LabMembership
+from apps.accounts.permissions import (
+    user_can_edit_lab_profile,
+    user_has_lab_access,
 )
 from apps.content.reminder_access import (
     lab_reminder_access,

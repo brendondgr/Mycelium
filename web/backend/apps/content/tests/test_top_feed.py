@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.content import top_feed
-from apps.content.models import ContentItem, RelevanceScore
 from apps.content.opportunities import _persist as persist_opportunities
 from apps.content.pipeline import _persist as persist_papers
 

@@ -492,7 +492,7 @@ silently inherits whatever is wrong at this layer.
 
 ## The re-run rule
 
-Any change to `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, or
+Any change to `tools/retrieval/index.py`, `tools/retrieval/lexical.py`, `fusion.py`, `ranking.py`, or
 `pipeline.py`'s pool construction must be accompanied by a fresh evaluation run,
 with the before/after numbers in the changelog entry **and an experiment folder
 recording them**:

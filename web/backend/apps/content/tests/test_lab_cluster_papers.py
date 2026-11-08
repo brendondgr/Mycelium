@@ -21,11 +21,11 @@ import math
 import pytest
 from django.contrib.auth.models import User
 from django.db import connection
+from tools.retrieval import embeddings
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.accounts.models import Lab
-from apps.content import embeddings
 from apps.content.fusion import ClusteredHit, top_per_cluster
-from apps.content.models import ContentItem, RelevanceScore
 from apps.content.pipeline import recommend_for_lab, recommend_for_user
 from apps.content.tests.entitle import entitle_lab, entitle_user
 

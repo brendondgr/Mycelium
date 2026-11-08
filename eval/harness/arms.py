@@ -58,7 +58,7 @@ def bm25_only(
     **_: Any,
 ) -> Ranking:
     """Production BM25 over the whole corpus. No embeddings involved."""
-    from apps.content.lexical import build_bm25_index, rank_bm25_over
+    from tools.retrieval.lexical import build_bm25_index, rank_bm25_over
 
     log(f"building BM25 index over {len(docs)} docs …")
     index = build_bm25_index(docs)
@@ -83,7 +83,7 @@ def dense_only(
     **_: Any,
 ) -> Ranking:
     """The vector channel alone, through the same index production would use."""
-    from apps.content import embeddings
+    from tools.retrieval import embeddings
 
     ranking: Ranking = {}
     for i, (query_id, query_text) in enumerate(queries, start=1):
@@ -146,9 +146,9 @@ def fusion_union_pool(
     uses the identical `fuse_interest` call, changing only which candidates are in
     the pool.
     """
-    from apps.content import embeddings
     from apps.content.fusion import fuse_interest
-    from apps.content.lexical import build_bm25_index, rank_bm25_over
+    from tools.retrieval import embeddings
+    from tools.retrieval.lexical import build_bm25_index, rank_bm25_over
 
     log(f"building corpus-wide BM25 index over {len(docs)} docs …")
     corpus_index = build_bm25_index(docs)

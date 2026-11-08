@@ -15,12 +15,12 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from django.utils import timezone
-
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     Notification,
     ReminderSubscription,
 )
+
 from apps.content.reminders import _KIND_LABEL, recipients
 
 # How far back a rebuild's changes stay announceable (the daily run stamps "now").

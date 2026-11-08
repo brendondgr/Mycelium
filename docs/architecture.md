@@ -21,7 +21,7 @@ at the repository root, and all implementation and install state lives under
 | Background work | Celery 5 + Beat | `worker` / `beat` services |
 | Relational store | PostgreSQL 17 + pgvector | `postgres` service |
 | Cache / broker / job state | Redis 8 | `redis` service |
-| Embeddings | fastembed / ONNX Runtime (`BAAI/bge-small-en-v1.5`), CPU or CUDA | `apps/scraper/embedding.py` |
+| Embeddings | fastembed / ONNX Runtime (`BAAI/bge-small-en-v1.5`), CPU or CUDA | `tools/retrieval/embedding.py` |
 | LLM | OpenAI-compatible endpoint (self-hosted vLLM is the reference target) | `apps/core/llm.py` |
 | Decision model | TypeSafe System One (`jev-1.13.0`, remote). With `RERANK_METHOD=typesafe` it re-orders the top window of every theme's slate, one (theme, item) question per call, for paid plans; the local stack still does retrieval and the pool. Sends each target's profile text and the candidate's public text off-host per pair | `apps/core/systemone.py`, `apps/content/typesafe_rerank.py` |
 | Edge gateway | Nginx, single origin | `web/infra/nginx/` |
@@ -48,7 +48,6 @@ mycelium/
 │   ├── compose.gpu.yaml           # GPU override for the embedding containers
 │   ├── setup/                     # create_admin.py, bootstrap.py (`make setup`)
 │   ├── nightly/                   # manual_all.py (the nightly run), manual_mylo.py, per-stage runners
-│   ├── scrapers/                  # scrape_fellowships.py, grants/ (dormant Grants.gov/NIH/NSF clients)
 │   ├── systemd/                   # unit templates installed by `mycelium install-service`
 │   ├── loadtest/                  # onboarding load test
 │   └── research/                  # research-record tooling behind `make validate-research`
@@ -100,6 +99,10 @@ The universal `[tools]` section sits alongside one `[tools.<name>]` section per
 installed tool. A tool's keys keep their old environment-variable names and are
 published under their old Django setting names while the tool is loaded.
 
+| Tool | Depends on | Core | Responsibility |
+|---|---|---|---|
+| `retrieval` (`tools/retrieval/`, Django label `content`) | — | yes | The grounded corpus, knowing nothing about people: OpenAlex / PubMed / Semantic Scholar paper sources with a scan window and cross-source dedup, the open-source grants/conferences collector (`collect/`, pure HTTP, in-container), the Illinois Fellowship Finder scraper + ingest (`fellowships/`; the host-side Playwright entry is `host/scrape_fellowships.py`), the fellowship eligibility rule engine (`eligibility/`), the device-aware embedder, the external DOI/arXiv/URL resolver, `ContentItem` and its deadline projection, liveness, duplicate merging (publishing `retrieval.items_merging` so each owner repoints its own rows), the pgvector index and BM25 (`index.py`, `lexical.py`, the `Retrievable`/`VectorIndex` protocols), and corpus search. It keeps the `content` app label because the corpus tables and their migration history were created under it and the platform's `collab` and `knowledge` migrations depend on that history |
+
 The folder guide is [`tools/README.md`](../tools/README.md); agent rules are in
 [`skills/tools.md`](skills/tools.md).
 
@@ -129,7 +132,7 @@ Single-origin routing through Nginx at `http://localhost:11050`:
 **Why the nightly run is split across host and container.** `ops/nightly/manual_all.py` runs
 on the host but executes almost every stage *inside* the backend container, where
 the database and the PDF renderer are. Exactly one stage is genuinely host-bound:
-the Illinois Fellowship Finder scrape (`ops/scrapers/scrape_fellowships.py`), which drives
+the Illinois Fellowship Finder scrape (`tools/retrieval/host/scrape_fellowships.py`), which drives
 Playwright the container does not carry. The grants/conferences collector is pure
 HTTP and runs in-container like everything else. A third stage, the weekly dblp
 venue-registry refresh (`refresh_dblp_registry`), is also in-container but sits on
@@ -169,7 +172,6 @@ they never stop the run, and both do nothing while
 | `knowledge` | The knowledge graph, in Postgres: `Concept`s (one idea — a problem, method, setting, or research area — independent of who holds it) and `Edge`s from a person, project, lab, work, or content item to a concept, each carrying its **tier** — `declared` (a profile or a project's stated state), `demonstrated` (the person's papers, plan CN-02), or `conversational` (ambient understanding, pending until the person confirms it). Declared profiles and projects are mirrored in on save (a queued task) and reconciled by a 04:15 Beat sweep; nothing writes back to a profile. A model-free linker resolves wordings to concepts by alias, then embedding (cosine ≥ `KNOWLEDGE_MERGE_COSINE`), then minting; concepts minted from a private source stay in their owner's scope and reach the shared vocabulary only by promotion under a shared source's wording. People's own imported papers are read once each (`works.py`: a sentence and short terms per facet, a field-neutral restatement of the method, a vector per facet) and become `demonstrated` edges per work and rolled up per person (`demonstrated.py`) — on import and in a capped nightly step; they never shape the person's own ranking. Read through `knowledge/read.py`, whose functions each fix the tiers they may return — `discoverable_edges` can never return conversation — and written through `knowledge/service.py`; an AST test holds everything else behind the two doors. Depends on `accounts`, `research`, and the corpus embedder; nothing above it |
 | `collab` | Collaboration matching on the knowledge core. So far: a funding call's **requirement slots** (problem, method, data, or a partner role; required or not), read once per call text apart from its verified extraction, and the **team-fit line** — which slots the reader, or their lab's stated profiles, already cover — stored on each grant score at scoring time and shown on grant cards. Reads the knowledge core only through `knowledge/read.py`'s functions that cannot return conversation (AST-enforced). `team_gap` reads required slots once they exist. **Being findable** is off by default: a person chooses an audience (institution, country, anywhere) judged on the institution their *verified* email's domain belongs to in the affiliation directory — a personal address can be neither found nor search, and no seeker looks past their own country — it lapses after six months, a person is shown to at most ten distinct seekers a week, and a preview shows exactly what a seeker would see. **Finding collaborators** (Q4) runs only when a seeker asks, from a call, a project or their own words: a hard gate (open, mutually visible, not a lab-mate or co-author, under the cap), four lanes (a method from another field, the same problem by another approach, the data, and in one's own field) filled slot by slot, and a model rerank that can drop a person and never add one; results are coarse pointers from declared or paper evidence only. The **co-authorship graph** (`knowledge.Coauthorship`, rebuilt by the nightly sweep) gives introduction paths through consenting people, "outside my network", and team formation — kept in Postgres (research decision D-007). The collaboration daily task runs six **harm checks** and logs an error on any non-zero; `run_analytics` carries the counts |
 | `adminpanel` | Platform-admin API (staff/superuser only): user and lab rosters, subscription assignment, watch quotas. Every write records an `accounts.AuditEvent`. Mounted at `/api/admin/` |
-| `scraper` | Ingestion: OpenAlex / PubMed / Semantic Scholar paper sources with a scan window and cross-source dedup, the open-source grants/conferences collector (`collect/`, pure HTTP, in-container), the Illinois Fellowship Finder scraper + ingest (`fellowships/`, host-side Playwright), the fellowship eligibility rule engine (`eligibility/`), the device-aware embedder, and the external DOI/arXiv/URL resolver |
 
 There is no `graph`, `reports`, or `planner` app. Reporting lives in `content`;
 query-planning logic lives in `accounts/intake/agent.py` and `core/llm.py`; the
@@ -239,7 +241,7 @@ graph phase has not started.
 | Reserved (unused) | `NEO4J_*` (the co-authorship graph stays in Postgres, D-007), `S3_*` |
 
 `COLLECT_CONTACT` is the one variable that does **not** go through django-environ:
-`apps/scraper/collect/core/http.py` reads it from `os.environ` **at import time**,
+`tools/retrieval/collect/core/http.py` reads it from `os.environ` **at import time**,
 because it names the address in the outbound `User-Agent` every public source sees.
 Setting it after Django has loaded has no effect, and — like the run-analytics
 paths — a bare `KEY=` in an env_file arrives as an empty string and beats the
@@ -419,7 +421,7 @@ detail. The run still announces itself either way.
 
 ## The ranking-stack seams
 
-`apps/content/protocols.py` declares two structural protocols so the ranking
+`tools/retrieval/protocols.py` declares two structural protocols so the ranking
 stack can run without a database — which is what lets an offline harness measure
 the *production* code instead of a copy of it.
 
@@ -464,7 +466,7 @@ of first requests can race the download):
 
 ```bash
 docker compose exec -T backend uv run --project web/backend python -c \
-  "from apps.scraper.embedding import get_default_embedder; get_default_embedder()(['warm up'])"
+  "from tools.retrieval.embedding import get_default_embedder; get_default_embedder()(['warm up'])"
 ```
 
 GPU embedding needs the GPU flavour of fastembed, because plain `fastembed`

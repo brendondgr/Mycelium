@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 
 from django.conf import settings
 
-from .fusion import ClusteredHit
+from apps.content.fusion import ClusteredHit
 
 #: Fraction of a theme's own best score a candidate must reach to be admitted by
 #: the relative floor. Half is deliberately generous — the hard minimum below is

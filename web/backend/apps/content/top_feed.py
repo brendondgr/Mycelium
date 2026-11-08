@@ -15,7 +15,7 @@ already being shown. It also makes the report react to the *reader* — change a
 research focus, a cluster, or a watch term and the slate re-ranks, so whatever
 that change promotes is correctly reported as new, with no separate machinery.
 
-Three signals carry the slate on each :class:`~apps.content.models.RelevanceScore`:
+Three signals carry the slate on each :class:`~tools.retrieval.models.RelevanceScore`:
 
 ``top_rank``
     1-based position in the slate, or absent when the item is outside it. Presence
@@ -39,8 +39,7 @@ from collections.abc import Iterable, Sequence
 
 from django.conf import settings
 from django.utils import timezone
-
-from .models import RelevanceScore
+from tools.retrieval.models import RelevanceScore
 
 #: How many items make up a category's slate. The daily report's "Top 25".
 TOP_N = 25

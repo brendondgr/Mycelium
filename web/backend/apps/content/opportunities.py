@@ -24,36 +24,36 @@ from dataclasses import asdict, dataclass, field
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, RelevanceScore
 
-from . import typesafe_rerank
-from .clustering import cluster_interests, cluster_labels
-from .digest_selection import split_by_floor
-from .fellowship_bands import split as fellowship_split
-from .fusion import DEFAULT_BETA
-from .interests_query import SearchInterest, search_interests
-from .models import ContentItem, RelevanceScore
-from .opportunity_llm import (
+from apps.content import typesafe_rerank
+from apps.content.clustering import cluster_interests, cluster_labels
+from apps.content.digest_selection import split_by_floor
+from apps.content.fellowship_bands import split as fellowship_split
+from apps.content.fusion import DEFAULT_BETA
+from apps.content.interests_query import SearchInterest, search_interests
+from apps.content.opportunity_llm import (
     generate_fellowship_suggestions,
     generate_opportunity_suggestions,
     load_prior_llm_verdicts,
 )
-from .pinning import compute_pins
-from .pipeline import (
+from apps.content.pinning import compute_pins
+from apps.content.pipeline import (
     PersistRow,
     fuse_clusters_pool,
     fuse_interests_pool,
 )
-from .slates import (
+from apps.content.slates import (
     compute_cluster_slates,
     merge_cluster_signals,
     prior_cluster_slates,
     prune_cluster_slates,
     slate_depth,
 )
-from .targets import MatchTarget, target_for_user
-from .theme_run import _stored_writeups, carry_stored_writeups
-from .top_feed import compute_top, merge_top_signals, prior_top_ids, top_n
-from .verdicts import derive_verdict
+from apps.content.targets import MatchTarget, target_for_user
+from apps.content.theme_run import _stored_writeups, carry_stored_writeups
+from apps.content.top_feed import compute_top, merge_top_signals, prior_top_ids, top_n
+from apps.content.verdicts import derive_verdict
 
 logger = logging.getLogger(__name__)
 
@@ -323,7 +323,7 @@ def _prepare_fellowship_match(
             username, "fellowships", "no_profile", note="user has no profile"
         )
 
-    from .fellowships import eligibility_from_profile
+    from apps.content.fellowships import eligibility_from_profile
 
     elig = eligibility_from_profile(profile)
 
@@ -484,7 +484,7 @@ def _score_fellowship_job(
     slice. A missing/flaky model degrades to the rule engine's own reason
     (``source="rules"``).
     """
-    from .fellowships import match_fellowships
+    from apps.content.fellowships import match_fellowships
 
     ranked = match_fellowships(
         job.items,
@@ -856,9 +856,9 @@ def _prepare_match(
     cluster_slates: dict = {}
     theme_plan = None
     if slate_groups:
-        from .pipeline import _profile_prompt_text
-        from .slates import compute_cluster_slates, prior_cluster_slates
-        from .theme_run import plan_theme_writeups
+        from apps.content.pipeline import _profile_prompt_text
+        from apps.content.slates import compute_cluster_slates, prior_cluster_slates
+        from apps.content.theme_run import plan_theme_writeups
 
         # The RERANK_METHOD switch: re-order each theme's top window by the
         # decision model before the slate is cut (see apps.content.typesafe_rerank).
@@ -930,7 +930,7 @@ def _score_job(
     on the job for the finalize phase to fold in and persist.
     """
     if job.theme_plan is not None:
-        from .theme_run import execute_theme_plan
+        from apps.content.theme_run import execute_theme_plan
 
         job.theme_answers = execute_theme_plan(job.theme_plan, complete=complete)
         return []
@@ -1192,7 +1192,7 @@ def match_fellowships_for_target(
 
     from django.utils import timezone as tz
 
-    from .fellowships import match_fellowships
+    from apps.content.fellowships import match_fellowships
 
     today_final = today or tz.now().date().isoformat()
     scored_ids: list = []
@@ -1313,14 +1313,14 @@ def run_opportunities_for_target(
 
 def run_opportunities_for_lab(lab, **kwargs) -> list[OppRunResult]:
     """Match grants + conferences (+ fellowships) for a lab's aggregate interests."""
-    from .targets import target_for_lab
+    from apps.content.targets import target_for_lab
 
     return run_opportunities_for_target(target_for_lab(lab), **kwargs)
 
 
 def run_opportunities_for_project(project, **kwargs) -> list[OppRunResult]:
     """Match grants + conferences for one project's declared focus."""
-    from .targets import target_for_project
+    from apps.content.targets import target_for_project
 
     return run_opportunities_for_target(target_for_project(project), **kwargs)
 
@@ -1358,7 +1358,7 @@ def run_daily_opportunities_batch(
     refresh of the Pivot corpus when ``ingest`` was true; that source is
     retired. The open collector that replaces it (D6) is a scheduled,
     full-corpus crawl across a dozen HTTP adapters plus a SPARQL registry
-    lookup (``apps.scraper.collect``, wired into the nightly chain as its own
+    lookup (``tools.retrieval.collect``, wired into the nightly chain as its own
     stage — plan Phase 12, ``manual_all.py``'s ``collect_opportunities``
     stage) — the right shape for a scheduled crawl, not for a per-request call
     this function also serves (a Celery task dispatch, a ``--user`` CLI run, a
@@ -1410,7 +1410,7 @@ def run_daily_opportunities_batch(
     # type (grant/conference/fellowship) regardless of source.
     ingest_summary: dict = {}
     if prune:
-        from apps.scraper.collect.ingest import prune_expired
+        from tools.retrieval.collect.ingest import prune_expired
 
         ingest_summary = {"pruned": prune_expired(today=today, log=log)}
 
@@ -1503,7 +1503,7 @@ def run_daily_opportunities_batch(
     # Lab + project targets: grants + conferences only (no fellowships here). A
     # project only runs the areas it has opted into (``goals.watch_categories``);
     # a lab runs them all (its own watch config gates upstream).
-    from .targets import (
+    from apps.content.targets import (
         project_watch_categories,
         target_for_department,
         target_for_lab,
@@ -1628,7 +1628,7 @@ def run_daily_opportunities_batch(
     # new-fellowship count on any given day is tiny), keeping this out of the
     # eligibility-coupled pool above.
     if "fellowships" in areas and (labs or projects or departments):
-        from .targets import (
+        from apps.content.targets import (
             project_watch_categories,
             target_for_department,
             target_for_lab,
@@ -1665,8 +1665,8 @@ def run_daily_opportunities_batch(
     # Phase 3 — who is each item for? Re-annotated over the whole feed (papers
     # included: the paper pipeline ran earlier in the daily chain), never fatal.
     if persist and (labs or projects):
-        from .member_fit import annotate_for_target
-        from .targets import target_for_lab, target_for_project
+        from apps.content.member_fit import annotate_for_target
+        from apps.content.targets import target_for_lab, target_for_project
 
         for target in [
             *(target_for_lab(lab) for lab in labs),
@@ -1679,8 +1679,7 @@ def run_daily_opportunities_batch(
     # model; never fatal.
     if persist and "grants" in areas:
         from apps.collab.team_fit import annotate_target
-
-        from .targets import target_for_lab, target_for_project
+        from apps.content.targets import target_for_lab, target_for_project
 
         for target in [
             *(target_for_user(user) for user in users if user.id in grant_users),
@@ -1803,9 +1802,9 @@ def _finalize_clustered_match(
     :func:`_retire` keeps that distinction by never clearing a row it did not
     re-surface into a fresh entrant.
     """
-    from .comprehension import store_comprehensions
-    from .pipeline import cluster_suggestions
-    from .theme_run import collect_theme_result, execute_theme_plan
+    from apps.content.comprehension import store_comprehensions
+    from apps.content.pipeline import cluster_suggestions
+    from apps.content.theme_run import collect_theme_result, execute_theme_plan
 
     plan = job.theme_plan
     answers = job.theme_answers or (

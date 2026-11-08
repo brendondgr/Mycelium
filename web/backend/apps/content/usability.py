@@ -26,8 +26,8 @@ from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import date
 
-from apps.content.deadlines_projection import deadline_specs_for
-from apps.content.models import ContentDeadline, ContentItem, SavedOpportunity
+from tools.retrieval.deadlines_projection import deadline_specs_for
+from tools.retrieval.models import ContentDeadline, ContentItem, SavedOpportunity
 
 OK, WARN, BLOCK, UNKNOWN = "ok", "warn", "block", "unknown"
 NO_SUBMISSION_DEADLINE = "No submission deadline published yet"

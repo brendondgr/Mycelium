@@ -18,8 +18,9 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from datetime import date, timedelta
 
-from .models import ContentItem
-from .pinning import DEFAULT_NEW_WINDOW_DAYS, first_seen_date
+from tools.retrieval.models import ContentItem
+
+from apps.content.pinning import DEFAULT_NEW_WINDOW_DAYS, first_seen_date
 
 
 def priority_first[T](

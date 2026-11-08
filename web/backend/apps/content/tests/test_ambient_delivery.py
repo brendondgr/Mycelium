@@ -8,9 +8,9 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.utils import timezone
+from tools.retrieval.models import Notification
 
 from apps.ambient.models import PendingSuggestion
-from apps.content.models import Notification
 from apps.integrations.models import DiscordOutboxMessage
 
 

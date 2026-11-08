@@ -5,11 +5,11 @@ back to the verified extraction until then.
 """
 
 import pytest
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.collab import team_fit
 from apps.collab.models import RequirementSlots
 from apps.content.matchers import team_gap
-from apps.content.models import ContentItem, RelevanceScore
 from apps.content.targets import target_for_lab, target_for_user
 
 

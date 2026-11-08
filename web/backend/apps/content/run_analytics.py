@@ -462,7 +462,7 @@ def collect_coverage() -> Coverage:
 
 def collect_discovery(day: date) -> Discovery:
     """Content items first created on ``day``, by category."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     rows = (
         ContentItem.objects.filter(created_at__date=day)
@@ -479,7 +479,7 @@ def collect_discovery(day: date) -> Discovery:
 
 def collect_recommendations(day: date) -> Recommendations:
     """Relevance scores written on ``day``, by category and by target kind."""
-    from apps.content.models import MemberSuggestion, RelevanceScore
+    from tools.retrieval.models import MemberSuggestion, RelevanceScore
 
     scores = RelevanceScore.objects.filter(created_at__date=day)
 
@@ -529,7 +529,8 @@ def collect_llm_usage(day: date) -> LLMUsage:
 
 def collect_delivery(day: date) -> Delivery:
     """Briefings written on ``day``, and how far their Discord messages got."""
-    from apps.content.models import DailyBriefing
+    from tools.retrieval.models import DailyBriefing
+
     from apps.integrations.models import DiscordOutboxMessage
 
     briefings = DailyBriefing.objects.filter(generated_on=day)
@@ -594,8 +595,9 @@ def collect_delivery(day: date) -> Delivery:
 
 def collect_telemetry(day: date, *, days: int = TREND_DAYS) -> DeliveryTelemetry:
     """What people chose, and when they read what arrived (plan 8.3)."""
+    from tools.retrieval.models import RelevanceEvent
+
     from apps.accounts.models import LabWatchPreference, WatchCadence, WatchPreference
-    from apps.content.models import RelevanceEvent
     from apps.integrations.models import DiscordIdentity
 
     telemetry = DeliveryTelemetry(
@@ -646,7 +648,8 @@ def collect_trend(day: date, *, days: int = TREND_DAYS) -> list[TrendPoint]:
     GROUP BY per model, because the window is a week and the readability is worth
     more here than the round trip.
     """
-    from apps.content.models import ContentItem, RelevanceScore
+    from tools.retrieval.models import ContentItem, RelevanceScore
+
     from apps.core.models import LLMUsageDaily
 
     start = day - timedelta(days=max(0, days - 1))
@@ -699,8 +702,9 @@ def collect_listening(day: date) -> Listening:
     Read through ``apps.ambient.read`` — the ledger's one door for the rest of
     the backend — so this module never touches an ambient model directly.
     """
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.ambient.read import listening_totals, understanding_totals
-    from apps.content.models import ReflectionProposal
 
     totals = listening_totals(day)
     understood = understanding_totals(day)

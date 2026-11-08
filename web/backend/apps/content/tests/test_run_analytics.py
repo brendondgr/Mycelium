@@ -13,11 +13,11 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
 
 from apps.accounts.models import Department, Lab, LabMembership
 from apps.billing.models import Subscription, Tier
 from apps.content.analytics_report_pdf import render_analytics_pdf
-from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.content.run_analytics import (
     collect_delivery,
     collect_discovery,

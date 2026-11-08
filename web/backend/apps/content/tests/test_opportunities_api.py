@@ -10,8 +10,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
-
-from apps.content.models import ContentItem, RelevanceScore, SavedOpportunity
+from tools.retrieval.models import ContentItem, RelevanceScore, SavedOpportunity
 
 
 @pytest.fixture
@@ -45,7 +44,7 @@ def _conference(cid, title, *, deadline="2026-12-01", prune_after=None):
 
     ``prune_after`` defaults to the deadline because ``map_conference`` always
     writes the key — a conference with none at all is the dateless case
-    :mod:`apps.content.liveness` deliberately hides, so a fixture omitting it
+    :mod:`tools.retrieval.liveness` deliberately hides, so a fixture omitting it
     would silently test the wrong thing.
     """
     return ContentItem.objects.create(
@@ -235,7 +234,7 @@ def test_saved_deadline_survives_content_prune(client: APIClient):
 def test_notifications_serve_the_notification_model(client: APIClient):
     # Reminders rework (D-2/D-3): the bell reads Notification rows, and *saving*
     # no longer produces an alert — a reminder created from a save does.
-    from apps.content.models import Notification
+    from tools.retrieval.models import Notification
 
     user = User.objects.create_user("u", password="x")
     client.force_authenticate(user)

@@ -23,7 +23,7 @@ Three properties this module exists to preserve:
 Storage
 -------
 
-There is one :class:`~apps.content.models.RelevanceScore` per (item, target), so
+There is one :class:`~tools.retrieval.models.RelevanceScore` per (item, target), so
 the per-cluster slate lives inside ``signals``::
 
     signals["cluster_slates"] = {
@@ -78,8 +78,7 @@ from collections.abc import Iterable, Mapping, Sequence
 
 from django.conf import settings
 from django.utils import timezone
-
-from .models import ContentItem, RelevanceScore
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 #: How deep each category's per-cluster slate runs — the definition of "new".
 #: Papers are a flow (rolling window over arrivals); opportunities are a stock of

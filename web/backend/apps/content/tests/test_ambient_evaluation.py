@@ -7,10 +7,10 @@ from io import StringIO
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.utils import timezone
+from tools.retrieval.models import DailyBriefing
 
 from apps.accounts.models import Lab
 from apps.ambient.models import AppliedChange
-from apps.content.models import DailyBriefing
 
 
 def test_the_command_reads_the_lab_reports_and_catches_a_leak(db):

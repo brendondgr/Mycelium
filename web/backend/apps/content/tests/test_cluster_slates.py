@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval.models import ContentItem, ItemComprehension, RelevanceScore
 
 from apps.content.admission import admit
 from apps.content.cluster_fit import (
@@ -26,7 +27,6 @@ from apps.content.cluster_fit import (
 from apps.content.clustering import Cluster
 from apps.content.comprehension import PROMPT_VERSION, comprehend, source_fingerprint
 from apps.content.fusion import ClusteredHit
-from apps.content.models import ContentItem, ItemComprehension, RelevanceScore
 from apps.content.slates import (
     bridge_cluster_ids,
     compute_cluster_slates,

@@ -32,8 +32,8 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 
 from django.conf import settings
+from tools.retrieval.embeddings import embed_texts
 
-from apps.content.embeddings import embed_texts
 from apps.research.state_extract import grounding_failures
 
 from .linker import normalise

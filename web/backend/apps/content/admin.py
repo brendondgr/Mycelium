@@ -1,6 +1,5 @@
 from django.contrib import admin
-
-from .models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     IgnoredItem,

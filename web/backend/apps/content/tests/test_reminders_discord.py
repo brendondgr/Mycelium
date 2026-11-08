@@ -17,14 +17,14 @@ from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     Notification,
     ReminderFire,
     SavedOpportunity,
 )
+
 from apps.content.reminders import create_subscription
 from apps.content.reminders_discord import escape_mentions, send_personal_dm
 from apps.content.reminders_tick import run_tick

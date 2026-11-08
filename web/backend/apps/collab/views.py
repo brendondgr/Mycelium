@@ -7,8 +7,7 @@ from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from apps.content.models import ContentItem
+from tools.retrieval.models import ContentItem
 
 from . import consent
 from .models import (

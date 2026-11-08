@@ -15,6 +15,7 @@ import json
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from tools.retrieval.models import Notification
 
 from apps.ambient.read import (
     changes_to_announce,
@@ -26,7 +27,6 @@ from apps.ambient.read import (
     transcripts_to_announce,
 )
 from apps.content.delivery import send_time
-from apps.content.models import Notification
 from apps.integrations.services.outbox import enqueue_dm
 
 QUESTION_TITLES = {

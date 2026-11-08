@@ -64,7 +64,7 @@ the window if a late starter is still processing), then all fake users are delet
    ```bash
    docker compose exec -T backend uv run --project web/backend \
      python web/backend/manage.py shell -c \
-     "from apps.scraper.embedding import get_default_embedder; get_default_embedder()(['warm up'])"
+     "from tools.retrieval.embedding import get_default_embedder; get_default_embedder()(['warm up'])"
    ```
 
 ## Running

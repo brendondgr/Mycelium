@@ -389,7 +389,7 @@ def generate_weekly_for_lab(lab, *, complete=None, today: date | None = None):
 
 
 def _persist(packet, owner: dict, *, complete, today: date):
-    from apps.content.models import DailyBriefing
+    from tools.retrieval.models import DailyBriefing
 
     body, record, origin = compose_weekly(packet, complete=complete)
     briefing, _created = DailyBriefing.objects.update_or_create(

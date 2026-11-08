@@ -10,15 +10,15 @@ from datetime import UTC, date, datetime
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.accounts.models import Lab, LabMembership
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     Notification,
     ReminderFire,
     SavedOpportunity,
 )
+
+from apps.accounts.models import Lab, LabMembership
 from apps.content.reminders import create_subscription
 from apps.content.reminders_discord import (
     list_postable_channels,

@@ -15,14 +15,14 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
-
-from apps.accounts.models import Lab, LabMembership
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     ReminderSubscription,
     SavedOpportunity,
 )
+
+from apps.accounts.models import Lab, LabMembership
 from apps.content.tests.entitle import entitle_lab, entitle_user
 
 _Kind = SavedOpportunity.DeadlineKind

@@ -11,10 +11,7 @@ from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.accounts.models import Lab, LabMembership
-from apps.content import reminders
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     Notification,
@@ -22,6 +19,9 @@ from apps.content.models import (
     ReminderSubscription,
     SavedOpportunity,
 )
+
+from apps.accounts.models import Lab, LabMembership
+from apps.content import reminders
 from apps.content.reminders import (
     ReminderError,
     create_subscription,

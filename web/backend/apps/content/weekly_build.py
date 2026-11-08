@@ -116,8 +116,9 @@ def build_project_packet(
     seen: set,
 ) -> ProjectPacket:
     """One project's week."""
+    from tools.retrieval.models import ItemComprehension, ProjectAlert
+
     from apps.content.briefing import CATEGORY_TYPES, report_scores
-    from apps.content.models import ItemComprehension, ProjectAlert
 
     state = getattr(project, "state", None)
     packet = ProjectPacket(
@@ -243,7 +244,7 @@ def build_weekly_packet(
     means one thing in the document. Per-project numbering would make a citation
     ambiguous the moment the overview mentioned two projects in one sentence.
     """
-    from apps.content.models import ProjectItemSeen, SavedOpportunity
+    from tools.retrieval.models import ProjectItemSeen, SavedOpportunity
 
     today = today or timezone.localdate()
     start = week_start(today)
@@ -332,8 +333,9 @@ def _personal_items(
     what earned a place", not a second copy of the standing list the web already
     holds.
     """
+    from tools.retrieval.models import ItemComprehension
+
     from apps.content.briefing import CATEGORY_TYPES, report_scores
-    from apps.content.models import ItemComprehension
 
     # The **week**, not the day. A daily reports one run; this reports seven, and
     # asking the daily's "did it enter today" would make every weekly written on
@@ -384,12 +386,13 @@ def _reflect(packet, target_filter, projects, reader, today):
     the same proposals: a block naming an r4 the Projects page has never heard of
     is exactly the kind of inconsistency that makes a reader stop trusting both.
     """
-    from apps.content import reflection
-    from apps.content.models import (
+    from tools.retrieval.models import (
         IgnoredItem,
         ReflectionProposal,
         SavedOpportunity,
     )
+
+    from apps.content import reflection
 
     if not projects:
         return ""

@@ -2,9 +2,9 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from tools.retrieval.models import ContentItem, RelevanceScore, SavedOpportunity
 
 from apps.accounts.models import Lab
-from apps.content.models import ContentItem, RelevanceScore, SavedOpportunity
 from apps.research.models import Project
 
 

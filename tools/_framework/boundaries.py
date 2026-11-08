@@ -16,6 +16,7 @@ Standard library only.
 from __future__ import annotations
 
 import ast
+import re
 import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -28,6 +29,10 @@ ALLOWLIST_FILE = Path(__file__).resolve().parent / "platform_imports.txt"
 PLATFORM_ROOTS = ("web/backend", "mylo", "ops", "eval")
 _SKIP_PARTS = {"__pycache__", ".venv", "node_modules", "migrations", "sandbox"}
 _STDLIB = set(sys.stdlib_module_names) | {"__future__"}
+#: Platform code that is itself waiting to be moved into tools. A tool may use
+#: the platform freely, except this: depending on it would tie a tool to code
+#: that is about to become another tool, by the back door.
+LEGACY_PLATFORM = ("apps.content",)
 
 
 @dataclass(frozen=True)
@@ -78,8 +83,17 @@ def _owner(module: str, tool_pkg: str) -> tuple[str, str] | None:
     return rest[0], (rest[1] if len(rest) > 1 else "")
 
 
+_DEPTH_RE = re.compile(
+    r"__file__\)?(?:\.resolve\(\))?\.(?:parents\[\d+\]|parent\.parent)"
+)
+
+
 def check_tools(tools_dir: Path | None = None) -> list[str]:
-    """Rules 1–3 for every tool in ``tools_dir``."""
+    """Rules 1–3 for every tool in ``tools_dir``, plus: no tool locates the
+    repository by counting its own parent directories (``parents[N]``) — a
+    count that silently goes wrong when the tool moves. It imports
+    ``tools._framework.discovery.REPO_ROOT`` instead. Host scripts (``host/``,
+    run before anything is importable) and tests are exempt."""
     tools_dir = discovery.tools_dir() if tools_dir is None else tools_dir
     found = discovery.discover(tools_dir)
     tool_pkg = discovery.package_root(tools_dir)[1]
@@ -105,8 +119,22 @@ def check_tools(tools_dir: Path | None = None) -> list[str]:
         for path in _py_files(item.path):
             if path == tool_py:
                 continue
+            rel_parts = path.relative_to(item.path).parts
+            if rel_parts[0] not in ("host", "tests") and _DEPTH_RE.search(
+                path.read_text()
+            ):
+                problems.append(f"{_rel(path)}: locates the repository by counting "
+                                "parent directories; import REPO_ROOT from "
+                                "tools._framework.discovery")
             pkg = _module_package(path, item.path, item.package)
             for imp in imports_of(path, pkg):
+                legacy = [p for p in LEGACY_PLATFORM
+                          if imp.module == p or imp.module.startswith(p + ".")]
+                if legacy:
+                    problems.append(f"{_rel(path)}:{imp.line}: {name} imports "
+                                    f"{imp.module}, platform code still being moved "
+                                    "into tools; depend on the tool it becomes")
+                    continue
                 owner = _owner(imp.module, tool_pkg)
                 if owner is None or owner[0] == name:
                     continue

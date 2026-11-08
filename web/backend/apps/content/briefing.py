@@ -50,15 +50,15 @@ from dataclasses import dataclass, field
 from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
-
-from apps.content import briefing_sections
-from apps.content.cluster_fit import lead_sentence, stored_writeup
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentItem,
     DailyBriefing,
     IgnoredItem,
     RelevanceScore,
 )
+
+from apps.content import briefing_sections
+from apps.content.cluster_fit import lead_sentence, stored_writeup
 from apps.content.slates import (
     cluster_entries,
     cluster_rank,
@@ -346,7 +346,7 @@ def hidden_lab_projects(lab) -> int:
 def _deadline_rounds(meta: dict) -> list[dict]:
     """Every dated round on a grant or conference, normalised to one shape.
 
-    The mapper (:mod:`apps.scraper.collect.mapping`, plan Phase 3) stores a
+    The mapper (:mod:`tools.retrieval.collect.mapping`, plan Phase 3) stores a
     grant's full round history and a conference's full deadline history under
     different keys and in different shapes — the two record schemas were never
     going to agree, and forcing them to at the source would have meant lying
@@ -687,7 +687,7 @@ def _profile_text(target) -> str:
         values = _clean_list(interests.get(key))
         if values:
             bits.append(f"{label}: {', '.join(values)}")
-    from .understanding import lines as understanding_lines
+    from apps.content.understanding import lines as understanding_lines
 
     bits.extend(understanding_lines(interests))
     return "\n".join(bits)
@@ -865,7 +865,7 @@ def context_version(owner: dict, projects: list) -> str:
 
     Never raises: a report that cannot compute its version is still a report.
     """
-    from .understanding import context_version as compute
+    from apps.content.understanding import context_version as compute
 
     try:
         return compute(owner.get("user"), owner.get("lab"), projects)
@@ -880,7 +880,7 @@ def _narrative_entitled(target_filter: dict) -> bool:
     table and the listings — quieter, not broken — which is the honest rendering
     of a paid layer that is not paid for.
     """
-    from .theme_run import target_is_entitled
+    from apps.content.theme_run import target_is_entitled
 
     return target_is_entitled(target_filter)
 
@@ -921,15 +921,15 @@ def generate_briefing_for_user(
     or returns nothing usable, each prompt's deterministic markdown fallback fills
     in and ``origin`` is recorded as ``fallback``.
     """
-    from .alert_report import attention_section, block_for, open_alerts
-    from .report_stats import record_run_stats
+    from apps.content.alert_report import attention_section, block_for, open_alerts
+    from apps.content.report_stats import record_run_stats
 
     blocks = [block_for(alert) for alert in open_alerts({"target_user": user})]
     summaries = [
         (block.project_label, block.trigger_label, block.title) for block in blocks
     ]
     projects, lead = by_attention(user, report_projects_for_user(user))
-    from .weekly_changes import changed_today, with_changed_today
+    from apps.content.weekly_changes import changed_today, with_changed_today
 
     changed = changed_today(reader=user, projects=projects, is_lab=False)
     briefing = _write_briefing(
@@ -972,20 +972,20 @@ def generate_briefing_for_lab(
     shares. ``member_names`` is still resolved and passed down because
     :func:`_showcase_item` records it on the stored showcase for those surfaces.
     """
-    from .alert_report import attention_section, block_for, open_alerts
-    from .report_stats import record_run_stats
+    from apps.content.alert_report import attention_section, block_for, open_alerts
+    from apps.content.report_stats import record_run_stats
 
     blocks = [block_for(alert) for alert in open_alerts({"target_lab": lab})]
     summaries = [
         (block.project_label, block.trigger_label, block.title) for block in blocks
     ]
-    from .weekly_changes import changed_today, with_changed_today
+    from apps.content.weekly_changes import changed_today, with_changed_today
 
     shared = report_projects_for_lab(lab)
     changed = changed_today(reader=lab, projects=shared, is_lab=True)
     # With announcements live, each grant, fellowship and conference already has
     # its own thread: the report keeps papers and one line per kind (plan D6).
-    from .announce import announcements_live, report_body, report_line
+    from apps.content.announce import announcements_live, report_body, report_line
 
     announcing = announcements_live(lab)
     briefing = _write_briefing(
@@ -1032,9 +1032,8 @@ def _project_member_names(project) -> dict[str, str]:
 
 
 def _member_names(persist_kwargs: dict) -> dict[str, str]:
+    from apps.content.member_fit import scope_members
     from apps.core.people import display_name
-
-    from .member_fit import scope_members
 
     return {
         user.get_username(): display_name(user)

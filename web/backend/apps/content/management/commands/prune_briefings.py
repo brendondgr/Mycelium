@@ -18,8 +18,7 @@ from datetime import date, datetime, timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
-
-from apps.content.models import DailyBriefing
+from tools.retrieval.models import DailyBriefing
 
 
 class Command(BaseCommand):

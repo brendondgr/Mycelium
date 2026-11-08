@@ -373,8 +373,8 @@ _FRAMES = (
 
 
 def seed_corpus(topics: list[str]) -> int:
-    from apps.content.embeddings import embed_texts
-    from apps.content.models import ContentItem
+    from tools.retrieval.embeddings import embed_texts
+    from tools.retrieval.models import ContentItem
 
     ContentItem.objects.filter(source="sandbox-ambient").delete()
     rows = []
@@ -403,17 +403,17 @@ def drift(world: World, weights=(0.15, 1.0)) -> dict:
     """Declared-only against declared-plus-explorations, per person with one."""
     from django.conf import settings
     from django.contrib.auth import get_user_model
+    from tools.retrieval.index import latest_gather_date
+    from tools.retrieval.models import ContentItem
 
     from apps.content import explorations
     from apps.content.clustering import cluster_interests
     from apps.content.interests_query import search_interests
-    from apps.content.models import ContentItem
     from apps.content.pipeline import (
         DEFAULT_BETA,
         DEFAULT_POOL_PER_INTEREST,
         fuse_clusters_pool,
     )
-    from apps.content.retrieval import latest_gather_date
     from apps.content.slates import slate_depth
 
     created_on = latest_gather_date(content_type=ContentItem.Type.PAPER)

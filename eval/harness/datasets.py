@@ -2,7 +2,7 @@
 
 Two adapters, both deliberately thin:
 
-- :class:`EvalDoc` satisfies :class:`apps.content.protocols.Retrievable`, so a
+- :class:`EvalDoc` satisfies :class:`tools.retrieval.protocols.Retrievable`, so a
   LongEval document can be handed straight to `build_bm25_index`, `fuse_interest`,
   and `_build_pool` — the production functions, unmodified.
 - :func:`queries` turns a topic into the single-interest `SearchInterest` the pool
@@ -32,7 +32,7 @@ class EvalDoc:
     """One collection document, shaped as a `Retrievable`.
 
     `metadata` carries `title` and `abstract` because that is the fallback
-    `apps.content.lexical._item_text` uses when no prebuilt `search_text` is
+    `tools.retrieval.lexical._item_text` uses when no prebuilt `search_text` is
     present — which is exactly how a scraped paper looks in production.
     """
 

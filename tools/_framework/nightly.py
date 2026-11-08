@@ -36,9 +36,11 @@ PLATFORM_STAGES: tuple[Stage, ...] = (
         args=("--no-prune",),
     ),
     Stage("run_reminder_tick", "remind", "Firing due deadline reminders…"),
-    Stage("prune_opportunities", "prune", "Pruning expired opportunities…"),
     Stage(
-        "prune_briefings", "prune", "Pruning daily briefings past the retention window…"
+        "prune_briefings",
+        "prune",
+        "Pruning daily briefings past the retention window…",
+        after=("prune_opportunities",),
     ),
     Stage(
         "evaluate_project_alerts",

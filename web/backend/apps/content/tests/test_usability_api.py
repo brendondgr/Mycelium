@@ -14,9 +14,9 @@ from pathlib import Path
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.accounts.models import Lab, LabMembership, LabProfile
-from apps.content.models import ContentItem, RelevanceScore
 
 RECORDS = json.loads(
     (Path(__file__).parent / "fixtures" / "usability_records.json").read_text()

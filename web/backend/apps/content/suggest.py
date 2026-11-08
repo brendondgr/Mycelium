@@ -40,10 +40,10 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from django.utils import timezone
+from tools.retrieval.models import ContentItem
 
-from .digest_selection import priority_first
-from .models import ContentItem
-from .top_feed import top_n
+from apps.content.digest_selection import priority_first
+from apps.content.top_feed import top_n
 
 logger = logging.getLogger(__name__)
 

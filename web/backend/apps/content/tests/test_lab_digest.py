@@ -11,6 +11,7 @@ from datetime import date
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
 
 from apps.accounts.models import Lab
 from apps.content.daily_report import compile_report_for_lab
@@ -21,7 +22,6 @@ from apps.content.lab_digest import (
     queue_lab_digest,
     queue_lab_report,
 )
-from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.integrations.models import DiscordOutboxMessage
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse

@@ -17,8 +17,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from django.db.models import Q
-
-from apps.content.models import Announcement, AnnouncementPost, ContentItem
+from tools.retrieval.models import Announcement, AnnouncementPost, ContentItem
 
 _KIND_PURPOSE = {
     ContentItem.Type.GRANT: "grants",

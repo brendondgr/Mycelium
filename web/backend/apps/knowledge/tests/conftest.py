@@ -1,8 +1,7 @@
 """Fixtures shared by the knowledge-core tests."""
 
 import pytest
-
-from apps.content import embeddings
+from tools.retrieval import embeddings
 
 from .fakes import FakeEmbedder
 

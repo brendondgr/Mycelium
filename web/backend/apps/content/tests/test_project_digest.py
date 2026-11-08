@@ -2,9 +2,9 @@
 
 import pytest
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.accounts.models import Lab
-from apps.content.models import ContentItem, RelevanceScore
 from apps.content.views import _recommendations_payload
 from apps.research.models import Project
 
@@ -110,7 +110,7 @@ def test_a_conference_that_is_over_is_hidden_from_every_read_not_just_the_digest
     conference: the full feed showed passed venues until the nightly prune
     caught up, and an undated conference — no deadline, no event date — is not
     something a reader can act on at all, and could never be pruned either. See
-    :mod:`apps.content.liveness`.
+    :mod:`tools.retrieval.liveness`.
     """
     live = _item(ContentItem.Type.CONFERENCE, "future", prune_after=FUTURE)
     over = _item(ContentItem.Type.CONFERENCE, "past", prune_after=PAST)

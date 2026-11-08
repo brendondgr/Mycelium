@@ -39,11 +39,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.conf import settings
+from tools.retrieval.models import ContentItem, RelevanceScore
 
+from apps.content.fanout import cosine, member_vector
 from apps.core.people import display_name
-
-from .fanout import cosine, member_vector
-from .models import ContentItem, RelevanceScore
 
 logger = logging.getLogger(__name__)
 

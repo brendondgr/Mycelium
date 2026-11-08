@@ -9,14 +9,14 @@ from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.accounts.models import Lab, LabMembership
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     ReminderFire,
     SavedOpportunity,
 )
+
+from apps.accounts.models import Lab, LabMembership
 from apps.content.reminders import ReminderError, create_subscription
 from apps.content.reminders_discord import send_lab_channel
 from apps.content.reminders_tick import run_tick

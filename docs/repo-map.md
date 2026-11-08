@@ -158,7 +158,7 @@ Files below are inside `web/backend/apps/content/`.
 | Theme spread (opt-in, all defaults off) | `fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
 | Grants / conferences / fellowships matching | `opportunities.py`, `fellowships.py`, `opportunity_llm.py`, `pinning.py` |
 | Fellowship eligibility gates (stage ladder, prose constraints) | `fellowships.py` (`STAGE_LADDER`, `_stage_gate`, `_constraint_gates`, `derive_stage`) |
-| Fellowship eligibility extracted from prose | `web/backend/apps/scraper/eligibility/constraints.py`, `web/backend/apps/scraper/fellowships/ingest.py` (`extract_fellowship_constraints`) |
+| Fellowship eligibility extracted from prose | `tools/retrieval/eligibility/constraints.py`, `tools/retrieval/fellowships/ingest.py` (`extract_fellowship_constraints`) |
 | On-demand whole-corpus refit | `refitting.py` |
 | Post-onboarding live match | `onboarding_match.py`, `scan_status.py` |
 | Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |
@@ -304,18 +304,6 @@ Files below are inside `web/backend/apps/content/`.
 | Reports on Slack for Slack-only readers and labs | `web/backend/apps/content/slack_reports.py`, command `send_slack_reports` (in `ops/nightly/manual_all.py`) |
 | Where the OAuth `redirect_uri` comes from (and why it must not vary) | `_redirect_uri` in `web/backend/apps/integrations/services/oauth.py`, `DISCORD_CALLBACK_ORIGIN` in `web/backend/config/settings.py`; print what to register with `manage.py discord_check` |
 | The portal's "link with a code" panel (join → copy command → wait) | `ActivationCodePanel` in `web/app/src/components/portal/sections/profile-section.tsx`; the command and invite come from `DiscordActivationCodeView` |
-| Paper source scrapers | `web/backend/apps/scraper/sources/`, `ingest.py`, `window.py` |
-| Open-source grants/conferences collector (vendored) | `web/backend/apps/scraper/collect/` — `runner.py` stages, `grants/`, `conferences/`, `core/` |
-| Collector adapters (5 live grant, 6 conference) | `web/backend/apps/scraper/collect/{grants,conferences}/adapters/` |
-| dblp venue registry (venue identity, CORE ranks) | `web/backend/apps/scraper/collect/conferences/registry/` |
-| Collector record → `ContentItem` mapping, deadline/expiry rules | `web/backend/apps/scraper/collect/mapping.py` |
-| Collector upsert, prune, embed | `web/backend/apps/scraper/collect/ingest.py` |
-| Verified LLM description extraction (schema, validators, repair loop) | `web/backend/apps/scraper/collect/extract.py` |
-| Collector data root (SQLite stores, HTTP cache, raw payloads, extraction checkpoint) | `web/backend/apps/scraper/collect/paths.py` defines it; the data lives in gitignored `data/collect/` at the repo root. Anchored to the checkout, never to the CWD — the container runs at `/app` and a host shell may not |
-| Fellowship eligibility rule engine (deterministic, prose → constraints) | `web/backend/apps/scraper/eligibility/` |
-| Illinois Fellowship Finder scraper + ingest | `web/backend/apps/scraper/fellowships/` (`illinois.py` scrapes, `records.py`/`ingest.py` upsert) |
-| Embedder (CPU / CUDA) | `web/backend/apps/scraper/embedding.py` |
-| External DOI / arXiv / URL resolver | `web/backend/apps/scraper/resolver.py` |
 | LLM client | `web/backend/apps/core/llm.py` |
 | TypeSafe System One client (typed decisions with calibrated probabilities) | `web/backend/apps/core/systemone.py` — every call counted in the LLM ledger |
 | Transactional email (send one) | `web/backend/apps/core/mail/messages.py` (`send_email`, `app_url`, the `TEMPLATES` registry) |
@@ -344,6 +332,30 @@ Files below are inside `web/backend/apps/content/`.
 | Framework tests and fixture tools (one per load state) | `tools/_framework/tests/`, `tools/_framework/tests/fixtures/` |
 | Suite-wide pytest fixtures (platform and tools) | `web/backend/config/pytest_plugin.py` (loaded by `-p` in `web/backend/pyproject.toml`) |
 
+## Retrieval tool (`tools/retrieval/`)
+
+| Task | Path |
+|---|---|
+| The tool's declaration, settings, nightly stage | `tools/retrieval/tool.py`; guide `tools/retrieval/README.md` |
+| Read / write doors, events | `tools/retrieval/read.py`, `service.py`, `events.py` |
+| `ContentItem`, `ContentDeadline` (and, until they move, every other `content` model) | `tools/retrieval/models.py`, migrations `tools/retrieval/migrations/` (app label `content`) |
+| pgvector index, BM25, the ranking protocols | `tools/retrieval/index.py`, `lexical.py`, `protocols.py` |
+| Corpus search, cached query embedding | `tools/retrieval/search.py`, `query_embedding.py` |
+| Deadline projection, liveness, duplicate merge | `tools/retrieval/deadlines_projection.py`, `liveness.py`, `dedupe.py` |
+| Paper source scrapers | `tools/retrieval/sources/`, `ingest.py`, `window.py` |
+| Open-source grants/conferences collector (vendored) | `tools/retrieval/collect/` — `runner.py` stages, `grants/`, `conferences/`, `core/` |
+| Collector adapters (5 live grant, 6 conference) | `tools/retrieval/collect/{grants,conferences}/adapters/` |
+| dblp venue registry (venue identity, CORE ranks) | `tools/retrieval/collect/conferences/registry/` |
+| Collector record → `ContentItem` mapping, deadline/expiry rules | `tools/retrieval/collect/mapping.py` |
+| Collector upsert, prune, embed | `tools/retrieval/collect/ingest.py` |
+| Verified LLM description extraction (schema, validators, repair loop) | `tools/retrieval/collect/extract.py` |
+| Collector data root (SQLite stores, HTTP cache, raw payloads, extraction checkpoint) | `tools/retrieval/collect/paths.py` defines it; the data lives in gitignored `data/collect/` at the repo root. Anchored to the checkout, never to the CWD — the container runs at `/app` and a host shell may not |
+| Fellowship eligibility rule engine (deterministic, prose → constraints) | `tools/retrieval/eligibility/` |
+| Illinois Fellowship Finder scraper + ingest | `tools/retrieval/fellowships/` (`illinois.py` scrapes, `records.py`/`ingest.py` upsert) |
+| Embedder (CPU / CUDA); the `embed_texts` wrapper | `tools/retrieval/embeddings.py` and `tools/retrieval/embedding.py` |
+| External DOI / arXiv / URL resolver | `tools/retrieval/resolver.py` |
+| Host-side fellowship scrape (Playwright) and the dormant Grants.gov/NIH/NSF clients | `tools/retrieval/host/scrape_fellowships.py`, `tools/retrieval/host/grants/` |
+
 ## Host runners & operations
 
 | Task | Path |
@@ -351,7 +363,7 @@ Files below are inside `web/backend/apps/content/`.
 | Full-stack start/stop | `ops/mycelium` (start/stop/restart/status/migrate — wipes frontend caches, waits for the API, applies migrations, restarts Mylo), `Makefile` (`make up`/`down`/`status`), `compose.yaml`, `ops/compose.gpu.yaml` |
 | Nightly research run | `ops/nightly/manual_all.py` (fired by `mylo-daily.timer`); its container stages come from the loaded tools (`tools/_framework/nightly.py`) |
 | On-demand re-score everyone | `ops/nightly/manual_mylo.py` |
-| Illinois fellowship scrape → import (host, Playwright) | `ops/scrapers/scrape_fellowships.py` |
+| Illinois fellowship scrape → import (host, Playwright) | `tools/retrieval/host/scrape_fellowships.py` |
 | Per-stage manual runners | `ops/nightly/` |
 | Mylo Discord bot & run observability | `mylo/` — `bot/`, `config.py`, `reporting.py`, `analytics.py`, `runstate.py`, `linking.py`, `listening.py` |
 | Hearing a conversation and handing it to the ledger | `mylo/bot/cogs/listen.py` (Stage A: DMs, mentions, reactions on Mylo's posts, edits, deletions, the *Tell Mylo about this* action; Stage B behind `MYLO_LISTEN_ENABLED` **and** the Message Content intent, both off) + `mylo/listening.py` |

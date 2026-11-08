@@ -16,9 +16,9 @@ from celery import shared_task
 from django.conf import settings
 from django.contrib.auth.models import User
 
-from .opportunities import run_daily_opportunities_batch
-from .pipeline import DEFAULT_SUGGESTIONS, run_daily_batch
-from .runlog import new_run_log
+from apps.content.opportunities import run_daily_opportunities_batch
+from apps.content.pipeline import DEFAULT_SUGGESTIONS, run_daily_batch
+from apps.content.runlog import new_run_log
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +181,7 @@ def run_daily_opportunities(
     deterministic rule engine (no LLM call) and are always included.
 
     The opportunity twin of :func:`run_daily_suggestions`. This task never
-    scrapes: collection is its own scheduled stage (``apps.scraper.collect``,
+    scrapes: collection is its own scheduled stage (``tools.retrieval.collect``,
     plan Phase 12), invoked ahead of this one by ``manual_all.py``. It used to
     accept ``ingest``/``embed`` flags mirroring that scrape stage, but neither
     ever reached :func:`run_daily_opportunities_batch`'s prune branch or
@@ -230,9 +230,8 @@ def scan_and_recommend_for_user(username: str) -> dict:
     "scanning".
     """
     from apps.billing.entitlements import Feature, has_feature
-
-    from .pipeline import run_for_user
-    from .scan_status import clear_paper_scan_inflight
+    from apps.content.pipeline import run_for_user
+    from apps.content.scan_status import clear_paper_scan_inflight
 
     user = (
         User.objects.filter(username=username).select_related("profile").first()
@@ -255,8 +254,9 @@ def fanout_relevance(share_id: str) -> dict:
     The async arm of the cross-member fan-out (used when ``FANOUT_ASYNC`` is on);
     embeds any member whose profile vector is missing.
     """
-    from .fanout import fan_out_relevance
-    from .models import ProjectShare
+    from tools.retrieval.models import ProjectShare
+
+    from apps.content.fanout import fan_out_relevance
 
     share = (
         ProjectShare.objects.filter(id=share_id)
@@ -279,16 +279,15 @@ def seed_project_recommendations(project_id: str) -> dict:
     when done (even on failure, so the page never wedges). Skips scoring for a
     project that has no declared focus (nothing to match).
     """
+    from apps.content.refitting import refit_project
+    from apps.content.scan_status import clear_project_seed_inflight
     from apps.research.models import Project
-
-    from .refitting import refit_project
-    from .scan_status import clear_project_seed_inflight
 
     project = Project.objects.filter(id=project_id).first()
     if project is None:
         return {"error": "project_not_found", "project_id": str(project_id)}
     try:
-        from .targets import project_interests
+        from apps.content.targets import project_interests
 
         if not project_interests(project)["areas"]:
             return {"skipped": "no_focus", "project_id": str(project_id)}
@@ -305,8 +304,11 @@ def enqueue_project_seed(project) -> bool:
     broker) clears it so the UI never promises a run that won't happen. A project
     with no declared focus is not seeded (nothing to match).
     """
-    from .scan_status import clear_project_seed_inflight, mark_project_seed_inflight
-    from .targets import project_interests
+    from apps.content.scan_status import (
+        clear_project_seed_inflight,
+        mark_project_seed_inflight,
+    )
+    from apps.content.targets import project_interests
 
     if not project_interests(project)["areas"]:
         return False
@@ -329,10 +331,10 @@ def recompute_project_profiles(project_ids: list[str] | None = None) -> dict:
     The nightly / on-demand batch arm of the team signal; embeds members whose
     profile vector is missing. A failure for one project never sinks the run.
     """
-    from apps.research.models import Project
+    from tools.retrieval.models import ProjectProfile
 
-    from .models import ProjectProfile
-    from .team_profile import recompute_project_profile
+    from apps.content.team_profile import recompute_project_profile
+    from apps.research.models import Project
 
     queryset = Project.objects.all()
     if project_ids:

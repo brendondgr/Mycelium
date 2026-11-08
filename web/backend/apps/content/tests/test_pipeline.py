@@ -7,11 +7,11 @@ import pytest
 from django.contrib.auth.models import User
 from django.db import connection
 from django.utils import timezone
+from tools.retrieval import embeddings
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.accounts.models import WatchPreference
-from apps.content import embeddings
 from apps.content.digest_selection import renumber, split_by_floor
-from apps.content.models import ContentItem, RelevanceScore
 from apps.content.pipeline import (
     build_queries,
     gather_scan_queries,

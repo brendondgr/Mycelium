@@ -17,6 +17,7 @@ import json
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval.models import ContentItem
 
 from apps.content import cluster_fit
 from apps.content.cluster_fit import (
@@ -30,7 +31,6 @@ from apps.content.cluster_fit import (
     project_claim_block,
 )
 from apps.content.clustering import Cluster
-from apps.content.models import ContentItem
 from apps.content.theme_run import _project_claim
 from apps.research.models import Project, ProjectState
 

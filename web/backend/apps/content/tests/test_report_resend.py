@@ -16,10 +16,11 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
 
 from apps.accounts.models import Lab, WatchPreference
-from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.content.report_resend import repost_lab_report, resend_user_report
+from apps.content.tests.entitle import link_discord, paid_plan
 from apps.integrations.models import (
     DiscordIdentity,
     DiscordOutboxMessage,
@@ -30,8 +31,6 @@ from apps.integrations.tests.base import (
     discord_test_settings,
     grant_bot_server,
 )
-
-from .entitle import link_discord, paid_plan
 
 TODAY = timezone.now().date().isoformat()
 

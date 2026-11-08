@@ -65,8 +65,9 @@ def _development(project, speaker, change, topic, *, visibility=Visibility.LAB):
 def test_a_closed_blocker_is_proposed_to_editors_and_accepting_applies_it(
     ada, lab_project, client
 ):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     _development(project, bo, "blocker_closed", "annotation budget")
@@ -92,8 +93,9 @@ def test_a_closed_blocker_is_proposed_to_editors_and_accepting_applies_it(
 
 
 def test_a_dropped_and_an_adopted_method(ada, lab_project):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     _development(project, bo, "method_dropped", "graph neural networks")
@@ -112,8 +114,9 @@ def test_a_dropped_and_an_adopted_method(ada, lab_project):
 
 
 def test_a_private_development_is_proposed_only_to_its_speaker(ada, lab_project):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     _development(
@@ -130,8 +133,9 @@ def test_a_private_development_is_proposed_only_to_its_speaker(ada, lab_project)
 
 
 def test_a_declined_proposal_rests(ada, lab_project):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     _development(project, bo, "blocker_closed", "annotation budget")
@@ -141,8 +145,9 @@ def test_a_declined_proposal_rests(ada, lab_project):
 
 
 def test_a_proposal_is_withdrawn_when_its_development_is_undone(ada, lab_project):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     development = _development(project, bo, "blocker_closed", "annotation budget")
@@ -153,8 +158,9 @@ def test_a_proposal_is_withdrawn_when_its_development_is_undone(ada, lab_project
 
 
 def test_a_forgotten_development_takes_its_proposal_with_it(ada, lab_project):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     development = _development(project, bo, "method_dropped", "graph neural networks")
@@ -165,8 +171,9 @@ def test_a_forgotten_development_takes_its_proposal_with_it(ada, lab_project):
 
 
 def test_an_accepted_proposal_is_not_withdrawn_later(ada, lab_project):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     development = _development(project, bo, "blocker_closed", "annotation budget")
@@ -178,8 +185,9 @@ def test_an_accepted_proposal_is_not_withdrawn_later(ada, lab_project):
 
 
 def test_someone_it_was_not_raised_to_cannot_accept_it(ada, lab_project, client):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     _development(project, bo, "blocker_closed", "annotation budget")
@@ -200,8 +208,9 @@ def test_someone_it_was_not_raised_to_cannot_accept_it(ada, lab_project, client)
 
 
 def test_accepting_changes_only_the_named_field(ada, lab_project, client):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     before = ProjectState.objects.get(project=project)
@@ -223,8 +232,9 @@ def test_accepting_changes_only_the_named_field(ada, lab_project, client):
 
 
 def test_an_undo_after_a_later_edit_is_refused(ada, lab_project, client):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     _development(project, bo, "blocker_closed", "annotation budget")
@@ -245,8 +255,9 @@ def test_an_undo_after_a_later_edit_is_refused(ada, lab_project, client):
 
 
 def test_a_rejected_proposal_records_no_change(ada, lab_project, client):
+    from tools.retrieval.models import ReflectionProposal
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import ReflectionProposal
 
     project, bo = lab_project
     _development(project, bo, "blocker_closed", "annotation budget")
@@ -262,8 +273,9 @@ def test_a_rejected_proposal_records_no_change(ada, lab_project, client):
 
 
 def test_a_proposal_rings_the_bell_once_and_leaves_it_when_withdrawn(ada, lab_project):
+    from tools.retrieval.models import Notification
+
     from apps.content.ambient_proposals import propose
-    from apps.content.models import Notification
 
     project, bo = lab_project
     development = _development(project, bo, "blocker_closed", "annotation budget")

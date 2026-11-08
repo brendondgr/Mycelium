@@ -12,6 +12,15 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from tools.retrieval.models import (
+    Collection,
+    CollectionItem,
+    ContentItem,
+    ProjectItemSeen,
+    ProjectProfile,
+    ProjectShare,
+    RelevanceEvent,
+)
 
 from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
@@ -28,15 +37,6 @@ from apps.content.collaboration import (
     share_to_project,
 )
 from apps.content.fanout import trigger_fanout
-from apps.content.models import (
-    Collection,
-    CollectionItem,
-    ContentItem,
-    ProjectItemSeen,
-    ProjectProfile,
-    ProjectShare,
-    RelevanceEvent,
-)
 from apps.content.team_profile import recompute_project_profile
 from apps.core.people import display_name, initials
 
@@ -962,7 +962,7 @@ class ProjectIngestLinkView(APIView):
 
         # Imported here so the scraper (and its optional embedding extra) stays out
         # of the research app's import graph unless a link is actually ingested.
-        from apps.scraper.resolver import ResolveError, resolve_external
+        from tools.retrieval.resolver import ResolveError, resolve_external
 
         try:
             result = resolve_external(raw_input)

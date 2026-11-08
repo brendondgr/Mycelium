@@ -14,16 +14,7 @@ from datetime import date, timedelta
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
-
-from apps.accounts.models import Lab, LabMembership
-from apps.content import (
-    announce,
-    announce_updates,
-    announcement_actions,
-    announcement_setup,
-    discord_announcements,
-)
-from apps.content.models import (
+from tools.retrieval.models import (
     Announcement,
     AnnouncementNudge,
     AnnouncementPost,
@@ -33,6 +24,15 @@ from apps.content.models import (
     ContentItem,
     RelevanceScore,
     ReminderSubscription,
+)
+
+from apps.accounts.models import Lab, LabMembership
+from apps.content import (
+    announce,
+    announce_updates,
+    announcement_actions,
+    announcement_setup,
+    discord_announcements,
 )
 from apps.integrations.models import DiscordIdentity, DiscordOutboxMessage
 from apps.integrations.testing import add_route, bind
@@ -394,7 +394,7 @@ def test_remind_me_by_dm_is_an_ordinary_reminder(fake) -> None:
 
     target, _ = _setup()
     item = _grant(TODAY + timedelta(days=40))
-    from apps.content.deadlines_projection import rebuild_deadlines_for
+    from tools.retrieval.deadlines_projection import rebuild_deadlines_for
 
     rebuild_deadlines_for(item, TODAY.isoformat())
     ann, _ = _announce(target, item)

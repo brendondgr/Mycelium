@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from django.urls import path, register_converter
 
-from . import announcement_views, reminders_views, views
+from apps.content import announcement_views, reminders_views, views
 
 
 class IsoDateConverter:

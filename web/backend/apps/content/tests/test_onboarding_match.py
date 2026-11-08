@@ -5,11 +5,11 @@ import math
 import pytest
 from django.contrib.auth.models import User
 from django.db import connection
+from tools.retrieval import embeddings
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.accounts.models import WatchPreference
 from apps.billing.models import Subscription, Tier
-from apps.content import embeddings
-from apps.content.models import ContentItem, RelevanceScore
 from apps.content.onboarding_match import UnknownArea, onboarding_match_area
 
 _TOKENS = ["graph", "health", "biomedical", "other"]

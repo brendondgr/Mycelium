@@ -46,8 +46,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 
 from django.utils import timezone
-
-from apps.content.models import ReflectionProposal
+from tools.retrieval.models import ReflectionProposal
 
 #: Days a pending proposal stands before it lapses.
 EXPIRES_AFTER_DAYS = 14

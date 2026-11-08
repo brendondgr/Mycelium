@@ -10,7 +10,7 @@ not.
 The closing-soon list (plan D11) is composed here too, because it reads the same
 deadlines.
 
-Pure functions over a :class:`~apps.content.models.ContentItem`; no writes.
+Pure functions over a :class:`~tools.retrieval.models.ContentItem`; no writes.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from apps.content.deadlines_projection import deadline_specs_for
-from apps.content.models import ContentItem, SavedOpportunity
+from tools.retrieval.deadlines_projection import deadline_specs_for
+from tools.retrieval.models import ContentItem, SavedOpportunity
 
 #: The fields a change is reported for, in the order a "What changed" list shows.
 _FIELD_LABELS = {

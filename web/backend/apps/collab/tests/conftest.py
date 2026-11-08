@@ -2,11 +2,11 @@
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval import embeddings
+from tools.retrieval.models import ContentItem
 
 from apps.accounts.models import Lab, LabMembership
 from apps.collab.models import RequirementSlots
-from apps.content import embeddings
-from apps.content.models import ContentItem
 from apps.knowledge import service
 from apps.knowledge.tests.fakes import FakeEmbedder
 

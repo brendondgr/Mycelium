@@ -373,7 +373,7 @@ def query_masses(
     each interest, so every query's best candidate is 1.0 by construction and the
     magnitudes are not comparable across queries. Raw cosine is.
     """
-    from apps.content import embeddings
+    from tools.retrieval import embeddings
 
     masses: dict[str, float] = {}
     for query_id, text in queries:
@@ -387,7 +387,7 @@ def query_masses(
 
 def query_vectors(queries: Sequence[tuple[str, str]]) -> np.ndarray:
     """Embed every query with the production encoder, in the given order."""
-    from apps.content import embeddings
+    from tools.retrieval import embeddings
 
     return np.asarray(
         [embeddings.embed_text(text) for _query_id, text in queries],

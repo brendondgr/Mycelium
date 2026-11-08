@@ -11,11 +11,11 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
+from tools.retrieval.models import Notification
 
 from apps.accounts.models import AuthorWork
 from apps.collab import affiliation, consent, preview, tasks
 from apps.collab.models import Appearance, Audience, CollaborationSetting
-from apps.content.models import Notification
 from apps.knowledge import demonstrated, service
 from apps.knowledge.models import Edge, Relation, Tier, WorkFacets
 from apps.research.models import Project

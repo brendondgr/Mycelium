@@ -224,12 +224,12 @@ def _deadline_horizon(
 ) -> tuple[int, dict | None]:
     """How many dated rounds fall inside the window, and the nearest one.
 
-    Read from :class:`~apps.content.models.ContentDeadline`, the projection the
+    Read from :class:`~tools.retrieval.models.ContentDeadline`, the projection the
     feeds and reminders already share, so "due Friday" means the same thing in a
     Discord post as it does on a card. Rolling and unknown rounds carry no date
     and are simply not in the window — Mylo says nothing rather than guessing.
     """
-    from apps.content.models import ContentDeadline
+    from tools.retrieval.models import ContentDeadline
 
     if not content_ids:
         return 0, None
@@ -263,7 +263,7 @@ def open_alert_counts(target_filter: dict, day: date) -> dict[str, int]:
     is deliberately not being shouted about today, and counting it in "needs your
     attention (4)" beside three shown lines would make the cap look broken.
     """
-    from apps.content.models import ProjectAlert
+    from tools.retrieval.models import ProjectAlert
 
     rows = ProjectAlert.objects.filter(
         **target_filter, fired_on=day, status=ProjectAlert.Status.OPEN

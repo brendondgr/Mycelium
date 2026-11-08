@@ -9,9 +9,9 @@ import json
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval import embeddings
 
 from apps.accounts.models import AuthorWork
-from apps.content import embeddings
 from apps.knowledge import works
 from apps.knowledge.models import WorkFacets
 

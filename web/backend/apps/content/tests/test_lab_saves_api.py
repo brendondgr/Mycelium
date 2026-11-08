@@ -9,9 +9,9 @@ is already saved. Runs on SQLite — no pgvector needed (direct row reads).
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
+from tools.retrieval.models import ContentItem, RelevanceScore, SavedOpportunity
 
 from apps.accounts.models import Lab, LabMembership
-from apps.content.models import ContentItem, RelevanceScore, SavedOpportunity
 
 
 @pytest.fixture

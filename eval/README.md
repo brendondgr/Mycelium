@@ -21,7 +21,7 @@ uv run --project eval eval/run.py --collection sci-2026-train \
 ## The one rule
 
 **The arms call production code.** `harness/arms.py` contains no ranking logic of
-its own — it imports `apps.content.lexical`, `apps.content.fusion`,
+its own — it imports `tools.retrieval.lexical`, `apps.content.fusion`,
 `apps.content.ranking`, and `apps.content.pipeline._build_pool` directly. When the
 ranking stack changes, the next run measures the change and nothing in `eval/`
 needs editing. If you find yourself reimplementing scoring here, stop: the number
@@ -57,7 +57,7 @@ coverage, because a cluster is a property of the profile, not of the collection.
 That module's docstring states the exception and the obligations it carries; the
 relevance family still goes through `ir_measures` untouched.
 
-The seam that makes this possible is `apps.content.protocols.VectorIndex`.
+The seam that makes this possible is `tools.retrieval.protocols.VectorIndex`.
 `_build_pool` takes an optional `index`; production passes `PgVectorIndex`, the
 harness passes `NumpyIndex`. Because production has **no ANN index** — every
 pgvector query is an exact sequential scan — the in-memory index is not an

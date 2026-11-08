@@ -15,7 +15,7 @@ There is a third, rarer, and more interesting case: a paper the team *does* know
 **revised**. That is news again, and it is the one time re-surfacing something
 known is right. Revisions are detected from the précis source fingerprint — the
 hash of the item's own text that
-:class:`~apps.content.models.ItemComprehension` already keeps to decide when to
+:class:`~tools.retrieval.models.ItemComprehension` already keeps to decide when to
 re-read a paper. A changed fingerprint on an item the team knows means the paper
 moved under them.
 
@@ -114,7 +114,7 @@ def known_literature(project=None, reader=None) -> KnownLiterature:
     theirs whichever project it touches, and a paper the team collected is the
     team's whether or not this particular reader filed it.
     """
-    from apps.content.models import CollectionItem, ProjectShare, SavedOpportunity
+    from tools.retrieval.models import CollectionItem, ProjectShare, SavedOpportunity
 
     store = KnownLiterature()
 

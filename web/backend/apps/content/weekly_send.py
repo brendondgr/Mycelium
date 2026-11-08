@@ -88,7 +88,7 @@ def _weekly_body(user_or_lab, *, is_lab: bool):
     plan's own choice (6.3): the two reports share a grammar and a layout, and a
     second renderer would drift from the first within a release.
     """
-    from apps.content.models import DailyBriefing
+    from tools.retrieval.models import DailyBriefing
 
     data = (
         compile_report_for_lab(user_or_lab)

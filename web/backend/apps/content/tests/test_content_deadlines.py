@@ -2,8 +2,8 @@
 
 Exercises the real ingest path for each opportunity type so the rebuild *hook*,
 not just the pure ``deadline_specs_for`` function, is covered: the open
-collector's ``apps.scraper.collect.ingest.upsert_items`` for grants/conferences,
-the relocated ``apps.scraper.fellowships.ingest.upsert_fellowship_items`` for
+collector's ``tools.retrieval.collect.ingest.upsert_items`` for grants/conferences,
+the relocated ``tools.retrieval.fellowships.ingest.upsert_fellowship_items`` for
 fellowships. Embedding and prune are off so the tests stay pure-relational and
 run on SQLite.
 
@@ -11,21 +11,24 @@ Relocated from ``ingest_pivot`` (plan Phase 6 — the deletion of Pivot-RP), whi
 used to drive all three types through one dispatcher. The two conference
 fixtures also changed shape: Pivot's free-text ``deadlines`` string is gone, so
 they now build ``metadata["deadlines_structured"]`` directly — the same shape
-:func:`apps.scraper.collect.mapping.map_conference` writes, and the shape the
+:func:`tools.retrieval.collect.mapping.map_conference` writes, and the shape the
 pure structured-conference tests further down already exercised directly.
 """
 
 from __future__ import annotations
 
 import pytest
+from tools.retrieval.collect.ingest import upsert_items
+from tools.retrieval.deadlines_projection import (
+    deadline_specs_for,
+    rebuild_deadlines_for,
+)
+from tools.retrieval.fellowships.ingest import upsert_fellowship_items
+from tools.retrieval.fellowships.records import build_fellowship_item
+from tools.retrieval.models import ContentDeadline, ContentItem, RelevanceScore
 
 from apps.accounts.models import AuditEvent
-from apps.content.deadlines_projection import deadline_specs_for, rebuild_deadlines_for
-from apps.content.models import ContentDeadline, ContentItem, RelevanceScore
 from apps.content.serializers import GrantSerializer
-from apps.scraper.collect.ingest import upsert_items
-from apps.scraper.fellowships.ingest import upsert_fellowship_items
-from apps.scraper.fellowships.records import build_fellowship_item
 
 TODAY = "2026-07-16"
 
@@ -75,9 +78,9 @@ def _structured_deadline(kind, instant, *, is_estimated=False, round_label=""):
     """A dict shaped like ``Deadline.to_json()`` (open collector, plan Phase 3).
 
     Built by hand rather than importing
-    ``apps.scraper.collect.conferences.record.Deadline`` — these tests exercise
+    ``tools.retrieval.collect.conferences.record.Deadline`` — these tests exercise
     ``deadlines_projection`` as a consumer of the *documented dict shape*, the
-    same contract ``apps.scraper.collect.mapping.map_conference`` writes, not as
+    same contract ``tools.retrieval.collect.mapping.map_conference`` writes, not as
     a consumer of that dataclass.
     """
     return {
@@ -94,7 +97,7 @@ def _structured_deadline(kind, instant, *, is_estimated=False, round_label=""):
 
 def _ingest_fellowship(deadline, **over):
     """Build one fellowship record and upsert it through the relocated fellowship
-    ingest path (:mod:`apps.scraper.fellowships.ingest`)."""
+    ingest path (:mod:`tools.retrieval.fellowships.ingest`)."""
     rec = {
         "id": "f1",
         "title": "Graduate Research Fellowship",
@@ -423,7 +426,7 @@ def test_structured_conference_only_future_date_is_other_and_not_open() -> None:
     # ABSTRACT/MANUSCRIPT never resurrect a past round, so only OTHER survives.
     # That the venue is CLOSED follows from the same fact this asserts (only a
     # non-submission kind has a future date) — the openness gate itself lives in
-    # apps.scraper.collect.mapping._conference_deadlines / SUBMISSION_TYPES,
+    # tools.retrieval.collect.mapping._conference_deadlines / SUBMISSION_TYPES,
     # which this module deliberately never recomputes.
     assert {s.kind for s in specs} == {"other"}
     assert specs[0].label == "Notification date"
@@ -457,7 +460,7 @@ def test_structured_conference_is_estimated_is_anticipated() -> None:
 
 
 def test_structured_grant_projects_next_round_not_last() -> None:
-    # apps.scraper.collect.mapping._grant_deadlines already resolved which round
+    # tools.retrieval.collect.mapping._grant_deadlines already resolved which round
     # is "next" and wrote it to deadline_date; this guards _grant_specs against
     # a regression that reads metadata["due_dates"][-1] (the *last* round)
     # instead of trusting that resolved value.

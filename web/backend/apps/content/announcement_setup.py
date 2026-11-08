@@ -20,6 +20,7 @@ Every entry point takes an already-authorized binding: the caller ran the gate.
 from __future__ import annotations
 
 from django.utils import timezone
+from tools.retrieval.models import AnnouncementSettings
 
 from apps.content.discord_announcements import (
     DEPT_FORUM_TAGS,
@@ -27,7 +28,6 @@ from apps.content.discord_announcements import (
     KINDS,
     PURPOSE_KIND,
 )
-from apps.content.models import AnnouncementSettings
 from apps.integrations.services import discord_api, resolve
 
 PURPOSES = ("grants", "fellowships", "conferences")

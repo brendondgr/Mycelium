@@ -115,7 +115,7 @@ def test_prose_and_blanks_are_not_terms(db, embedder, settings):
 
 def test_without_the_embedder_only_aliases_link(db, embedder):
     known = link("conformal prediction").concept
-    from apps.content import embeddings
+    from tools.retrieval import embeddings
 
     embeddings.set_embedder(None)
     results = link_many(

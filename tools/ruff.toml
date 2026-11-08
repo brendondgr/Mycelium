@@ -4,3 +4,10 @@ extend = "../web/backend/pyproject.toml"
 
 [lint.per-file-ignores]
 "**/migrations/*.py" = ["E501"]
+# The open-source opportunity collector and its ported test suite are vendored
+# from an external standalone project rather than authored for Mycelium's line
+# length; only E501 is forgiven (see web/backend/pyproject.toml).
+"retrieval/collect/**" = ["E501"]
+"retrieval/tests/collect/**" = ["E501"]
+# Host-side scripts moved in from ops/ (which the lint run never covered).
+"retrieval/host/**" = ["E501"]

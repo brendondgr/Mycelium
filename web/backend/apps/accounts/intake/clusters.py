@@ -647,7 +647,7 @@ def _compose_complete(prompt: str) -> str | None:
 
 
 def _default_embed(texts: list[str]) -> list[list[float]] | None:
-    from apps.content.embeddings import embed_texts
+    from tools.retrieval.embeddings import embed_texts
 
     return embed_texts(texts)
 

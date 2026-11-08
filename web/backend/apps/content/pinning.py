@@ -23,7 +23,7 @@ percent-match order once it is more than a week old.
 **Updated is not New.** Conferences and grants are commonly extracted from pages
 hosting many events, and such a page gaining a deadline (or moving one) is a
 reason to look at a listing again — but the listing is not new, and calling it
-new would be a lie about what changed. ``apps.scraper.collect.ingest`` stamps
+new would be a lie about what changed. ``tools.retrieval.collect.ingest`` stamps
 ``metadata["refreshed_at"]`` only when something *actionable* moved, and an item
 inside that window is pinned exactly like a new one but reported as
 ``is_updated`` so the card can say which it is. This does not touch what "new"
@@ -37,8 +37,7 @@ from collections.abc import Mapping, Sequence
 from datetime import date, timedelta
 
 from django.utils import timezone
-
-from .models import ContentItem
+from tools.retrieval.models import ContentItem
 
 DEFAULT_NEW_WINDOW_DAYS = 7
 DEFAULT_PIN_DAYS = 7

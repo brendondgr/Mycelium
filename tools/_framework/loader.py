@@ -344,8 +344,18 @@ def _probe_all(
             states[name].state = LOADED
         return
     # Something in the batch is broken: probe one by one, in dependency order,
-    # each with only its already-loaded dependency closure.
-    for name in pending:
+    # each with only its already-loaded dependency closure plus the core tools
+    # (the platform itself cannot start without them).
+    core = [n for n in pending if states[n].core]
+    ordered = core + [n for n in pending if n not in core]
+    for name in ordered:
+        failed_core = [c for c in core if states[c].state not in ("", LOADED)]
+        if failed_core and name not in core:
+            states[name].state = BLOCKED
+            states[name].reason = "the platform cannot start without core tool " + (
+                ", ".join(f"{c} ({states[c].state})" for c in failed_core)
+            )
+            continue
         deps = states[name].depends_on
         blocked = [d for d in deps if states[d].state != LOADED]
         if blocked:
@@ -355,6 +365,8 @@ def _probe_all(
             )
             continue
         closure = _closure(name, states)
+        if name not in core:
+            closure = [c for c in core if c not in closure] + closure
         ok, detail = run_probe(closure, tools_dir, env)
         if ok:
             states[name].state = LOADED
@@ -466,6 +478,14 @@ def boot(
 def _probe_report(tools_dir: Path, names: list[str]) -> LoadReport:
     found = discovery.discover(tools_dir)
     package = discovery.package_root(tools_dir)[1]
+    # Probing another tools directory (fixtures, a test copy) still needs the
+    # platform's core tools, which live in the default one.
+    if tools_dir.resolve() != discovery.DEFAULT_TOOLS_DIR.resolve():
+        default = discovery.discover(discovery.DEFAULT_TOOLS_DIR)
+        core = [n for n, d in default.items() if d.cls and d.cls.core and n not in found]
+        for n in core:
+            found[n] = default[n]
+        names = core + [n for n in names if n not in core]
     states = {}
     for name in names:
         item = found.get(name)
@@ -493,4 +513,7 @@ def _probe_report(tools_dir: Path, names: list[str]) -> LoadReport:
 def tool_classes(report: LoadReport) -> dict[str, Any]:
     """The declaration class of every tool in the report that could be read."""
     found = discovery.discover(Path(report.tools_dir))
+    if Path(report.tools_dir).resolve() != discovery.DEFAULT_TOOLS_DIR.resolve():
+        default = discovery.discover(discovery.DEFAULT_TOOLS_DIR)
+        found = {**{n: d for n, d in default.items() if d.cls and d.cls.core}, **found}
     return {n: found[n].cls for n in report.order if n in found and found[n].cls}

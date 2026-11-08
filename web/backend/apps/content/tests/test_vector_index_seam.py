@@ -7,7 +7,7 @@ two properties the harness depends on:
 
 1. The default path still goes through pgvector — the parameter is opt-in, and a
    caller that omits it gets exactly the query it got before.
-2. A non-ORM object satisfying :class:`~apps.content.protocols.Retrievable` ranks
+2. A non-ORM object satisfying :class:`~tools.retrieval.protocols.Retrievable` ranks
    identically to the `ContentItem` it mirrors, ordering and scores alike.
 
 The second is the load-bearing one: it is what lets the harness claim it measures
@@ -20,12 +20,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
+from tools.retrieval.index import PgVectorIndex
+from tools.retrieval.models import ContentItem
+from tools.retrieval.protocols import Retrievable, VectorIndex
 
 from apps.content.interests_query import SearchInterest
-from apps.content.models import ContentItem
 from apps.content.pipeline import _build_pool
-from apps.content.protocols import Retrievable, VectorIndex
-from apps.content.retrieval import PgVectorIndex
 
 
 @dataclass
@@ -72,9 +72,9 @@ def test_omitting_the_index_uses_pgvector(monkeypatch) -> None:
         seen["vector"] = vector
         return []
 
-    monkeypatch.setattr("apps.content.retrieval.retrieve_for_vector", fake_retrieve)
+    monkeypatch.setattr("tools.retrieval.index.retrieve_for_vector", fake_retrieve)
     monkeypatch.setattr(
-        "apps.content.embeddings.embed_text", lambda _text: [1.0, 0.0, 0.0]
+        "tools.retrieval.embeddings.embed_text", lambda _text: [1.0, 0.0, 0.0]
     )
 
     pool, scores, best = _build_pool(
@@ -100,7 +100,7 @@ def test_stub_index_reproduces_the_orm_ranking(monkeypatch) -> None:
     harness's numbers would not be about production code.
     """
     monkeypatch.setattr(
-        "apps.content.embeddings.embed_text", lambda _text: [1.0, 0.0, 0.0]
+        "tools.retrieval.embeddings.embed_text", lambda _text: [1.0, 0.0, 0.0]
     )
     interests = [_interest("graph neural networks"), _interest("protein folding")]
 
@@ -160,7 +160,7 @@ def test_index_receives_the_pool_width_and_exclusions() -> None:
     index = _StubIndex([(_Doc(id="a", metadata={"title": "alpha beta"}), 0.9)])
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(
-            "apps.content.embeddings.embed_text", lambda _text: [0.0, 1.0, 0.0]
+            "tools.retrieval.embeddings.embed_text", lambda _text: [0.0, 1.0, 0.0]
         )
         _build_pool(
             [_interest("alpha")],

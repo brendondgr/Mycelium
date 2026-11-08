@@ -11,17 +11,17 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from rest_framework.test import APIClient
-
-from apps.accounts.models import Lab, LabMembership
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentItem,
     ProjectItemSeen,
     ProjectShare,
     RelevanceEvent,
     RelevanceScore,
 )
+from tools.retrieval.resolver import ResolveError, ResolveResult
+
+from apps.accounts.models import Lab, LabMembership
 from apps.research.models import Project, ProjectMember
-from apps.scraper.resolver import ResolveError, ResolveResult
 
 
 @pytest.fixture
@@ -195,7 +195,7 @@ def test_paste_link_creates_external_share(client, project, member):
     paper = _paper("Ingested via DOI")
     client.force_authenticate(member)
     with patch(
-        "apps.scraper.resolver.resolve_external",
+        "tools.retrieval.resolver.resolve_external",
         return_value=ResolveResult(content_item=paper, created=True, embed_status="ok"),
     ) as mocked:
         resp = client.post(
@@ -214,7 +214,7 @@ def test_paste_link_creates_external_share(client, project, member):
 def test_same_doi_dedups_content_but_adds_a_share(client, project, member):
     paper = _paper("One paper")
     client.force_authenticate(member)
-    with patch("apps.scraper.resolver.resolve_external") as mocked:
+    with patch("tools.retrieval.resolver.resolve_external") as mocked:
         mocked.side_effect = [
             ResolveResult(content_item=paper, created=True, embed_status="ok"),
             ResolveResult(content_item=paper, created=False, embed_status="ok"),
@@ -235,7 +235,7 @@ def test_same_doi_dedups_content_but_adds_a_share(client, project, member):
 def test_garbage_link_returns_422_and_creates_nothing(client, project, member):
     client.force_authenticate(member)
     with patch(
-        "apps.scraper.resolver.resolve_external",
+        "tools.retrieval.resolver.resolve_external",
         side_effect=ResolveError("Couldn't find a DOI or arXiv id."),
     ):
         resp = client.post(

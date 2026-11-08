@@ -17,8 +17,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from django.utils import timezone
-
-from apps.content.models import ProjectAlert
+from tools.retrieval.models import ProjectAlert
 
 #: What each trigger is called on the page. Verbs where the reader acts, nouns
 #: where they only need to know.
@@ -223,8 +222,9 @@ def notify(alerts: list[ProjectAlert]) -> int:
     trigger — so a re-run of the nightly chain adds nothing, and an alert that
     fired once is never re-announced.
     """
+    from tools.retrieval.models import Notification
+
     from apps.accounts.models import Lab
-    from apps.content.models import Notification
 
     made = 0
     for alert in alerts:

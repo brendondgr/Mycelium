@@ -10,9 +10,9 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.accounts.models import Lab, LabMembership
-from apps.content.models import ContentItem, RelevanceScore
 from apps.research.models import Project, ProjectMember
 
 

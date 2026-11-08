@@ -6,8 +6,8 @@ plus aggregated interest terms. Run manually, or nightly via the Celery beat job
 """
 
 from django.core.management.base import BaseCommand
+from tools.retrieval.models import ProjectProfile
 
-from apps.content.models import ProjectProfile
 from apps.content.team_profile import recompute_project_profile
 from apps.research.models import Project
 

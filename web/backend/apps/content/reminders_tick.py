@@ -20,8 +20,8 @@ from dataclasses import dataclass
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.utils import timezone
+from tools.retrieval.models import Notification, ReminderFire, ReminderSubscription
 
-from apps.content.models import Notification, ReminderFire, ReminderSubscription
 from apps.content.reminders import (
     idempotency_key,
     offset_fire_date,

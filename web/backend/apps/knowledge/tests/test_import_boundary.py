@@ -126,7 +126,7 @@ class KnowledgeImportBoundary(SimpleTestCase):
         The single exception is the shared embedder accessor, which is where
         the corpus embedder lives today.
         """
-        allowed = {"apps.content.embeddings"}
+        allowed = {"tools.retrieval.embeddings"}
         above = ("apps.content", "apps.ambient", "apps.collab", "apps.integrations")
         offenders = []
         for path in sorted(_KNOWLEDGE.rglob("*.py")):

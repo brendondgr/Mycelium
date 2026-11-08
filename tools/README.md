@@ -27,7 +27,7 @@ tools/
 
 | Tool | Depends on | Core | What it does |
 |---|---|---|---|
-| *(none yet — the framework ships first; see the plan)* | | | |
+| [`retrieval`](retrieval/README.md) | — | yes | The grounded corpus: sources, collectors, dedup, embeddings, deadlines, search |
 
 `make tools-check` prints the live list with each tool's state.
 

@@ -13,15 +13,15 @@ from datetime import date, timedelta
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
-
-from apps.accounts.models import Lab, WatchPreference
-from apps.content import weekly as weekly_module
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentItem,
     DailyBriefing,
     ProjectAlert,
     RelevanceScore,
 )
+
+from apps.accounts.models import Lab, WatchPreference
+from apps.content import weekly as weekly_module
 from apps.content.weekly import compose_weekly, generate_weekly_for_user
 from apps.content.weekly_build import SURFACE_DM, build_weekly_packet, week_start
 from apps.content.weekly_packet import PacketItem, ProjectPacket, WeeklyPacket

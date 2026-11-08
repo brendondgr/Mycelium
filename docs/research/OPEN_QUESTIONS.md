@@ -22,7 +22,7 @@ follow-ups raised by experiments in this record.
 | W8 | Member-fit evaluation on the RAP gold-standard protocol: self-reported expertise, misranking rate, TF-IDF baseline, workload balance | C-006 | 4 | W3; recruit ≥15 members across ≥3 labs | not started — recruitment is the bottleneck, not the code |
 | W9 | IRB submission for a user study | — | 4–8 elapsed | — | not started; **elapsed time is the constraint, so start now** |
 | W10 | Rebuild the opportunity corpus from open sources (CORDIS, RePORTER, NSF, public listings) to make it releasable | data legitimacy | 3 | — | **done for grants and conferences** — the corpus is now collected entirely from public sources. The audit's cost estimate ("loses Pivot conference CFPs, which have no open equivalent") **did not hold**; see the amendment below |
-| W11 | Structured-output enforcement + retries + order-robustness test for the LLM scorer | C-004 | 1 | — | not started **for the scorer**, which is the component C-004 is about. A working reference implementation of the first two thirds now exists for a *different* component — the opportunity description extractor (`apps/scraper/collect/extract.py`): fixed JSON schema, deterministic validators, bounded repair loop, refusal as a first-class outcome. Order-robustness is not addressed there, since the extractor sees one record at a time |
+| W11 | Structured-output enforcement + retries + order-robustness test for the LLM scorer | C-004 | 1 | — | not started **for the scorer**, which is the component C-004 is about. A working reference implementation of the first two thirds now exists for a *different* component — the opportunity description extractor (`tools/retrieval/collect/extract.py`): fixed JSON schema, deterministic validators, bounded repair loop, refusal as a first-class outcome. Order-robustness is not addressed there, since the extractor sees one record at a time |
 | W12 | Post-cutoff contamination holdout + pre/post match-% distribution comparison | C-004 | 1 | W1 | not started |
 
 ### Amendment to W10 — 2026-08-16
@@ -38,7 +38,7 @@ row #4 in the same document says the same thing about the corpus overall.
 **What was found.** The premise was wrong. Six conference sources were
 implemented, all public and all requiring no login or licence:
 `ccf_deadlines`, `openreview`, `openresearch`, `miccai`, `ams_mathcal`, and
-`society_pages` (`web/backend/apps/scraper/collect/conferences/adapters/`).
+`society_pages` (`tools/retrieval/collect/conferences/adapters/`).
 They resolve into a series/instance model that carries strictly **more** than
 the commercial source did: a trust tier on every series, CCF / CORE / THCPL
 rankings where a series has them, per-source links and licence strings, and

@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 from django.contrib.auth.models import User
 from pypdf import PdfReader
+from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
 
 from apps.accounts.models import WatchPreference
 from apps.content import daily_report_send
@@ -27,7 +28,6 @@ from apps.content.daily_report import (
 )
 from apps.content.daily_report_pdf import _split_reason, render_report_pdf
 from apps.content.daily_report_send import run_daily_report_send
-from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.content.report_stats import ReportStats
 from apps.research.models import Project
 

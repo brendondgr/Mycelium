@@ -13,9 +13,9 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.utils import timezone
+from tools.retrieval import embeddings
 
 from apps.accounts.models import Lab, LabProfile
-from apps.content import embeddings
 from apps.knowledge import projection, signals, tasks
 from apps.knowledge.models import Concept, Edge, Facet, Relation, Scope, Tier
 from apps.research.models import Project, ProjectState

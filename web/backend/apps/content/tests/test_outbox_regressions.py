@@ -26,13 +26,13 @@ from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     ReminderSubscription,
     SavedOpportunity,
 )
+
 from apps.content.reminders import create_subscription
 from apps.content.reminders_tick import run_tick
 from apps.content.tests.entitle import paid_plan

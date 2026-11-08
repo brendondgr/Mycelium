@@ -74,3 +74,14 @@ def test_publish_settings_only_for_loaded_tools(monkeypatch):
         SimpleNamespace(tools={}),
     )
     assert ns == {}
+
+
+def test_every_loaded_tool_has_its_declared_app_label(settings):
+    """Django must pick the tool's own AppConfig (and so its label), not fall
+    back to a default config named after the package."""
+    from django.apps import apps
+
+    for name in settings.TOOLS_REPORT.loaded():
+        item = settings.TOOLS_REPORT.tools[name]
+        config = apps.get_app_config(item.label)
+        assert config.name == item.package

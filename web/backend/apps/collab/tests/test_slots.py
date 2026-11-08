@@ -8,10 +8,10 @@ never gets a vector; a call is read once per text.
 import json
 
 import pytest
+from tools.retrieval.models import ContentItem
 
 from apps.collab import slots
 from apps.collab.models import RequirementSlots
-from apps.content.models import ContentItem
 
 DESCRIPTION = (
     "This programme funds research on early warning of coral bleaching. Teams "

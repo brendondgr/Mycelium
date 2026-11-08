@@ -56,7 +56,7 @@ def embed_many(texts: list[str], *, embedder=None) -> dict[str, list[float]]:
         return hits
 
     if embedder is None:
-        from apps.scraper.embedding import get_default_embedder
+        from tools.retrieval.embedding import get_default_embedder
 
         embedder = get_default_embedder()
     if embedder is None:

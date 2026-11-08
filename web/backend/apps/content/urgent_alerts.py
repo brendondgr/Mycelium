@@ -34,9 +34,10 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date
 
+from tools.retrieval.models import ProjectAlert
+
 from apps.content import delivery
 from apps.content.alert_report import TRIGGER_LABELS, block_for
-from apps.content.models import ProjectAlert
 from apps.content.reminders_discord import BRAND_COLOR, escape_mentions
 
 logger = logging.getLogger(__name__)

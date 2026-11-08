@@ -6,6 +6,8 @@ Pure functions over unsaved ``ContentItem`` instances (each given an explicit id
 
 import uuid
 
+from tools.retrieval.models import ContentItem
+
 from apps.content.fusion import (
     CombinedHit,
     cap_clusters,
@@ -14,7 +16,6 @@ from apps.content.fusion import (
     fuse_interest,
     with_floor_guarantee,
 )
-from apps.content.models import ContentItem
 
 
 def _item() -> ContentItem:

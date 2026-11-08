@@ -196,8 +196,8 @@ def fusion_bm25_dense_splade(
     dense-restricted pool, because a channel that cannot add a document cannot
     add recall — which is the whole point of adding a third one.
     """
-    from apps.content import embeddings
-    from apps.content.lexical import build_bm25_index, rank_bm25_over
+    from tools.retrieval import embeddings
+    from tools.retrieval.lexical import build_bm25_index, rank_bm25_over
 
     from . import neural
 

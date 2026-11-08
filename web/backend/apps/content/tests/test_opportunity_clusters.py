@@ -14,8 +14,8 @@ from __future__ import annotations
 import pytest
 from django.contrib.auth.models import User
 from django.db import connection
+from tools.retrieval.models import ContentItem, RelevanceScore
 
-from apps.content.models import ContentItem, RelevanceScore
 from apps.content.opportunities import match_opportunities_for_user
 
 pytestmark = pytest.mark.django_db
@@ -28,7 +28,7 @@ def pgvector(db):
 
 
 def _embed(text: str):
-    from apps.content.embeddings import embed_texts
+    from tools.retrieval.embeddings import embed_texts
 
     vectors = embed_texts([text])
     return vectors[0] if vectors else None

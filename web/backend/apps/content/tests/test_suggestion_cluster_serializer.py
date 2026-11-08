@@ -2,8 +2,8 @@
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval.models import ContentItem, RelevanceScore
 
-from apps.content.models import ContentItem, RelevanceScore
 from apps.content.serializers import SuggestionSerializer
 
 

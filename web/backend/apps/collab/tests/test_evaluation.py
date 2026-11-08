@@ -10,11 +10,11 @@ import json
 
 import pytest
 from django.utils import timezone
+from tools.retrieval.models import Notification
 
 from apps.collab import evaluation, matcher
 from apps.collab.models import MatchFeedback, SearchLog
 from apps.collab.tests.test_matcher import _model, world  # noqa: F401
-from apps.content.models import Notification
 from apps.knowledge.models import Concept, Edge, Facet, Relation, Scope, Tier
 
 

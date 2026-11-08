@@ -109,7 +109,7 @@ def trigger_paper_scan(user: User, *, enqueue=None) -> bool:
     mark_paper_scan_inflight(user)
     try:
         if enqueue is None:
-            from .tasks import scan_and_recommend_for_user
+            from apps.content.tasks import scan_and_recommend_for_user
 
             def enqueue(username: str) -> None:
                 scan_and_recommend_for_user.delay(username)

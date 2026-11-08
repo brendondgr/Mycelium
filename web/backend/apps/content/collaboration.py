@@ -15,10 +15,14 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Count
+from tools.retrieval.models import (
+    ContentItem,
+    ProjectItemSeen,
+    ProjectShare,
+    RelevanceEvent,
+)
 
 from apps.research.models import Project
-
-from .models import ContentItem, ProjectItemSeen, ProjectShare, RelevanceEvent
 
 
 def event_weight(action: str) -> float:

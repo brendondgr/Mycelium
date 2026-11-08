@@ -41,7 +41,7 @@ promoting medically-themed programmes with no topical connection at all.
 Device selection
 ----------------
 
-Mirrors :mod:`apps.scraper.embedding` deliberately rather than inventing a second
+Mirrors :mod:`tools.retrieval.embedding` deliberately rather than inventing a second
 device story — ``TextCrossEncoder`` takes the identical ``cuda`` / ``device_ids``
 arguments as ``TextEmbedding``, so the same rules apply:
 
@@ -69,10 +69,8 @@ import threading
 from collections.abc import Callable, Sequence
 
 from django.conf import settings
-
-from apps.scraper.embedding import AUTO, CPU, CUDA, cuda_available
-
-from .protocols import Retrievable
+from tools.retrieval.embedding import AUTO, CPU, CUDA, cuda_available
+from tools.retrieval.protocols import Retrievable
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +277,7 @@ def rerank(
     if score is None or not ids or not (query or "").strip():
         return ids
 
-    from .lexical import _item_text
+    from tools.retrieval.lexical import _item_text
 
     cut = depth if depth is not None else rerank_depth()
     head, tail = list(items[:cut]), ids[cut:]

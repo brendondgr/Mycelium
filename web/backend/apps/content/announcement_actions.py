@@ -27,9 +27,7 @@ from datetime import date, timedelta
 
 from django.db import transaction
 from django.utils import timezone
-
-from apps.content import announce_facts
-from apps.content.models import (
+from tools.retrieval.models import (
     Announcement,
     AnnouncementNudge,
     AnnouncementPost,
@@ -38,6 +36,8 @@ from apps.content.models import (
     ContentDeadline,
     SavedOpportunity,
 )
+
+from apps.content import announce_facts
 
 #: Remind-me choices, in picker order: (value, label, days before).
 CHOICES = (
@@ -283,7 +283,7 @@ def _rounds(ann: Announcement) -> list[str]:
 
 
 def _reminder_subscriptions(ann: Announcement, user):
-    from apps.content.models import ReminderSubscription
+    from tools.retrieval.models import ReminderSubscription
 
     if ann.content is None:
         return []

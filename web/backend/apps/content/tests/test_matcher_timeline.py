@@ -12,9 +12,9 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
+from tools.retrieval.models import ContentDeadline, ContentItem, SavedOpportunity
 
 from apps.content.matchers import timeline as tl
-from apps.content.models import ContentDeadline, ContentItem, SavedOpportunity
 from apps.content.timeline_settings import Timeline
 
 TODAY = date(2026, 9, 11)

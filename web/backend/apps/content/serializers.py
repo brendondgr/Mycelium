@@ -2,10 +2,14 @@ import re
 from datetime import UTC, date, datetime
 
 from rest_framework import serializers
+from tools.retrieval.models import (
+    ContentItem,
+    IgnoredItem,
+    RelevanceScore,
+    SavedOpportunity,
+)
 
 from apps.content.formatting import normalize_amount
-
-from .models import ContentItem, IgnoredItem, RelevanceScore, SavedOpportunity
 
 
 def _writeup(score: RelevanceScore) -> dict:
@@ -230,7 +234,7 @@ _ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 #: Collector deadline kind -> the ``SavedOpportunity.DeadlineKind`` name it is
 #: reported under. Two vocabularies meet here and neither is imported:
 #:
-#: * ``apps.scraper.collect.conferences.record.SUBMISSION_TYPES`` is
+#: * ``tools.retrieval.collect.conferences.record.SUBMISSION_TYPES`` is
 #:   ``{"abstract", "submission"}`` — the only two kinds that mean "I can still
 #:   act on this venue", which is why ``mapping.py::_conference_deadlines``
 #:   gates ``deadline_date`` on exactly those and never on the event date.
@@ -241,7 +245,7 @@ _ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 #: ``"manuscript"`` is accepted as an input key too, so an array already
 #: written in the projection's own vocabulary is read rather than silently
 #: dropped. Copied rather than imported for the reason
-#: :mod:`apps.content.deadlines_projection` gives for copying the same table:
+#: :mod:`tools.retrieval.deadlines_projection` gives for copying the same table:
 #: the content app does not depend on the collector's package at read time.
 #: Every other collector kind (notification, camera_ready, registration, the
 #: rebuttal pair, supplementary, unknown, and anything a future adapter
@@ -403,7 +407,7 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
 
         from django.utils import timezone
 
-        from . import usability
+        from apps.content import usability
 
         reader = self.context.get("usability_reader")
         if reader is None or not score.content_id:
@@ -556,7 +560,7 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
 
         ``signals["next_kind"]`` is written at match time from
         ``metadata["next_kind"]``, and only the fellowship ingest
-        (``apps.scraper.fellowships.records``) ever writes that key. The open
+        (``tools.retrieval.fellowships.records``) ever writes that key. The open
         collector's mapper writes none, so every grant and conference in the
         rebuilt corpus serialized "" here while its ``deadline_date`` sat right
         next to it — the field the grant page's "kind" facet is built from was
@@ -1335,7 +1339,7 @@ _SUMMARY_MAX = 400
 class SearchResultSerializer(serializers.Serializer):
     """One search hit, read straight off a :class:`ContentItem` (no score row).
 
-    The query-first search path (:mod:`apps.content.search`) ranks the corpus
+    The query-first search path (:mod:`tools.retrieval.search`) ranks the corpus
     directly, so — unlike the digest/opportunity serializers — this reads the
     global item, not a per-target :class:`RelevanceScore`. It exposes one unified
     shape (id/type/title/summary/url/created_at + the fused ``score`` and
@@ -1563,7 +1567,7 @@ class IgnoredItemSerializer(serializers.Serializer):
     """One ignored entry for the Ignored view, with a feed-parity card.
 
     The mirror of :class:`SavedItemSerializer`, minus the snapshot. An ignore row
-    cascades with its :class:`~apps.content.models.ContentItem`, so there is no
+    cascades with its :class:`~tools.retrieval.models.ContentItem`, so there is no
     "the listing is gone but the row remains" case to render around — ``card`` is
     always the real card the item's own feed page would show, which is what makes
     the Ignored view a place you can recognise something and put it back.

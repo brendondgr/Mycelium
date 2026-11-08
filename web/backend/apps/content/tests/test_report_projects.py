@@ -14,6 +14,7 @@ Two things are asserted here that the rest of the briefing tests take for grante
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.accounts.models import Lab, LabMembership, WatchPreference
 from apps.content.briefing import (
@@ -21,7 +22,6 @@ from apps.content.briefing import (
     generate_briefing_for_user,
     report_projects_for_user,
 )
-from apps.content.models import ContentItem, RelevanceScore
 from apps.research.models import Project, ProjectMember
 
 RUN = "2026-07-11T06:00:00"
@@ -279,7 +279,7 @@ def test_a_quiet_day_carries_yesterdays_report_forward(reader: User) -> None:
     """
     from datetime import timedelta
 
-    from apps.content.models import DailyBriefing
+    from tools.retrieval.models import DailyBriefing
 
     DailyBriefing.objects.create(
         user=reader,

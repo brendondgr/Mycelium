@@ -18,9 +18,9 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
+from tools.retrieval.models import ReflectionProposal
 
 from apps.content import reflection
-from apps.content.models import ReflectionProposal
 from apps.research.models import Project, ProjectMember, ProjectState
 
 TODAY = timezone.localdate()

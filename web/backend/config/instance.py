@@ -736,6 +736,9 @@ def _render_tool_sections() -> list[str]:
         out.append(f"[tools.{cls.name}]")
         out.append("enabled = true")
         for setting in cls.settings:
+            if setting.secret:
+                out.append(f"# {setting.key}: secret, set ${setting.env} in .env")
+                continue
             value = setting.default
             text = (str(value) if isinstance(value, float)
                     else _toml_value(value))

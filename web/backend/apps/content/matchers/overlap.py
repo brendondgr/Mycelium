@@ -6,7 +6,7 @@ publish" — and the second most valuable is "no, they have not, and here is
 precisely where you still differ".
 
 The comparison is narrow on purpose. A paper's **headline claim**
-(:class:`~apps.content.models.ItemComprehension`'s ``claim``) against the
+(:class:`~tools.retrieval.models.ItemComprehension`'s ``claim``) against the
 project's **claimed contribution**, and the paper's method-and-setting against the
 project's method-and-data. Those two, not the whole abstract against the whole
 project, because everything in a reader's feed is already about their topic —
@@ -77,7 +77,7 @@ def _approach(precis) -> str:
 
 
 def _project_approach(slow: dict, dropped: tuple[str, ...] = ()) -> str:
-    from .developments import any_names
+    from apps.content.matchers.developments import any_names
 
     methods = [m for m in (slow.get("method") or []) if not any_names(dropped, str(m))]
     parts = methods + list(slow.get("data") or [])

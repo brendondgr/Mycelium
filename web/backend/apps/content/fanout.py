@@ -1,7 +1,8 @@
 """Cross-member relevance fan-out — Feature F.
 
 When a paper enters a project (share or paste-a-link), score it against each *other*
-member's individual profile and record a :class:`~apps.content.models.MemberSuggestion`
+member's individual profile and record a
+:class:`~tools.retrieval.models.MemberSuggestion`
 for each: ``suggested=True`` (above the cosine floor → delivered in-app) or
 ``suggested=False`` (a persisted, audited abstention). The threshold reads the
 **normalized cosine directly** — never an RRF rank (RRF ranks aren't calibrated for
@@ -16,11 +17,10 @@ import logging
 import math
 
 from django.conf import settings
+from tools.retrieval import embeddings
+from tools.retrieval.models import MemberSuggestion
 
 from apps.accounts.embedding import canonical_text
-
-from . import embeddings
-from .models import MemberSuggestion
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ def trigger_fanout(share) -> None:
     """
     try:
         if settings.FANOUT_ASYNC:
-            from .tasks import fanout_relevance
+            from apps.content.tasks import fanout_relevance
 
             fanout_relevance.delay(str(share.id))
         else:

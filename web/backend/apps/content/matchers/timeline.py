@@ -3,7 +3,7 @@
 The question a researcher asks of a call for papers is never "is this venue
 relevant" — they know their field. It is "given where I am, can I make it?" That
 is arithmetic over three things Mycelium already stores: the venue's dated rounds
-(:class:`~apps.content.models.ContentDeadline`), the project's milestones, and the
+(:class:`~tools.retrieval.models.ContentDeadline`), the project's milestones, and the
 reader's own sense of how much runway they need
 (:mod:`apps.content.timeline_settings`).
 
@@ -50,7 +50,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
-from apps.content.models import ContentDeadline, SavedOpportunity
+from tools.retrieval.models import ContentDeadline, SavedOpportunity
+
 from apps.content.timeline_settings import Timeline, effective_timeline
 
 FITS = "fits"

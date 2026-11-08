@@ -24,7 +24,7 @@ class Command(BaseCommand):
         parser.add_argument("--out", default="")
 
     def handle(self, *args, **options):
-        from apps.content.models import DailyBriefing
+        from tools.retrieval.models import DailyBriefing
 
         until = timezone.now()
         since = until - timedelta(days=options["days"])

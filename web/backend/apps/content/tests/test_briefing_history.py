@@ -17,9 +17,9 @@ from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 from rest_framework.test import APIClient
+from tools.retrieval.models import DailyBriefing
 
 from apps.accounts.models import Lab, LabMembership
-from apps.content.models import DailyBriefing
 
 TODAY = timezone.localdate()
 

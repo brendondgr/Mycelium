@@ -36,7 +36,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 
-from .protocols import Retrievable
+from tools.retrieval.protocols import Retrievable
 
 Hit = tuple[Retrievable, float]
 

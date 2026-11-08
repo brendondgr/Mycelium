@@ -10,15 +10,15 @@ from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.content import reminders
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     Notification,
     ReminderSubscription,
     SavedOpportunity,
 )
+
+from apps.content import reminders
 from apps.content.reminders import create_subscription
 from apps.content.reminders_tick import run_tick
 

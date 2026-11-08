@@ -117,9 +117,9 @@ def test_daily_opportunities_scores_departments_with_announcements_on(
     """A department has no feed of its own: it is scored only while its
     announcements are on, because its slate exists only for that channel."""
     from django.utils import timezone
+    from tools.retrieval.models import AnnouncementSettings
 
     from apps.accounts.models import Department
-    from apps.content.models import AnnouncementSettings
     from apps.content.opportunities import OppBatchResult
 
     _user, lab, _project = lab_setup

@@ -58,11 +58,11 @@ from typing import Any
 
 from django.conf import settings
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, ItemComprehension
 
-from .clustering import Cluster
-from .comprehension import fallback_block
-from .models import ContentItem, ItemComprehension
-from .verdicts import VERDICTS, derive_verdict, parse_verdict
+from apps.content.clustering import Cluster
+from apps.content.comprehension import fallback_block
+from apps.content.verdicts import VERDICTS, derive_verdict, parse_verdict
 
 logger = logging.getLogger(__name__)
 
@@ -617,7 +617,7 @@ def _as_index(value: Any, count: int) -> int | None:
 
 def writeup_concurrency() -> int:
     """How many write-up calls may be in flight for one target."""
-    from .comprehension import writeup_concurrency as _shared
+    from apps.content.comprehension import writeup_concurrency as _shared
 
     return _shared()
 

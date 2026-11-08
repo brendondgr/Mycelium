@@ -22,8 +22,9 @@ touches no ORM model of its own and the two apps do not form an import cycle.
 
 from __future__ import annotations
 
+from tools.retrieval.models import Notification
+
 from apps.accounts.models import LabMembership
-from apps.content.models import Notification
 
 #: What to tell the person, per classified failure reason. Written to be actionable:
 #: each one names what happened and what would fix it, in Mylo's register.

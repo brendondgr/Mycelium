@@ -13,9 +13,9 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
+from tools.retrieval.models import AnnouncementNudge, AnnouncementReaction
 
 from apps.content import announcement_actions, discord_announcements
-from apps.content.models import AnnouncementNudge, AnnouncementReaction
 from apps.content.tests.test_discord_announcements import (
     TODAY,
     _announce,

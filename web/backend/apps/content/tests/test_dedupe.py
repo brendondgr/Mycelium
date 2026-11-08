@@ -1,15 +1,14 @@
-"""Cleanup of cross-source duplicate paper rows (apps.content.dedupe)."""
+"""Cleanup of cross-source duplicate paper rows (tools.retrieval.dedupe)."""
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.content.dedupe import (
+from tools.retrieval.dedupe import (
     dedupe_papers,
     group_duplicate_papers,
     merge_content_items,
     pick_survivor,
 )
-from apps.content.models import ContentItem, RelevanceScore, SavedOpportunity
+from tools.retrieval.models import ContentItem, RelevanceScore, SavedOpportunity
 
 
 def _paper(source, external_id, **metadata):

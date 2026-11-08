@@ -5,10 +5,10 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
+from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
 
 from apps.accounts.models import WatchPreference
 from apps.content.briefing import CATEGORY_TYPES, generate_briefing_for_user
-from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.content.tests.entitle import entitle_user
 
 RUN = "2026-07-11T06:00:00"

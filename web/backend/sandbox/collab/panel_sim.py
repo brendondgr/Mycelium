@@ -463,10 +463,11 @@ def main(world, args) -> dict:
 def prepare_browser(world, *, seed: int, password: str) -> dict:
     """One sandbox seeker a browser can sign in as, with read calls in their
     feed carrying team fit — run after ``panel``, on the same world."""
+    from tools.retrieval.models import RelevanceScore
+
     from apps.accounts.models import Lab
     from apps.collab import team_fit
     from apps.collab.models import RequirementSlots
-    from apps.content.models import RelevanceScore
     from apps.content.targets import target_for_lab, target_for_user
     from apps.research.models import Project
 

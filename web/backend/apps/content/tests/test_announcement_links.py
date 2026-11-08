@@ -16,6 +16,13 @@ from unittest import mock
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.retrieval.models import (
+    Announcement,
+    AnnouncementPost,
+    AnnouncementSettings,
+    ContentItem,
+    RelevanceScore,
+)
 
 from apps.accounts.models import Lab, LabMembership
 from apps.content import (
@@ -24,13 +31,6 @@ from apps.content import (
     announcement_links,
     discord_announcements,
     discord_commands,
-)
-from apps.content.models import (
-    Announcement,
-    AnnouncementPost,
-    AnnouncementSettings,
-    ContentItem,
-    RelevanceScore,
 )
 from apps.integrations.models import DiscordIdentity
 from apps.integrations.testing import add_route, bind

@@ -19,10 +19,10 @@ import traceback
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from tools.retrieval.models import AnnouncementSettings
 
 from apps.content import announce
 from apps.content import announce_editor as editor
-from apps.content.models import AnnouncementSettings
 
 
 class Command(BaseCommand):

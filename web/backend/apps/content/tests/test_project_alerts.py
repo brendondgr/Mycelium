@@ -14,6 +14,13 @@ from datetime import date, timedelta
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.retrieval.models import (
+    ContentDeadline,
+    ContentItem,
+    Notification,
+    ProjectAlert,
+    SavedOpportunity,
+)
 
 from apps.accounts.models import Lab, WatchPreference
 from apps.content import alerts as alert_engine
@@ -22,13 +29,6 @@ from apps.content.alert_report import (
     block_for,
     notify,
     open_alerts,
-)
-from apps.content.models import (
-    ContentDeadline,
-    ContentItem,
-    Notification,
-    ProjectAlert,
-    SavedOpportunity,
 )
 from apps.research.models import Project, ProjectState
 

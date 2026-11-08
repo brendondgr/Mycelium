@@ -17,6 +17,7 @@ from __future__ import annotations
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
 
 from apps.accounts.models import WatchPreference
 from apps.content import discord_embeds
@@ -33,7 +34,6 @@ from apps.content.discord_embeds import (
     personal_report_embed,
     trim_to_sentence,
 )
-from apps.content.models import ContentItem, DailyBriefing, RelevanceScore
 from apps.content.report_stats import ReportStats
 
 TODAY = timezone.now().date().isoformat()

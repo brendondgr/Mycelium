@@ -219,7 +219,7 @@ def test_scrape_miss_is_unverified_not_qualified():
 
 @pytest.mark.django_db
 def test_withhold_unverified_drops_the_record():
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     meta = _meta(citizenship=(), stage=(), field=())
     meta["flags"] = {"facets_incomplete": True}
@@ -317,7 +317,7 @@ def test_fit_returns_float_between_zero_and_one():
 @pytest.mark.django_db
 def test_match_fellowships_filters_and_orders():
     """Qualified items rank above conditional; closed and not_eligible are excluded."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     def _item(eid, citizenship, stage, field, deadline_type, award_class="fellowship"):
         return ContentItem.objects.create(
@@ -379,7 +379,7 @@ def test_match_fellowships_filters_and_orders():
 @pytest.mark.django_db
 def test_match_fellowships_skips_grants():
     """Items with award_class=='grant' are skipped even if in the fellowship corpus."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     ContentItem.objects.create(
         type=ContentItem.Type.FELLOWSHIP,
@@ -404,7 +404,7 @@ def test_match_fellowships_skips_grants():
 @pytest.mark.django_db
 def test_match_fellowships_surface_limit():
     """At most FELLOWSHIP_SURFACE_LIMIT suggestions are returned."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     for i in range(FELLOWSHIP_SURFACE_LIMIT + 5):
         ContentItem.objects.create(
@@ -431,7 +431,7 @@ def test_match_fellowships_surface_limit():
 @pytest.mark.django_db
 def test_match_fellowships_uncaps_beyond_default_limit():
     """A larger ``max_surface`` surfaces *every* eligible fellowship, not just 40."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     n = FELLOWSHIP_SURFACE_LIMIT + 12
     for i in range(n):
@@ -451,7 +451,7 @@ def test_match_fellowships_uncaps_beyond_default_limit():
 @pytest.mark.django_db
 def test_match_fellowships_fit_threshold_trims_weak():
     """The fit threshold (after eligibility) drops weakly-related fellowships."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     ContentItem.objects.create(
         type=ContentItem.Type.FELLOWSHIP,
@@ -485,7 +485,7 @@ def test_match_fellowships_fit_threshold_trims_weak():
 
 @pytest.mark.django_db
 def test_match_fellowships_rank_is_1_based():
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     ContentItem.objects.create(
         type=ContentItem.Type.FELLOWSHIP,
@@ -687,7 +687,7 @@ def test_fellowship_slate_entrant_gets_llm_slot_priority():
 def test_match_fellowships_embed_by_id_none_matches_legacy_behavior():
     """``embed_by_id=None`` (no interest signal) surfaces/ranks exactly as the
     pure rule engine always has — a regression guard for existing callers."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     qualified = ContentItem.objects.create(
         type=ContentItem.Type.FELLOWSHIP,
@@ -718,7 +718,7 @@ def test_match_fellowships_embed_by_id_none_matches_legacy_behavior():
 def test_match_fellowships_embed_gate_drops_irrelevant_eligible():
     """An eligible fellowship below ``embed_threshold`` is dropped entirely; one
     at/above it survives — the "eligible but irrelevant" case from the plan."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     irrelevant = ContentItem.objects.create(
         type=ContentItem.Type.FELLOWSHIP,
@@ -754,7 +754,7 @@ def test_match_fellowships_embed_gate_drops_irrelevant_eligible():
 def test_match_fellowships_embed_blend_orders_relevance_over_tier():
     """A high-cosine eligible fellowship outranks a low-cosine one even when the
     low-cosine item has a better rule tier/recency."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     # Qualified + an imminent deadline -> strong rule_fit, but a weak topical match.
     high_tier_low_cosine = ContentItem.objects.create(
@@ -787,7 +787,7 @@ def test_match_fellowships_embed_blend_orders_relevance_over_tier():
 def test_match_fellowships_match_percent_is_embedding_percent():
     """A rules-sourced row's ``match_percent`` is the topical (embedding) percent,
     not the rule-fit percent — the old value masqueraded eligibility as relevance."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     item = ContentItem.objects.create(
         type=ContentItem.Type.FELLOWSHIP,
@@ -811,7 +811,7 @@ def test_match_fellowships_match_percent_is_embedding_percent():
 
 @pytest.mark.django_db
 def test_match_fellowships_headline_reflects_strong_research_fit():
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     item = ContentItem.objects.create(
         type=ContentItem.Type.FELLOWSHIP,
@@ -894,8 +894,9 @@ def test_skip_eligibility_without_embedding_surfaces_nothing():
 def test_persist_fellowships_writes_under_target_project():
     """The generalized persist path writes a project's fellowship scores under
     target_project (not target_user)."""
+    from tools.retrieval.models import ContentItem, RelevanceScore
+
     from apps.accounts.models import Lab
-    from apps.content.models import ContentItem, RelevanceScore
     from apps.content.opportunities import _persist_fellowships
     from apps.research.models import Project
 

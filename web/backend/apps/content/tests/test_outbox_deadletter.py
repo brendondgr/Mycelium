@@ -11,9 +11,9 @@ from datetime import timedelta
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.retrieval.models import Notification
 
 from apps.accounts.models import Lab, LabMembership
-from apps.content.models import Notification
 from apps.integrations.models import (
     DiscordIdentity,
     DiscordOutboxMessage,

@@ -42,13 +42,13 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.db import IntegrityError
 from django.utils import timezone
+from tools.retrieval.models import ContentDeadline, ProjectAlert
 
 from apps.content.matchers import blockers as blocker_matcher
 from apps.content.matchers import known_literature as known_matcher
 from apps.content.matchers import overlap as overlap_matcher
 from apps.content.matchers import team_gap as team_matcher
 from apps.content.matchers import timeline as timeline_matcher
-from apps.content.models import ContentDeadline, ProjectAlert
 
 #: The order the daily cap spends its budget in. Time-critical first, then the
 #: two that change what a reader should *write*, then the two that change what
@@ -379,8 +379,9 @@ def _candidate_contents(project, reader) -> tuple[dict, dict]:
     matcher walking the whole accumulated feed would raise an alert about a paper
     from March on the day a project first states a blocker.
     """
+    from tools.retrieval.models import ItemComprehension
+
     from apps.content.briefing import CATEGORY_TYPES, report_scores
-    from apps.content.models import ItemComprehension
 
     today = timezone.localdate().isoformat()
     contents: dict = {}
@@ -406,7 +407,8 @@ def _candidate_contents(project, reader) -> tuple[dict, dict]:
 
 
 def _evaluate(*, target_filter: dict, projects: list, reader, today: date) -> AlertRun:
-    from apps.content.models import SavedOpportunity
+    from tools.retrieval.models import SavedOpportunity
+
     from apps.content.timeline_settings import effective_timeline
 
     total = AlertRun()

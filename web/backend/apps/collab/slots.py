@@ -29,8 +29,8 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 
 from django.conf import settings
+from tools.retrieval.embeddings import embed_texts
 
-from apps.content.embeddings import embed_texts
 from apps.research.state_extract import grounding_failures
 
 from .models import RequirementSlots, SlotFacet
@@ -404,7 +404,7 @@ def read_calls(items: Iterable, *, limit: int | None = None, complete=None) -> S
 
 def grants():
     """Every call a slot line could appear on: grants, newest first."""
-    from apps.content.models import ContentItem
+    from tools.retrieval.models import ContentItem
 
     return ContentItem.objects.filter(type="grant").order_by("-created_at", "pk")
 

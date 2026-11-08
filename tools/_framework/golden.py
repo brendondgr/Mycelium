@@ -108,6 +108,22 @@ def _config() -> list[str]:
     ]
 
 
+def _django_settings() -> list[str]:
+    """Every Django setting name and its value's type.
+
+    A setting that moves into a tool's declaration must keep its name (call
+    sites and ``override_settings`` depend on it); values come from the
+    environment, so only the type is recorded here.
+    """
+    from django.conf import settings
+
+    return sorted(
+        f"{name}\t{type(getattr(settings, name)).__name__}"
+        for name in dir(settings)
+        if name.isupper() and name not in {"TOOLS_REPORT", "INSTANCE"}
+    )
+
+
 SURFACES = {
     "urls": _urls,
     "celery_tasks": _tasks,
@@ -116,6 +132,7 @@ SURFACES = {
     "tables": _tables,
     "nightly_stages": _stages,
     "config": _config,
+    "django_settings": _django_settings,
 }
 
 

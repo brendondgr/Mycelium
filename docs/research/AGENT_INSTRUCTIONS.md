@@ -109,6 +109,6 @@ artifact in this directory.
   running the harness and the standing claims boundary. The numbers themselves
   live in the experiment folders.
 - The re-run rule in [`docs/skills/global.md`](../skills/global.md) stands: a
-  change to `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, or
+  change to `tools/retrieval/index.py`, `tools/retrieval/lexical.py`, `fusion.py`, `ranking.py`, or
   `pipeline.py`'s pool construction needs a fresh run — and now a fresh
   experiment folder.

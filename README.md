@@ -222,7 +222,7 @@ Postgres, which the app and the Discord bot both read.
 | API | Django 5 + Django REST Framework | `web/backend/` |
 | Background jobs | Celery + Redis in the stack; the nightly run as a host systemd timer | `web/backend/`, `ops/nightly/` |
 | Data | PostgreSQL 17 with pgvector, holding records, the knowledge graph and vectors alike | `postgres` service |
-| Embeddings | fastembed / ONNX Runtime, CPU or CUDA | `web/backend/apps/scraper/embedding.py` |
+| Embeddings | fastembed / ONNX Runtime, CPU or CUDA | `tools/retrieval/embedding.py` |
 | Language model | Any OpenAI-compatible endpoint | `web/backend/apps/core/llm.py` |
 | Discord bot | discord.py | `mylo/` |
 | Gateway | Nginx, single origin | `web/infra/nginx/` |

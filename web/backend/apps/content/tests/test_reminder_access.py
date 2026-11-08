@@ -18,15 +18,15 @@ from datetime import date
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
-
-from apps.accounts.models import Lab, LabMembership
-from apps.billing.models import Seat, Subscription, Tier
-from apps.content.models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     ReminderSubscription,
     SavedOpportunity,
 )
+
+from apps.accounts.models import Lab, LabMembership
+from apps.billing.models import Seat, Subscription, Tier
 from apps.content.reminder_access import (
     Reason,
     lab_reminder_access,

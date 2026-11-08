@@ -12,9 +12,9 @@ from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval.models import ContentItem, ProjectProfile, RelevanceEvent
 
 from apps.accounts.models import Lab, LabMembership, Profile
-from apps.content.models import ContentItem, ProjectProfile, RelevanceEvent
 from apps.content.targets import target_for_project
 from apps.content.team_profile import recompute_project_profile
 from apps.research.models import Project, ProjectMember

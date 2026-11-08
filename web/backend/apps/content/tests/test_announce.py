@@ -14,16 +14,16 @@ from datetime import date
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
-
-from apps.accounts.models import Lab, LabMembership
-from apps.content import announce, announce_facts, announce_updates
-from apps.content import announce_editor as editor
-from apps.content.models import (
+from tools.retrieval.models import (
     Announcement,
     AnnouncementSettings,
     ContentItem,
     RelevanceScore,
 )
+
+from apps.accounts.models import Lab, LabMembership
+from apps.content import announce, announce_facts, announce_updates
+from apps.content import announce_editor as editor
 
 TODAY = date(2026, 11, 5)
 FAR = "2099-01-15"
@@ -503,7 +503,7 @@ def test_the_seed_skips_fellowships_nobody_is_eligible_for() -> None:
 
 @pytest.mark.django_db
 def test_a_saved_item_that_was_pruned_does_not_break_the_list() -> None:
-    from apps.content.models import SavedOpportunity
+    from tools.retrieval.models import SavedOpportunity
 
     target = _lab()
     item = _item(deadline="2026-11-12", title="Near grant")

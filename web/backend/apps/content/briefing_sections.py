@@ -52,8 +52,8 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Sequence
 
-from . import narrative
-from .verdicts import VERDICT_LABELS
+from apps.content import narrative
+from apps.content.verdicts import VERDICT_LABELS
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +206,7 @@ def write_narrative(
     """Mylo's prose for one run, as structure rather than markdown.
 
     Returns ``{"lead", "lead_origin", "themes": [{cluster_id, label, read,
-    origin}]}`` — stored once on the :class:`~apps.content.models.DailyBriefing`
+    origin}]}`` — stored once on the :class:`~tools.retrieval.models.DailyBriefing`
     and read back by the PDF, the app, and the Discord message, so the three can
     never carry different wordings of the same day and a re-render never re-bills
     the model for prose that already exists.

@@ -182,3 +182,23 @@ ambient_extract_per_lab = 200            # env AMBIENT_EXTRACT_DAILY_CAP_PER_LAB
 ambient_extract_concurrency = 8          # env AMBIENT_EXTRACT_CONCURRENCY
 # Profile-change explanations written per night.
 ambient_explain = 200                    # env AMBIENT_EXPLAIN_NIGHTLY_CAP
+
+# retrieval: The grounded corpus: paper sources, the grant, conference and
+# fellowship collectors, deduplication, embeddings, deadlines, and search over
+# it. Knows nothing about people.
+[tools.retrieval]
+enabled = true
+# pubmed_api_key: secret, set $PUBMED_API_KEY in .env
+# embedding_model = "BAAI/bge-small-en-v1.5" # env SCRAPER_EMBEDDING_MODEL
+# embedding_device = "auto"              # env EMBEDDING_DEVICE
+# embedding_device_id = ""               # env EMBEDDING_DEVICE_ID
+# embedding_batch_size_cpu = 64          # env EMBEDDING_BATCH_SIZE_CPU
+# embedding_batch_size_gpu = 256         # env EMBEDDING_BATCH_SIZE_GPU
+# opportunity_stale_days = 60            # env OPPORTUNITY_STALE_DAYS
+# search_candidate_pool = 500            # env SEARCH_CANDIDATE_POOL
+# search_page_size = 20                  # env SEARCH_PAGE_SIZE
+# search_max_page_size = 50              # env SEARCH_MAX_PAGE_SIZE
+# search_low_confidence_cosine = 0.35    # env SEARCH_LOW_CONFIDENCE_COSINE
+# search_semantic_floor = 0.3            # env SEARCH_SEMANTIC_FLOOR
+# search_fuzzy_enabled = true            # env SEARCH_FUZZY_ENABLED
+# search_fuzzy_pool = 200                # env SEARCH_FUZZY_POOL

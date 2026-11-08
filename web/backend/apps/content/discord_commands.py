@@ -18,12 +18,12 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-
-from apps.content.models import (
+from tools.retrieval.models import (
     DailyBriefing,
     ReminderSubscription,
     SavedOpportunity,
 )
+
 from apps.integrations.services import gate
 
 #: How many rows a Discord embed can carry before it stops being scannable. Well

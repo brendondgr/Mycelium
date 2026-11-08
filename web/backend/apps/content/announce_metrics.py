@@ -18,9 +18,7 @@ from datetime import date, datetime, time, timedelta
 
 from django.conf import settings
 from django.utils import timezone
-
-from apps.content import dept_level
-from apps.content.models import (
+from tools.retrieval.models import (
     Announcement,
     AnnouncementNudge,
     AnnouncementReaction,
@@ -28,6 +26,8 @@ from apps.content.models import (
     ContentItem,
     RelevanceScore,
 )
+
+from apps.content import dept_level
 from apps.integrations.models import DiscordTargetBinding
 
 _KINDS = (

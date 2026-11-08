@@ -2,7 +2,8 @@
 
 import json
 
-from apps.content.models import ContentItem
+from tools.retrieval.models import ContentItem
+
 from apps.content.suggest import generate_suggestions
 
 INTERESTS = {

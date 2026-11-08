@@ -11,6 +11,13 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval.models import (
+    Collection,
+    CollectionItem,
+    ContentItem,
+    ItemComprehension,
+    ProjectShare,
+)
 
 from apps.accounts.models import AuthorWork, Lab, LabMembership, Profile
 from apps.content.matchers import blockers as blocker_matcher
@@ -18,13 +25,6 @@ from apps.content.matchers import known_literature as known
 from apps.content.matchers import overlap as overlap_matcher
 from apps.content.matchers import similarity as sim
 from apps.content.matchers import team_gap
-from apps.content.models import (
-    Collection,
-    CollectionItem,
-    ContentItem,
-    ItemComprehension,
-    ProjectShare,
-)
 from apps.research.models import Project, ProjectState
 
 

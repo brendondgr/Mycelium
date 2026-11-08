@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from django.conf import settings
 
-from .clustering import IMPLICIT_CLUSTER_ID, IMPLICIT_CLUSTER_LABEL
+from apps.content.clustering import IMPLICIT_CLUSTER_ID, IMPLICIT_CLUSTER_LABEL
 
 EXPLORE_PREFIX = "explore-"
 EXPLORE_LABEL = "Exploring: {label}"

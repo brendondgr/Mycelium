@@ -80,7 +80,8 @@ def check_cadence_matrix() -> Check:
 
 def check_briefings_written(today: date) -> Check:
     """S2: today's daily exists for every scheduled-eligible target."""
-    from apps.content.models import DailyBriefing
+    from tools.retrieval.models import DailyBriefing
+
     from apps.content.tasks import select_targets, select_users
 
     users = select_users(None)
@@ -177,8 +178,9 @@ def check_no_unshared_project_in_a_lab_post(today: date) -> Check:
     """
     import json
 
+    from tools.retrieval.models import DailyBriefing
+
     from apps.accounts.models import Lab
-    from apps.content.models import DailyBriefing
     from apps.integrations.models import DiscordOutboxMessage
     from apps.research.models import Project
 
@@ -248,7 +250,7 @@ def check_embeds_fit(today: date) -> Check:
 
 def check_stats_reconcile(today: date) -> Check:
     """S7: the statistics and the summary table quote one morning, not two."""
-    from apps.content.models import DailyBriefing
+    from tools.retrieval.models import DailyBriefing
 
     rows = [
         row
@@ -277,7 +279,8 @@ def check_stats_reconcile(today: date) -> Check:
 
 def check_citations_resolve(today: date) -> Check:
     """S8: every ``[P#]`` in a weekly resolves, and the record was kept."""
-    from apps.content.models import DailyBriefing
+    from tools.retrieval.models import DailyBriefing
+
     from apps.content.report_grammar import citations
 
     rows = list(
@@ -305,7 +308,7 @@ def check_citations_resolve(today: date) -> Check:
 
 def check_no_scores_in_prose(today: date) -> Check:
     """S9: no percentage, no "cosine", no "score" in any report body."""
-    from apps.content.models import DailyBriefing
+    from tools.retrieval.models import DailyBriefing
 
     rows = list(DailyBriefing.objects.filter(generated_on=today))
     if not rows:
@@ -335,8 +338,9 @@ def check_buffer_is_free() -> Check:
     takes its settings as an argument and touches no model seam at all, so the
     check is that the same row under two buffers gives two verdicts.
     """
+    from tools.retrieval.models import ContentDeadline, ContentItem, SavedOpportunity
+
     from apps.content.matchers import timeline as tl
-    from apps.content.models import ContentDeadline, ContentItem, SavedOpportunity
     from apps.content.timeline_settings import Timeline
 
     row = ContentDeadline(

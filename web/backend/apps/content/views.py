@@ -10,16 +10,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from apps.accounts.models import Lab, LabMembership
-from apps.accounts.permissions import user_can_manage_lab, user_has_lab_access
-from apps.core.people import display_name, initials
-from apps.research.models import Project
-
-from . import usability
-from .collaboration import record_event
-from .liveness import is_live
-from .models import (
+from tools.retrieval.liveness import is_live
+from tools.retrieval.models import (
     ContentItem,
     DailyBriefing,
     IgnoredItem,
@@ -29,10 +21,15 @@ from .models import (
     RelevanceScore,
     SavedOpportunity,
 )
-from .onboarding_match import UnknownArea, onboarding_match_area
-from .scan_status import is_paper_scan_inflight
-from .search import SearchFilters
-from .serializers import (
+from tools.retrieval.search import SearchFilters
+
+from apps.accounts.models import Lab, LabMembership
+from apps.accounts.permissions import user_can_manage_lab, user_has_lab_access
+from apps.content import usability
+from apps.content.collaboration import record_event
+from apps.content.onboarding_match import UnknownArea, onboarding_match_area
+from apps.content.scan_status import is_paper_scan_inflight
+from apps.content.serializers import (
     RANK_EXPLANATIONS,
     RANK_SYSTEM_INFO,
     ConferenceSerializer,
@@ -44,7 +41,9 @@ from .serializers import (
     SearchResultSerializer,
     SuggestionSerializer,
 )
-from .verdicts import READ, SKIM, VERDICTS
+from apps.content.verdicts import READ, SKIM, VERDICTS
+from apps.core.people import display_name, initials
+from apps.research.models import Project
 
 #: A suggestion at or above this percent match is called a "strong" match in the
 #: daily summary. Kept here (not a setting) so the label logic stays with the view.
@@ -431,7 +430,7 @@ class LabDailyBriefingView(APIView):
 DEADLINE_ALERT_DAYS = 7
 
 #: The content types a reader can bookmark or ignore — the four feed areas.
-#: :class:`~apps.content.models.SavedOpportunity.Area` uses the same strings, so a
+#: :class:`~tools.retrieval.models.SavedOpportunity.Area` uses the same strings, so a
 #: type doubles as its area, but the pair is asserted rather than assumed.
 BOOKMARKABLE_TYPES = [
     ContentItem.Type.GRANT,
@@ -555,7 +554,7 @@ def _accumulated_scores(
     otherwise grow unbounded between prunes.
 
     Dead listings are dropped **here**, not only by the nightly prune
-    (:func:`apps.content.liveness.is_live`). The prune is the removal guarantee
+    (:func:`tools.retrieval.liveness.is_live`). The prune is the removal guarantee
     and it runs once a night; this is the hiding guarantee and it runs on every
     request. Without it a conference whose last date passed this morning stays
     on the feed until tonight, and a *dateless* conference — which the prune
@@ -683,7 +682,7 @@ class FellowshipsView(_OpportunityFeedView):
     serializer_class = FellowshipSerializer
 
     def get(self, request):
-        from .fellowships import derive_stage
+        from apps.content.fellowships import derive_stage
 
         response = super().get(request)
         profile = getattr(request.user, "profile", None)
@@ -787,7 +786,7 @@ def _ineligible_members(roster: dict, scores: list[RelevanceScore]) -> dict[str,
     strictly less than the consented ``eligible`` annotation already does (D-11);
     the opt-in gate on *naming* someone eligible is untouched.
     """
-    from .fellowships import eligibility_from_profile, evaluate_eligibility
+    from apps.content.fellowships import eligibility_from_profile, evaluate_eligibility
 
     fellowships = [
         score for score in scores if score.content.type == ContentItem.Type.FELLOWSHIP
@@ -1044,7 +1043,7 @@ def _user_cluster_labels(user) -> dict[str, str]:
     Passed as serializer context so a renamed cluster shows its new label on every
     card without a re-score; empty for a v1 / single-cluster profile.
     """
-    from .clustering import cluster_labels
+    from apps.content.clustering import cluster_labels
 
     profile = getattr(user, "profile", None)
     return cluster_labels(getattr(profile, "interests", None))
@@ -1056,7 +1055,7 @@ def _target_cluster_labels(target_filter: dict) -> dict[str, str]:
     Labs carry clusters on their ``LabProfile.interests``; projects rarely do, so
     the serializer's frozen-label fallback covers them.
     """
-    from .clustering import cluster_labels
+    from apps.content.clustering import cluster_labels
 
     lab = target_filter.get("target_lab")
     if lab is not None:
@@ -1074,8 +1073,8 @@ def _attach_search_clusters(items, user) -> None:
     focus re-rank uses — so search cards show the same attribution as the feed.
     Papers-first: off-type items rarely overlap and stay unattributed.
     """
-    from .clustering import cluster_interests
-    from .ranking import focus_overlap
+    from apps.content.clustering import cluster_interests
+    from apps.content.ranking import focus_overlap
 
     profile = getattr(user, "profile", None)
     clusters = [
@@ -1127,7 +1126,7 @@ def _recommendations_payload(
     ``digest`` returns the condensed short list — top ``DIGEST_CAPS`` per area —
     for the per-project "Mylo's picks" block. It no longer drops passed
     conferences itself: :func:`_accumulated_scores` now applies
-    :func:`apps.content.liveness.is_live` to every opportunity read, so a
+    :func:`tools.retrieval.liveness.is_live` to every opportunity read, so a
     conference that is over never reaches this function on any surface, digest
     or not. ``counts`` stays the full totals so the UI can say "top 5 of N".
     Saves remain
@@ -1747,7 +1746,7 @@ class SearchView(APIView):
     """Query-first search across the content corpus (papers/grants/etc.).
 
     ``GET /api/search/?q=…`` runs the shared retrieval pipeline query-first (see
-    :mod:`apps.content.search`) over the **global** corpus — the same items the
+    :mod:`tools.retrieval.search`) over the **global** corpus — the same items the
     opportunity feeds surface post-match — so it reads no lab-scoped data and
     requires only authentication. Query params: ``q`` (required — blank returns an
     empty result, not an error), repeatable/comma ``type``, the per-type facet
@@ -1926,7 +1925,8 @@ class ReflectionProposalsView(APIView):
     """
 
     def get(self, request):
-        from apps.content.models import ReflectionProposal
+        from tools.retrieval.models import ReflectionProposal
+
         from apps.content.reflection import expire_stale
 
         # Lapsed on read as well as on the weekly run: a proposal that expired on
@@ -1955,7 +1955,8 @@ class ReflectionProposalActionView(APIView):
     """
 
     def post(self, request, pk):
-        from apps.content.models import ReflectionProposal
+        from tools.retrieval.models import ReflectionProposal
+
         from apps.research.models import ProjectState
         from apps.research.views import _user_can_edit
 

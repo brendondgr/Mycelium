@@ -37,8 +37,7 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from pgvector.django import CosineDistance
-
-from apps.content.embeddings import embed_texts
+from tools.retrieval.embeddings import embed_texts
 
 from . import merging
 from .models import Concept, ConceptAlias, Facet, Scope

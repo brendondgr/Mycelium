@@ -19,17 +19,7 @@ from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from apps.accounts.models import Lab, LabMembership
-from apps.accounts.permissions import (
-    user_can_edit_lab_profile,
-    user_has_lab_access,
-)
-from apps.core.people import display_name
-from apps.integrations.services import resolve as discord_resolve
-
-from . import reminders_discord
-from .models import (
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     LabReminderPolicy,
@@ -39,8 +29,15 @@ from .models import (
     SavedOpportunity,
     default_reminder_offsets,
 )
-from .reminder_access import lab_reminder_access, personal_reminder_access
-from .reminders import (
+
+from apps.accounts.models import Lab, LabMembership
+from apps.accounts.permissions import (
+    user_can_edit_lab_profile,
+    user_has_lab_access,
+)
+from apps.content import reminders_discord
+from apps.content.reminder_access import lab_reminder_access, personal_reminder_access
+from apps.content.reminders import (
     ReminderAccessError,
     ReminderError,
     create_or_update_subscription,
@@ -48,7 +45,9 @@ from .reminders import (
     set_state,
     update_subscription,
 )
-from .reminders_tick import DEFAULT_TIMEZONE
+from apps.content.reminders_tick import DEFAULT_TIMEZONE
+from apps.core.people import display_name
+from apps.integrations.services import resolve as discord_resolve
 
 User = get_user_model()
 

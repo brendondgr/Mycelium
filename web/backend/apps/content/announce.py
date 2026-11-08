@@ -6,7 +6,7 @@ records, and hands each decision to a ``poster``.
 
 1. **Select.** A target's candidates are the grants, fellowships and conferences
    currently in one of its per-theme slates (:mod:`.slates`) that have no
-   :class:`~apps.content.models.Announcement` for it yet. On an ordinary night that
+   :class:`~tools.retrieval.models.Announcement` for it yet. On an ordinary night that
    is exactly the night's entrants; after a missed night it catches up. Nothing is
    ever announced to the same target twice.
 
@@ -33,17 +33,17 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
-
-from apps.content import announce_editor as editor
-from apps.content import announce_facts, dept_level, usability
-from apps.content.clustering import IMPLICIT_CLUSTER_ID
-from apps.content.liveness import is_live
-from apps.content.models import (
+from tools.retrieval.liveness import is_live
+from tools.retrieval.models import (
     Announcement,
     AnnouncementSettings,
     ContentItem,
     RelevanceScore,
 )
+
+from apps.content import announce_editor as editor
+from apps.content import announce_facts, dept_level, usability
+from apps.content.clustering import IMPLICIT_CLUSTER_ID
 from apps.content.slates import cluster_entries, slate_depth
 
 KIND_ORDER = (
@@ -663,7 +663,7 @@ def run(
 def list_items(target: Target, today: date) -> list[ContentItem]:
     """Everything on the target's list: its slates, its announced items, and what
     its members saved for it."""
-    from apps.content.models import SavedOpportunity
+    from tools.retrieval.models import SavedOpportunity
 
     rows = slate_rows(target, today)
     if target.kind == "department":
@@ -733,7 +733,7 @@ def report_line(lab, on: date) -> str:
             url = f"https://discord.com/channels/{route.binding.guild.guild_id}/{route.channel_id}"
             where = f" → [#{route.channel_name or many}]({url})"
         parts.append(f"**{count} {noun}** announced{where}")
-    from apps.content.models import AnnouncementPost
+    from tools.retrieval.models import AnnouncementPost
 
     updated = (
         AnnouncementPost.objects.filter(

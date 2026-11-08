@@ -16,8 +16,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from apps.content.query_embedding import embed_query
-from apps.content.search import SearchFilters, SearchResult, normalize_query, run_search
+from tools.retrieval.query_embedding import embed_query
+from tools.retrieval.search import (
+    SearchFilters,
+    SearchResult,
+    normalize_query,
+    run_search,
+)
 
 
 @dataclass(frozen=True)

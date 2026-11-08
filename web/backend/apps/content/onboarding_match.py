@@ -26,12 +26,12 @@ from collections.abc import Callable
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from tools.retrieval.models import ContentItem, RelevanceScore
 
-from .models import ContentItem, RelevanceScore
-from .refitting import refit_user
-from .scan_status import trigger_paper_scan
-from .suggest import CompleteFn
-from .verdicts import READ
+from apps.content.refitting import refit_user
+from apps.content.scan_status import trigger_paper_scan
+from apps.content.suggest import CompleteFn
+from apps.content.verdicts import READ
 
 # The four opportunity/paper areas the onboarding match can run, mapped to the
 # ContentItem type whose persisted scores we read back for the sample preview.

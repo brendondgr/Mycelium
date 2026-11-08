@@ -29,20 +29,21 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from .clustering import (
+from tools.retrieval.models import RelevanceScore
+
+from apps.content.clustering import (
     IMPLICIT_CLUSTER_ID,
     IMPLICIT_CLUSTER_LABEL,
     Cluster,
     cluster_interests,
 )
-from .models import RelevanceScore
-from .slates import (
+from apps.content.slates import (
     cluster_entries,
     cluster_rank,
     entered_cluster_on,
     standing_render_depth,
 )
-from .top_feed import in_slate, is_entrant, slate_key
+from apps.content.top_feed import in_slate, is_entrant, slate_key
 
 #: What the reader's own themes are called when a profile declares none. A single
 #: implicit grouping is not a theme, so the section is named for the reader's work
@@ -128,7 +129,7 @@ def split_by_theme(
 ) -> dict[str, tuple[list, list]]:
     """``{cluster_id: (entrants, standing)}`` for one category's stored rows.
 
-    ``build`` turns a :class:`~apps.content.models.RelevanceScore` and a cluster id
+    ``build`` turns a :class:`~tools.retrieval.models.RelevanceScore` and a cluster id
     into whatever the caller renders — the PDF's item, the API's dict — so this
     stays about the *arrangement* and knows nothing about presentation.
 

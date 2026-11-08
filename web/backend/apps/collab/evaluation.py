@@ -131,7 +131,8 @@ def harm_checks(since: datetime | None = None, until: datetime | None = None) ->
        setting at all, or is the seeker: the model named someone the gate never
        offered.
     """
-    from apps.content.models import Notification
+    from tools.retrieval.models import Notification
+
     from apps.knowledge.read import evidence_texts, privately_held_global_concepts
 
     from . import consent

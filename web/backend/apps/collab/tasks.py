@@ -19,7 +19,7 @@ def notify_renewals(now=None) -> int:
     linked. It says when the setting ends and nothing else — never anything
     about who searched or how often they appeared.
     """
-    from apps.content.models import Notification
+    from tools.retrieval.models import Notification
 
     now = now or timezone.now()
     soon = now + timedelta(days=settings.COLLAB_RENEWAL_NOTICE_DAYS)

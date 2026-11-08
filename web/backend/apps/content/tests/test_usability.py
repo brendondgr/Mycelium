@@ -13,8 +13,8 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from tools.retrieval.models import ContentItem
 
-from apps.content.models import ContentItem
 from apps.content.usability import (
     BLOCK,
     OK,

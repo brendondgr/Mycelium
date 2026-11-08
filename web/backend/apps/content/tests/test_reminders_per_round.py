@@ -12,14 +12,14 @@ from datetime import date
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.content.deadlines_projection import rebuild_deadlines_for
-from apps.content.models import (
+from tools.retrieval.deadlines_projection import rebuild_deadlines_for
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     ReminderSubscription,
     SavedOpportunity,
 )
+
 from apps.content.reminders import (
     create_or_update_subscription,
     reminder_copy,

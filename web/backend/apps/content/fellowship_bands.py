@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 
 from django.conf import settings
 
-from .slates import OPEN_BAND_DEPTH
+from apps.content.slates import OPEN_BAND_DEPTH
 
 #: How much an award's fit must vary across the reader's themes before it counts
 #: as topic-matched. Expressed as a fraction of its own best theme score, so it

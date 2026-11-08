@@ -106,3 +106,45 @@ def test_fingerprint_changes_when_a_tool_file_changes(tmp_path):
 def test_dependency_order_detects_cycles():
     order, cyclic = loader.dependency_order({"a": ("b",), "b": ("a",), "c": ()})
     assert cyclic == {"a", "b"} and set(order) == {"a", "b", "c"}
+
+
+def test_a_failed_core_tool_blocks_every_other_tool(monkeypatch):
+    """The platform cannot start without a core tool, so nothing else is even
+    probed once one fails — each is BLOCKED with a reason naming the core tool."""
+    states = {
+        "base": loader.ToolState("base", "", core=True),
+        "leaf": loader.ToolState("leaf", ""),
+        "other": loader.ToolState("other", ""),
+    }
+    probed: list[list[str]] = []
+
+    def fake_probe(names, tools_dir, env):
+        probed.append(list(names))
+        return (False, "boom") if "base" in names else (True, "")
+
+    monkeypatch.setattr(loader, "run_probe", fake_probe)
+    loader._probe_all(["leaf", "base", "other"], states, FIXTURES, {})
+    assert states["base"].state == loader.FAILED
+    assert states["leaf"].state == states["other"].state == loader.BLOCKED
+    assert "core tool base" in states["leaf"].reason
+    # One batch probe, then the core tool alone; the others are never started.
+    assert probed == [["leaf", "base", "other"], ["base"]]
+
+
+def test_every_single_probe_includes_the_core_tools(monkeypatch):
+    states = {
+        "base": loader.ToolState("base", "", core=True),
+        "leaf": loader.ToolState("leaf", ""),
+        "broken": loader.ToolState("broken", ""),
+    }
+    probed: list[list[str]] = []
+
+    def fake_probe(names, tools_dir, env):
+        probed.append(list(names))
+        return (False, "bad") if "broken" in names else (True, "")
+
+    monkeypatch.setattr(loader, "run_probe", fake_probe)
+    loader._probe_all(["base", "leaf", "broken"], states, FIXTURES, {})
+    assert probed[1:] == [["base"], ["base", "leaf"], ["base", "broken"]]
+    assert states["leaf"].state == loader.LOADED
+    assert states["broken"].state == loader.FAILED

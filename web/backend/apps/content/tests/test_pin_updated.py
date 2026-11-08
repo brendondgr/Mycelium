@@ -9,8 +9,8 @@ different claim that would be false about the same row.
 from __future__ import annotations
 
 import pytest
+from tools.retrieval.models import ContentItem
 
-from apps.content.models import ContentItem
 from apps.content.pinning import compute_pins
 
 pytestmark = pytest.mark.django_db

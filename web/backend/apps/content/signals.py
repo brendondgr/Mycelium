@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
+from tools.retrieval.models import ContentItem
 
-from apps.content.models import ContentItem
 from apps.content.reminders import stale_reminders_for_deleted_content
 
 

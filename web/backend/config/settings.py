@@ -93,7 +93,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Postgres full-text search + trigram support for apps.content.search
+    # Postgres full-text search + trigram support for tools.retrieval.search
     # (SearchVectorField, SearchRank, TrigramWordSimilarity). No-op feature-wise
     # on SQLite; the search path is Postgres-only and guarded accordingly.
     "django.contrib.postgres",
@@ -104,7 +104,6 @@ INSTALLED_APPS = [
     "apps.research",
     "apps.content",
     "apps.billing",
-    "apps.scraper",
     "apps.integrations",
     "apps.adminpanel",
     "apps.ambient",
@@ -659,15 +658,9 @@ OPPORTUNITY_FEED_MAX = env.int("OPPORTUNITY_FEED_MAX", default=250)
 # every phase has shipped; the dry run works either way.
 OPPORTUNITY_ANNOUNCEMENTS_ENABLED = _cfg["features.announcements"]
 
-# How long a *dateless* conference may go unseen by the collector before the
-# nightly prune deletes it. A conference with no deadline and no event date is
-# nothing a reader can act on, so it is hidden from feeds immediately
-# (apps.content.liveness), but deleting it needs evidence the source has
-# actually dropped it — otherwise a genuinely rolling call the source still
-# lists every night would be deleted and re-created on the next run, losing its
-# first_seen. `last_seen` is that evidence. Grants are unaffected: a dateless
-# grant is a rolling call by design and never expires.
-OPPORTUNITY_STALE_DAYS = env.int("OPPORTUNITY_STALE_DAYS", default=60)
+# How long a dateless conference may go unseen before the nightly prune deletes
+# it (OPPORTUNITY_STALE_DAYS) is the retrieval tool's setting:
+# tools/retrieval/tool.py.
 
 # Same carry-forward + floor behaviour as papers (above), for grants / conferences /
 # fellowships: an item the model scored below this stays in the carry-forward store
@@ -744,32 +737,10 @@ MEMBER_FIT_LLM_LIMIT = _cfg["nightly.member_fit_llm_limit"]
 # Recompute a project's team profile immediately when its membership changes.
 TEAM_PROFILE_AUTORECOMPUTE = env.bool("TEAM_PROFILE_AUTORECOMPUTE", default=True)
 
-# Unified search (apps.content.search) — the digest retrieval pipeline run
-# query-first over the whole content corpus. Unlike the digest, search never
-# abstains: it always returns the top-k and only flags low confidence as a UI
-# cue. SEARCH_CANDIDATE_POOL bounds how deep the relevance ranking goes (the
-# union of the lexical/semantic/fuzzy channels); pages slice within that pool so
-# deep-page latency stays flat. SEARCH_LOW_CONFIDENCE_COSINE is the display
-# threshold for the "low confidence" cue (top cosine below it), never a gate.
-SEARCH_CANDIDATE_POOL = env.int("SEARCH_CANDIDATE_POOL", default=500)
-SEARCH_PAGE_SIZE = env.int("SEARCH_PAGE_SIZE", default=20)
-SEARCH_MAX_PAGE_SIZE = env.int("SEARCH_MAX_PAGE_SIZE", default=50)
-SEARCH_LOW_CONFIDENCE_COSINE = env.float("SEARCH_LOW_CONFIDENCE_COSINE", default=0.35)
-# SEARCH_SEMANTIC_FLOOR is the *inclusion* gate for the semantic (embedding)
-# channel: a candidate whose cosine similarity to the query is below it is not
-# admitted, so the far-field nearest-neighbours pgvector always returns no longer
-# pad the pool with vaguely-related items. This is NOT abstention — the lexical
-# and fuzzy channels still return every match, so a real term/typo hit always
-# surfaces. Kept just below SEARCH_LOW_CONFIDENCE_COSINE so the [floor, cue) band
-# still surfaces borderline items with the "low confidence" badge; raise it (e.g.
-# 0.4) to trim more aggressively, set 0.0 to disable the gate.
-SEARCH_SEMANTIC_FLOOR = env.float("SEARCH_SEMANTIC_FLOOR", default=0.30)
-# Fuzzy (pg_trgm) channel: enabled, with its own bounded pool (typo recovery is a
-# tail signal, so it need not scan as deep as the lexical/semantic pools).
-SEARCH_FUZZY_ENABLED = env.bool("SEARCH_FUZZY_ENABLED", default=True)
-SEARCH_FUZZY_POOL = env.int("SEARCH_FUZZY_POOL", default=200)
+# Unified search (tools.retrieval.search): its SEARCH_* settings are the
+# retrieval tool's — tools/retrieval/tool.py, [tools.retrieval] in mycelium.toml.
 
-# The query-embedding cache (apps.content.query_embedding). A repeated search
+# The query-embedding cache (tools.retrieval.query_embedding). A repeated search
 # should skip the model call, so the normalized query → its vector is cached in
 # Redis. It lives in a *dedicated* Redis db (never the Celery broker/result dbs),
 # derived from REDIS_URL by swapping the db number so it is correct on both the
@@ -855,28 +826,15 @@ OPENALEX_API_KEY = env("OPEN_ALEX_API_KEY", default="")
 OPENALEX_MAILTO = env("OPENALEX_MAILTO", default="")
 SEMANTIC_SCHOLAR_API_KEY = env("SEMANTIC_SCHOLAR_API_KEY", default="")
 
-# Literature scan (apps.scraper). PubMed's key is optional (it only raises the
-# NCBI rate limit). The contact email is OpenAlex/NCBI etiquette; it falls back
-# to OPENALEX_MAILTO. The embedding model matches the ResearchScraper reranker
-# and runs via the optional `embeddings` extra (`uv sync --extra embeddings`).
-PUBMED_API_KEY = env("PUBMED_API_KEY", default="")
+# Literature scan contact (tools/retrieval). The contact email is OpenAlex/NCBI
+# etiquette; it falls back to OPENALEX_MAILTO.
 SCRAPER_CONTACT_EMAIL = env("SCRAPER_CONTACT_EMAIL", default=OPENALEX_MAILTO)
-SCRAPER_EMBEDDING_MODEL = env(
-    "SCRAPER_EMBEDDING_MODEL", default="BAAI/bge-small-en-v1.5"
-)
+# PUBMED_API_KEY and the corpus embedding model (SCRAPER_EMBEDDING_MODEL) are
+# the retrieval tool's settings now: tools/retrieval/tool.py.
 
-# Embedding device (apps.scraper.embedding). "auto" runs on a CUDA GPU whenever
-# ONNX Runtime actually exposes CUDAExecutionProvider — which requires the GPU
-# flavour of the extra (`uv sync --extra embeddings-gpu`) — and on the CPU
-# otherwise. "cuda" demands the GPU (and warns, then falls back, if it is
-# missing); "cpu" pins the CPU even on a GPU host, e.g. when the card is fully
-# claimed by the local LLM. EMBEDDING_DEVICE_ID picks a card on a multi-GPU box.
-# The batch sizes are handed to fastembed: a GPU is throughput-bound and wants a
-# large batch, a CPU is latency-bound and wants a modest one.
-EMBEDDING_DEVICE = env("EMBEDDING_DEVICE", default="auto")
-EMBEDDING_DEVICE_ID = env("EMBEDDING_DEVICE_ID", default="")
-EMBEDDING_BATCH_SIZE_CPU = env.int("EMBEDDING_BATCH_SIZE_CPU", default=64)
-EMBEDDING_BATCH_SIZE_GPU = env.int("EMBEDDING_BATCH_SIZE_GPU", default=256)
+# Embedding device and batch sizes (EMBEDDING_DEVICE, EMBEDDING_DEVICE_ID,
+# EMBEDDING_BATCH_SIZE_CPU/GPU) are the retrieval tool's settings:
+# tools/retrieval/tool.py, section [tools.retrieval] in mycelium.toml.
 
 # Cross-encoder rerank (apps.content.reranking). Reorders the head of the fused
 # candidate list by reading query and document together, over the pool the

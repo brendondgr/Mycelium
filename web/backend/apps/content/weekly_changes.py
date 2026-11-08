@@ -149,7 +149,7 @@ def _collect(packet, *, target_filter, projects, reader, today):
         packet.attention_lead = next(
             (p.name for p in ordered if str(p.pk) == str(leader)), ""
         )
-    from apps.content.models import ReflectionProposal
+    from tools.retrieval.models import ReflectionProposal
 
     packet.proposals_waiting = ReflectionProposal.objects.filter(
         target_user=reader,

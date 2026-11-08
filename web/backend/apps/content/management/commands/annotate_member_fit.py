@@ -13,10 +13,9 @@ from __future__ import annotations
 from django.core.management.base import BaseCommand
 
 from apps.accounts.models import Lab
+from apps.content.member_fit import annotate_for_target
+from apps.content.targets import target_for_lab, target_for_project
 from apps.research.models import Project
-
-from ...member_fit import annotate_for_target
-from ...targets import target_for_lab, target_for_project
 
 
 class Command(BaseCommand):

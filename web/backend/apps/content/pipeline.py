@@ -37,17 +37,26 @@ from typing import Any
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.retrieval import embeddings
+from tools.retrieval.index import (
+    Hit,
+    PgVectorIndex,
+    latest_gather_date,
+    retrieve_for_vector,
+)
+from tools.retrieval.ingest import SearchFn, scan
+from tools.retrieval.lexical import build_bm25_index, rank_bm25_over
+from tools.retrieval.models import ContentItem, RelevanceScore
+from tools.retrieval.protocols import Retrievable, VectorIndex
+from tools.retrieval.window import ScanWindow
 
 from apps.accounts.embedding import canonical_text
-from apps.scraper.ingest import SearchFn, scan
-from apps.scraper.window import ScanWindow
-
-from . import embeddings, reranking, typesafe_rerank
-from .admission import admit
-from .cluster_fit import full_reason
-from .clustering import IMPLICIT_CLUSTER_ID, Cluster, cluster_interests
-from .digest_selection import renumber, split_by_floor
-from .fusion import (
+from apps.content import reranking, typesafe_rerank
+from apps.content.admission import admit
+from apps.content.cluster_fit import full_reason
+from apps.content.clustering import IMPLICIT_CLUSTER_ID, Cluster, cluster_interests
+from apps.content.digest_selection import renumber, split_by_floor
+from apps.content.fusion import (
     DEFAULT_BETA,
     DEFAULT_RRF_K,
     ClusteredHit,
@@ -62,30 +71,21 @@ from .fusion import (
     top_per_cluster,
     with_floor_guarantee,
 )
-from .interests_query import SearchInterest, search_interests
-from .lexical import build_bm25_index, rank_bm25_over
-from .models import ContentItem, RelevanceScore
-from .opportunity_llm import load_prior_llm_verdicts
-from .pinning import compute_pins
-from .protocols import Retrievable, VectorIndex
-from .ranking import DEFAULT_FOCUS_WEIGHT, rerank_by_focus
-from .retrieval import (
-    Hit,
-    PgVectorIndex,
-    latest_gather_date,
-    retrieve_for_vector,
-)
-from .slates import (
+from apps.content.interests_query import SearchInterest, search_interests
+from apps.content.opportunity_llm import load_prior_llm_verdicts
+from apps.content.pinning import compute_pins
+from apps.content.ranking import DEFAULT_FOCUS_WEIGHT, rerank_by_focus
+from apps.content.slates import (
     compute_cluster_slates,
     merge_cluster_signals,
     prior_cluster_slates,
     prune_cluster_slates,
     slate_depth,
 )
-from .suggest import CompleteFn, fallback_reason, generate_suggestions
-from .targets import target_for_lab, target_for_project
-from .theme_run import carry_stored_writeups, run_theme_writeups
-from .top_feed import compute_top, merge_top_signals, prior_top_ids, top_n
+from apps.content.suggest import CompleteFn, fallback_reason, generate_suggestions
+from apps.content.targets import target_for_lab, target_for_project
+from apps.content.theme_run import carry_stored_writeups, run_theme_writeups
+from apps.content.top_feed import compute_top, merge_top_signals, prior_top_ids, top_n
 
 logger = logging.getLogger(__name__)
 
@@ -353,8 +353,8 @@ def recommend_for_user(
     interests = profile.interests or {}
     # Confirmed explorations join as their own, down-weighted themes (ambient
     # Plan 05). Off unless AMBIENT_DRIFT_ENABLED: then nothing changes.
-    from .explorations import for_user as explorations_for
-    from .explorations import with_explorations
+    from apps.content.explorations import for_user as explorations_for
+    from apps.content.explorations import with_explorations
 
     interests, exploration_weights = with_explorations(
         interests, explorations_for(user)
@@ -630,14 +630,14 @@ def recommend_for_target(
 
 def recommend_for_lab(lab, **kwargs) -> RunResult:
     """Recommend research papers for a lab's aggregate interests."""
-    from .targets import target_for_lab
+    from apps.content.targets import target_for_lab
 
     return recommend_for_target(target_for_lab(lab), **kwargs)
 
 
 def recommend_for_project(project, **kwargs) -> RunResult:
     """Recommend research papers for one project's declared focus."""
-    from .targets import target_for_project
+    from apps.content.targets import target_for_project
 
     return recommend_for_target(target_for_project(project), **kwargs)
 
@@ -681,7 +681,7 @@ def run_daily_batch(
 
     **Phase 1 (ingest, once):** gather the deduped union of all targets' watch
     topics — the users' plus any labs' and projects' — and run a single
-    :func:`~apps.scraper.ingest.scan` over it, so a shared topic is searched once
+    :func:`~tools.retrieval.ingest.scan` over it, so a shared topic is searched once
     and all new papers are embedded together in one batched pass.
 
     **Phase 2 (recommend):** retrieve + fuse + suggest against the now-populated
@@ -689,7 +689,7 @@ def run_daily_batch(
     path), then each lab and project (their aggregate / declared focus). A failure
     for one target is caught and logged so it never sinks the batch.
     """
-    from .targets import project_watch_categories
+    from apps.content.targets import project_watch_categories
 
     lab_targets = [target_for_lab(lab) for lab in labs]
     # A project only gets daily paper recommendations if it opted into the papers
@@ -878,7 +878,7 @@ def fuse_interests_pool(
 
     ``index`` overrides the vector channel (default: pgvector over the content
     store). It is the sole seam an offline evaluation harness needs — see
-    :mod:`apps.content.protocols`.
+    :mod:`tools.retrieval.protocols`.
     """
     pool, per_interest_scores, best_cosine = _build_pool(
         search_ints,
@@ -1006,7 +1006,7 @@ def _build_pool(
     channel (the paper feed thresholds on it). An empty pool returns empties.
 
     ``index`` is the vector channel. It defaults to
-    :class:`apps.content.retrieval.PgVectorIndex` scoped by ``content_type`` and
+    :class:`tools.retrieval.index.PgVectorIndex` scoped by ``content_type`` and
     ``created_on`` — i.e. production is unchanged — and is the single parameter an
     offline evaluation harness overrides to score this same code against an
     external collection without a database. When it is supplied, ``content_type``
@@ -1571,7 +1571,7 @@ def _profile_prompt_text(interests: dict) -> str:
         ]
         if values:
             bits.append(f"{label}: {', '.join(values)}")
-    from .understanding import lines as understanding_lines
+    from apps.content.understanding import lines as understanding_lines
 
     bits.extend(understanding_lines(interests))
     return "\n".join(bits)
@@ -1814,6 +1814,6 @@ def _stored_writeups_by_id(
     Slate membership prunes; write-ups persist. An item leaving a live theme's
     slate keeps its stored reasoning, so re-entry later costs no model call.
     """
-    from .theme_run import _stored_writeups
+    from apps.content.theme_run import _stored_writeups
 
     return _stored_writeups(persist_kwargs, content_type)

@@ -14,10 +14,10 @@ import json
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval.models import ContentItem, RelevanceScore
 
 from apps.accounts.models import Lab, LabMembership, Profile
 from apps.content import member_fit
-from apps.content.models import ContentItem, RelevanceScore
 
 # Three orthogonal unit vectors — a member "matches" an item only when they share
 # an axis, which keeps every expectation below exact rather than approximate.

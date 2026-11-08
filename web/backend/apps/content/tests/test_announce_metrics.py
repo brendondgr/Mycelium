@@ -5,14 +5,14 @@ from __future__ import annotations
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
-
-from apps.accounts.models import Lab
-from apps.content import announce_metrics
-from apps.content.models import (
+from tools.retrieval.models import (
     Announcement,
     AnnouncementReaction,
     ContentItem,
 )
+
+from apps.accounts.models import Lab
+from apps.content import announce_metrics
 
 TODAY = timezone.localdate()
 

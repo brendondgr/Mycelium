@@ -14,6 +14,13 @@ from datetime import timedelta
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.retrieval.models import (
+    Announcement,
+    AnnouncementPost,
+    AnnouncementSettings,
+    ContentItem,
+    RelevanceScore,
+)
 
 from apps.accounts.models import (
     Department,
@@ -30,13 +37,6 @@ from apps.content import (
     lab_fit,
 )
 from apps.content.fellowships import US_FACET
-from apps.content.models import (
-    Announcement,
-    AnnouncementPost,
-    AnnouncementSettings,
-    ContentItem,
-    RelevanceScore,
-)
 from apps.integrations.models import DiscordIdentity, DiscordOutboxMessage
 from apps.integrations.testing import add_route, bind
 
@@ -530,7 +530,7 @@ def test_a_manager_can_announce_only_department_level_calls_to_the_department(
 def test_a_lab_without_a_stored_vector_is_embedded_from_its_profile_text() -> None:
     """Nothing writes a stored lab vector, so lab-fit embeds the lab's canonical
     text with the item model; a lab with no profile text is left out."""
-    from apps.content import embeddings
+    from tools.retrieval import embeddings
 
     target = _department()
     lab = Lab.objects.create(name="Ocean ML", slug="ocean-ml", department=target.obj)

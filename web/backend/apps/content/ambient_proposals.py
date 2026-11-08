@@ -3,7 +3,7 @@
 A development someone told Mylo or confirmed — "the annotation budget came
 through", "we dropped graph neural networks" — may mean the project's stated
 state is out of date. It never edits the state: it becomes a
-:class:`~apps.content.models.ReflectionProposal` on the project page, in the
+:class:`~tools.retrieval.models.ReflectionProposal` on the project page, in the
 shape a state PATCH would take, with the development as its evidence, and the
 existing accept path (``ReflectionProposalActionView``) is what applies it —
 for an editor of the project only. A personal development (said in a DM) is
@@ -20,10 +20,10 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from django.utils import timezone
+from tools.retrieval.models import ReflectionProposal
 
 from apps.ambient.read import developments_to_propose
 from apps.content.matchers.developments import names
-from apps.content.models import ReflectionProposal
 
 EXPIRY_DAYS = 14
 COOLDOWN_DAYS = 28
@@ -97,7 +97,7 @@ def withdraw_stale() -> int:
         ).only("pk", "evidence")
         if str((row.evidence or {}).get("development")) not in live
     ]
-    from apps.content.models import Notification
+    from tools.retrieval.models import Notification
 
     Notification.objects.filter(
         dedupe_key__in=[f"ambient-proposal-{pk}" for pk in stale],
@@ -117,7 +117,7 @@ _BELL_TITLES = {
 
 def _ring(person, proposal, development) -> None:
     """The bell for a proposal from conversation (Plan 09 step 6), once."""
-    from apps.content.models import Notification
+    from tools.retrieval.models import Notification
 
     title = _BELL_TITLES.get(proposal.kind, "Mylo suggests a change to {project}")
     Notification.objects.get_or_create(

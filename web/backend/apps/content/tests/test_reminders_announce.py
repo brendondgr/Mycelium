@@ -10,15 +10,15 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from django.contrib.auth.models import User
-
-from apps.accounts.models import Lab, LabMembership
-from apps.content.deadlines_projection import rebuild_deadlines_for
-from apps.content.models import (
+from tools.retrieval.deadlines_projection import rebuild_deadlines_for
+from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     Notification,
     SavedOpportunity,
 )
+
+from apps.accounts.models import Lab, LabMembership
 from apps.content.reminders import create_subscription
 from apps.content.reminders_announce import announce_deadline_changes
 from apps.content.tests.entitle import entitle_lab, paid_plan

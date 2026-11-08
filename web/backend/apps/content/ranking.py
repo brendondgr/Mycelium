@@ -1,6 +1,6 @@
 """Weighted re-ranking of retrieved papers by the researcher's research focus.
 
-Retrieval (``apps.content.retrieval``) ranks scanned papers purely by cosine
+Retrieval (``tools.retrieval.index``) ranks scanned papers purely by cosine
 similarity to the profile's *semantic* vector (statement + keywords). That answers
 "what is this researcher about?" but treats every nearby paper equally. This
 module layers the researcher's declared **research focus** (``interests.areas``)
@@ -24,7 +24,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from .protocols import Retrievable
+from tools.retrieval.protocols import Retrievable
 
 #: Default weight applied to the focus overlap. At 0.25 a perfect focus match can
 #: lift a paper by up to +0.25 over its raw cosine similarity — enough to reorder

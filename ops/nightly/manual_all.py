@@ -13,7 +13,7 @@ Stages, in order:
        through the open collector (``collect_opportunities``: collect -> map
        -> ingest -> extract -> embed, pure HTTP against public registries —
        no login, no session, no SSO). The Illinois Graduate College Fellowship
-       Finder still scrapes **on the host** (``uv run ops/scrapers/scrape_fellowships.py
+       Finder still scrapes **on the host** (``uv run tools/retrieval/host/scrape_fellowships.py
        scrape``), because it is the one opportunity source that still
        needs a real browser. Neither half can block the other or the rest of
        the night: a failed collector run warns, reports to Discord, and
@@ -162,7 +162,7 @@ pass-through flags on purpose, so "collect and recommend everything for
 everyone" stays one predictable command. For a targeted run, call the
 per-stage scripts in ops/nightly/, run
 ``uv run --project web/backend python web/backend/manage.py
-collect_opportunities`` directly, or ``uv run ops/scrapers/scrape_fellowships.py`` for
+collect_opportunities`` directly, or ``uv run tools/retrieval/host/scrape_fellowships.py`` for
 fellowships.
 
 Usage:
@@ -217,7 +217,7 @@ PIVOT_DIR = ROOT / "data" / "pivot"
 #: The dblp venue registry cache (plan D5a) — read by the conference
 #: collector's resolve stage, written by the ``refresh_dblp_registry``
 #: management command. Both sides resolve to the same path: ``data/collect``
-#: is this repo's collector root (``apps.scraper.collect.runner.DEFAULT_ROOT``)
+#: is this repo's collector root (``tools.retrieval.collect.runner.DEFAULT_ROOT``)
 #: and ``registry`` is where every registry adapter's cache lands under it.
 REGISTRY_CACHE_PATH = ROOT / "data" / "collect" / "registry" / "dblp_venues.json"
 
@@ -510,7 +510,7 @@ def _scrape_fellowships() -> bool:
         _notify("warn", "Fellowship scrape skipped", message, stage="scrape")
         return False
 
-    if run_host(["uv", "run", "ops/scrapers/scrape_fellowships.py", "scrape"]) != 0:
+    if run_host(["uv", "run", "tools/retrieval/host/scrape_fellowships.py", "scrape"]) != 0:
         message = (
             "The Illinois fellowship scrape did not complete. The later "
             "stages will match the fellowships already in the store."
@@ -527,7 +527,7 @@ def _scrape_fellowships() -> bool:
 
     _purge_stale_pivot_json()
 
-    if run_host(["uv", "run", "ops/scrapers/scrape_fellowships.py", "import"]) != 0:
+    if run_host(["uv", "run", "tools/retrieval/host/scrape_fellowships.py", "import"]) != 0:
         message = (
             "Importing the scraped fellowship listing failed; the later "
             "stages will match whatever is already in the store."
@@ -687,7 +687,7 @@ def main() -> int:
             "manual_all.py takes no arguments; it always collects every source and "
             "runs every stage for all users.\nFor a targeted run, call the per-stage "
             "scripts in ops/nightly/, `manage.py collect_opportunities` directly, "
-            "or `uv run ops/scrapers/scrape_fellowships.py` for fellowships."
+            "or `uv run tools/retrieval/host/scrape_fellowships.py` for fellowships."
         )
 
     # Resolve Compose and confirm the stack is up once, up front, so we don't get

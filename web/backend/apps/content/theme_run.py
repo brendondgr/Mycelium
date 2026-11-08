@@ -33,7 +33,9 @@ import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from .cluster_fit import (
+from tools.retrieval.models import ContentItem, RelevanceScore
+
+from apps.content.cluster_fit import (
     Candidate,
     Evidence,
     areas_fingerprint,
@@ -44,14 +46,13 @@ from .cluster_fit import (
     writeup_budget,
     writeup_concurrency,
 )
-from .clustering import Cluster
-from .comprehension import (
+from apps.content.clustering import Cluster
+from apps.content.comprehension import (
     extract_many,
     load_comprehensions,
     store_comprehensions,
 )
-from .models import ContentItem, RelevanceScore
-from .slates import slate_depth
+from apps.content.slates import slate_depth
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +207,7 @@ def _project_claim(persist_kwargs: Mapping) -> dict:
     contributes nothing, so its prompt and its cost are exactly a person's —
     which is what lets the state be optional rather than a gate on the feature.
     """
-    from .cluster_fit import project_claim_block
+    from apps.content.cluster_fit import project_claim_block
 
     project = persist_kwargs.get("target_project")
     state = getattr(project, "state", None) if project is not None else None

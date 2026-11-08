@@ -93,6 +93,12 @@ def resolve_tools(
                         f"this tool. Known: {', '.join(sorted(by_key)) or 'none'}."
                     )
                     continue
+                if setting.secret:
+                    cfg.problems.append(
+                        f"tools.{cls.name}.{key} is a secret; set ${setting.env} in "
+                        ".env instead of writing it in a file."
+                    )
+                    continue
                 try:
                     cfg.values[key] = setting.parse(
                         raw, source=f"tools.{cls.name} in {source}"

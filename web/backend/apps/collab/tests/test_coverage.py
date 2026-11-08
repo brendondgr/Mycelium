@@ -4,9 +4,10 @@ Plan CN-03's coverage acceptance, and Q3 (the third cross-entity query): for a
 call, which slots the lab covers, by whom, and which are gaps.
 """
 
+from tools.retrieval.models import ContentItem
+
 from apps.accounts.models import AuthorWork
 from apps.collab import coverage
-from apps.content.models import ContentItem
 from apps.knowledge import demonstrated, service
 from apps.knowledge.models import Relation, WorkFacets
 

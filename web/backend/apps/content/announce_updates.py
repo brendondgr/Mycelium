@@ -18,9 +18,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
+from tools.retrieval.models import Announcement, ContentItem
+
 from apps.content import announce_facts
 from apps.content.announce import Target, list_items
-from apps.content.models import Announcement, ContentItem
 
 
 @dataclass

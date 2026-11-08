@@ -67,10 +67,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from django.utils import timezone
+from tools.retrieval.models import ContentItem, RelevanceScore
 
-from .clustering import Cluster
-from .models import ContentItem, RelevanceScore
-from .verdicts import FILE, READ, SKIM, SKIP, VERDICT_BLURBS
+from apps.content.clustering import Cluster
+from apps.content.verdicts import FILE, READ, SKIM, SKIP, VERDICT_BLURBS
 
 logger = logging.getLogger(__name__)
 
@@ -147,8 +147,7 @@ def enabled_for(
 def target_is_entitled(persist_kwargs: Mapping) -> bool:
     """Paid plans only, through the same gate the prose write-ups use."""
     from apps.billing.entitlements import Feature
-
-    from .theme_run import target_is_entitled as _entitled
+    from apps.content.theme_run import target_is_entitled as _entitled
 
     return _entitled(persist_kwargs, Feature.TYPESAFE_RERANK)
 
@@ -196,7 +195,7 @@ def _clean(value: Any) -> str:
 
 def profile_block(interests: Mapping | None, profile_meta: Mapping | None) -> str:
     """The reader, as the opportunity prompts describe them (one shared text)."""
-    from .opportunity_llm import _profile_text
+    from apps.content.opportunity_llm import _profile_text
 
     return _profile_text(dict(interests or {}), dict(profile_meta or {}))
 
@@ -211,7 +210,7 @@ def candidate_block(content_type: str, item: Any) -> dict:
                 :TEXT_CHARS
             ],
         }
-    from .opportunity_llm import _candidate_brief
+    from apps.content.opportunity_llm import _candidate_brief
 
     brief = _candidate_brief(content_type, 1, item)
     if brief.startswith("[1] "):

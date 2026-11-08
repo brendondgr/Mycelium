@@ -6,13 +6,13 @@ from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
+from tools.retrieval.models import ContentItem, Notification, RelevanceScore
 
 from apps.content.high_signal import (
     deliver_high_signal,
     high_signal_candidates,
     shadow_report,
 )
-from apps.content.models import ContentItem, Notification, RelevanceScore
 
 TODAY = date(2026, 7, 16)
 

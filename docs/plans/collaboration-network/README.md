@@ -119,14 +119,14 @@ functions that filter the tier set, and an AST boundary test fails the build if
 |---|---|---|
 | Profile-blind, cached per-item précis with problem / method / setting / reusable | `apps/content/comprehension.py`, `ItemComprehension` | The facet extractor for people's works (CN-02) — same prompt discipline, same cache key rule |
 | The person's own published works, kept | `apps/accounts/author_works.py`, `AuthorWork` | The paper side of every person (document-centric retrieval) |
-| `required_expertise` extracted from call text, grounded | `apps/scraper/collect/extract.py` | Grows into faceted requirement slots (CN-03) |
+| `required_expertise` extracted from call text, grounded | `tools/retrieval/collect/extract.py` | Grows into faceted requirement slots (CN-03) |
 | Requirement vs member coverage, consented scope only | `apps/content/matchers/team_gap.py`, `member_fit.scope_members` | The team-internal check (CN-03) |
 | Shortlist-then-explain, may drop never add | `apps/content/member_fit.py` | The rerank rule (CN-05) |
 | Project state: problem, method, data, `needs.expertise`, stated / inferred | `apps/research/state.py` | Project facets and declared project edges (CN-01, CN-03) |
 | Opt-in default-off consent (`eligibility.lab_visible`) | `apps/accounts/interests.py` | The consent pattern (CN-04) |
 | Verified email | `Profile.is_verified`, `accounts/permissions.py` | Verified scope (CN-04) |
 | Affiliation directory with domains and country codes | `web/app/public/data/institutions.json` | Email domain → institution → country (CN-04) |
-| pgvector, the corpus embedder | `apps/scraper/embedding.py`, `apps/content/embeddings.py` | Concept and facet vectors |
+| pgvector, the corpus embedder | `tools/retrieval/embedding.py`, `tools/retrieval/embeddings.py` | Concept and facet vectors |
 | One-door app boundary + AST test | `apps/ambient/{read,service}.py`, `apps/ambient/tests/test_import_boundary.py` | `apps/knowledge` and `apps/collab` boundaries |
 
 ## The plans, in order
