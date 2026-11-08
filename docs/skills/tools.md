@@ -19,6 +19,11 @@ rules. This skill holds the rules an agent must follow on top of it.
   and the framework does the wiring.
 - **`tool.py` declares, other modules act.** It imports only the standard
   library and `tools._framework.spec`; behaviour is a dotted string.
+- **Core means the platform imports it.** A tool the platform still imports is
+  `core = True` (a test holds the two equal) and stops startup if it does not
+  load. Retrieval, recommendation and delivery are all core today; reducing
+  `tools/_framework/platform_imports.txt` is how one stops being core. A new
+  tool should never be core.
 - **Doors.** Other code reads a tool through its `exports` (default `read`,
   `service`, `events`). A tool imports another tool only if it lists it in
   `depends_on`. The platform imports no tool. Any remaining platform import is
@@ -43,7 +48,8 @@ rules. This skill holds the rules an agent must follow on top of it.
 ## Validation
 
 - `make test`: platform and tool tests run strict, and include the golden
-  snapshots, the boundary rules and the delete-each/break-each matrix.
+  snapshots, the boundary rules, the delete-each/break-each matrix, and the
+  docs checks (cited paths exist, every tool documented).
 - `make tools-check` against the running stack: every tool `LOADED`.
 - After moving ranking code: the parity run in
   `docs/research/experiments/EXP-2026-11-003-tools-refactor-parity/`.

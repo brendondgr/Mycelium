@@ -233,13 +233,19 @@ Postgres, and files live on disk.
 ## Repository layout
 
 ```text
-web/      the app: public site, authenticated app, Django API, Nginx config
+web/      the platform: public site, authenticated app, Django API, Nginx config
+tools/    the research tools, one self-contained folder each: retrieval (the
+          corpus), recommendation (ranking against profiles), delivery (feeds,
+          reports, reminders, announcements) — see tools/README.md
 mylo/     the Mylo Discord bot and the nightly run's error reporting
 ops/      everything that runs on the host: stack manager, setup, nightly run,
-          scrapers, systemd units, load test, research-record tooling
+          systemd units, load test, research-record tooling
 eval/     the retrieval evaluation harness
 docs/     direction, architecture, the research record, the changelog
 ```
+
+A new research tool starts with `make new-tool NAME=<name>`; `make tools-check`
+shows which tools loaded and why any did not.
 
 [`docs/repo-map.md`](docs/repo-map.md) maps every feature to the file that holds
 it.

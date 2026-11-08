@@ -25,6 +25,7 @@ is [`research/AGENT_INSTRUCTIONS.md`](research/AGENT_INSTRUCTIONS.md), and
 | Doc | Read it when |
 |---|---|
 | [`repo-map.md`](repo-map.md) | You need to find code. **Read this before searching the tree.** |
+| [`../tools/README.md`](../tools/README.md) | You are adding or changing a research tool: the layout, the import script, per-tool configuration, the rules |
 | [`architecture.md`](architecture.md) | You need service boundaries, data ownership, or configuration |
 | [`api-contract.md`](api-contract.md) | You are changing or consuming an HTTP payload |
 | [`discord-integration.md`](discord-integration.md) | You are touching identity linking, guild activation, or delivery |

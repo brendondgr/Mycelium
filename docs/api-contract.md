@@ -70,6 +70,9 @@ routes clients depend on most.
 
 ### Recommendations & content — `/api/`
 
+Served by the delivery tool (`tools/delivery/urls.py`), mounted at `/api/`
+exactly where the old `apps.content` include was, so every path is unchanged.
+
 | Route | Methods | Purpose |
 |---|---|---|
 | `daily-report/` | GET | The day's ranked paper suggestions |
@@ -221,6 +224,12 @@ routes clients depend on most.
 |---|---|---|
 | `users/` `users/<id>/` | GET / GET, PATCH | Roster; detail; assign plan + quota |
 | `labs/` `labs/<slug>/` | GET / GET, PATCH | Lab roster; detail; assign plan |
+
+### Tools — `/api/tools/`
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `tools/` | GET | Signed in. `{"tools": [{name, summary, state, core, depends_on}]}`, one per installed tool in dependency order; `state` is `LOADED`, `DISABLED`, `MISSING`, `BLOCKED` or `FAILED`. Staff also get `reason`. Served by `tools/_framework/views.py` |
 
 ### Health — `/api/health/`
 

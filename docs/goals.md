@@ -52,6 +52,15 @@ These hold throughout and should stay true of every change:
 
 ## Built
 
+**Modular tools.** Research capabilities are tools under `tools/`, one
+self-contained folder each, declared by one class and loaded by discovery. An
+import script probes every tool before anything runs it, so a tool that cannot
+load is set aside (or, if the platform needs it, stops startup with the reason)
+and nothing depending on it runs. Each tool has its own `[tools.<name>]` section
+in `mycelium.toml` and declares its own nightly stages. The first three are the
+layers Mycelium already had: retrieval (the corpus), recommendation (ranking
+against profiles) and delivery (feeds, reports, reminders, announcements).
+
 **Foundation & identity.** Monorepo, service boundaries, Compose stack, and
 secrets management. Session auth with CSRF, a configurable sign-up gate (its
 shared-code mode has a shadow-ban lockout), users, labs, departments, memberships, permission roles,
@@ -173,7 +182,8 @@ In rough order, against the November 14 target:
 
 ## Tools on the grounding layer
 
-Planned, not built. Each one reads the lab's context from Mycelium and is held
+Planned, not built. Each is built as a tool under `tools/` (start with
+`make new-tool`; rules in [`skills/tools.md`](skills/tools.md)). Each one reads the lab's context from Mycelium and is held
 to a public benchmark before it is called working. Results go in
 `docs/research/` like any other experiment.
 

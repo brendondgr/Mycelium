@@ -166,6 +166,9 @@ These are checked by `tools/_framework/tests/test_boundaries.py` on every
     and commit the diff.
   - `test_delete_matrix.py`, which removes and breaks each tool in turn. This
     is the same check as `make tools-matrix`.
+  - `test_docs.py`, which fails if a living doc cites a repository path that
+    no longer exists, if a tool has no README, repo-map section or row in the
+    table above, or if a skill lacks one of its two entrypoints.
 - A change to ranking code also needs the evaluation-harness parity run
   described in `docs/research/experiments/EXP-2026-11-003-tools-refactor-parity/`.
 
