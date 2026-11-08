@@ -5,6 +5,8 @@ description = "Django API and orchestration backend for Mycelium."
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "aiohttp>=3.10.0,<4.0.0",
+    # The full-text tool (tools/fulltext/engine): HTML landing pages -> markdown.
+    "beautifulsoup4>=4.12.0,<5.0.0",
     "celery>=5.5.0,<6.0.0",
     # Fernet encryption for OAuth tokens at rest (apps.integrations.fields).
     "cryptography>=44,<47",
@@ -12,6 +14,8 @@ dependencies = [
     "django-cors-headers>=4.7.0,<5.0.0",
     "django-environ>=0.12.0,<1.0.0",
     "djangorestframework>=3.16.0,<4.0.0",
+    # The full-text tool's HTML parser (BeautifulSoup's "lxml" backend).
+    "lxml>=5.0.0,<7.0.0",
     "neo4j>=5.28.0,<6.0.0",
     "numpy>=2.0.0",
     "openai>=1.50.0,<2.0.0",
@@ -31,6 +35,9 @@ dependencies = [
     "pyyaml>=6.0.0,<7.0.0",
     "rank-bm25>=0.2.2,<1.0.0",
     "redis>=5.2.0,<6.0.0",
+    # The full-text tool's HTTP client (streamed bodies under a wall-clock
+    # deadline). Already present transitively; pinned as a direct dep.
+    "requests>=2.31.0,<3.0.0",
     # Server-side PDF generation for the daily Discord "Mylo Report" (pure-Python,
     # no system libraries — apps.content.daily_report_pdf).
     "reportlab>=4.2.0,<5.0.0",

@@ -203,6 +203,13 @@ enabled = true
 # project_alert_daily_cap = 3            # env PROJECT_ALERT_DAILY_CAP
 # run_analytics_retention_days = 90      # env RUN_ANALYTICS_RETENTION_DAYS
 
+# fulltext: Gets the paper itself: checks whether a legal copy of a paper can
+# be reached, fetches it from PubMed Central, Europe PMC, arXiv, the
+# open-access locators or (with the instance's keys) Elsevier, Springer Nature
+# and Wiley, and keeps the original plus a markdown rendering.
+[tools.fulltext]
+enabled = true
+
 # recommendation: Ranks the whole corpus for every person, lab, department and
 # project against their profiles and interest clusters, takes each target's
 # per-theme slate, and writes the model verdicts.

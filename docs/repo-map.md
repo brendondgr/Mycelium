@@ -383,6 +383,16 @@ A task index across the three tools; each tool also has its own section below.
 | External DOI / arXiv / URL resolver | `tools/retrieval/resolver.py` |
 | Host-side fellowship scrape (Playwright) and the dormant Grants.gov/NIH/NSF clients | `tools/retrieval/host/scrape_fellowships.py`, `tools/retrieval/host/grants/` |
 
+## Fulltext tool (`tools/fulltext/`)
+
+| Task | Path |
+|---|---|
+| The tool's declaration; guide (sources, keys, the IP-entitlement caveat) | `tools/fulltext/tool.py`; `tools/fulltext/README.md` |
+| The Django-free engine: identifiers, resolver, routing, fetcher, converters | `tools/fulltext/engine/` (`pipeline.py` is the entry point, `Engine`) |
+| Why a source is skipped or a paper could not be fetched (plain words) | `tools/fulltext/engine/routing.py` (`plan`, `explain`) |
+| Quota stops, entitlement strike-outs, throttles, remembered answers | `tools/fulltext/engine/fetcher.py`, `tools/fulltext/engine/state.py` |
+| PDF / JATS / Elsevier XML / HTML → markdown | `tools/fulltext/engine/convert.py` |
+
 ## Host runners & operations
 
 | Task | Path |

@@ -82,6 +82,11 @@ def test_delete_each(tmp_path, name):
         )
         assert item.state in expected, (other, item.state, item.reason)
     if not REAL[name].cls.core and not any(REAL[d].cls.core for d in dependents):
+        # The copied tools package shadows the real one, so the framework's
+        # REPO_ROOT is tmp_path; the import probe it starts runs from
+        # REPO_ROOT/web/backend, which must therefore exist there.
+        (tmp_path / "web").mkdir()
+        (tmp_path / "web" / "backend").symlink_to(ROOT / "web" / "backend")
         env = dict(os.environ)
         env.update(
             MYCELIUM_TOOLS_DIR=str(tmp_path / "tools"),
