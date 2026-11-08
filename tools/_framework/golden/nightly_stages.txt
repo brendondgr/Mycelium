@@ -1,0 +1,13 @@
+run_daily_suggestions	
+run_daily_opportunities	--no-prune
+run_reminder_tick	
+prune_opportunities	
+prune_briefings	
+evaluate_project_alerts	
+announce_opportunities	
+announce_opportunity_updates	
+generate_daily_briefing	
+send_daily_discord_reports	
+send_lab_digests	
+generate_weekly_briefing	
+send_weekly_reports	

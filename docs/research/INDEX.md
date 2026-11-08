@@ -52,6 +52,7 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-09-021` | 2026-09-19 | Do Slack and Teams change anything past the adapter? | complete | — | — | [folder](experiments/EXP-2026-09-021-ambient-platforms-parity-sandbox/RESULTS.md) |
 | `EXP-2026-11-001` | 2026-11-05 | Precision of the department-level call detector | complete | precision_overall_v1 0.8333 | C-028 | [folder](experiments/EXP-2026-11-001-dept-level-precision/RESULTS.md) |
 | `EXP-2026-11-002` | 2026-11-05 | Announcement measures baseline and department lab-fit floor | complete | lab_fit_precision_at_floor 0.6667 | C-029 | [folder](experiments/EXP-2026-11-002-announcement-baseline/RESULTS.md) |
+| `EXP-2026-11-003` | 2026-11-08 | Tools refactor: ranking parity before and after the code moves | running | — | — | [folder](experiments/EXP-2026-11-003-tools-refactor-parity/RESULTS.md) |
 
 ## Status counts
 
@@ -59,4 +60,5 @@ deleted dead end is a dead end you walk into twice.
 |---|---:|
 | complete | 39 |
 | planned | 4 |
-| **total** | **43** |
+| running | 1 |
+| **total** | **44** |

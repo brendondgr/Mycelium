@@ -1,0 +1,11 @@
+collab-daily	apps.collab.daily	<crontab: 30 4 * * * (m/h/dM/MY/d)>
+drain-discord-outbox	apps.integrations.drain_outbox	<crontab: * * * * * (m/h/dM/MY/d)>
+drain-slack-outbox	apps.integrations.drain_slack_outbox	<crontab: * * * * * (m/h/dM/MY/d)>
+drain-teams-outbox	apps.integrations.drain_teams_outbox	<crontab: * * * * * (m/h/dM/MY/d)>
+purge-discord-outbox	apps.integrations.purge_outbox	<crontab: 30 5 * * 0 (m/h/dM/MY/d)>
+read-ambient-conversations	apps.ambient.read_conversations	<crontab: 20 * * * * (m/h/dM/MY/d)>
+recompute-ambient-attention	apps.ambient.recompute_attention	<crontab: 45 4 * * * (m/h/dM/MY/d)>
+recompute-project-profiles	apps.content.recompute_project_profiles	<crontab: 0 3 * * * (m/h/dM/MY/d)>
+reconcile-discord	apps.integrations.reconcile_discord	<crontab: 0 4 * * * (m/h/dM/MY/d)>
+sweep-ambient-retention	apps.ambient.sweep_retention	<crontab: 15 5 * * * (m/h/dM/MY/d)>
+sweep-knowledge	apps.knowledge.sweep	<crontab: 15 4 * * * (m/h/dM/MY/d)>
