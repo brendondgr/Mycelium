@@ -2,10 +2,10 @@
 
 Canonical skill definitions for this repository live in `docs/skills/`.
 
-The folders under `.agents/skills/`, `.claude/skills/`, and `.cursor/rules/` are
+The folders under `.agents/skills/` and `.claude/skills/` are
 tool entrypoints and nothing more — each is a stub pointing back at the canonical
 doc here. Keep the behavioral guidance in this directory so every agent shares
-the same project assumptions, and when you add a skill, add all three
+the same project assumptions, and when you add a skill, add both
 entrypoints.
 
 ## Canonical skills

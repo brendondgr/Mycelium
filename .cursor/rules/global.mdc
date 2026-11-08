@@ -1,8 +1,0 @@
----
-description: Always apply Mycelium's global project direction, canonical docs, repository rules, and package-manager defaults.
-alwaysApply: true
----
-
-Read `docs/skills/global.md` at the start of every session. It points to the canonical project direction in `docs/purpose.md`, `docs/styles.md`, and `docs/goals.md`.
-
-Use root-level commands where possible. Use `uv` for Python backend work.

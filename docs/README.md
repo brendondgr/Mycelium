@@ -35,7 +35,7 @@ is [`research/AGENT_INSTRUCTIONS.md`](research/AGENT_INSTRUCTIONS.md), and
 ## Agent guidance
 
 [`skills/index.md`](skills/index.md) is the registry. `docs/skills/` holds the
-canonical text; `.claude/skills/`, `.agents/skills/`, and `.cursor/rules/` are
+canonical text; `.claude/skills/` and `.agents/skills/` are
 thin entrypoints pointing back at it. The repository-level instruction file is
 [`../CLAUDE.md`](../CLAUDE.md).
 

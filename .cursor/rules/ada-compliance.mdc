@@ -1,7 +1,0 @@
----
-description: Apply when auditing or implementing accessibility for web content, including semantic HTML, keyboard support, contrast, alt text, captions, and focus behavior.
-alwaysApply: false
----
-
-Canonical instructions live in `docs/skills/ada-compliance.md`. Use this rule when a page, component, or interaction needs WCAG-oriented accessibility work.
-

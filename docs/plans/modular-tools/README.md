@@ -487,7 +487,7 @@ Each item below runs in `make test` unless it says otherwise.
 | Migration checks | `makemigrations --check`; `migrate` from scratch and from the baseline on compose Postgres; a schema diff against the baseline (pgvector tests need the compose Postgres, not SQLite) |
 | Eval parity (Phases 2–3) | Byte-identical run files, recorded under `docs/research/experiments/` |
 | Frontend | `next build` with and without a scaffolded tool; ESLint boundary rule; browser check of moved pages, aliases and the "not available" state |
-| Docs check (`make check-docs`, new) | Every repo path cited in `CLAUDE.md`, `docs/*.md` and `docs/skills/*.md` exists (experiment folders excluded: they are historical records); every tool has a `README.md` and a `repo-map.md` row; every skill has its three entrypoints |
+| Docs check (`make check-docs`, new) | Every repo path cited in `CLAUDE.md`, `docs/*.md` and `docs/skills/*.md` exists (experiment folders excluded: they are historical records); every tool has a `README.md` and a `repo-map.md` row; every skill has both entrypoints |
 
 ## Documentation re-registration
 
@@ -502,8 +502,7 @@ surface:
 - **`docs/skills/tools.md` (new)**
   - How to build a tool: the class, doors, events, config, stages, UI, tests,
     and the delete and break checks.
-  - Its three entrypoints: `.agents/skills/tools/`, `.claude/skills/tools/` and
-    `.cursor/rules/tools.mdc`.
+  - Its two entrypoints: `.agents/skills/tools/` and `.claude/skills/tools/`.
   - A row in `docs/skills/index.md`.
 - **`docs/skills/global.md`**
   - The grounding-layer default names the two foundation tools.

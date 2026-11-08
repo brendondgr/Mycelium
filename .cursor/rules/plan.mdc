@@ -1,7 +1,0 @@
----
-description: Apply when planning, sequencing, or reviewing implementation work before coding.
-alwaysApply: false
----
-
-Canonical instructions live in `docs/skills/planner.md`. Use this rule when a plan, roadmap, migration sequence, or staged implementation breakdown is needed.
-

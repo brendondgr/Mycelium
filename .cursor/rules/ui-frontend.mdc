@@ -1,7 +1,0 @@
----
-description: Apply when designing or implementing accessible frontend UI, responsive layouts, motion, or interactive components.
-alwaysApply: false
----
-
-Canonical instructions live in `docs/skills/ui-frontend.md`. Use this rule when the frontend visual system or component behavior needs attention.
-
