@@ -19,9 +19,9 @@ from tools.retrieval.models import (
 )
 
 from apps.accounts.models import Lab, LabMembership
+from apps.billing.testing import entitle_lab, paid_plan
 from apps.content.reminders import create_subscription
 from apps.content.reminders_announce import announce_deadline_changes
-from apps.content.tests.entitle import entitle_lab, paid_plan
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse
 from apps.integrations.testing import bind

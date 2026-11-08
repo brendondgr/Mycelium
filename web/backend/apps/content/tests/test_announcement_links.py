@@ -16,12 +16,12 @@ from unittest import mock
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.recommendation.models import RelevanceScore
 from tools.retrieval.models import (
     Announcement,
     AnnouncementPost,
     AnnouncementSettings,
     ContentItem,
-    RelevanceScore,
 )
 
 from apps.accounts.models import Lab, LabMembership

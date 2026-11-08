@@ -204,11 +204,11 @@ def existing(calls) -> dict:
 
 def run(items: dict, world, *, read: bool = True) -> dict:
     from django.contrib.auth import get_user_model
-    from tools.retrieval.models import RelevanceScore
+    from tools.recommendation.models import RelevanceScore
+    from tools.recommendation.targets import target_for_lab, target_for_user
 
     from apps.accounts.models import Lab
     from apps.collab import slots, team_fit
-    from apps.content.targets import target_for_lab, target_for_user
 
     from .run import CountingModel
 
@@ -287,7 +287,7 @@ def _rate(n: int, d: int):
 
 
 def score(world, calls, texts, items, run: dict) -> dict:
-    from tools.retrieval.models import RelevanceScore
+    from tools.recommendation.models import RelevanceScore
 
     from apps.collab.models import RequirementSlots
 

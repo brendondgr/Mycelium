@@ -120,7 +120,7 @@ def test_a_failed_core_tool_blocks_every_other_tool(monkeypatch):
 
     def fake_probe(names, tools_dir, env):
         probed.append(list(names))
-        return (False, "boom") if "base" in names else (True, "")
+        return (False, "base: boom") if "base" in names else (True, "")
 
     monkeypatch.setattr(loader, "run_probe", fake_probe)
     loader._probe_all(["leaf", "base", "other"], states, FIXTURES, {})
@@ -141,10 +141,23 @@ def test_every_single_probe_includes_the_core_tools(monkeypatch):
 
     def fake_probe(names, tools_dir, env):
         probed.append(list(names))
-        return (False, "bad") if "broken" in names else (True, "")
+        return (False, "broken: bad") if "broken" in names else (True, "")
 
     monkeypatch.setattr(loader, "run_probe", fake_probe)
     loader._probe_all(["base", "leaf", "broken"], states, FIXTURES, {})
     assert probed[1:] == [["base"], ["base", "leaf"], ["base", "broken"]]
     assert states["leaf"].state == loader.LOADED
     assert states["broken"].state == loader.FAILED
+
+
+def test_a_missing_required_tool_blocks_everything_and_stops_startup(monkeypatch):
+    """A tool the platform still imports (it is in the allowlist) whose folder
+    is gone: nothing can start, and the report says which folder is missing."""
+    monkeypatch.setattr(loader, "required_by_platform", lambda: {"ok_leaf", "gone"})
+    monkeypatch.setattr(loader, "_is_full_tree", lambda package: True)
+    report = loader.preflight(tools_dir=FIXTURES, probe=False, environ={})
+    assert report.missing_required == ["gone"]
+    assert report.tools["ok_leaf"].state == loader.BLOCKED
+    assert "gone (not installed)" in report.tools["ok_leaf"].reason
+    with pytest.raises(loader.ToolsLoadError, match="tools/gone/"):
+        report.enforce(strict=False)

@@ -3,7 +3,7 @@
 The vector channel (:mod:`tools.retrieval.index`) answers "what is semantically
 near this interest?"; this module adds the complementary lexical channel — "which
 candidate papers actually contain this interest's terms?" — so the per-interest
-fusion (:mod:`apps.content.fusion`) blends meaning with exact term overlap.
+fusion (:mod:`tools.recommendation.fusion`) blends meaning with exact term overlap.
 
 Given the "targeted, bounded ingestion" architecture, BM25 needs no search engine:
 it runs in-process (``rank_bm25.BM25Okapi``) over the day's bounded candidate

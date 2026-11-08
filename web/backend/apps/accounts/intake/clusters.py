@@ -10,7 +10,7 @@ generic labels — the same degrade-to-status convention as the rest of intake.
 Everything is pure over plain data (an injectable ``complete`` LLM seam and an
 injectable ``embed`` seam) so the proposer runs offline in tests. The output is
 always a **valid partition**: every input area lands in exactly one cluster with
-a stable id (:func:`apps.content.clustering.make_cluster_id`), so the result can
+a stable id (:func:`tools.recommendation.clustering.make_cluster_id`), so the result can
 be written straight into the v2 interests contract.
 """
 
@@ -20,7 +20,7 @@ import json
 import logging
 from collections.abc import Callable, Sequence
 
-from apps.content.clustering import MAX_CLUSTERS, make_cluster_id
+from tools.recommendation.clustering import MAX_CLUSTERS, make_cluster_id
 
 logger = logging.getLogger(__name__)
 

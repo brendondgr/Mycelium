@@ -14,7 +14,8 @@ Two things are asserted here that the rest of the briefing tests take for grante
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
-from tools.retrieval.models import ContentItem, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem
 
 from apps.accounts.models import Lab, LabMembership, WatchPreference
 from apps.content.briefing import (

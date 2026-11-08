@@ -19,9 +19,9 @@ import json
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from tools.recommendation.tasks import select_users
 
 from apps.content.high_signal import deliver_high_signal, shadow_report
-from apps.content.tasks import select_users
 
 
 class Command(BaseCommand):

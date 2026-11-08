@@ -15,7 +15,7 @@ There is a third, rarer, and more interesting case: a paper the team *does* know
 **revised**. That is news again, and it is the one time re-surfacing something
 known is right. Revisions are detected from the précis source fingerprint — the
 hash of the item's own text that
-:class:`~tools.retrieval.models.ItemComprehension` already keeps to decide when to
+:class:`~tools.recommendation.models.ItemComprehension` already keeps to decide when to
 re-read a paper. A changed fingerprint on an item the team knows means the paper
 moved under them.
 

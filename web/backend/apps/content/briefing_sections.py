@@ -23,7 +23,7 @@ It is organised by **theme** now, and the prose sits next to what it describes:
     The remaining beats and the mandatory caveat live on the web entry, where a
     reader who wants depth has asked for it. There is no percentage anywhere: the
     number implied a measurement nobody made, so position within a theme plus a
-    four-point verdict (:mod:`apps.content.verdicts`) carries the judgement.
+    four-point verdict (:mod:`tools.recommendation.verdicts`) carries the judgement.
 ``### Currently in your list``
     The theme's standing slate as compact reference rows — position, title,
     source, deadline. No reasons, no verdicts, no prose. It serves the reader who
@@ -39,8 +39,8 @@ scanning rather than reading.
 
 Everything is **grounded** (nothing here invents an item) and every stage has a
 deterministic fallback, so a missing or flaky model degrades to a still-useful,
-honest report — the same contract as :mod:`apps.content.suggest` and
-:mod:`apps.content.opportunity_llm`.
+honest report — the same contract as :mod:`tools.recommendation.suggest` and
+:mod:`tools.recommendation.opportunity_llm`.
 
 The body is GitHub-flavored markdown in a fixed, narrow grammar that both
 renderers — the PDF's flowable builder and the app's ``MarkdownProse`` — parse
@@ -52,8 +52,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Sequence
 
+from tools.recommendation.verdicts import VERDICT_LABELS
+
 from apps.content import narrative
-from apps.content.verdicts import VERDICT_LABELS
 
 logger = logging.getLogger(__name__)
 

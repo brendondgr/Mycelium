@@ -17,10 +17,8 @@ import json
 
 import pytest
 from django.contrib.auth.models import User
-from tools.retrieval.models import ContentItem
-
-from apps.content import cluster_fit
-from apps.content.cluster_fit import (
+from tools.recommendation import cluster_fit
+from tools.recommendation.cluster_fit import (
     Candidate,
     Evidence,
     areas_fingerprint,
@@ -30,8 +28,10 @@ from apps.content.cluster_fit import (
     parse,
     project_claim_block,
 )
-from apps.content.clustering import Cluster
-from apps.content.theme_run import _project_claim
+from tools.recommendation.clustering import Cluster
+from tools.recommendation.theme_run import _project_claim
+from tools.retrieval.models import ContentItem
+
 from apps.research.models import Project, ProjectState
 
 CLAIM = {

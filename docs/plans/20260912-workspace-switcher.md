@@ -47,7 +47,7 @@ is **not advertised on the surface** — no `⌘K` badges in the product chrome.
 
 **A department has no research feeds, and giving it some is a backend project.**
 
-- `apps/content/targets.py` builds exactly three `MatchTarget` kinds: `user`,
+- `tools/recommendation/targets.py` builds exactly three `MatchTarget` kinds: `user`,
   `lab`, `project`. There is no department builder.
 - `apps/content/views.py` never mentions a department; every feed, save, reminder
   and briefing route scopes with `?lab=<slug>` only.

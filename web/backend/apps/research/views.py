@@ -12,14 +12,14 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from tools.recommendation.models import ProjectProfile, RelevanceEvent
+from tools.recommendation.team_profile import recompute_project_profile
 from tools.retrieval.models import (
     Collection,
     CollectionItem,
     ContentItem,
     ProjectItemSeen,
-    ProjectProfile,
     ProjectShare,
-    RelevanceEvent,
 )
 
 from apps.accounts.models import Department, Lab, LabMembership
@@ -37,7 +37,6 @@ from apps.content.collaboration import (
     share_to_project,
 )
 from apps.content.fanout import trigger_fanout
-from apps.content.team_profile import recompute_project_profile
 from apps.core.people import display_name, initials
 
 from .limits import (
@@ -245,7 +244,7 @@ def _seed_project(project: "Project") -> None:
     now so creation is fully wired end-to-end without waiting on that phase.
     """
     try:
-        from apps.content.tasks import enqueue_project_seed
+        from tools.recommendation.tasks import enqueue_project_seed
 
         enqueue_project_seed(project)
     except Exception:  # pragma: no cover - seeding is best-effort, never blocks create
@@ -322,7 +321,7 @@ class ProjectDetailView(APIView):
         body?" would refit the corpus every time someone fixed a typo in the
         project's name.
         """
-        from apps.content.targets import (
+        from tools.recommendation.targets import (
             project_interests,
             project_watch_categories,
             project_watch_topics,

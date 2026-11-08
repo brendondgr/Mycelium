@@ -15,7 +15,7 @@ from tools.retrieval.models import (
 )
 
 from apps.accounts.models import Lab, LabMembership
-from apps.content.tests.entitle import entitle_lab, entitle_user
+from apps.billing.testing import entitle_lab, entitle_user
 
 _Kind = SavedOpportunity.DeadlineKind
 

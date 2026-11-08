@@ -37,6 +37,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
+        from tools.recommendation.tasks import select_targets
+
         from apps.accounts.models import Lab
         from apps.content.daily_report import compile_report_for_lab
         from apps.content.lab_digest import (
@@ -46,7 +48,6 @@ class Command(BaseCommand):
             queue_lab_report,
             report_filename,
         )
-        from apps.content.tasks import select_targets
 
         slugs = options.get("slugs")
         if slugs:

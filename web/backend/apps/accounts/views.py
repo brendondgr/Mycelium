@@ -1444,11 +1444,12 @@ class ProposeClustersView(APIView):
     """
 
     def post(self, request: Request) -> Response:
+        from tools.recommendation.clustering import seed_watch_topics
+
         from apps.billing.entitlements import (
             cluster_topic_cap,
             topic_cap,
         )
-        from apps.content.clustering import seed_watch_topics
 
         from .intake.clusters import (
             compose_clusters,
@@ -1697,8 +1698,9 @@ def _proposal_cluster_count(user) -> int:
     """How many clusters Mylo may propose for ``user``: their limit, or the
     usual handful (``MAX_CLUSTERS``) when they have none. Unlimited means the
     person may add more themselves, not that Mylo should invent dozens."""
+    from tools.recommendation.clustering import MAX_CLUSTERS
+
     from apps.billing.entitlements import cluster_cap
-    from apps.content.clustering import MAX_CLUSTERS
 
     cap = cluster_cap(user)
     return MAX_CLUSTERS if cap is None else cap

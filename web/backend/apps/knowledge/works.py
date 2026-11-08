@@ -3,7 +3,7 @@
 The demonstrated side of a person (collaboration-network plan CN-02). Each of
 their imported works is read once, independent of any reader — the reader is
 deliberately absent from the input, as it is for the corpus précis
-(:mod:`apps.content.comprehension`) — and decomposed by facet (design §3):
+(:mod:`tools.recommendation.comprehension`) — and decomposed by facet (design §3):
 
 * one **sentence** per facet — problem, method, setting, and what an outsider
   could reuse — which retrieval ranks, per work;

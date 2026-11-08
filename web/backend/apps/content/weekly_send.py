@@ -66,7 +66,7 @@ def eligible_weekly_recipients(usernames: list[str] | None, *, on: date | None =
     subscriber's Monday is a daily like any other day; the weekly is the *other*
     option at sign-up, not a thing that lands on top of the one they chose.
     """
-    from apps.content.tasks import select_users
+    from tools.recommendation.tasks import select_users
 
     users = select_users(usernames)
     due = [

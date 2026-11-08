@@ -81,7 +81,7 @@ def _precis_block(precis) -> dict:
 
 
 def _writeup_block(signals: dict, cluster_id: str = "") -> dict:
-    from apps.content.cluster_fit import stored_writeup
+    from tools.recommendation.cluster_fit import stored_writeup
 
     writeups = (signals or {}).get("writeups") or {}
     entry = stored_writeup(signals, cluster_id) if cluster_id else None
@@ -116,7 +116,8 @@ def build_project_packet(
     seen: set,
 ) -> ProjectPacket:
     """One project's week."""
-    from tools.retrieval.models import ItemComprehension, ProjectAlert
+    from tools.recommendation.models import ItemComprehension
+    from tools.retrieval.models import ProjectAlert
 
     from apps.content.briefing import CATEGORY_TYPES, report_scores
 
@@ -333,7 +334,7 @@ def _personal_items(
     what earned a place", not a second copy of the standing list the web already
     holds.
     """
-    from tools.retrieval.models import ItemComprehension
+    from tools.recommendation.models import ItemComprehension
 
     from apps.content.briefing import CATEGORY_TYPES, report_scores
 

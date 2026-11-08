@@ -29,7 +29,8 @@ from datetime import date, timedelta
 
 from django.conf import settings
 from django.utils import timezone
-from tools.retrieval.models import ContentItem, Notification, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem, Notification
 
 _OPPORTUNITY_TYPES = (
     ContentItem.Type.GRANT,

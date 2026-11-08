@@ -11,10 +11,14 @@ import json
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+from tools.recommendation.targets import (
+    target_for_lab,
+    target_for_project,
+    target_for_user,
+)
 
 from apps.accounts.models import Lab
 from apps.collab.team_fit import annotate_target
-from apps.content.targets import target_for_lab, target_for_project, target_for_user
 from apps.research.models import Project
 
 

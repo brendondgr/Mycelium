@@ -32,7 +32,7 @@ data is real candidates paired with synthetic strands.
 ## What the corpus is, and why it is state rather than a prompt
 
 Each record stores the **structured state** `build_state()` already assembles
-in `apps/content/typesafe_rerank.py` (researcher text, strand label and
+in `tools/recommendation/typesafe_rerank.py` (researcher text, strand label and
 interests, one candidate block), the **question texts** as asked, and the
 **answers** as returned. It does not store a rendered prompt. TypeSafe consumes
 state and questions natively; a local model needs a chat template around them;
@@ -114,7 +114,7 @@ profile text the pipeline already sends off-host.
 - `apps/core/systemone.py`: add `question_to_dict(question)` beside
   `answer_to_dict`, so the SDK's `Noul`/`Score`/`Choice` objects flatten to the
   `questions` block above without the exporter importing the SDK.
-- `apps/content/typesafe_rerank.py`: in `reorder_id_groups`'s `one(job)`, after
+- `tools/recommendation/typesafe_rerank.py`: in `reorder_id_groups`'s `one(job)`, after
   a successful `client.ask`, call `judgement_log.write(...)` with the state,
   fingerprint, questions, `result.answers_as_dicts()`, usage and latency.
   Reused judgements are skipped. `emit` gains one line: `judgements logged: N`.
@@ -246,7 +246,7 @@ deleted and the outcome written to `changelog.md`, `architecture.md`,
 | Surface | Change |
 |---|---|
 | `apps/content/judgement_log.py`, `apps/content/judge_prompts.py`, `apps/core/judge.py` | New modules (Phases 1–3) |
-| `apps/content/typesafe_rerank.py` | Logs each fresh judgement; takes its judge from the `RERANK_METHOD` factory |
+| `tools/recommendation/typesafe_rerank.py` | Logs each fresh judgement; takes its judge from the `RERANK_METHOD` factory |
 | `apps/core/systemone.py` | `question_to_dict` |
 | Management commands | `export_judgements`, `judge_check`, `judge_replay` |
 | Settings / `.env.example` | `JUDGEMENT_LOG_*`, `JUDGE_*`, `RERANK_METHOD=local_judge` |

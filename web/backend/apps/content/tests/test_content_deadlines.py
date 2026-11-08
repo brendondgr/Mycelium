@@ -18,6 +18,7 @@ pure structured-conference tests further down already exercised directly.
 from __future__ import annotations
 
 import pytest
+from tools.recommendation.models import RelevanceScore
 from tools.retrieval.collect.ingest import upsert_items
 from tools.retrieval.deadlines_projection import (
     deadline_specs_for,
@@ -25,7 +26,7 @@ from tools.retrieval.deadlines_projection import (
 )
 from tools.retrieval.fellowships.ingest import upsert_fellowship_items
 from tools.retrieval.fellowships.records import build_fellowship_item
-from tools.retrieval.models import ContentDeadline, ContentItem, RelevanceScore
+from tools.retrieval.models import ContentDeadline, ContentItem
 
 from apps.accounts.models import AuditEvent
 from apps.content.serializers import GrantSerializer

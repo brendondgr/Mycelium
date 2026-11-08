@@ -64,6 +64,17 @@ def _preflight(tools_dir: Path) -> loader.LoadReport:
 @pytest.mark.parametrize("name", NAMES)
 def test_delete_each(tmp_path, name):
     report = _preflight(_copy_without(tmp_path, name, break_it=False))
+    if REAL[name].cls.core:
+        # The platform still imports it: nothing can start, and the report
+        # names the missing folder.
+        assert report.missing_required == [name]
+        for other, item in report.tools.items():
+            # MISSING when it also depends on the deleted tool directly.
+            assert item.state in (loader.BLOCKED, loader.MISSING), (other, item)
+            assert name in item.reason
+        with pytest.raises(loader.ToolsLoadError, match=f"tools/{name}/"):
+            report.enforce(strict=False)
+        return
     dependents = _dependents(name)
     for other, item in report.tools.items():
         expected = (
@@ -94,7 +105,8 @@ def test_delete_each(tmp_path, name):
 @pytest.mark.parametrize("name", NAMES)
 def test_break_each(tmp_path, name):
     report = _preflight(_copy_without(tmp_path, name, break_it=True))
-    assert report.tools[name].state == loader.FAILED
+    assert report.tools[name].state == loader.FAILED, report.tools[name].reason
     assert "a_module_that_does_not_exist" in report.tools[name].reason
-    for other in _dependents(name):
-        assert report.tools[other].state == loader.BLOCKED
+    others = set(report.tools) - {name} if REAL[name].cls.core else _dependents(name)
+    for other in others:
+        assert report.tools[other].state == loader.BLOCKED, (other, report.tools[other])

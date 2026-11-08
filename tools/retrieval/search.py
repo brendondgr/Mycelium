@@ -9,7 +9,7 @@ purpose:
 - Unlike the digest, search **never abstains**. It always returns the top-k and
   only flags low confidence as a UI cue (:data:`SearchResult.confidence`), so the
   digest's abstention floor must never leak onto this path.
-- The digest's fusion (:mod:`apps.content.fusion`) stays untouched; this module
+- The digest's fusion (:mod:`tools.recommendation.fusion`) stays untouched; this module
   has its own rank-only RRF (:func:`rrf_fuse`).
 
 Channels (added across phases, fused by RRF into one ranked candidate pool):

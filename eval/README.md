@@ -21,8 +21,8 @@ uv run --project eval eval/run.py --collection sci-2026-train \
 ## The one rule
 
 **The arms call production code.** `harness/arms.py` contains no ranking logic of
-its own — it imports `tools.retrieval.lexical`, `apps.content.fusion`,
-`apps.content.ranking`, and `apps.content.pipeline._build_pool` directly. When the
+its own — it imports `tools.retrieval.lexical`, `tools.recommendation.fusion`,
+`tools.recommendation.ranking`, and `tools.recommendation.pipeline._build_pool` directly. When the
 ranking stack changes, the next run measures the change and nothing in `eval/`
 needs editing. If you find yourself reimplementing scoring here, stop: the number
 you get will be about the harness, not about Mycelium.
@@ -39,7 +39,7 @@ one. They exist to make C-003 measurable; see `EXP-2026-08-003`, which refuted i
 and `EXP-2026-08-004`, which tested the lab slate.
 
 The `spread_*` arms (`EXP-2026-08-005`) each forward one
-`apps.content.fusion.SpreadPolicy` to `fuse_clusters_pool` and change nothing
+`tools.recommendation.fusion.SpreadPolicy` to `fuse_clusters_pool` and change nothing
 else, so an arm differs from the `clustered_profile` baseline by exactly one
 production argument. `spread_identity` carries the null policy and must reproduce
 the baseline ordering exactly; it is the falsifier that says whether the plumbing

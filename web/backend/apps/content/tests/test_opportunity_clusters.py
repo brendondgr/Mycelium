@@ -14,9 +14,9 @@ from __future__ import annotations
 import pytest
 from django.contrib.auth.models import User
 from django.db import connection
-from tools.retrieval.models import ContentItem, RelevanceScore
-
-from apps.content.opportunities import match_opportunities_for_user
+from tools.recommendation.models import RelevanceScore
+from tools.recommendation.opportunities import match_opportunities_for_user
+from tools.retrieval.models import ContentItem
 
 pytestmark = pytest.mark.django_db
 

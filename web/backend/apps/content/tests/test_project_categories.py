@@ -1,9 +1,9 @@
 """Per-project recommendation-category customization (goals.watch_categories)."""
 
 import pytest
+from tools.recommendation.targets import project_watch_categories
 
 from apps.accounts.models import Lab
-from apps.content.targets import project_watch_categories
 from apps.research.models import Project
 
 
@@ -32,7 +32,7 @@ def test_stored_categories_are_honoured_and_ordered() -> None:
 @pytest.mark.django_db
 def test_refit_project_narrows_areas_to_categories(monkeypatch) -> None:
     """refit_project only runs the opted-in areas."""
-    from apps.content import refitting
+    from tools.recommendation import refitting
 
     project = Project.objects.create(
         scope_lab=_lab(),

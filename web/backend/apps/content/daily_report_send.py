@@ -3,7 +3,7 @@
 The delivery half of the daily PDF report. Eligibility is the intersection of three
 gates already owned elsewhere:
 
-* **entitled + active** — ``apps.content.tasks.select_users`` (holds
+* **entitled + active** — ``tools.recommendation.tasks.select_users`` (holds
   ``SCHEDULED_REPORTS``; Free accounts are on-demand and never pushed a run),
 * **linked + opted in + reachable** — ``resolve.report_recipient_user_ids`` (an
   ACTIVE Discord identity, ``daily_report_opt_out`` false, not a known-blocked DM).
@@ -152,7 +152,7 @@ def eligible_recipients(usernames: list[str] | None, *, on: date | None = None):
     dropped here on a Tuesday and their briefing is still written; they simply are
     not interrupted about it until Monday.
     """
-    from apps.content.tasks import select_users
+    from tools.recommendation.tasks import select_users
 
     users = select_users(usernames)
     due = [

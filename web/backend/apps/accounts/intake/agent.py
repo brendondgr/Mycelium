@@ -26,7 +26,8 @@ from .drafts import AuthorProfileDraft
 CAREER_STAGES = ("student", "postdoc", "researcher", "pi", "staff")
 
 # Career stage -> the fellowship matcher's ladder token
-# (apps.content.fellowships.STAGE_LADDER). "researcher" and "staff" are absent on
+# (tools.recommendation.fellowships.STAGE_LADDER). "researcher" and "staff" are absent
+# on
 # purpose: a staff scientist and a senior graduate student both pick them, so they
 # place nobody on the ladder and must not be guessed at.
 CAREER_STAGE_TO_ELIGIBILITY_STAGE = {

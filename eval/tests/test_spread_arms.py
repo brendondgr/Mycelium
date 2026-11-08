@@ -55,7 +55,7 @@ class _Profile:
 
 @dataclass(frozen=True)
 class _SpreadPolicy:
-    """Field-for-field stand-in for `apps.content.fusion.SpreadPolicy`."""
+    """Field-for-field stand-in for `tools.recommendation.fusion.SpreadPolicy`."""
 
     merge: str = "max"
     select: str | None = None
@@ -82,15 +82,15 @@ def pipeline_spy(monkeypatch):
         ]
         return [(item, score) for item, score, _ in rows], rows, 123, []
 
-    pipeline = types.ModuleType("apps.content.pipeline")
+    pipeline = types.ModuleType("tools.recommendation.pipeline")
     pipeline.fuse_clusters_pool = fuse_clusters_pool
-    fusion = types.ModuleType("apps.content.fusion")
+    fusion = types.ModuleType("tools.recommendation.fusion")
     fusion.SpreadPolicy = _SpreadPolicy
 
     for name in ("apps", "apps.content"):
         monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
-    monkeypatch.setitem(sys.modules, "apps.content.pipeline", pipeline)
-    monkeypatch.setitem(sys.modules, "apps.content.fusion", fusion)
+    monkeypatch.setitem(sys.modules, "tools.recommendation.pipeline", pipeline)
+    monkeypatch.setitem(sys.modules, "tools.recommendation.fusion", fusion)
     return calls
 
 

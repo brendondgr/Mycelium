@@ -10,12 +10,12 @@ from types import SimpleNamespace
 
 import pytest
 from django.contrib.auth.models import User
+from tools.recommendation.opportunities import areas_for
+from tools.recommendation.tasks import select_targets, select_users
 
 from apps.accounts.models import WatchPreference
 from apps.billing.models import Subscription, Tier
 from apps.billing.services import activate_lab_subscription, create_lab_workspace
-from apps.content.opportunities import areas_for
-from apps.content.tasks import select_targets, select_users
 
 ALL_AREAS = ("grants", "conferences", "fellowships")
 
@@ -125,7 +125,7 @@ def test_over_cap_personal_projects_excluded_after_downgrade() -> None:
 
 @pytest.mark.django_db
 def test_watch_topics_capped_on_read_after_downgrade() -> None:
-    from apps.content.pipeline import _watch_topics
+    from tools.recommendation.pipeline import _watch_topics
 
     user = User.objects.create_user(username="lapsed", password="p")
     sub = Subscription.objects.create(tier=Tier.SPORE, scope_user=user)
@@ -142,7 +142,7 @@ def test_watch_topics_capped_on_read_after_downgrade() -> None:
 
 @pytest.mark.django_db
 def test_daily_batch_gates_llm_per_user(monkeypatch) -> None:
-    from apps.content import pipeline
+    from tools.recommendation import pipeline
 
     free = User.objects.create_user(username="free", password="p")
     WatchPreference.objects.create(user=free, topics=["x"])
@@ -175,7 +175,7 @@ def test_daily_batch_gates_llm_per_user(monkeypatch) -> None:
 
 @pytest.mark.django_db
 def test_onboarding_match_free_user_forces_fallback(monkeypatch) -> None:
-    from apps.content import onboarding_match
+    from tools.recommendation import onboarding_match
 
     free = User.objects.create_user(username="free", password="p")
     recorded: dict = {}
@@ -198,7 +198,7 @@ def test_onboarding_match_free_user_forces_fallback(monkeypatch) -> None:
 
 @pytest.mark.django_db
 def test_onboarding_match_spore_user_keeps_llm(monkeypatch) -> None:
-    from apps.content import onboarding_match
+    from tools.recommendation import onboarding_match
 
     spore = _spore("spore")
     recorded: dict = {}

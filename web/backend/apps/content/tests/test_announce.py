@@ -14,12 +14,8 @@ from datetime import date
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
-from tools.retrieval.models import (
-    Announcement,
-    AnnouncementSettings,
-    ContentItem,
-    RelevanceScore,
-)
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import Announcement, AnnouncementSettings, ContentItem
 
 from apps.accounts.models import Lab, LabMembership
 from apps.content import announce, announce_facts, announce_updates

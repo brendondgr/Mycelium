@@ -8,7 +8,7 @@ their own:
   cannot carry a sentence like "must have received the PhD within the
   previous 24 months"; this module reads that sentence out of
   ``metadata["eligibility"]`` so the gate in
-  :func:`apps.content.fellowships._constraint_gates` has something to read.
+  :func:`tools.recommendation.fellowships._constraint_gates` has something to read.
 * :mod:`.parsers` — facet vocabularies, deadline/amount parsing, and the
   ``deadline_status`` helper. Provider-agnostic: any source that produces the
   same shaped dict (categories string, deadline label, amount string) can

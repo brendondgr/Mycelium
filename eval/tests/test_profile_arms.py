@@ -8,7 +8,7 @@ check the two things a wrong number would come from:
    (`cluster_top_n`), and if that argument silently failed to arrive, the slate
    experiment would compare an arm against itself and report a null.
 2. No arm contains ranking logic of its own — every one is a call into
-   `apps.content.pipeline`.
+   `tools.recommendation.pipeline`.
 
 `apps.content` is stubbed, so this runs offline and fast. The stub records the
 kwargs it was handed; that is the whole point.
@@ -49,7 +49,7 @@ class _Profile:
 
 @pytest.fixture
 def pipeline_spy(monkeypatch):
-    """Stub `apps.content.pipeline`, recording every call the arms make."""
+    """Stub `tools.recommendation.pipeline`, recording every call the arms make."""
     calls: list[dict] = []
 
     def fuse_interests_pool(interests, **kwargs):
@@ -70,12 +70,12 @@ def pipeline_spy(monkeypatch):
         ]
         return [(item, score) for item, score, _ in rows], rows, 123, []
 
-    module = types.ModuleType("apps.content.pipeline")
+    module = types.ModuleType("tools.recommendation.pipeline")
     module.fuse_interests_pool = fuse_interests_pool
     module.fuse_clusters_pool = fuse_clusters_pool
     for name in ("apps", "apps.content"):
         monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
-    monkeypatch.setitem(sys.modules, "apps.content.pipeline", module)
+    monkeypatch.setitem(sys.modules, "tools.recommendation.pipeline", module)
     return calls
 
 

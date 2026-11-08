@@ -15,12 +15,8 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Count
-from tools.retrieval.models import (
-    ContentItem,
-    ProjectItemSeen,
-    ProjectShare,
-    RelevanceEvent,
-)
+from tools.recommendation.models import RelevanceEvent
+from tools.retrieval.models import ContentItem, ProjectItemSeen, ProjectShare
 
 from apps.research.models import Project
 

@@ -395,8 +395,10 @@ def fellowship_counts(member_ids: list, items: list, today: date) -> dict:
     Counts only: who is or is not eligible never appears on a lab surface.
     """
     from django.contrib.auth import get_user_model
-
-    from apps.content.fellowships import eligibility_from_profile, evaluate_eligibility
+    from tools.recommendation.fellowships import (
+        eligibility_from_profile,
+        evaluate_eligibility,
+    )
 
     if not member_ids or not items:
         return {}

@@ -133,7 +133,7 @@ Paths are relative to the repository root.
 | Which buffer and window a project is judged against | `web/backend/apps/content/timeline_settings.py` (`effective_timeline`): project override → the reader's own → the lab's → 14/60 |
 | Per-scope project caps | `web/backend/apps/research/limits.py` |
 
-## Backend — matching & delivery (`apps/content`)
+## Backend — matching & delivery (`apps/content`; ranking in `tools/recommendation`)
 
 Files below are inside `web/backend/apps/content/`.
 
@@ -241,8 +241,8 @@ Files below are inside `web/backend/apps/content/`.
 | The "Mylo & you" page — questions, what changed (with undo), faded and declined, what Mylo knows, settings | `web/app/src/components/portal/ambient/mylo-and-you-section.tsx`, route `/app/mylo-and-you` (nav: personal Workspace); settings card `ambient-settings-card.tsx` (also on Account); a project's `project-developments-card.tsx` (project General tab); a lab's `lab-changes-card.tsx` (lab overview); data in `web/app/src/lib/portal/ambient/`; backend `web/backend/apps/ambient/review.py`, model `AppliedChange` |
 | Asking once and respecting the answer: tonight's questions, the choices, the words, reading a reply, shut-off, the labelled record | `web/backend/apps/ambient/dialogue.py`, models `PendingSuggestion`, `ValidationRecord`; the gateway's `service.dialogue_turn` / `answer_button`; the web at `/api/ambient/suggestions/`; delivery and the bell in `content/management/commands/deliver_ambient_questions.py` |
 | A dated event in a project, as Mylo understood it (told → active with undo; seen → pending) | `web/backend/apps/ambient/models.py` (`ProjectDevelopment`, `Change`); read through `read.developments_in_effect` |
-| Confirmed explorations as extra, down-weighted paper themes (behind `AMBIENT_DRIFT_ENABLED`) | `web/backend/apps/content/explorations.py`; the weight is `fusion.combine_clusters(cluster_weights=…)` |
-| Confirmed preferences, direction and learning goals in the model's prompts; the report's `context_version` | `web/backend/apps/content/understanding.py` |
+| Confirmed explorations as extra, down-weighted paper themes (behind `AMBIENT_DRIFT_ENABLED`) | `tools/recommendation/explorations.py`; the weight is `fusion.combine_clusters(cluster_weights=…)` |
+| Confirmed preferences, direction and learning goals in the model's prompts; the report's `context_version` | `tools/recommendation/understanding.py` |
 | A person's report projects ordered by where their conversation went | `briefing.by_attention` |
 | Developments reaching the alerts (closed blockers, dropped methods) | `alerts.developments_for`, `matchers/developments.py` |
 | Carrying out a yes that edits the declared profile (the only writer of `Profile.interests` in the feature), and its exact undo | `web/backend/apps/ambient/apply.py` (`apply_answers`, first in `deliberate_ambient`; `revert`); provenance in `interests.sources.ambient` |
@@ -332,13 +332,29 @@ Files below are inside `web/backend/apps/content/`.
 | Framework tests and fixture tools (one per load state) | `tools/_framework/tests/`, `tools/_framework/tests/fixtures/` |
 | Suite-wide pytest fixtures (platform and tools) | `web/backend/config/pytest_plugin.py` (loaded by `-p` in `web/backend/pyproject.toml`) |
 
+## Recommendation tool (`tools/recommendation/`)
+
+| Task | Path |
+|---|---|
+| The tool's declaration, settings, nightly stages, Beat entry | `tools/recommendation/tool.py`; guide `tools/recommendation/README.md` |
+| Read / write doors; the department-source extension point | `tools/recommendation/read.py`, `service.py` (`register_department_source`) |
+| `RelevanceScore`, `ItemComprehension`, `ProjectProfile`, `RelevanceEvent` | `tools/recommendation/models.py` (app label `recommendation`, tables still `content_*`), migrations `tools/recommendation/migrations/` |
+| The paper pipeline and pool construction | `tools/recommendation/pipeline.py` |
+| Fusion, ranking, rerank, admission, clustering | `tools/recommendation/{fusion,ranking,reranking,typesafe_rerank,admission,clustering,explorations}.py` |
+| Slates, top-25, per-theme write-ups, verdicts | `tools/recommendation/{slates,top_feed,theme_run,cluster_fit,comprehension,verdicts}.py` |
+| Opportunity scoring (grants, conferences, fellowships) | `tools/recommendation/{opportunities,opportunity_llm,fellowships,fellowship_bands}.py` |
+| Targets, target selection, nightly tasks | `tools/recommendation/targets.py`, `tasks.py` (`select_users`/`select_targets`/`select_departments`) |
+| Who an item is for, team profiles, profile vectors | `tools/recommendation/{member_fit,team_profile,vectors}.py` |
+| Refits, sign-up matching, suggestions | `tools/recommendation/{refitting,onboarding_match,suggest,scan_status}.py` |
+| Score/event repointing on a duplicate merge | `tools/recommendation/handlers.py` (subscribed to `retrieval.items_merging`) |
+
 ## Retrieval tool (`tools/retrieval/`)
 
 | Task | Path |
 |---|---|
 | The tool's declaration, settings, nightly stage | `tools/retrieval/tool.py`; guide `tools/retrieval/README.md` |
 | Read / write doors, events | `tools/retrieval/read.py`, `service.py`, `events.py` |
-| `ContentItem`, `ContentDeadline` (and, until they move, every other `content` model) | `tools/retrieval/models.py`, migrations `tools/retrieval/migrations/` (app label `content`) |
+| `ContentItem`, `ContentDeadline` (and, until delivery moves, the delivery models) | `tools/retrieval/models.py`, migrations `tools/retrieval/migrations/` (app label `content`) |
 | pgvector index, BM25, the ranking protocols | `tools/retrieval/index.py`, `lexical.py`, `protocols.py` |
 | Corpus search, cached query embedding | `tools/retrieval/search.py`, `query_embedding.py` |
 | Deadline projection, liveness, duplicate merge | `tools/retrieval/deadlines_projection.py`, `liveness.py`, `dedupe.py` |

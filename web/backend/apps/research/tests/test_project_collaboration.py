@@ -11,13 +11,8 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from rest_framework.test import APIClient
-from tools.retrieval.models import (
-    ContentItem,
-    ProjectItemSeen,
-    ProjectShare,
-    RelevanceEvent,
-    RelevanceScore,
-)
+from tools.recommendation.models import RelevanceEvent, RelevanceScore
+from tools.retrieval.models import ContentItem, ProjectItemSeen, ProjectShare
 from tools.retrieval.resolver import ResolveError, ResolveResult
 
 from apps.accounts.models import Lab, LabMembership

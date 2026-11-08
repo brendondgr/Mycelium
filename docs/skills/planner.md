@@ -40,7 +40,7 @@ sequenced work breakdowns for Mycelium before coding.
   edits) because it re-sends every surfaced item to the model.
 - **New means "entered the Top-25", never "arrived today".** Anything a plan calls
   new must be a change in what the reader is *shown*, not a fact about ingestion —
-  see `apps/content/top_feed.py`.
+  see `tools/recommendation/top_feed.py`.
 - **Personal / lab / project parity.** A lab or project feed is the personal feed
   with a different `MatchTarget`, through the same serializers. New feed behavior
   goes in the shared path, not a lab-only fork.

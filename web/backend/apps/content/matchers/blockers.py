@@ -3,7 +3,7 @@
 A project's state names what is standing in its way — "no labeled evaluation
 set", "single unblinded rater", "no external baseline". A précis names what an
 outside researcher could concretely take from a paper: a dataset, a protocol, a
-baseline, a negative result (:class:`~tools.retrieval.models.ItemComprehension`'s
+baseline, a negative result (:class:`~tools.recommendation.models.ItemComprehension`'s
 ``reusable``).
 
 Matching one against the other is the highest-value thing in this package,

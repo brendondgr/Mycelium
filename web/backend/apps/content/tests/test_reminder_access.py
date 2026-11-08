@@ -27,6 +27,7 @@ from tools.retrieval.models import (
 
 from apps.accounts.models import Lab, LabMembership
 from apps.billing.models import Seat, Subscription, Tier
+from apps.billing.testing import entitle_lab, entitle_user, link_discord
 from apps.content.reminder_access import (
     Reason,
     lab_reminder_access,
@@ -34,7 +35,6 @@ from apps.content.reminder_access import (
 )
 from apps.content.reminders import ReminderAccessError, create_subscription
 from apps.content.reminders_discord import send_lab_channel, send_personal_dm
-from apps.content.tests.entitle import entitle_lab, entitle_user, link_discord
 from apps.integrations.testing import bind
 
 DUE = date(2026, 12, 1)

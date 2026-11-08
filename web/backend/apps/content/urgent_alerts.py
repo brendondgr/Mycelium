@@ -128,8 +128,9 @@ def send_urgent_alerts(
     usernames: list[str] | None = None, *, on: date | None = None
 ) -> UrgentSummary:
     """Queue every due urgent alert. Never raises."""
+    from tools.recommendation.tasks import select_users
+
     from apps.content.reminders_discord import send_personal_report
-    from apps.content.tasks import select_users
 
     summary = UrgentSummary()
     for user in select_users(usernames):

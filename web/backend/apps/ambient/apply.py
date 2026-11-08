@@ -34,7 +34,7 @@ from .models import AppliedChange, PendingSuggestion
 
 logger = logging.getLogger(__name__)
 
-#: ``apps.content.clustering.IMPLICIT_CLUSTER_ID`` — the one theme an
+#: ``tools.recommendation.clustering.IMPLICIT_CLUSTER_ID`` — the one theme an
 #: unclustered profile behaves as. Named here because this app may not import
 #: the matching layer (its boundary test).
 IMPLICIT_CLUSTER_ID = "c-all"

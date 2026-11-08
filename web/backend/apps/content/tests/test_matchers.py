@@ -11,13 +11,8 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth.models import User
-from tools.retrieval.models import (
-    Collection,
-    CollectionItem,
-    ContentItem,
-    ItemComprehension,
-    ProjectShare,
-)
+from tools.recommendation.models import ItemComprehension
+from tools.retrieval.models import Collection, CollectionItem, ContentItem, ProjectShare
 
 from apps.accounts.models import AuthorWork, Lab, LabMembership, Profile
 from apps.content.matchers import blockers as blocker_matcher

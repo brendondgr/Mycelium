@@ -168,7 +168,7 @@ def _night():
 
 
 def test_explorations_change_nothing_while_drift_is_off(ada):
-    from apps.content import explorations
+    from tools.recommendation import explorations
 
     cp = _concept("conformal prediction")
     _consistent(ada, cp)
@@ -180,8 +180,8 @@ def test_explorations_change_nothing_while_drift_is_off(ada):
 
 
 def test_an_exploration_is_its_own_theme_after_the_declared_ones(ada, settings):
-    from apps.content import explorations
-    from apps.content.clustering import cluster_interests
+    from tools.recommendation import explorations
+    from tools.recommendation.clustering import cluster_interests
 
     settings.AMBIENT_DRIFT_ENABLED = True
     cp = _concept("conformal prediction")
@@ -201,7 +201,7 @@ def test_an_exploration_is_its_own_theme_after_the_declared_ones(ada, settings):
 
 
 def test_an_exploration_already_declared_adds_nothing():
-    from apps.content.explorations import with_explorations
+    from tools.recommendation.explorations import with_explorations
 
     interests = {"areas": ["Conformal Prediction"]}
     assert with_explorations(interests, [(7, "conformal prediction")]) == (
@@ -211,7 +211,7 @@ def test_an_exploration_already_declared_adds_nothing():
 
 
 def test_an_exploration_theme_cannot_outrank_an_equal_declared_one():
-    from apps.content.fusion import combine_clusters
+    from tools.recommendation.fusion import combine_clusters
 
     class Item:
         def __init__(self, pk):
@@ -315,7 +315,7 @@ def test_a_private_development_never_reaches_a_lab_reader(ada, imaging, lab):
 
 
 def test_the_context_version_moves_only_when_the_picture_does(ada, imaging):
-    from apps.content.understanding import context_version
+    from tools.recommendation.understanding import context_version
 
     first = context_version(ada, None, [imaging])
     assert first == context_version(ada, None, [imaging])
@@ -355,8 +355,8 @@ def test_the_contract_accepts_the_new_fields_and_nothing_else():
 
 
 def test_the_prompts_read_the_new_fields_only_when_set():
-    from apps.content import understanding
-    from apps.content.opportunity_llm import _profile_text
+    from tools.recommendation import understanding
+    from tools.recommendation.opportunity_llm import _profile_text
 
     plain = {"areas": ["medical imaging"]}
     assert understanding.lines(plain) == []
@@ -394,7 +394,7 @@ def test_without_exploration_weights_the_merge_is_byte_identical():
     before/after, pinned without the evaluation harness."""
     import random
 
-    from apps.content.fusion import combine_clusters
+    from tools.recommendation.fusion import combine_clusters
 
     class Item:
         def __init__(self, pk):

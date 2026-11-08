@@ -2,7 +2,8 @@
 
 import pytest
 from django.utils import timezone
-from tools.retrieval.models import ContentItem, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem
 
 from apps.accounts.models import Lab
 from apps.content.views import _recommendations_payload

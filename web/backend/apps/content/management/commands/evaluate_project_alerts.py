@@ -39,9 +39,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
+        from tools.recommendation.tasks import select_targets, select_users
+
         from apps.accounts.models import Lab
         from apps.content.alerts import evaluate_for_lab, evaluate_for_user
-        from apps.content.tasks import select_targets, select_users
 
         usernames = [u for u in (options.get("usernames") or []) if u and u.strip()]
         slugs = [s for s in (options.get("slugs") or []) if s and s.strip()]

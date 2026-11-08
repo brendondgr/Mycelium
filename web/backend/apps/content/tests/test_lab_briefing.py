@@ -4,11 +4,12 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
-from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem, DailyBriefing
 
 from apps.accounts.models import Lab, LabMembership
+from apps.billing.testing import entitle_lab
 from apps.content.briefing import generate_briefing_for_lab
-from apps.content.tests.entitle import entitle_lab
 
 RUN = "2026-07-11T06:00:00"
 # The report shows only what first surfaced on the run date and cleared its

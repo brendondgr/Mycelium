@@ -457,11 +457,11 @@ place (see the `CORRECTED` entry `20260804-briefing-framing`).
 - Anything about the LLM percent-match, fellowship eligibility, or member
   routing (audit claims C4–C6). None are exercised. `EXP-2026-08-008`'s LLM arms
   are the nearest thing, and they measure a **counterfactual**: production does
-  not reorder — `apps.content.suggest` annotates a fused ordering — so those arms
+  not reorder — `tools.recommendation.suggest` annotates a fused ordering — so those arms
   describe a design option, not shipped behaviour. They also ran at temperature 0
   while production defaults to 0.2 (audit item W1, open).
 - That the **shipped** cross-encoder rerank stage improves anything. It is in
-  `apps/content/reranking.py`, it ships **off** (`RERANK_ENABLED=false`), and the
+  `tools/recommendation/reranking.py`, it ships **off** (`RERANK_ENABLED=false`), and the
   only evidence for it is a **preference from one reader** over two queries
   (`EXP-2026-08-015`…`-017`). On this collection the same model is significantly
   *harmful* on short queries and C-013 stands refuted. What `EXP-2026-08-018`
@@ -492,8 +492,8 @@ silently inherits whatever is wrong at this layer.
 
 ## The re-run rule
 
-Any change to `tools/retrieval/index.py`, `tools/retrieval/lexical.py`, `fusion.py`, `ranking.py`, or
-`pipeline.py`'s pool construction must be accompanied by a fresh evaluation run,
+Any change to `tools/retrieval/index.py`, `tools/retrieval/lexical.py`, `tools/recommendation/fusion.py`, `tools/recommendation/ranking.py`, or
+`tools/recommendation/pipeline.py`'s pool construction must be accompanied by a fresh evaluation run,
 with the before/after numbers in the changelog entry **and an experiment folder
 recording them**:
 

@@ -17,7 +17,8 @@ from __future__ import annotations
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
-from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem, DailyBriefing
 
 from apps.accounts.models import WatchPreference
 from apps.content import discord_embeds

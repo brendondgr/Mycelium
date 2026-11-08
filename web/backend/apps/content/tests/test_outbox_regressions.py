@@ -33,9 +33,9 @@ from tools.retrieval.models import (
     SavedOpportunity,
 )
 
+from apps.billing.testing import paid_plan
 from apps.content.reminders import create_subscription
 from apps.content.reminders_tick import run_tick
-from apps.content.tests.entitle import paid_plan
 from apps.integrations.services import discord_api
 from apps.integrations.services.discord_api import RawResponse
 

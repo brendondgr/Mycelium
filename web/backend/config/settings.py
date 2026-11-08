@@ -355,14 +355,8 @@ CELERY_RESULT_BACKEND = env(
 # invoked by `manual_all.py`; only their in-container schedule moved. Keep
 # team-profile recompute on Beat — it has no host dependency.
 CELERY_BEAT_SCHEDULE = {
-    # Feature D: recompute every project's team-relevance signal nightly, so
-    # engagement that accrued during the day shapes the next day's recommendations.
-    "recompute-project-profiles": {
-        "task": "apps.content.recompute_project_profiles",
-        "schedule": crontab(
-            hour=env.int("CELERY_TEAM_PROFILE_HOUR", default=3), minute=0
-        ),
-    },
+    # "recompute-project-profiles" (nightly team-profile recompute) is declared
+    # by the recommendation tool (tools/recommendation/tool.py, Tool.beat).
     # Discord reconciliation (apps.integrations): the HTTP-only tradeoff for the
     # absent gateway GUILD_DELETE/deauthorize events — mark kicked guilds, refresh
     # or revoke lapsing OAuth tokens. No host dependency (pure Discord REST), so it
@@ -444,7 +438,8 @@ CELERY_BEAT_SCHEDULE = {
 # units one at a time dominates the runtime; the endpoint handles many at once.
 OPPORTUNITY_LLM_CONCURRENCY = _cfg["nightly.llm_concurrency"]
 # How many précis and per-theme write-up calls may be in flight for one target
-# (apps.content.comprehension / cluster_fit / theme_run). Themes run side by side
+# (tools.recommendation.comprehension / cluster_fit / theme_run). Themes run side by
+# side
 # and share this budget. vLLM batches concurrent requests.
 WRITEUP_LLM_CONCURRENCY = _cfg["nightly.writeup_concurrency"]
 
@@ -529,12 +524,12 @@ TYPESAFE_TIMEOUT = env.float("TYPESAFE_TIMEOUT", default=10.0)
 # Retries belong to the caller, as with LLM_MAX_RETRIES.
 TYPESAFE_MAX_RETRIES = env.int("TYPESAFE_MAX_RETRIES", default=0)
 
-# Daily-suggestion ranking (apps.content.ranking). Weight applied to a paper's
+# Daily-suggestion ranking (tools.recommendation.ranking). Weight applied to a paper's
 # research-focus overlap when re-ranking retrieved papers: blended score =
 # similarity + AREA_FOCUS_WEIGHT * focus_overlap. 0 disables the focus boost.
-AREA_FOCUS_WEIGHT = env.float("AREA_FOCUS_WEIGHT", default=0.25)
+# AREA_FOCUS_WEIGHT -> tools/recommendation/tool.py
 
-# Daily research-paper feed sizing (apps.content.pipeline). The Research Papers
+# Daily research-paper feed sizing (tools.recommendation.pipeline). The Research Papers
 # feed is no longer a fixed top-N: a paper is surfaced only when its transformer
 # (embedding) cosine match to the researcher's interests clears PAPER_MATCH_THRESHOLD
 # — a variable-length list whose size the reader is told ("N papers met the
@@ -545,69 +540,73 @@ AREA_FOCUS_WEIGHT = env.float("AREA_FOCUS_WEIGHT", default=0.25)
 # expressed as the raw cosine similarity fraction in [0, 1] (shown as a % in the UI),
 # matching the FANOUT_COSINE_FLOOR convention. Papers only — grant/conference/
 # fellowship matching is unaffected.
-PAPER_MATCH_THRESHOLD = env.float("PAPER_MATCH_THRESHOLD", default=0.5)
-PAPER_MATCH_MAX_SURFACE = env.int("PAPER_MATCH_MAX_SURFACE", default=250)
+# PAPER_MATCH_THRESHOLD -> tools/recommendation/tool.py
+# PAPER_MATCH_MAX_SURFACE -> tools/recommendation/tool.py
 
 # Nightly runs carry forward a paper's prior LLM verdict instead of re-scoring it
-# (apps.content.pipeline / .suggest), so a researcher's match% doesn't flap night
+# (tools.recommendation.pipeline / .suggest), so a researcher's match% doesn't flap
+# night
 # to night and the freed LLM slots go to papers never scored, new ones first. A
 # paper the model scores below PAPER_MIN_MATCH_PERCENT is persisted (so the
 # carry-forward store remembers it and never re-sends it) but hidden from the feed
 # (``suggested=False``) rather than surfaced with a low score.
-PAPER_MIN_MATCH_PERCENT = env.int("PAPER_MIN_MATCH_PERCENT", default=60)
+# PAPER_MIN_MATCH_PERCENT -> tools/recommendation/tool.py
 
 # How many items make up a target's slate per category — the "Top 25" the daily
-# report is built from (apps.content.top_feed). The report shows the slate and calls
+# report is built from (tools.recommendation.top_feed). The report shows the slate and
+# calls
 # new whatever entered it since the last run, so this number is both how much a
 # reader is shown and how far down the ranking a promotion still counts as news.
 # There is deliberately no second relevance floor on top: the feed's own embedding
 # threshold (PAPER_MATCH_THRESHOLD, GRANT_MATCH_THRESHOLD, …) already decides what
 # is good enough to be in the feed at all, and a second opinion about the top of
 # that list only ever made the report quietly shorter than it claimed to be.
-REPORT_TOP_N = env.int("REPORT_TOP_N", default=25)
+# REPORT_TOP_N -> tools/recommendation/tool.py
 
 # Papers an institutional target (lab / lab project) draws from EACH of its
-# interest clusters (apps.content.pipeline.recommend_for_target). A lab's areas are
+# interest clusters (tools.recommendation.pipeline.recommend_for_target). A lab's areas
+# are
 # broad theme names rather than a person's specific keywords, so one theme's
 # vocabulary consistently sits closer to the day's literature; ranked globally it
 # took the whole model budget and the lab's other themes read as empty. Each theme
 # now contributes its own best N, all of which are scored by the model and shown —
 # a slate member is not withheld by PAPER_MIN_MATCH_PERCENT, since this run is what
 # chose it. Left at 0 (the default) the depth comes from
-# ``apps.content.slates.slate_depth`` instead, which is where the per-category
+# ``tools.recommendation.slates.slate_depth`` instead, which is where the per-category
 # geometry now lives; set it only to override that for papers specifically.
-PAPER_CLUSTER_TOP_N = env.int("PAPER_CLUSTER_TOP_N", default=0)
+# PAPER_CLUSTER_TOP_N -> tools/recommendation/tool.py
 
-# Per-cluster admission (apps.content.admission). A candidate is admitted when it
+# Per-cluster admission (tools.recommendation.admission). A candidate is admitted when
+# it
 # clears PAPER_MATCH_THRESHOLD *or* reaches CLUSTER_ADMIT_FRAC of its own theme's
 # best score — the second is what stops a theme whose vocabulary sits further from
 # the corpus being excluded wholesale. CLUSTER_ADMIT_HARD_FLOOR sits under both, so
 # a theme with nothing genuinely relevant admits nothing rather than its ten
 # least-irrelevant candidates. It is not optional; do not set it to 0.
-CLUSTER_ADMIT_FRAC = env.float("CLUSTER_ADMIT_FRAC", default=0.5)
-CLUSTER_ADMIT_HARD_FLOOR = env.float("CLUSTER_ADMIT_HARD_FLOOR", default=0.35)
+# CLUSTER_ADMIT_FRAC -> tools/recommendation/tool.py
+# CLUSTER_ADMIT_HARD_FLOOR -> tools/recommendation/tool.py
 
-# Model write-ups per target per run (apps.content.cluster_fit). A run-safety cap,
+# Model write-ups per target per run (tools.recommendation.cluster_fit). A run-safety
+# cap,
 # not a spend cap: the nightly batch is shared, so an unbounded spike for one
 # reader who just redesigned their profile would degrade everyone else's report.
 # Funded by slate position (entrants first at equal position); whatever does not
 # fit is written deterministically and carries to the next run.
 CLUSTER_WRITEUP_BUDGET = _cfg["nightly.cluster_writeup_budget"]
-CLUSTER_FIT_BATCH = env.int("CLUSTER_FIT_BATCH", default=12)
+# CLUSTER_FIT_BATCH -> tools/recommendation/tool.py
 
-# Papers sign-up hybrid (apps.content.onboarding_match). A brand-new user is first
+# Papers sign-up hybrid (tools.recommendation.onboarding_match). A brand-new user is
+# first
 # matched against the latest gather batch already in the store (no live scan). If
 # that yields at least PAPER_ONBOARDING_MIN_HIGH_QUALITY suggestions carrying a
 # "read" verdict, those are shown; otherwise a
 # background scan of the user's watch topics is kicked off and the Research Papers
 # page shows a "scanning" state (a Redis flag, best-effort) until it lands.
 # PAPER_SCAN_INFLIGHT_TTL bounds that flag so a dead scan can never wedge it on.
-PAPER_ONBOARDING_MIN_HIGH_QUALITY = env.int(
-    "PAPER_ONBOARDING_MIN_HIGH_QUALITY", default=30
-)
+# PAPER_ONBOARDING_MIN_HIGH_QUALITY -> tools/recommendation/tool.py
 PAPER_SCAN_INFLIGHT_TTL = env.int("PAPER_SCAN_INFLIGHT_TTL", default=1800)
 
-# Opportunity feed sizing (apps.content.opportunities / .fellowships). Like the
+# Opportunity feed sizing (tools.recommendation.opportunities / .fellowships). Like the
 # paper feed, grants/conferences/fellowships are no longer fixed top-N lists: an
 # item is surfaced only when its match to the researcher clears the area's
 # threshold, so the feed shows *all* sufficiently-related opportunities (however
@@ -622,11 +621,11 @@ PAPER_SCAN_INFLIGHT_TTL = env.int("PAPER_SCAN_INFLIGHT_TTL", default=1800)
 # 0 disables the relevance gate, keeping the old eligibility-only behaviour) — it
 # only applies for researchers with a declared interest signal; users with none
 # keep the pure rule-engine ranking.
-GRANT_MATCH_THRESHOLD = env.float("GRANT_MATCH_THRESHOLD", default=0.4)
-CONFERENCE_MATCH_THRESHOLD = env.float("CONFERENCE_MATCH_THRESHOLD", default=0.4)
-FELLOWSHIP_FIT_THRESHOLD = env.float("FELLOWSHIP_FIT_THRESHOLD", default=0.0)
-FELLOWSHIP_MATCH_THRESHOLD = env.float("FELLOWSHIP_MATCH_THRESHOLD", default=0.4)
-OPPORTUNITY_MATCH_MAX_SURFACE = env.int("OPPORTUNITY_MATCH_MAX_SURFACE", default=250)
+# GRANT_MATCH_THRESHOLD -> tools/recommendation/tool.py
+# CONFERENCE_MATCH_THRESHOLD -> tools/recommendation/tool.py
+# FELLOWSHIP_FIT_THRESHOLD -> tools/recommendation/tool.py
+# FELLOWSHIP_MATCH_THRESHOLD -> tools/recommendation/tool.py
+# OPPORTUNITY_MATCH_MAX_SURFACE -> tools/recommendation/tool.py
 
 # A fellowship whose scraped facet buckets are all empty (a failed detail render,
 # a missed selector) carries no eligibility information, so every facet test
@@ -634,9 +633,7 @@ OPPORTUNITY_MATCH_MAX_SURFACE = env.int("OPPORTUNITY_MATCH_MAX_SURFACE", default
 # "unverified" and labelled as unchecked instead. Withholding it entirely is the
 # stricter option, off by default: a parse failure should not silently cost a
 # researcher a real award.
-FELLOWSHIP_WITHHOLD_UNVERIFIED = env.bool(
-    "FELLOWSHIP_WITHHOLD_UNVERIFIED", default=False
-)
+# FELLOWSHIP_WITHHOLD_UNVERIFIED -> tools/recommendation/tool.py
 
 # One-time, per-record extraction of the *prose* eligibility a facet cannot carry
 # ("must have received the PhD within 24 months"). A deterministic pattern pass
@@ -665,7 +662,7 @@ OPPORTUNITY_ANNOUNCEMENTS_ENABLED = _cfg["features.announcements"]
 # Same carry-forward + floor behaviour as papers (above), for grants / conferences /
 # fellowships: an item the model scored below this stays in the carry-forward store
 # (never re-sent to the model) but off the feed until it improves or ages out.
-OPPORTUNITY_MIN_MATCH_PERCENT = env.int("OPPORTUNITY_MIN_MATCH_PERCENT", default=60)
+# OPPORTUNITY_MIN_MATCH_PERCENT -> tools/recommendation/tool.py
 
 # High-signal notification gate (apps.content.high_signal, reminders R7). A brutal
 # floor: abstention is a feature — if nothing clears the bar, send nothing. An alert
@@ -702,17 +699,15 @@ RELEVANCE_EVENT_WEIGHTS = {
     "thumbs_down": env.float("RELEVANCE_WEIGHT_THUMBS_DOWN", default=-0.7),
 }
 
-# Project team-relevance signal (apps.content.team_profile — Feature D). The
+# Project team-relevance signal (tools.recommendation.team_profile — Feature D). The
 # recomputed team vector blends the project's declared focus, its members' interest
 # vectors, and their recent weighted engagement (each normalized before fusion);
 # it is written to Project.embedding for the recommendation pipeline to read.
 # Engagement decays with a half-life so stale clicks fade. Weights are relative.
-PROJECT_PROFILE_FOCUS_WEIGHT = env.float("PROJECT_PROFILE_FOCUS_WEIGHT", default=1.0)
-PROJECT_PROFILE_MEMBER_WEIGHT = env.float("PROJECT_PROFILE_MEMBER_WEIGHT", default=0.6)
-PROJECT_PROFILE_ENGAGEMENT_WEIGHT = env.float(
-    "PROJECT_PROFILE_ENGAGEMENT_WEIGHT", default=0.4
-)
-PROJECT_PROFILE_HALFLIFE_DAYS = env.float("PROJECT_PROFILE_HALFLIFE_DAYS", default=90.0)
+# PROJECT_PROFILE_FOCUS_WEIGHT -> tools/recommendation/tool.py
+# PROJECT_PROFILE_MEMBER_WEIGHT -> tools/recommendation/tool.py
+# PROJECT_PROFILE_ENGAGEMENT_WEIGHT -> tools/recommendation/tool.py
+# PROJECT_PROFILE_HALFLIFE_DAYS -> tools/recommendation/tool.py
 
 # Cross-member relevance fan-out (apps.content.fanout — Feature F). A shared paper
 # is suggested to a member when the normalized cosine between the item and the
@@ -722,7 +717,8 @@ PROJECT_PROFILE_HALFLIFE_DAYS = env.float("PROJECT_PROFILE_HALFLIFE_DAYS", defau
 FANOUT_COSINE_FLOOR = env.float("FANOUT_COSINE_FLOOR", default=0.35)
 FANOUT_ASYNC = env.bool("FANOUT_ASYNC", default=False)
 
-# Per-item member recommendations (apps.content.member_fit) — the "who in this lab
+# Per-item member recommendations (tools.recommendation.member_fit) — the "who in this
+# lab
 # is this most applicable to?" layer on every lab/project feed. A member is a
 # candidate when the cosine between the item and their own interest vector clears
 # MEMBER_FIT_COSINE_FLOOR (the FANOUT_COSINE_FLOOR convention); at most
@@ -731,8 +727,8 @@ FANOUT_ASYNC = env.bool("FANOUT_ASYNC", default=False)
 # each area (the digest's llm_limit convention); everything below carries a
 # deterministic reason built from the overlap, and an unreachable model degrades
 # the whole layer to that same deterministic ranking.
-MEMBER_FIT_COSINE_FLOOR = env.float("MEMBER_FIT_COSINE_FLOOR", default=0.35)
-MEMBER_FIT_MAX_MEMBERS = env.int("MEMBER_FIT_MAX_MEMBERS", default=3)
+# MEMBER_FIT_COSINE_FLOOR -> tools/recommendation/tool.py
+# MEMBER_FIT_MAX_MEMBERS -> tools/recommendation/tool.py
 MEMBER_FIT_LLM_LIMIT = _cfg["nightly.member_fit_llm_limit"]
 # Recompute a project's team profile immediately when its membership changes.
 TEAM_PROFILE_AUTORECOMPUTE = env.bool("TEAM_PROFILE_AUTORECOMPUTE", default=True)
@@ -753,7 +749,7 @@ SEARCH_CACHE_TTL = env.int("SEARCH_CACHE_TTL", default=3600)
 # A small Redis-backed cache for the "paper scan in flight" flag, which the web
 # process sets (at sign-up) and the Celery worker clears (when the scan lands), so
 # it must be shared across processes — the default LocMemCache is per-process. All
-# reads/writes are best-effort (apps.content.scan_status), so a Redis outage
+# reads/writes are best-effort (tools.recommendation.scan_status), so a Redis outage
 # degrades to "no scanning state", never an error.
 SCAN_CACHE_URL = env("SCAN_CACHE_URL", default=re.sub(r"/\d+$", "/3", _REDIS_URL))
 
@@ -836,7 +832,7 @@ SCRAPER_CONTACT_EMAIL = env("SCRAPER_CONTACT_EMAIL", default=OPENALEX_MAILTO)
 # EMBEDDING_BATCH_SIZE_CPU/GPU) are the retrieval tool's settings:
 # tools/retrieval/tool.py, section [tools.retrieval] in mycelium.toml.
 
-# Cross-encoder rerank (apps.content.reranking). Reorders the head of the fused
+# Cross-encoder rerank (tools.recommendation.reranking). Reorders the head of the fused
 # candidate list by reading query and document together, over the pool the
 # pipeline already built — nothing about retrieval changes.
 #
@@ -870,7 +866,8 @@ RERANK_CONTENT_TYPES = env.list(
     "RERANK_CONTENT_TYPES", default=["paper", "grant", "conference"]
 )
 
-# Which reranker decides the head of each theme's slate (apps.content.typesafe_rerank).
+# Which reranker decides the head of each theme's slate
+# (tools.recommendation.typesafe_rerank).
 # "local" is the stack above exactly as deployed. "typesafe" keeps that stack for
 # retrieval and the pool, then asks TypeSafe's decision model one question per
 # (theme, item) for the top TYPESAFE_RERANK_WINDOW of every theme and reorders

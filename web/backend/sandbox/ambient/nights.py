@@ -113,12 +113,12 @@ def _mine():
 
 def simulate(world: World, *, seed: int = 20260919) -> dict:
     from django.contrib.auth import get_user_model
+    from tools.recommendation.understanding import context_version
 
     from apps.ambient import reconcile
     from apps.ambient.evolve import undo_development
     from apps.ambient.models import Finding, Observation, ProjectDevelopment, Visibility
     from apps.ambient.read import developments_in_effect
-    from apps.content.understanding import context_version
     from apps.knowledge.models import EdgeStatus
     from apps.knowledge.read import (
         confirmed_explorations,
@@ -403,18 +403,17 @@ def drift(world: World, weights=(0.15, 1.0)) -> dict:
     """Declared-only against declared-plus-explorations, per person with one."""
     from django.conf import settings
     from django.contrib.auth import get_user_model
-    from tools.retrieval.index import latest_gather_date
-    from tools.retrieval.models import ContentItem
-
-    from apps.content import explorations
-    from apps.content.clustering import cluster_interests
-    from apps.content.interests_query import search_interests
-    from apps.content.pipeline import (
+    from tools.recommendation import explorations
+    from tools.recommendation.clustering import cluster_interests
+    from tools.recommendation.interests_query import search_interests
+    from tools.recommendation.pipeline import (
         DEFAULT_BETA,
         DEFAULT_POOL_PER_INTEREST,
         fuse_clusters_pool,
     )
-    from apps.content.slates import slate_depth
+    from tools.recommendation.slates import slate_depth
+    from tools.retrieval.index import latest_gather_date
+    from tools.retrieval.models import ContentItem
 
     created_on = latest_gather_date(content_type=ContentItem.Type.PAPER)
     depth = slate_depth(ContentItem.Type.PAPER)

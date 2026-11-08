@@ -21,10 +21,10 @@ from django.contrib.auth.models import User
 from django.db import connection
 from django.utils import timezone
 from rest_framework.test import APIClient
+from tools.recommendation.models import RelevanceScore
+from tools.recommendation.opportunities import match_fellowships_for_user
 from tools.retrieval import embeddings
-from tools.retrieval.models import ContentItem, RelevanceScore, SavedOpportunity
-
-from apps.content.opportunities import match_fellowships_for_user
+from tools.retrieval.models import ContentItem, SavedOpportunity
 
 # ---- fixtures ------------------------------------------------------------------
 
@@ -741,7 +741,7 @@ def test_match_fellowships_floor_hides_low_score_but_persists_verdict(settings):
 def test_refit_bypasses_carry_forward_for_fellowships():
     """``refit_user`` re-sends every eligible fellowship to the model, even ones a
     prior run already scored (``reuse_prior=False`` skips the carry-forward store)."""
-    from apps.content.refitting import refit_user
+    from tools.recommendation.refitting import refit_user
 
     user = _profile_user_with_eligibility("refitbypass")
     _fellowship("f1", "Dissertation Award")

@@ -34,8 +34,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
+        from tools.recommendation.tasks import select_targets, select_users
+
         from apps.accounts.models import Lab
-        from apps.content.tasks import select_targets, select_users
         from apps.content.weekly import (
             generate_weekly_for_lab,
             generate_weekly_for_user,

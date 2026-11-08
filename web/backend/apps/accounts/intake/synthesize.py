@@ -13,8 +13,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from tools.recommendation.clustering import MAX_CLUSTERS
+
 from apps.accounts.interests import CURRENT_VERSION
-from apps.content.clustering import MAX_CLUSTERS
 
 from .drafts import AuthorProfileDraft
 from .extract import CompleteFn, ProfileFields, extract_profile_fields

@@ -18,10 +18,18 @@ class ContentConfig(AppConfig):
         from tools._framework import events
         from tools.retrieval.events import ITEMS_MERGING
 
-        from . import (
+        from apps.content import (
             merge_handlers,
             signals,  # noqa: F401
         )
 
         for handler in merge_handlers.HANDLERS:
             events.subscribe(ITEMS_MERGING, handler)
+
+        # Departments are scored only for their announcement channels; tell the
+        # recommendation tool which ones (it never imports this code).
+        from tools.recommendation.service import register_department_source
+
+        from . import announce
+
+        register_department_source(announce.enabled_departments)

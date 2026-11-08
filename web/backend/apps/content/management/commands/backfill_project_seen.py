@@ -7,7 +7,8 @@ surfaced in this project" badge is accurate from day one. Idempotent — safe to
 """
 
 from django.core.management.base import BaseCommand
-from tools.retrieval.models import ProjectItemSeen, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ProjectItemSeen
 
 from apps.content.collaboration import mark_seen
 

@@ -33,18 +33,14 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from tools.recommendation.clustering import IMPLICIT_CLUSTER_ID
+from tools.recommendation.models import RelevanceScore
+from tools.recommendation.slates import cluster_entries, slate_depth
 from tools.retrieval.liveness import is_live
-from tools.retrieval.models import (
-    Announcement,
-    AnnouncementSettings,
-    ContentItem,
-    RelevanceScore,
-)
+from tools.retrieval.models import Announcement, AnnouncementSettings, ContentItem
 
 from apps.content import announce_editor as editor
 from apps.content import announce_facts, dept_level, usability
-from apps.content.clustering import IMPLICIT_CLUSTER_ID
-from apps.content.slates import cluster_entries, slate_depth
 
 KIND_ORDER = (
     ContentItem.Type.GRANT,
@@ -116,6 +112,12 @@ def target_entitled(target: Target) -> bool:
     return check(target.obj, Feature.OPPORTUNITY_ANNOUNCEMENTS) and check(
         target.obj, Feature.BOT_SERVER
     )
+
+
+def enabled_departments() -> list:
+    """Departments with announcements on and a plan that covers them: the ones
+    the nightly run must score (registered with the recommendation tool)."""
+    return [t.obj for t in enabled_targets() if t.kind == "department"]
 
 
 def enabled_targets() -> list[Target]:
@@ -405,7 +407,8 @@ def prepare(
 ) -> Prepared:
     from dataclasses import replace
 
-    from apps.content.cluster_fit import areas_fingerprint
+    from tools.recommendation.cluster_fit import areas_fingerprint
+
     from apps.content.theme_report import declared_clusters
 
     item = row.content

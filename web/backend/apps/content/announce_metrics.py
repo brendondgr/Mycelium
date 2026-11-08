@@ -18,13 +18,13 @@ from datetime import date, datetime, time, timedelta
 
 from django.conf import settings
 from django.utils import timezone
+from tools.recommendation.models import RelevanceScore
 from tools.retrieval.models import (
     Announcement,
     AnnouncementNudge,
     AnnouncementReaction,
     AnnouncementSettings,
     ContentItem,
-    RelevanceScore,
 )
 
 from apps.content import dept_level

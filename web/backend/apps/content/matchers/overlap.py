@@ -6,7 +6,7 @@ publish" — and the second most valuable is "no, they have not, and here is
 precisely where you still differ".
 
 The comparison is narrow on purpose. A paper's **headline claim**
-(:class:`~tools.retrieval.models.ItemComprehension`'s ``claim``) against the
+(:class:`~tools.recommendation.models.ItemComprehension`'s ``claim``) against the
 project's **claimed contribution**, and the paper's method-and-setting against the
 project's method-and-data. Those two, not the whole abstract against the whole
 project, because everything in a reader's feed is already about their topic —

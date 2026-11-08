@@ -14,6 +14,7 @@ from datetime import date, timedelta
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.recommendation.models import RelevanceScore
 from tools.retrieval.models import (
     Announcement,
     AnnouncementNudge,
@@ -22,7 +23,6 @@ from tools.retrieval.models import (
     AnnouncementSettings,
     ClosingSoonPost,
     ContentItem,
-    RelevanceScore,
     ReminderSubscription,
 )
 
@@ -390,7 +390,7 @@ def test_remind_me_offers_only_future_choices_and_sets_them(fake) -> None:
 
 @pytest.mark.django_db
 def test_remind_me_by_dm_is_an_ordinary_reminder(fake) -> None:
-    from apps.content.tests.entitle import paid_plan
+    from apps.billing.testing import paid_plan
 
     target, _ = _setup()
     item = _grant(TODAY + timedelta(days=40))

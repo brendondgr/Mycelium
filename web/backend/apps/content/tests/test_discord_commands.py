@@ -19,9 +19,9 @@ from tools.retrieval.models import (
 )
 
 from apps.accounts.models import Lab, LabMembership
+from apps.billing.testing import entitle_user, paid_plan
 from apps.content import discord_commands as cmd
 from apps.content.reminders import create_subscription
-from apps.content.tests.entitle import entitle_user, paid_plan
 from apps.integrations.models import DiscordIdentity
 from apps.integrations.tests.base import (
     clear_discord_cache,

@@ -14,36 +14,12 @@ loser's dropped, so no ``IntegrityError`` and no lost signal.
 from __future__ import annotations
 
 from tools.retrieval.models import (
-    TARGET_FIELDS,
     CollectionItem,
     MemberSuggestion,
     ProjectItemSeen,
     ProjectShare,
-    RelevanceEvent,
-    RelevanceScore,
     SavedOpportunity,
 )
-
-
-def repoint_scores(*, survivor, loser) -> None:
-    """RelevanceScore — unique per (content, target). Keep the higher score."""
-    for score in RelevanceScore.objects.filter(content=loser):
-        target_field = next(
-            f for f in TARGET_FIELDS if getattr(score, f"{f}_id") is not None
-        )
-        target_id = getattr(score, f"{target_field}_id")
-        twin = RelevanceScore.objects.filter(
-            content=survivor, **{target_field: target_id}
-        ).first()
-        if twin is None:
-            score.content = survivor
-            score.save(update_fields=["content"])
-        else:
-            if score.score > twin.score:
-                twin.score = score.score
-                twin.signals = score.signals
-                twin.save(update_fields=["score", "signals"])
-            score.delete()
 
 
 def repoint_saves(*, survivor, loser) -> None:
@@ -59,11 +35,6 @@ def repoint_saves(*, survivor, loser) -> None:
 def repoint_shares(*, survivor, loser) -> None:
     """ProjectShare — no per-content uniqueness, repoint in bulk."""
     ProjectShare.objects.filter(content=loser).update(content=survivor)
-
-
-def repoint_events(*, survivor, loser) -> None:
-    """RelevanceEvent — no per-content uniqueness, repoint in bulk."""
-    RelevanceEvent.objects.filter(content=loser).update(content=survivor)
 
 
 def repoint_seen(*, survivor, loser) -> None:
@@ -102,12 +73,11 @@ def repoint_suggestions(*, survivor, loser) -> None:
             sugg.save(update_fields=["content"])
 
 
-#: In the order the merge always reconciled them.
+#: In the order the merge always reconciled them. (Scores and engagement
+#: events are the recommendation tool's: ``tools/recommendation/handlers.py``.)
 HANDLERS = (
-    repoint_scores,
     repoint_saves,
     repoint_shares,
-    repoint_events,
     repoint_seen,
     repoint_collections,
     repoint_suggestions,

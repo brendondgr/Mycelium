@@ -30,13 +30,14 @@ Notes on the fields with a non-obvious role:
 
 - ``areas`` ("research focus") does *not* drive the literature search and is
   *not* baked into the embedding vector. It feeds the weighted re-rank
-  (``apps.content.ranking``) as a focus boost and is handed to the language model
+  (``tools.recommendation.ranking``) as a focus boost and is handed to the language
+  model
   to judge and explain match strength. The actual search queries come from a
   separate per-user ``WatchPreference`` (the sole source of search terms).
 - ``keywords`` (with ``statement``) is the semantic fingerprint that *is*
   embedded and retrieved against.
 - ``skills`` reaches the model prompts (the profile block built by
-  ``apps.content.briefing`` and ``apps.content.opportunity_llm``) and the
+  ``apps.content.briefing`` and ``tools.recommendation.opportunity_llm``) and the
   deterministic ``apps.content.matchers.team_gap`` matcher, which reads ``areas``
   and ``skills`` together as "what this person says they do". It is deliberately
   *not* embedded and *not* turned into search queries. Fellowship matching still
@@ -54,7 +55,7 @@ SUPPORTED_VERSIONS = (1, 2)
 
 # The cluster count when no person is in context (fixtures, commands). A person's
 # own limit comes from apps.billing.entitlements.cluster_cap. Kept in sync with
-# apps.content.clustering.MAX_CLUSTERS, the number Mylo proposes by default.
+# tools.recommendation.clustering.MAX_CLUSTERS, the number Mylo proposes by default.
 MAX_CLUSTERS = 6
 
 # Broad fellowship-field buckets (matches Illinois Fellowship Finder vocabulary).
@@ -98,7 +99,7 @@ class EligibilityContract(serializers.Serializer):
     Fields:
       citizenship  "us" | "international" | "" — default "us".
       stage        academic stage token — default "". Blank is not the same as
-                   "no stage": :func:`apps.content.fellowships.derive_stage`
+                   "no stage": :func:`tools.recommendation.fellowships.derive_stage`
                    falls back to ``career_stage`` and then to the profile's
                    ``academic_title``, so an account that never answered the
                    eligibility step still places on the ladder. The stage gate is
@@ -204,7 +205,7 @@ class InterestsContract(serializers.Serializer):
 
     v2 adds ``clusters`` (a partition of ``areas`` into named groups). A payload
     with no ``clusters`` key is a valid v1 profile — it behaves downstream as one
-    implicit cluster over all areas (:mod:`apps.content.clustering`), so no data
+    implicit cluster over all areas (:mod:`tools.recommendation.clustering`), so no data
     migration is needed; v2 is written on the next profile save.
     """
 

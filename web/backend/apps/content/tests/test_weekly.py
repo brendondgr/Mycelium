@@ -13,12 +13,8 @@ from datetime import date, timedelta
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
-from tools.retrieval.models import (
-    ContentItem,
-    DailyBriefing,
-    ProjectAlert,
-    RelevanceScore,
-)
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem, DailyBriefing, ProjectAlert
 
 from apps.accounts.models import Lab, WatchPreference
 from apps.content import weekly as weekly_module

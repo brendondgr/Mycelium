@@ -96,6 +96,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 from reportlab.platypus.tableofcontents import TableOfContents
+from tools.recommendation.verdicts import VERDICT_LABELS
 
 from apps.content import report_grammar
 from apps.content.briefing_sections import SECTION_NOUN
@@ -107,7 +108,6 @@ from apps.content.daily_report import (
     ReportPart,
 )
 from apps.content.theme_report import ThemeSection
-from apps.content.verdicts import VERDICT_LABELS
 
 logger = logging.getLogger(__name__)
 

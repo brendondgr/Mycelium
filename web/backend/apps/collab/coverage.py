@@ -29,8 +29,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from django.conf import settings
+from tools.recommendation.member_fit import scope_members
 
-from apps.content.member_fit import scope_members
 from apps.knowledge.read import (
     EdgeView,
     concept_vectors,

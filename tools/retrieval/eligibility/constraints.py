@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 CompleteFn = Callable[[str], str | None]
 
 #: Ladder tokens this module may emit, mirroring
-#: :data:`apps.content.fellowships.STAGE_LADDER`.
+#: :data:`tools.recommendation.fellowships.STAGE_LADDER`.
 STAGE_TOKENS = ("masters", "doctoral_early", "doctoral_dissertation", "postdoc")
 
 DEGREES = ("bachelors", "masters", "phd")

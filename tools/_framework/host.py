@@ -31,6 +31,23 @@ def installed_apps(report: LoadReport) -> list[str]:
     return [report.tools[name].package for name in report.loaded()]
 
 
+def _values(cls, instance: Any) -> dict[str, Any]:
+    """A loaded tool's resolved settings.
+
+    A core tool taken from the default tools directory while another directory
+    is being probed has no section in ``instance.tools``; it gets its defaults
+    and environment overrides, resolved the same way.
+    """
+    cfg = instance.tools.get(cls.name)
+    if cfg is None:
+        from .config import resolve_tools
+
+        cfg = resolve_tools(
+            [cls], file_values={}, profile_values={}, environ=dict(os.environ)
+        )[0][cls.name]
+    return cfg.values
+
+
 def publish_settings(
     namespace: dict[str, Any], report: LoadReport, instance: Any
 ) -> None:
@@ -42,11 +59,10 @@ def publish_settings(
     classes = loader.tool_classes(report)
     for name in report.loaded():
         cls = classes[name]
-        cfg = instance.tools.get(name)
+        values = _values(cls, instance)
         for setting in cls.settings:
             if setting.django:
-                value = cfg.values[setting.key] if cfg else setting.default
-                namespace[setting.django] = value
+                namespace[setting.django] = values[setting.key]
 
 
 def beat_schedule(report: LoadReport, instance: Any) -> dict[str, dict]:
@@ -55,12 +71,12 @@ def beat_schedule(report: LoadReport, instance: Any) -> dict[str, dict]:
     classes = loader.tool_classes(report)
     out: dict[str, dict] = {}
     for name in report.loaded():
-        cfg = instance.tools.get(name)
+        values = _values(classes[name], instance)
         for beat in classes[name].beat:
             kwargs = {
                 key: (
-                    cfg.values[value.removeprefix("setting:")]
-                    if isinstance(value, str) and value.startswith("setting:") and cfg
+                    values[value.removeprefix("setting:")]
+                    if isinstance(value, str) and value.startswith("setting:")
                     else value
                 )
                 for key, value in beat.kwargs.items()

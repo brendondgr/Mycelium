@@ -17,9 +17,11 @@ project × category table of what is new today. A lab's report is the same docum
 over the lab's aggregate matches and the lab's own projects.
 
 What the report shows is each category's **slate** — the target's top
-:func:`~apps.content.top_feed.top_n` by relevance (:func:`report_scores`) — and what
+:func:`~tools.recommendation.top_feed.top_n` by relevance (:func:`report_scores`) — and
+what
 it calls *new* is whatever entered that slate on this run
-(:func:`~apps.content.top_feed.is_entrant`). Those are two different questions and
+(:func:`~tools.recommendation.top_feed.is_entrant`). Those are two different questions
+and
 the report answers both: the reader always sees their best 25, and only the part
 that changed is written up fresh.
 
@@ -50,21 +52,18 @@ from dataclasses import dataclass, field
 from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
-from tools.retrieval.models import (
-    ContentItem,
-    DailyBriefing,
-    IgnoredItem,
-    RelevanceScore,
-)
-
-from apps.content import briefing_sections
-from apps.content.cluster_fit import lead_sentence, stored_writeup
-from apps.content.slates import (
+from tools.recommendation.cluster_fit import lead_sentence, stored_writeup
+from tools.recommendation.models import RelevanceScore
+from tools.recommendation.slates import (
     cluster_entries,
     cluster_rank,
     entered_cluster_on,
 )
-from apps.content.targets import target_for_lab, target_for_user
+from tools.recommendation.targets import target_for_lab, target_for_user
+from tools.recommendation.top_feed import is_entrant, order_by_slate
+from tools.retrieval.models import ContentItem, DailyBriefing, IgnoredItem
+
+from apps.content import briefing_sections
 from apps.content.theme_report import (
     ThemeSection,
     declared_clusters,
@@ -72,7 +71,6 @@ from apps.content.theme_report import (
     section_label,
     split_by_theme,
 )
-from apps.content.top_feed import is_entrant, order_by_slate
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +187,7 @@ def _is_new_today(signals: dict, today: str) -> bool:
     (``is_new`` AND ``pinned_until >= today`` — see
     :func:`apps.content.views._build_summary._is_new` and
     :meth:`apps.content.serializers.…get_is_new`), and from the report's news, which
-    is :func:`~apps.content.top_feed.is_entrant`.
+    is :func:`~tools.recommendation.top_feed.is_entrant`.
 
     ``first_seen`` is stored on every suggested row (opportunities carry the
     immutable ``metadata.first_seen``; papers fall back to the ingest date), as a
@@ -208,14 +206,16 @@ def report_scores(
 ) -> list[RelevanceScore]:
     """The rows a *report* shows for one category: the target's slate, in rank order.
 
-    The slate is the top :func:`~apps.content.top_feed.top_n` of the category's feed
+    The slate is the top :func:`~tools.recommendation.top_feed.top_n` of the category's
+    feed
     by fused relevance, recorded on each row when the run persisted it. Reading it
     back — rather than re-deriving a "what's worth showing" rule here — is what keeps
     the report, the PDF, and the feed page from ever disagreeing about what the
     reader's best 25 are.
 
     ``today`` is unused for selection and kept in the signature because every caller
-    passes it and uses it moments later for :func:`~apps.content.top_feed.is_entrant`;
+    passes it and uses it moments later for
+    :func:`~tools.recommendation.top_feed.is_entrant`;
     dropping it would only push the same date-threading into four call sites.
 
     There is deliberately no extra relevance floor. There was one, and stacked on
@@ -490,7 +490,7 @@ def _showcase_item(
         # section prompt can group its write-up by the researcher's focus clusters.
         "cluster_label": signals.get("cluster_label", ""),
         # Who this item is for (institutional targets only — see
-        # :mod:`apps.content.member_fit`). Names only, and read by the feed's
+        # :mod:`tools.recommendation.member_fit`). Names only, and read by the feed's
         # "Best suited to" strip; the daily report deliberately does not use it.
         "for_members": [
             (member_names or {}).get(entry["username"], entry["username"])
@@ -661,7 +661,8 @@ def _profile_text(target) -> str:
     """A compact natural-language description of the target for the prompts.
 
     Built from the same interest surface the matcher scores on (a
-    :class:`apps.content.targets.MatchTarget`): the free-text research statement,
+    :class:`tools.recommendation.targets.MatchTarget`): the free-text research
+    statement,
     focus areas, keywords, skills, and (for a person) career stage / institution.
     A lab target simply carries no ``profile_meta``, so those lines are omitted.
     """
@@ -687,7 +688,7 @@ def _profile_text(target) -> str:
         values = _clean_list(interests.get(key))
         if values:
             bits.append(f"{label}: {', '.join(values)}")
-    from apps.content.understanding import lines as understanding_lines
+    from tools.recommendation.understanding import lines as understanding_lines
 
     bits.extend(understanding_lines(interests))
     return "\n".join(bits)
@@ -865,7 +866,7 @@ def context_version(owner: dict, projects: list) -> str:
 
     Never raises: a report that cannot compute its version is still a report.
     """
-    from apps.content.understanding import context_version as compute
+    from tools.recommendation.understanding import context_version as compute
 
     try:
         return compute(owner.get("user"), owner.get("lab"), projects)
@@ -880,7 +881,7 @@ def _narrative_entitled(target_filter: dict) -> bool:
     table and the listings — quieter, not broken — which is the honest rendering
     of a paid layer that is not paid for.
     """
-    from apps.content.theme_run import target_is_entitled
+    from tools.recommendation.theme_run import target_is_entitled
 
     return target_is_entitled(target_filter)
 
@@ -959,7 +960,7 @@ def generate_briefing_for_lab(
     """Build and persist a lab's daily report over its aggregate matches.
 
     Same shape as the personal briefing, but grounded in the lab's shared interest
-    profile (:func:`apps.content.targets.target_for_lab`) and its ``target_lab``
+    profile (:func:`tools.recommendation.targets.target_for_lab`) and its ``target_lab``
     scores, and limited to the categories a lab is scored for
     (:data:`LAB_BRIEFING_CATEGORIES`, now all four). The row is keyed on the lab, so
     a lab's briefing is distinct from any member's own, and its own part is headed
@@ -1032,7 +1033,8 @@ def _project_member_names(project) -> dict[str, str]:
 
 
 def _member_names(persist_kwargs: dict) -> dict[str, str]:
-    from apps.content.member_fit import scope_members
+    from tools.recommendation.member_fit import scope_members
+
     from apps.core.people import display_name
 
     return {

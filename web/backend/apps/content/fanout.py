@@ -8,56 +8,21 @@ for each: ``suggested=True`` (above the cosine floor → delivered in-app) or
 **normalized cosine directly** — never an RRF rank (RRF ranks aren't calibrated for
 absolute thresholding). One row per ``(user, content)``: re-sharing never re-notifies.
 
-Cosine is pure-Python (no numpy). The sharer is never suggested to themselves.
+Cosine is pure-Python (no numpy, :mod:`tools.recommendation.vectors`). The sharer is
+never
+suggested to themselves.
 """
 
 from __future__ import annotations
 
 import logging
-import math
 
 from django.conf import settings
-from tools.retrieval import embeddings
+from tools.recommendation.vectors import cosine as _cosine
+from tools.recommendation.vectors import member_vector
 from tools.retrieval.models import MemberSuggestion
 
-from apps.accounts.embedding import canonical_text
-
 logger = logging.getLogger(__name__)
-
-
-def cosine(a, b) -> float:
-    """Pure-Python cosine similarity; ``0.0`` for an empty or zero vector.
-
-    Shared with :mod:`apps.content.member_fit`, which thresholds on the same
-    absolute similarity to shortlist who an item is for.
-    """
-    if not a or not b:
-        return 0.0
-    dot = sum(float(x) * float(y) for x, y in zip(a, b, strict=False))
-    na = math.sqrt(sum(float(x) * float(x) for x in a))
-    nb = math.sqrt(sum(float(y) * float(y) for y in b))
-    if na == 0 or nb == 0:
-        return 0.0
-    return dot / (na * nb)
-
-
-#: Legacy private alias — existing callers/tests inside this module.
-_cosine = cosine
-
-
-def member_vector(user, *, embed_missing: bool = True) -> list[float] | None:
-    """A member's interest vector: stored ``Profile.embedding`` or embed on demand."""
-    profile = getattr(user, "profile", None)
-    if profile is None:
-        return None
-    if profile.embedding is not None:
-        return list(profile.embedding)
-    if not embed_missing:
-        return None
-    text = canonical_text(profile)
-    if not text.strip():
-        return None
-    return embeddings.embed_text(text)
 
 
 def fan_out_relevance(share, *, embed_missing: bool = True) -> dict:

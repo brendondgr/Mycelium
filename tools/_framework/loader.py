@@ -77,6 +77,8 @@ class LoadReport:
     order: list[str]
     tools: dict[str, ToolState]
     warnings: list[str] = field(default_factory=list)
+    #: Tools the platform imports (so cannot start without) that are not installed.
+    missing_required: list[str] = field(default_factory=list)
     created: float = field(default_factory=time.time)
     version: int = REPORT_VERSION
 
@@ -100,7 +102,9 @@ class LoadReport:
         return cls(**data)
 
     def table(self) -> str:
-        width = max([len(n) for n in self.order] + [4])
+        width = max(
+            [len(n) + (7 if self.tools[n].core else 0) for n in self.order] + [4]
+        )
         lines = [f"{'tool':<{width}}  {'state':<8}  reason"]
         for name in self.order:
             item = self.tools[name]
@@ -113,6 +117,14 @@ class LoadReport:
 
     def enforce(self, *, strict: bool) -> None:
         """Raise when a tool that must load did not."""
+        if self.missing_required:
+            raise ToolsLoadError(
+                "The platform requires "
+                + ", ".join(f"tools/{n}/" for n in self.missing_required)
+                + ", which is not installed. It still imports that code "
+                "(tools/_framework/platform_imports.txt), so it cannot start "
+                "without it."
+            )
         bad = [
             t
             for n in self.order
@@ -314,6 +326,21 @@ def preflight(
         current.state = ""  # still a candidate
         pending.append(name)
 
+    missing_required: list[str] = []
+    # A full tools tree (the package ``tools``: the real one, or a copy of it)
+    # must hold every tool the platform imports. A separate test package of
+    # fixture tools borrows the core tools from the default tree instead.
+    if _is_full_tree(package):
+        missing_required = sorted(required_by_platform() - set(found))
+    if missing_required:
+        reason = "the platform cannot start without " + ", ".join(
+            f"{n} (not installed)" for n in missing_required
+        )
+        for name in pending:
+            states[name].state = BLOCKED
+            states[name].reason = reason
+        pending = []
+
     if pending:
         if probe:
             _probe_all(pending, states, tools_dir, env)
@@ -329,6 +356,7 @@ def preflight(
         order=order,
         tools=states,
         warnings=warnings,
+        missing_required=missing_required,
     )
 
 
@@ -343,18 +371,37 @@ def _probe_all(
         for name in pending:
             states[name].state = LOADED
         return
-    # Something in the batch is broken: probe one by one, in dependency order,
-    # each with only its already-loaded dependency closure plus the core tools
-    # (the platform itself cannot start without them).
+    # Something in the batch is broken. The core tools go first and together:
+    # the platform imports every one of them, so none can start without the
+    # others, and a core failure means nothing else can start either.
     core = [n for n in pending if states[n].core]
-    ordered = core + [n for n in pending if n not in core]
-    for name in ordered:
-        failed_core = [c for c in core if states[c].state not in ("", LOADED)]
-        if failed_core and name not in core:
-            states[name].state = BLOCKED
-            states[name].reason = "the platform cannot start without core tool " + (
-                ", ".join(f"{c} ({states[c].state})" for c in failed_core)
-            )
+    if core:
+        ok, detail = run_probe(core, tools_dir, env)
+        if not ok:
+            culprit, _, message = detail.partition(": ")
+            for name in pending:
+                if name == culprit:
+                    states[name].state = FAILED
+                    states[name].reason = message or detail
+                elif culprit in states and states[culprit].core:
+                    states[name].state = BLOCKED
+                    states[name].reason = (
+                        f"the platform cannot start without core tool {culprit} "
+                        "(FAILED)"
+                    )
+                elif name in core:
+                    states[name].state = FAILED
+                    states[name].reason = detail
+                else:
+                    states[name].state = BLOCKED
+                    states[name].reason = "the platform cannot start: " + detail
+            return
+        for name in core:
+            states[name].state = LOADED
+    # Then each other tool on its own: its loaded dependency closure plus the
+    # core tools.
+    for name in pending:
+        if name in core:
             continue
         deps = states[name].depends_on
         blocked = [d for d in deps if states[d].state != LOADED]
@@ -365,14 +412,26 @@ def _probe_all(
             )
             continue
         closure = _closure(name, states)
-        if name not in core:
-            closure = [c for c in core if c not in closure] + closure
+        closure = [c for c in core if c not in closure] + closure
         ok, detail = run_probe(closure, tools_dir, env)
         if ok:
             states[name].state = LOADED
         else:
+            culprit, _, message = detail.partition(": ")
             states[name].state = FAILED
-            states[name].reason = detail
+            states[name].reason = message if culprit == name and message else detail
+
+
+def _is_full_tree(package: str) -> bool:
+    return package == "tools"
+
+
+def required_by_platform() -> set[str]:
+    """The tools the platform still imports, from the allowlist the boundary
+    test holds exact: the platform cannot start without any of them."""
+    from . import boundaries
+
+    return {module.split(".")[0] for _file, module in boundaries.read_allowlist()}
 
 
 def _closure(name: str, states: dict[str, ToolState]) -> list[str]:
@@ -482,7 +541,9 @@ def _probe_report(tools_dir: Path, names: list[str]) -> LoadReport:
     # platform's core tools, which live in the default one.
     if tools_dir.resolve() != discovery.DEFAULT_TOOLS_DIR.resolve():
         default = discovery.discover(discovery.DEFAULT_TOOLS_DIR)
-        core = [n for n, d in default.items() if d.cls and d.cls.core and n not in found]
+        core = [
+            n for n, d in default.items() if d.cls and d.cls.core and n not in found
+        ]
         for n in core:
             found[n] = default[n]
         names = core + [n for n in names if n not in core]

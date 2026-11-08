@@ -109,7 +109,7 @@ def fusion_dense_pool(
     This is claim C1 as actually implemented — the dense channel picks the pool,
     BM25 only reorders inside it.
     """
-    from apps.content.pipeline import _build_pool
+    from tools.recommendation.pipeline import _build_pool
 
     from .datasets import search_interest
 
@@ -146,7 +146,7 @@ def fusion_union_pool(
     uses the identical `fuse_interest` call, changing only which candidates are in
     the pool.
     """
-    from apps.content.fusion import fuse_interest
+    from tools.recommendation.fusion import fuse_interest
     from tools.retrieval import embeddings
     from tools.retrieval.lexical import build_bm25_index, rank_bm25_over
 
@@ -191,8 +191,8 @@ def fusion_full(
     signal here is the query's own terms — the closest honest analogue. Whether
     that helps or hurts is precisely what this arm reports.
     """
-    from apps.content.pipeline import _build_pool
-    from apps.content.ranking import rerank_by_focus
+    from tools.recommendation.pipeline import _build_pool
+    from tools.recommendation.ranking import rerank_by_focus
 
     from .datasets import search_interest
 
@@ -361,7 +361,7 @@ def flat_profile(
     `mean × (1 + β(n−1))`, ignoring the cluster partition entirely. This is the
     "global ranking" half of C-003's comparison.
     """
-    from apps.content.pipeline import fuse_interests_pool
+    from tools.recommendation.pipeline import fuse_interests_pool
 
     ranking: Ranking = {}
     cleared: list[int] = []
@@ -420,7 +420,7 @@ def clustered_profile(
     an institutional/lab target gets. :func:`slate_profile` is that configuration
     under its own name, so the two appear as separate arms in the results.
     """
-    from apps.content.pipeline import fuse_clusters_pool
+    from tools.recommendation.pipeline import fuse_clusters_pool
 
     ranking: Ranking = {}
     cleared: list[int] = []
@@ -506,7 +506,7 @@ def _spread_policies() -> dict[str, Any]:
     the same profiles used to measure it is how a null result becomes a positive
     one, so the values are fixed before the runs and left alone.
     """
-    from apps.content.fusion import SpreadPolicy
+    from tools.recommendation.fusion import SpreadPolicy
 
     return {
         "spread_identity": SpreadPolicy(),

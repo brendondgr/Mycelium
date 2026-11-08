@@ -2,13 +2,14 @@
 
 import pytest
 from django.contrib.auth.models import User
+from tools.recommendation.models import RelevanceScore
 from tools.retrieval.dedupe import (
     dedupe_papers,
     group_duplicate_papers,
     merge_content_items,
     pick_survivor,
 )
-from tools.retrieval.models import ContentItem, RelevanceScore, SavedOpportunity
+from tools.retrieval.models import ContentItem, SavedOpportunity
 
 
 def _paper(source, external_id, **metadata):

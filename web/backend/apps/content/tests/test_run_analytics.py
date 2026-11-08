@@ -13,10 +13,12 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
-from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem, DailyBriefing
 
 from apps.accounts.models import Department, Lab, LabMembership
 from apps.billing.models import Subscription, Tier
+from apps.billing.testing import entitle_user
 from apps.content.analytics_report_pdf import render_analytics_pdf
 from apps.content.run_analytics import (
     collect_delivery,
@@ -26,7 +28,6 @@ from apps.content.run_analytics import (
     collect_run_analytics,
     collect_trend,
 )
-from apps.content.tests.entitle import entitle_user
 from apps.core.models import LLMUsageDaily
 from apps.integrations.models import DiscordOutboxMessage
 

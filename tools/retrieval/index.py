@@ -86,7 +86,7 @@ class PgVectorIndex:
     """The production :class:`~tools.retrieval.protocols.VectorIndex`.
 
     A one-method adapter over :func:`retrieve_for_vector` so the pool builder in
-    :mod:`apps.content.pipeline` depends on the *protocol* rather than on this
+    :mod:`tools.recommendation.pipeline` depends on the *protocol* rather than on this
     module directly. The scoping arguments a caller cannot vary per query
     (``content_type``, ``created_on``) are bound once at construction; ``limit``
     and ``exclude_ids`` stay per-query because the pool builder varies them.

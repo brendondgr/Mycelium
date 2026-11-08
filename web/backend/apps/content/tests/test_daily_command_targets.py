@@ -15,10 +15,10 @@ from __future__ import annotations
 import pytest
 from django.contrib.auth.models import User
 from django.core.management import call_command
+from tools.recommendation.pipeline import BatchResult
 
 from apps.billing.models import Subscription, Tier
 from apps.billing.services import activate_lab_subscription, create_lab_workspace
-from apps.content.pipeline import BatchResult
 from apps.research.models import Project
 
 
@@ -57,7 +57,7 @@ def test_daily_suggestions_command_scores_labs_and_projects(
     user, lab, project = lab_setup
     _capture(
         monkeypatch,
-        "apps.content.management.commands.run_daily_suggestions",
+        "tools.recommendation.management.commands.run_daily_suggestions",
         "run_daily_batch",
         scored,
         BatchResult(),
@@ -73,12 +73,12 @@ def test_daily_suggestions_command_scores_labs_and_projects(
 def test_daily_opportunities_command_matches_labs_and_projects(
     monkeypatch, lab_setup, scored
 ) -> None:
-    from apps.content.opportunities import OppBatchResult
+    from tools.recommendation.opportunities import OppBatchResult
 
     user, lab, project = lab_setup
     _capture(
         monkeypatch,
-        "apps.content.management.commands.run_daily_opportunities",
+        "tools.recommendation.management.commands.run_daily_opportunities",
         "run_daily_opportunities_batch",
         scored,
         OppBatchResult(ingest={}, results=[]),
@@ -98,7 +98,7 @@ def test_targeted_suggestions_run_stays_user_scoped(
     user, _lab, _project = lab_setup
     _capture(
         monkeypatch,
-        "apps.content.management.commands.run_daily_suggestions",
+        "tools.recommendation.management.commands.run_daily_suggestions",
         "run_daily_batch",
         scored,
         BatchResult(),
@@ -117,10 +117,10 @@ def test_daily_opportunities_scores_departments_with_announcements_on(
     """A department has no feed of its own: it is scored only while its
     announcements are on, because its slate exists only for that channel."""
     from django.utils import timezone
+    from tools.recommendation.opportunities import OppBatchResult
     from tools.retrieval.models import AnnouncementSettings
 
     from apps.accounts.models import Department
-    from apps.content.opportunities import OppBatchResult
 
     _user, lab, _project = lab_setup
     head = User.objects.create_user(username="head", password="p")
@@ -138,7 +138,7 @@ def test_daily_opportunities_scores_departments_with_announcements_on(
         return OppBatchResult(ingest={}, results=[])
 
     monkeypatch.setattr(
-        "apps.content.management.commands.run_daily_opportunities."
+        "tools.recommendation.management.commands.run_daily_opportunities."
         "run_daily_opportunities_batch",
         fake,
     )

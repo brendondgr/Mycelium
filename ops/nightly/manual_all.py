@@ -41,7 +41,7 @@ written is reused, never re-billed, so what re-ranking nightly costs is retrieva
 
 Both stages run untargeted, so each covers all three target kinds: every entitled
 user, every lab on an active subscription, and their in-cap active projects
-(``apps.content.tasks.select_targets``). That has to match the briefing and digest
+(``tools.recommendation.tasks.select_targets``). That has to match the briefing and digest
 stages below — a lab that is briefed nightly but not *ranked* nightly has a frozen
 feed, and its report reads "N papers, 0 new" every day.
 
@@ -82,7 +82,7 @@ entrants and no alerts pushes nothing at all.
 **What "new" means.** An item is new when it *enters a theme's slate*, not when it
 was ingested — and entry is keyed on the **(theme, item)** pair, so the same paper
 entering a second theme later is news again for that theme. Depth is per category
-(``apps.content.slates``): papers 25 per theme because they are a flow, grants and
+(``tools.recommendation.slates``): papers 25 per theme because they are a flow, grants and
 conferences 10 and fellowships 5 because they are a stock of currently-open calls
 that barely moves. There is no global ranking anywhere in this path.
 

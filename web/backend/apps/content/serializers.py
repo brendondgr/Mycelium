@@ -2,12 +2,8 @@ import re
 from datetime import UTC, date, datetime
 
 from rest_framework import serializers
-from tools.retrieval.models import (
-    ContentItem,
-    IgnoredItem,
-    RelevanceScore,
-    SavedOpportunity,
-)
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem, IgnoredItem, SavedOpportunity
 
 from apps.content.formatting import normalize_amount
 
@@ -548,7 +544,7 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
         page hosting many events stays on that page when the page gains a new
         one, so "the deadline moved" and "this arrived" are different facts and
         the card says which. Mutually exclusive by construction — see
-        :func:`apps.content.pinning.compute_pins`.
+        :func:`tools.recommendation.pinning.compute_pins`.
         """
         return bool(score.signals.get("is_updated")) and self.get_pinned(score)
 

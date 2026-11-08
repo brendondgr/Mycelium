@@ -11,9 +11,8 @@ import json
 import threading
 
 import pytest
-
-from apps.content import cluster_fit, comprehension
-from apps.content.clustering import Cluster
+from tools.recommendation import cluster_fit, comprehension
+from tools.recommendation.clustering import Cluster
 
 
 class _Item:

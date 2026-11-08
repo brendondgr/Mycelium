@@ -1,4 +1,5 @@
-"""The sign-up background-scan flag (`apps.content.scan_status`) and its surface.
+"""The sign-up background-scan flag (`tools.recommendation.scan_status`) and its
+surface.
 
 The flag normally lives in a Redis-backed cache so the web process and the Celery
 worker share it; here we point every cache alias at LocMemCache so the round-trip
@@ -9,8 +10,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.test import override_settings
 from rest_framework.test import APIClient
-
-from apps.content.scan_status import (
+from tools.recommendation.scan_status import (
     clear_paper_scan_inflight,
     is_paper_scan_inflight,
     mark_paper_scan_inflight,

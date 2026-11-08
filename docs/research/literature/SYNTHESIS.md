@@ -50,7 +50,7 @@ Two structural facts should shape everything downstream:
 Fellowships: **empty.** No peer-reviewed work on postdoc fellowship, K-award, ERC Starting
 Grant, or MSCA matching. Nothing treats citizenship, residency, or years-since-PhD — the
 *defining* fellowship constraints — as a modelling problem. This is the single emptiest
-niche adjacent to us and it is where `apps/content/fellowships.py` already operates.
+niche adjacent to us and it is where `tools/recommendation/fellowships.py` already operates.
 
 ### What this means for Path A
 
@@ -129,7 +129,7 @@ Six findings that bear on us:
    Iana et al. (SEMANTiCS 2019) linking SciGraph history to WikiCFP so that *upcoming*
    conferences can be recommended. No paper treats a deadline as a constraint or an
    optimization variable, and none models the resubmission cascade. Our
-   `apps/content/opportunities.py` already carries deadlines; nobody has published on it.
+   `tools/recommendation/opportunities.py` already carries deadlines; nobody has published on it.
 3. **Acceptance probability is modelled — but never inside a recommender.** A paper-acceptance
    prediction literature exists (WWW '21 Companion, DOI 10.1145/3442442.3451370). No one has
    composed P(accept | paper, venue) × value(venue) into an expected-value ranking.

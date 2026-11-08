@@ -85,7 +85,7 @@ class SyntheticProfile:
         A query's text is its label, its BM25 query, and its embed text — the same
         shape :func:`harness.datasets.search_interest` uses for a single query.
         """
-        from apps.content.interests_query import SearchInterest
+        from tools.recommendation.interests_query import SearchInterest
 
         return [
             SearchInterest(
@@ -102,7 +102,7 @@ class SyntheticProfile:
         ``areas`` are the interest **labels**, because that is the key
         `combine_clusters` looks up in the per-interest score map.
         """
-        from apps.content.clustering import Cluster
+        from tools.recommendation.clustering import Cluster
 
         return [
             Cluster(

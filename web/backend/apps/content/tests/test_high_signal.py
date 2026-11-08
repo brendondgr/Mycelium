@@ -6,7 +6,8 @@ from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
-from tools.retrieval.models import ContentItem, Notification, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem, Notification
 
 from apps.content.high_signal import (
     deliver_high_signal,

@@ -149,7 +149,7 @@ a claim of expertise.
 | Grounded extraction with a bounded repair | `web/backend/apps/research/state_extract.py` | The extractor's shape |
 | Deterministic proposals with accept / reject / expiry / cooldown | `web/backend/apps/content/reflection.py`, model `ReflectionProposal` | The apply path for slow-layer changes |
 | Append-only weak labels with config weights | `RelevanceEvent` in `tools/retrieval/models.py` | Engagement evidence; the same table carries report-button events |
-| Time-decayed engagement blended into a vector | `web/backend/apps/content/team_profile.py` | The curiosity drift component |
+| Time-decayed engagement blended into a vector | `tools/recommendation/team_profile.py` | The curiosity drift component |
 | The interests contract and its `sources` dict | `web/backend/apps/accounts/interests.py` | Provenance on interest fields |
 | One-question-per-turn bounded loop | `web/backend/apps/accounts/intake/agent.py` | The validation dialogue |
 | Discord identity by snowflake, guild ↔ lab link | `web/backend/apps/integrations/models.py` | Attribution of speakers and servers |

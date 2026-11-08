@@ -10,9 +10,8 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 
 import pytest
-
-from apps.content import typesafe_rerank as ts
-from apps.content.clustering import Cluster
+from tools.recommendation import typesafe_rerank as ts
+from tools.recommendation.clustering import Cluster
 
 
 @dataclass

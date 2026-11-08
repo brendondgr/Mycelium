@@ -70,3 +70,13 @@ def test_tool_foreign_keys_point_only_into_platform_self_or_dependencies(setting
                 if target in tool_labels and target not in allowed:
                     problems.append(f"{model.__name__}.{field.name} -> {target}")
     assert problems == []
+
+
+def test_core_means_the_platform_imports_it():
+    """A tool is core exactly when the platform still imports it: those are the
+    tools it cannot start without. Anything else must be removable."""
+    from tools._framework import discovery, loader
+
+    found = discovery.discover()
+    core = {n for n, d in found.items() if d.cls and d.cls.core}
+    assert core == loader.required_by_platform()

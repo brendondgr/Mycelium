@@ -80,9 +80,8 @@ def check_cadence_matrix() -> Check:
 
 def check_briefings_written(today: date) -> Check:
     """S2: today's daily exists for every scheduled-eligible target."""
+    from tools.recommendation.tasks import select_targets, select_users
     from tools.retrieval.models import DailyBriefing
-
-    from apps.content.tasks import select_targets, select_users
 
     users = select_users(None)
     labs, _projects = select_targets(None)

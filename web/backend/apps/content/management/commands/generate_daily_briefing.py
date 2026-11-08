@@ -10,12 +10,12 @@ runnable by hand for all users, or one at a time with ``--user`` (repeatable):
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand
+from tools.recommendation.tasks import select_targets, select_users
 
 from apps.content.briefing import (
     generate_briefing_for_lab,
     generate_briefing_for_user,
 )
-from apps.content.tasks import select_targets, select_users
 
 
 class Command(BaseCommand):

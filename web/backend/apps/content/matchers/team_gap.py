@@ -12,7 +12,7 @@ declared research areas and skills. Two rules constrain it:
 
 **Consented scope only.** Candidates are the people the target's own
 recommendation layer may already name
-(:func:`apps.content.member_fit.scope_members`): a lab's members for a lab
+(:func:`tools.recommendation.member_fit.scope_members`): a lab's members for a lab
 project, a project's own members otherwise. This matcher introduces no new
 visibility. In particular, it never reads the fellowship-eligibility fields —
 citizenship and career stage are answers to a different question, given for a
@@ -134,7 +134,8 @@ def team_gaps(
     project}`` pair, passed straight to ``scope_members`` so the candidate set is
     exactly the one the rest of the product already names.
     """
-    from apps.content.member_fit import scope_members
+    from tools.recommendation.member_fit import scope_members
+
     from apps.core.people import display_name
 
     floor = settings.PROJECT_ALERT_SLOT_THRESHOLD if threshold is None else threshold

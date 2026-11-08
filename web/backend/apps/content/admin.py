@@ -1,11 +1,11 @@
 from django.contrib import admin
+from tools.recommendation.models import RelevanceScore
 from tools.retrieval.models import (
     ContentDeadline,
     ContentItem,
     IgnoredItem,
     LabReminderPolicy,
     Notification,
-    RelevanceScore,
     ReminderFire,
     ReminderSubscription,
 )

@@ -109,12 +109,12 @@ admin/content/contentdeadline/<path:object_id>/history/	content_contentdeadline_
 admin/content/contentdeadline/<path:object_id>/delete/	content_contentdeadline_delete	delete_view
 admin/content/contentdeadline/<path:object_id>/change/	content_contentdeadline_change	change_view
 admin/content/contentdeadline/<path:object_id>/	-	RedirectView
-admin/content/relevancescore/	content_relevancescore_changelist	changelist_view
-admin/content/relevancescore/add/	content_relevancescore_add	add_view
-admin/content/relevancescore/<path:object_id>/history/	content_relevancescore_history	history_view
-admin/content/relevancescore/<path:object_id>/delete/	content_relevancescore_delete	delete_view
-admin/content/relevancescore/<path:object_id>/change/	content_relevancescore_change	change_view
-admin/content/relevancescore/<path:object_id>/	-	RedirectView
+admin/recommendation/relevancescore/	recommendation_relevancescore_changelist	changelist_view
+admin/recommendation/relevancescore/add/	recommendation_relevancescore_add	add_view
+admin/recommendation/relevancescore/<path:object_id>/history/	recommendation_relevancescore_history	history_view
+admin/recommendation/relevancescore/<path:object_id>/delete/	recommendation_relevancescore_delete	delete_view
+admin/recommendation/relevancescore/<path:object_id>/change/	recommendation_relevancescore_change	change_view
+admin/recommendation/relevancescore/<path:object_id>/	-	RedirectView
 admin/content/remindersubscription/	content_remindersubscription_changelist	changelist_view
 admin/content/remindersubscription/add/	content_remindersubscription_add	add_view
 admin/content/remindersubscription/<path:object_id>/history/	content_remindersubscription_history	history_view
@@ -277,7 +277,7 @@ admin/collab/slotfeedback/<path:object_id>/history/	collab_slotfeedback_history	
 admin/collab/slotfeedback/<path:object_id>/delete/	collab_slotfeedback_delete	delete_view
 admin/collab/slotfeedback/<path:object_id>/change/	collab_slotfeedback_change	change_view
 admin/collab/slotfeedback/<path:object_id>/	-	RedirectView
-admin/^(?P<app_label>auth|accounts|research|content|billing|integrations|ambient|knowledge|collab)/$	app_list	app_index
+admin/^(?P<app_label>auth|accounts|research|content|recommendation|billing|integrations|ambient|knowledge|collab)/$	app_list	app_index
 admin/(?P<url>.*)$	-	catch_all_view
 api/auth/csrf/	auth-csrf	csrf
 api/auth/csrf	auth-csrf-no-slash	csrf

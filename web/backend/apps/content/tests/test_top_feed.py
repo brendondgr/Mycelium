@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth.models import User
-from tools.retrieval.models import ContentItem, RelevanceScore
-
-from apps.content import top_feed
-from apps.content.opportunities import _persist as persist_opportunities
-from apps.content.pipeline import _persist as persist_papers
+from tools.recommendation import top_feed
+from tools.recommendation.models import RelevanceScore
+from tools.recommendation.opportunities import _persist as persist_opportunities
+from tools.recommendation.pipeline import _persist as persist_papers
+from tools.retrieval.models import ContentItem
 
 
 def _grant(external_id: str, title: str) -> ContentItem:

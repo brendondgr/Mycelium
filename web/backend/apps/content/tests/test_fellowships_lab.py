@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth.models import User
-from tools.retrieval.models import ContentItem, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem
 
 from apps.accounts.models import Lab, LabMembership, Profile
 from apps.content.views import _consented_eligibility

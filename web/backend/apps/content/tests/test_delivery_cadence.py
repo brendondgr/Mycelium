@@ -19,14 +19,15 @@ from zoneinfo import ZoneInfo
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
-from tools.retrieval.models import ContentItem, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem
 
 from apps.accounts.models import Lab, LabWatchPreference, WatchCadence, WatchPreference
+from apps.billing.testing import entitle_user
 from apps.content import delivery
 from apps.content.briefing import generate_briefing_for_user
 from apps.content.daily_report_send import eligible_recipients
 from apps.content.lab_digest import eligible_labs
-from apps.content.tests.entitle import entitle_user
 from apps.integrations.models import DiscordOutboxMessage
 from apps.integrations.services import resolve
 from apps.integrations.testing import bind

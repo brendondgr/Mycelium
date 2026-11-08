@@ -7,7 +7,8 @@ Like the opportunities API tests these read ``RelevanceScore`` /
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
-from tools.retrieval.models import ContentItem, RelevanceScore, SavedOpportunity
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem, SavedOpportunity
 
 
 @pytest.fixture

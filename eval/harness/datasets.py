@@ -144,7 +144,7 @@ def search_interest(query_text: str):
 
     Imported lazily so this module stays importable before Django is configured.
     """
-    from apps.content.interests_query import SearchInterest
+    from tools.recommendation.interests_query import SearchInterest
 
     return SearchInterest(
         label=query_text, query_text=query_text, embed_text=query_text

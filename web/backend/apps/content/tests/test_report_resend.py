@@ -16,11 +16,12 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
-from tools.retrieval.models import ContentItem, DailyBriefing, RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem, DailyBriefing
 
 from apps.accounts.models import Lab, WatchPreference
+from apps.billing.testing import link_discord, paid_plan
 from apps.content.report_resend import repost_lab_report, resend_user_report
-from apps.content.tests.entitle import link_discord, paid_plan
 from apps.integrations.models import (
     DiscordIdentity,
     DiscordOutboxMessage,

@@ -25,10 +25,10 @@ from tools.retrieval.models import (
     SavedOpportunity,
 )
 
+from apps.billing.testing import paid_plan
 from apps.content.reminders import create_subscription
 from apps.content.reminders_discord import escape_mentions, send_personal_dm
 from apps.content.reminders_tick import run_tick
-from apps.content.tests.entitle import paid_plan
 from apps.integrations.models import DiscordIdentity, DiscordOutboxMessage
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse, create_message

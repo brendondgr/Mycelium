@@ -24,17 +24,6 @@ from .spec import PHASES, Stage, Tool
 #: Stages the platform itself still owns. Each moves into the tool that owns
 #: its command as that code is extracted; the golden plan must not change.
 PLATFORM_STAGES: tuple[Stage, ...] = (
-    Stage(
-        "run_daily_suggestions",
-        "rank",
-        "Searching and ranking research papers for all targets…",
-    ),
-    Stage(
-        "run_daily_opportunities",
-        "rank",
-        "Ranking every grant/conference/fellowship for all targets…",
-        args=("--no-prune",),
-    ),
     Stage("run_reminder_tick", "remind", "Firing due deadline reminders…"),
     Stage(
         "prune_briefings",

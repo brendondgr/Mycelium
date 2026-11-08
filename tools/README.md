@@ -28,6 +28,7 @@ tools/
 | Tool | Depends on | Core | What it does |
 |---|---|---|---|
 | [`retrieval`](retrieval/README.md) | — | yes | The grounded corpus: sources, collectors, dedup, embeddings, deadlines, search |
+| [`recommendation`](recommendation/README.md) | `retrieval` | yes | Ranks and filters the corpus for every person, lab, department and project |
 
 `make tools-check` prints the live list with each tool's state.
 
@@ -85,8 +86,12 @@ configuration, so only a change re-probes.
 - **Strict mode.** `tools.strict = true` makes any failure stop startup. The
   test suite always runs strict.
 - **Core tools.** A tool marked `core = True` is one the platform cannot run
-  without. It stops startup in every mode if it does not load, and it cannot be
-  disabled.
+  without: the platform still imports it (it appears in
+  `_framework/platform_imports.txt`, and a test holds the two equal). It stops
+  startup in every mode if it does not load, and it cannot be disabled.
+  Deleting a core tool's folder stops startup with a message naming the missing
+  folder. The core tools are probed together, because the platform needs all of
+  them at once, and a failure is pinned on the tool whose code raised.
 
 ```bash
 make tools-check     # every tool's state and reason (in the running stack)

@@ -2,12 +2,12 @@
 
 import pytest
 from rest_framework.test import APIClient
-from tools.retrieval.models import RelevanceScore
+from tools.recommendation.models import RelevanceScore
+from tools.recommendation.targets import target_for_lab
 
 from apps.collab import team_fit
 from apps.collab.models import SlotFeedback
 from apps.content.serializers import GrantSerializer
-from apps.content.targets import target_for_lab
 
 
 def test_the_grant_payload_names_who_covers_each_slot(world):

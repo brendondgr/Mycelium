@@ -10,7 +10,8 @@ Five groups, matching the questions worth asking:
 
 * **Coverage** — how many users, labs, departments, and projects the run was
   actually for. This is recomputed from the same selectors the pipeline itself
-  uses (:func:`apps.content.tasks.select_users` / ``select_targets``), not from a
+  uses (:func:`tools.recommendation.tasks.select_users` / ``select_targets``), not from
+  a
   count of rows written, so a run that covered ten labs and produced nothing for
   three of them still reports ten.
 * **Discovery** — how much genuinely new content entered the store. Re-scraping a
@@ -439,8 +440,9 @@ def collect_coverage() -> Coverage:
     itself is never scored. The number therefore means "departments whose plan
     put labs in tonight's run".
     """
+    from tools.recommendation.tasks import select_targets, select_users
+
     from apps.billing.models import Subscription
-    from apps.content.tasks import select_targets, select_users
 
     users = select_users(None)
     labs, projects = select_targets(None)
@@ -479,7 +481,8 @@ def collect_discovery(day: date) -> Discovery:
 
 def collect_recommendations(day: date) -> Recommendations:
     """Relevance scores written on ``day``, by category and by target kind."""
-    from tools.retrieval.models import MemberSuggestion, RelevanceScore
+    from tools.recommendation.models import RelevanceScore
+    from tools.retrieval.models import MemberSuggestion
 
     scores = RelevanceScore.objects.filter(created_at__date=day)
 
@@ -595,7 +598,7 @@ def collect_delivery(day: date) -> Delivery:
 
 def collect_telemetry(day: date, *, days: int = TREND_DAYS) -> DeliveryTelemetry:
     """What people chose, and when they read what arrived (plan 8.3)."""
-    from tools.retrieval.models import RelevanceEvent
+    from tools.recommendation.models import RelevanceEvent
 
     from apps.accounts.models import LabWatchPreference, WatchCadence, WatchPreference
     from apps.integrations.models import DiscordIdentity
@@ -648,7 +651,8 @@ def collect_trend(day: date, *, days: int = TREND_DAYS) -> list[TrendPoint]:
     GROUP BY per model, because the window is a week and the readability is worth
     more here than the round trip.
     """
-    from tools.retrieval.models import ContentItem, RelevanceScore
+    from tools.recommendation.models import RelevanceScore
+    from tools.retrieval.models import ContentItem
 
     from apps.core.models import LLMUsageDaily
 

@@ -1,12 +1,12 @@
 from rest_framework import serializers
-
-from apps.accounts.interests import validate_interests
-from apps.accounts.permissions import user_can_edit_lab_profile
-from apps.content.targets import (
+from tools.recommendation.targets import (
     project_interests,
     project_watch_categories,
     project_watch_topics,
 )
+
+from apps.accounts.interests import validate_interests
+from apps.accounts.permissions import user_can_edit_lab_profile
 from apps.core.people import display_name, initials
 
 from .models import Project, ProjectInvitation

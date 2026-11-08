@@ -14,12 +14,13 @@ from datetime import timedelta
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+from tools.recommendation.fellowships import US_FACET
+from tools.recommendation.models import RelevanceScore
 from tools.retrieval.models import (
     Announcement,
     AnnouncementPost,
     AnnouncementSettings,
     ContentItem,
-    RelevanceScore,
 )
 
 from apps.accounts.models import (
@@ -36,7 +37,6 @@ from apps.content import (
     discord_announcements,
     lab_fit,
 )
-from apps.content.fellowships import US_FACET
 from apps.integrations.models import DiscordIdentity, DiscordOutboxMessage
 from apps.integrations.testing import add_route, bind
 

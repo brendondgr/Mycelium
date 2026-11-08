@@ -10,6 +10,10 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from tools.recommendation.models import RelevanceEvent, RelevanceScore
+from tools.recommendation.onboarding_match import UnknownArea, onboarding_match_area
+from tools.recommendation.scan_status import is_paper_scan_inflight
+from tools.recommendation.verdicts import READ, SKIM, VERDICTS
 from tools.retrieval.liveness import is_live
 from tools.retrieval.models import (
     ContentItem,
@@ -17,8 +21,6 @@ from tools.retrieval.models import (
     IgnoredItem,
     MemberSuggestion,
     Notification,
-    RelevanceEvent,
-    RelevanceScore,
     SavedOpportunity,
 )
 from tools.retrieval.search import SearchFilters
@@ -27,8 +29,6 @@ from apps.accounts.models import Lab, LabMembership
 from apps.accounts.permissions import user_can_manage_lab, user_has_lab_access
 from apps.content import usability
 from apps.content.collaboration import record_event
-from apps.content.onboarding_match import UnknownArea, onboarding_match_area
-from apps.content.scan_status import is_paper_scan_inflight
 from apps.content.serializers import (
     RANK_EXPLANATIONS,
     RANK_SYSTEM_INFO,
@@ -41,7 +41,6 @@ from apps.content.serializers import (
     SearchResultSerializer,
     SuggestionSerializer,
 )
-from apps.content.verdicts import READ, SKIM, VERDICTS
 from apps.core.people import display_name, initials
 from apps.research.models import Project
 
@@ -502,7 +501,8 @@ def _latest_scores(
     """A target's matched items for the area, from the latest run, pinned-first.
 
     The **fresh-only** read, used for **papers**: the paper feed shows only the
-    latest gather batch (see :func:`apps.content.pipeline.recommend_for_user`), so a
+    latest gather batch (see :func:`tools.recommendation.pipeline.recommend_for_user`),
+    so a
     re-run replaces the digest rather than piling onto it. ``target_filter`` is the
     single ``target_*`` FK to read under — ``{"target_user": user}`` for a person,
     ``{"target_lab": lab}`` / ``{"target_project": project}`` for the institutional
@@ -542,7 +542,8 @@ def _accumulated_scores(
 
     The **accumulate** read, used for grants / conferences / fellowships: the daily
     run scores only that day's *new* items and appends them (see
-    :func:`apps.content.opportunities.run_daily_opportunities_batch`), so a feed is
+    :func:`tools.recommendation.opportunities.run_daily_opportunities_batch`), so a feed
+    is
     the union of every run's suggested rows — one per ``(content, target)`` — not
     just the latest run. Items leave the feed only when the underlying
     :class:`ContentItem` is pruned at its deadline (``CASCADE`` drops the score).
@@ -682,7 +683,7 @@ class FellowshipsView(_OpportunityFeedView):
     serializer_class = FellowshipSerializer
 
     def get(self, request):
-        from apps.content.fellowships import derive_stage
+        from tools.recommendation.fellowships import derive_stage
 
         response = super().get(request)
         profile = getattr(request.user, "profile", None)
@@ -786,7 +787,10 @@ def _ineligible_members(roster: dict, scores: list[RelevanceScore]) -> dict[str,
     strictly less than the consented ``eligible`` annotation already does (D-11);
     the opt-in gate on *naming* someone eligible is untouched.
     """
-    from apps.content.fellowships import eligibility_from_profile, evaluate_eligibility
+    from tools.recommendation.fellowships import (
+        eligibility_from_profile,
+        evaluate_eligibility,
+    )
 
     fellowships = [
         score for score in scores if score.content.type == ContentItem.Type.FELLOWSHIP
@@ -843,7 +847,7 @@ def _recommended_for(
     per member and ordered strongest first:
 
     - ``profile_fit`` — Mylo's own read, persisted at scoring time in
-      ``signals["member_fit"]`` (:mod:`apps.content.member_fit`): the member's
+      ``signals["member_fit"]`` (:mod:`tools.recommendation.member_fit`): the member's
       interest vector matched the item, and ``reason`` is the consultant's sentence
       saying why (or the deterministic overlap line when the model was down).
     - ``own_match`` — the item independently cleared this member's *personal* feed
@@ -1043,7 +1047,7 @@ def _user_cluster_labels(user) -> dict[str, str]:
     Passed as serializer context so a renamed cluster shows its new label on every
     card without a re-score; empty for a v1 / single-cluster profile.
     """
-    from apps.content.clustering import cluster_labels
+    from tools.recommendation.clustering import cluster_labels
 
     profile = getattr(user, "profile", None)
     return cluster_labels(getattr(profile, "interests", None))
@@ -1055,7 +1059,7 @@ def _target_cluster_labels(target_filter: dict) -> dict[str, str]:
     Labs carry clusters on their ``LabProfile.interests``; projects rarely do, so
     the serializer's frozen-label fallback covers them.
     """
-    from apps.content.clustering import cluster_labels
+    from tools.recommendation.clustering import cluster_labels
 
     lab = target_filter.get("target_lab")
     if lab is not None:
@@ -1073,8 +1077,8 @@ def _attach_search_clusters(items, user) -> None:
     focus re-rank uses — so search cards show the same attribution as the feed.
     Papers-first: off-type items rarely overlap and stay unattributed.
     """
-    from apps.content.clustering import cluster_interests
-    from apps.content.ranking import focus_overlap
+    from tools.recommendation.clustering import cluster_interests
+    from tools.recommendation.ranking import focus_overlap
 
     profile = getattr(user, "profile", None)
     clusters = [

@@ -1,7 +1,7 @@
 """The LLM rung: listwise reranking, its position bias, and a pointwise rubric.
 
 Three things are measured here, and the first sentence of the record about any of
-them has to be this: **production does not do this.** `apps.content.suggest`
+them has to be this: **production does not do this.** `tools.recommendation.suggest`
 deliberately does *not* reorder — "the returned order is the fused order", and a
 model verdict only annotates the item it is about. So these arms measure a
 counterfactual: what *would* happen if the model were allowed to rank.

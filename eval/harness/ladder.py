@@ -40,7 +40,7 @@ Ranking = dict[str, list[tuple[str, float]]]
 #: How deep run files go. TREC convention, matching `arms.DEPTH`.
 DEPTH = 1000
 
-#: RRF dampening constant, from `apps.content.fusion.DEFAULT_RRF_K`. Held here so
+#: RRF dampening constant, from `tools.recommendation.fusion.DEFAULT_RRF_K`. Held here so
 #: a ladder arm fuses identically to production unless an arm overrides it.
 RRF_K = 60
 

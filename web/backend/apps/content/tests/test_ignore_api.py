@@ -8,13 +8,8 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
-from tools.retrieval.models import (
-    ContentItem,
-    IgnoredItem,
-    RelevanceEvent,
-    RelevanceScore,
-    SavedOpportunity,
-)
+from tools.recommendation.models import RelevanceEvent, RelevanceScore
+from tools.retrieval.models import ContentItem, IgnoredItem, SavedOpportunity
 
 from apps.accounts.models import Lab, LabMembership
 

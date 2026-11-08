@@ -204,7 +204,8 @@ def _report_for(target, *, is_lab: bool, on):
 
 
 def _teams_people(on, counts) -> None:
-    from apps.content.tasks import select_users
+    from tools.recommendation.tasks import select_users
+
     from apps.integrations.services import teams_outbox
 
     for user in select_users(None):
@@ -261,9 +262,10 @@ def _teams_labs(on, counts) -> None:
 
 
 def _people(on, counts) -> None:
+    from tools.recommendation.tasks import select_users
+
     from apps.content import discord_embeds
     from apps.content.daily_report import compile_report_for_user
-    from apps.content.tasks import select_users
     from apps.content.weekly_send import _monday, _weekly_body
     from apps.integrations.services.slack_outbox import enqueue_dm
 

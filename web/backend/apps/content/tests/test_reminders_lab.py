@@ -17,10 +17,10 @@ from tools.retrieval.models import (
 )
 
 from apps.accounts.models import Lab, LabMembership
+from apps.billing.testing import entitle_lab, paid_plan
 from apps.content.reminders import ReminderError, create_subscription
 from apps.content.reminders_discord import send_lab_channel
 from apps.content.reminders_tick import run_tick
-from apps.content.tests.entitle import entitle_lab, paid_plan
 from apps.integrations.models import DiscordIdentity
 from apps.integrations.services import discord_api, outbox
 from apps.integrations.services.discord_api import RawResponse

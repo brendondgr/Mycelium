@@ -429,8 +429,12 @@ def notify_eligible(announcement: Announcement, post_row: AnnouncementPost) -> i
         and announcement.content is not None
     ):
         return 0
+    from tools.recommendation.fellowships import (
+        eligibility_from_profile,
+        evaluate_eligibility,
+    )
+
     from apps.content import announce
-    from apps.content.fellowships import eligibility_from_profile, evaluate_eligibility
 
     target = announce.Target(
         "department", announcement.target_department, _settings_for(announcement)

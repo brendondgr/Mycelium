@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from tools.retrieval.models import RelevanceScore
+from tools.recommendation.models import RelevanceScore
 
 from . import coverage
 

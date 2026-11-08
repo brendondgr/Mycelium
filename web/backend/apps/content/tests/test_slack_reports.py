@@ -67,7 +67,7 @@ def test_an_embed_becomes_block_kit():
 
 def test_a_slack_only_reader_gets_their_daily_on_slack(workspace, monkeypatch):
     ada = _slack_person()
-    monkeypatch.setattr("apps.content.tasks.select_users", lambda _names: [ada])
+    monkeypatch.setattr("tools.recommendation.tasks.select_users", lambda _names: [ada])
     monkeypatch.setattr(
         "apps.content.daily_report.compile_report_for_user",
         lambda _user: SimpleNamespace(stats=SimpleNamespace(is_quiet=False)),
@@ -93,7 +93,7 @@ def test_a_reader_on_both_platforms_keeps_discord(workspace, monkeypatch):
         link_method=DiscordIdentity.LinkMethod.ACTIVATION_CODE,
         state=DiscordIdentity.State.ACTIVE,
     )
-    monkeypatch.setattr("apps.content.tasks.select_users", lambda _names: [ada])
+    monkeypatch.setattr("tools.recommendation.tasks.select_users", lambda _names: [ada])
     assert slack_reports.send(on=TUESDAY)["people"] == 0
 
 
@@ -126,7 +126,7 @@ def test_a_lab_with_no_discord_channel_posts_to_slack(workspace, monkeypatch):
     monkeypatch.setattr(
         "apps.billing.entitlements.lab_has_feature", lambda *_a, **_k: True
     )
-    monkeypatch.setattr("apps.content.tasks.select_users", lambda _names: [])
+    monkeypatch.setattr("tools.recommendation.tasks.select_users", lambda _names: [])
     monkeypatch.setattr(
         "apps.content.daily_report.compile_report_for_lab",
         lambda _lab: SimpleNamespace(stats=SimpleNamespace(is_quiet=False)),
@@ -187,7 +187,7 @@ def test_a_teams_only_reader_gets_their_daily_in_teams(settings, monkeypatch, db
     settings.SLACK_ENABLED = False
     settings.TEAMS_ENABLED = True
     tia = _teams_person()
-    monkeypatch.setattr("apps.content.tasks.select_users", lambda _names: [tia])
+    monkeypatch.setattr("tools.recommendation.tasks.select_users", lambda _names: [tia])
     monkeypatch.setattr(
         "apps.content.daily_report.compile_report_for_user",
         lambda _user: SimpleNamespace(stats=SimpleNamespace(is_quiet=False)),

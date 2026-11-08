@@ -34,18 +34,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from django.utils import timezone
-from tools.retrieval.models import DailyBriefing, RelevanceScore, SavedOpportunity
+from tools.recommendation.fellowship_bands import OPEN as OPEN_BAND
+from tools.recommendation.models import RelevanceScore
+from tools.recommendation.slates import standing_render_depth
+from tools.recommendation.targets import target_for_lab
+from tools.retrieval.models import DailyBriefing, SavedOpportunity
 
 from apps.content import briefing
 from apps.content.briefing_sections import SECTION_NOUN, apply_narrative
-from apps.content.fellowship_bands import OPEN as OPEN_BAND
 from apps.content.report_stats import (
     DEFAULT_DEADLINE_WINDOW_DAYS,
     ReportStats,
     compile_stats,
 )
-from apps.content.slates import standing_render_depth
-from apps.content.targets import target_for_lab
 from apps.content.theme_report import (
     ThemeSection,
     declared_clusters,
@@ -101,7 +102,8 @@ class ReportItem:
     #: A global position would compare scores that are not comparable, which is
     #: the failure the per-cluster redesign removes.
     position: int = 0
-    #: read / skim / file / skip (:mod:`apps.content.verdicts`). ``None`` on a row
+    # : read / skim / file / skip (:mod:`tools.recommendation.verdicts`). ``None`` on a
+    # row
     #: scored before the verdict existed.
     verdict: str | None = None
     #: The reason's **first beat** — the one sentence the printed page carries.

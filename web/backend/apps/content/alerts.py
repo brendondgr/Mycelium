@@ -379,7 +379,7 @@ def _candidate_contents(project, reader) -> tuple[dict, dict]:
     matcher walking the whole accumulated feed would raise an alert about a paper
     from March on the day a project first states a blocker.
     """
-    from tools.retrieval.models import ItemComprehension
+    from tools.recommendation.models import ItemComprehension
 
     from apps.content.briefing import CATEGORY_TYPES, report_scores
 

@@ -14,10 +14,11 @@ import json
 
 import pytest
 from django.contrib.auth.models import User
-from tools.retrieval.models import ContentItem, RelevanceScore
+from tools.recommendation import member_fit
+from tools.recommendation.models import RelevanceScore
+from tools.retrieval.models import ContentItem
 
 from apps.accounts.models import Lab, LabMembership, Profile
-from apps.content import member_fit
 
 # Three orthogonal unit vectors — a member "matches" an item only when they share
 # an axis, which keeps every expectation below exact rather than approximate.
@@ -219,7 +220,7 @@ def test_annotate_persists_and_then_clears_a_stale_signal(lab) -> None:
 
 @pytest.mark.django_db
 def test_annotate_for_target_resolves_the_labs_members(lab) -> None:
-    from apps.content.targets import target_for_lab
+    from tools.recommendation.targets import target_for_lab
 
     ana = _member(lab, "ana", VEC_A)
     item = _item("p1", VEC_A)
@@ -234,7 +235,7 @@ def test_annotate_for_target_resolves_the_labs_members(lab) -> None:
 
 @pytest.mark.django_db
 def test_annotate_for_target_never_raises(lab, monkeypatch) -> None:
-    from apps.content.targets import target_for_lab
+    from tools.recommendation.targets import target_for_lab
 
     _member(lab, "ana", VEC_A)
     _score(lab, _item("p1", VEC_A))

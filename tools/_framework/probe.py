@@ -24,6 +24,24 @@ def _summary(exc: BaseException) -> str:
     return text.replace("\n", " ")[:600]
 
 
+def _culprit(exc: BaseException, names: list[str]) -> str:
+    """The tool whose own code raised: the innermost traceback frame inside a
+    tool's folder. Falls back to the probed names when no frame is."""
+    from tools._framework import discovery
+
+    roots = {}
+    for directory in {discovery.tools_dir(), discovery.DEFAULT_TOOLS_DIR}:
+        for folder in discovery.candidate_folders(directory):
+            roots[str(folder.resolve()) + os.sep] = folder.name
+    culprit = None
+    for frame in traceback.extract_tb(exc.__traceback__):
+        path = os.path.realpath(frame.filename)
+        for root, name in roots.items():
+            if path.startswith(root):
+                culprit = name
+    return culprit or (names[-1] if len(names) == 1 else ",".join(names))
+
+
 def _resolve(ref: str):
     module, _, attr = ref.partition(":")
     return getattr(importlib.import_module(module), attr)
@@ -36,7 +54,7 @@ def main() -> int:
 
         django.setup()
     except BaseException as exc:  # noqa: BLE001 — report, never raise
-        culprit = names[-1] if len(names) == 1 else ",".join(names)
+        culprit = _culprit(exc, names)
         print(f"PROBE-FAILED {culprit}: Django could not start: {_summary(exc)}")
         return 1
 
@@ -70,7 +88,7 @@ def main() -> int:
             if cls.health:
                 _resolve(cls.health)()
         except BaseException as exc:  # noqa: BLE001
-            print(f"PROBE-FAILED {name}: {_summary(exc)}")
+            print(f"PROBE-FAILED {_culprit(exc, [name])}: {_summary(exc)}")
             return 1
     print("PROBE-OK " + ",".join(names))
     return 0

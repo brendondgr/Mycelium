@@ -183,6 +183,36 @@ ambient_extract_concurrency = 8          # env AMBIENT_EXTRACT_CONCURRENCY
 # Profile-change explanations written per night.
 ambient_explain = 200                    # env AMBIENT_EXPLAIN_NIGHTLY_CAP
 
+# recommendation: Ranks the whole corpus for every person, lab, department and
+# project against their profiles and interest clusters, takes each target's
+# per-theme slate, and writes the model verdicts.
+[tools.recommendation]
+enabled = true
+# area_focus_weight = 0.25               # env AREA_FOCUS_WEIGHT
+# paper_match_threshold = 0.5            # env PAPER_MATCH_THRESHOLD
+# paper_match_max_surface = 250          # env PAPER_MATCH_MAX_SURFACE
+# paper_min_match_percent = 60           # env PAPER_MIN_MATCH_PERCENT
+# report_top_n = 25                      # env REPORT_TOP_N
+# paper_cluster_top_n = 0                # env PAPER_CLUSTER_TOP_N
+# cluster_admit_frac = 0.5               # env CLUSTER_ADMIT_FRAC
+# cluster_admit_hard_floor = 0.35        # env CLUSTER_ADMIT_HARD_FLOOR
+# cluster_fit_batch = 12                 # env CLUSTER_FIT_BATCH
+# paper_onboarding_min_high_quality = 30 # env PAPER_ONBOARDING_MIN_HIGH_QUALITY
+# grant_match_threshold = 0.4            # env GRANT_MATCH_THRESHOLD
+# conference_match_threshold = 0.4       # env CONFERENCE_MATCH_THRESHOLD
+# fellowship_fit_threshold = 0.0         # env FELLOWSHIP_FIT_THRESHOLD
+# fellowship_match_threshold = 0.4       # env FELLOWSHIP_MATCH_THRESHOLD
+# fellowship_withhold_unverified = false # env FELLOWSHIP_WITHHOLD_UNVERIFIED
+# opportunity_match_max_surface = 250    # env OPPORTUNITY_MATCH_MAX_SURFACE
+# opportunity_min_match_percent = 60     # env OPPORTUNITY_MIN_MATCH_PERCENT
+# member_fit_cosine_floor = 0.35         # env MEMBER_FIT_COSINE_FLOOR
+# member_fit_max_members = 3             # env MEMBER_FIT_MAX_MEMBERS
+# project_profile_focus_weight = 1.0     # env PROJECT_PROFILE_FOCUS_WEIGHT
+# project_profile_member_weight = 0.6    # env PROJECT_PROFILE_MEMBER_WEIGHT
+# project_profile_engagement_weight = 0.4 # env PROJECT_PROFILE_ENGAGEMENT_WEIGHT
+# project_profile_halflife_days = 90.0   # env PROJECT_PROFILE_HALFLIFE_DAYS
+# team_profile_hour = 3                  # env CELERY_TEAM_PROFILE_HOUR
+
 # retrieval: The grounded corpus: paper sources, the grant, conference and
 # fellowship collectors, deduplication, embeddings, deadlines, and search over
 # it. Knows nothing about people.
