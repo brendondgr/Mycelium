@@ -18,7 +18,7 @@ What these check:
 
 `apps.content` is stubbed, so this runs offline and fast. The stubbed
 `SpreadPolicy` mirrors the real dataclass field-for-field; the real one is pinned
-by `apps/content/tests/test_fusion_spread.py`, which runs against Django.
+by `tools/recommendation/tests/test_fusion_spread.py`, which runs against Django.
 """
 
 from __future__ import annotations
@@ -87,7 +87,7 @@ def pipeline_spy(monkeypatch):
     fusion = types.ModuleType("tools.recommendation.fusion")
     fusion.SpreadPolicy = _SpreadPolicy
 
-    for name in ("apps", "apps.content"):
+    for name in ("tools", "tools.recommendation"):
         monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
     monkeypatch.setitem(sys.modules, "tools.recommendation.pipeline", pipeline)
     monkeypatch.setitem(sys.modules, "tools.recommendation.fusion", fusion)

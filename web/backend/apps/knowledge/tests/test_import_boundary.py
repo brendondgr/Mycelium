@@ -127,7 +127,13 @@ class KnowledgeImportBoundary(SimpleTestCase):
         the corpus embedder lives today.
         """
         allowed = {"tools.retrieval.embeddings"}
-        above = ("apps.content", "apps.ambient", "apps.collab", "apps.integrations")
+        above = (
+            "tools.recommendation",
+            "tools.delivery",
+            "apps.ambient",
+            "apps.collab",
+            "apps.integrations",
+        )
         offenders = []
         for path in sorted(_KNOWLEDGE.rglob("*.py")):
             if "migrations" in path.parts or _is_test(path):

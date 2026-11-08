@@ -9,7 +9,7 @@ The standalone project's WikiCFP section (four regressions: a deadline pinned
 to midnight losing its own final day, a raw-payload trust signal dropped
 before resolve, and a bot-wall interstitial that would have parsed to a quiet
 day) was dropped here along with the adapter itself (plan decision D5 — see
-``apps/scraper/collect/conferences/adapters/__init__.py``). It is not merely
+``tools/retrieval/collect/conferences/adapters/__init__.py``). It is not merely
 skipped: the source it protected is no longer collected at all.
 """
 

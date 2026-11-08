@@ -19,7 +19,7 @@ Two rules hold for every command here:
   theirs; a channel is a public place.
 
 Authorization is never decided here. Every command calls into ``mylo.linking`` →
-``apps.content.discord_commands``, which starts at the single gate.
+``tools.delivery.discord_commands``, which starts at the single gate.
 """
 
 from __future__ import annotations

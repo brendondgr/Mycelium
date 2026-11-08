@@ -54,13 +54,13 @@ from datetime import date, datetime
 
 from django.utils import timezone
 
-from tools.retrieval.models import ContentDeadline, ContentItem, SavedOpportunity
+from tools.retrieval.models import ContentDeadline, ContentItem, DeadlineKind
 
-_Kind = SavedOpportunity.DeadlineKind
+_Kind = DeadlineKind
 _Confidence = ContentDeadline.Confidence
 
 # Fellowship deadline.type -> confidence. All seven values the parser emits
-# (see apps/scraper/eligibility/parsers.py + apps/scraper/fellowships/records.py)
+# (see tools/retrieval/eligibility/parsers.py + tools/retrieval/fellowships/records.py)
 # are mapped so an unrecognised type can never silently become a remindable date.
 _FELLOWSHIP_CONFIDENCE = {
     "true": _Confidence.CONFIRMED,
@@ -209,7 +209,7 @@ def _grant_specs(meta: dict) -> list[DeadlineSpec]:
       ROLLING with a null ``due_date`` rather than being silently downgraded to
       UNKNOWN. This matches the convention the reminders stack already uses for
       a dateless grant elsewhere (see
-      ``apps.content.tests.test_reminders_tick._content_with_deadline``).
+      ``tools.delivery.tests.test_reminders_tick._content_with_deadline``).
     * ``metadata["dates_inferred"]`` marks a projected date the source never
       stated outright (a cycle inferred from a publication pattern rather than
       read) — ANTICIPATED, the word the fellowship map already uses for "this

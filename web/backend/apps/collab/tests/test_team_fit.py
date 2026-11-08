@@ -5,13 +5,13 @@ back to the verified extraction until then.
 """
 
 import pytest
+from tools.delivery.matchers import team_gap
 from tools.recommendation.models import RelevanceScore
 from tools.recommendation.targets import target_for_lab, target_for_user
 from tools.retrieval.models import ContentItem
 
 from apps.collab import team_fit
 from apps.collab.models import RequirementSlots
-from apps.content.matchers import team_gap
 
 
 def _score(call, **target):

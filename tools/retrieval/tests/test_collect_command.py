@@ -30,7 +30,7 @@ raising.
 **Offline strategy.** ``collect_opportunities`` drives a lot of real
 infrastructure — network fetch, three SQLite stores, a bounded LLM agent
 loop, fastembed. None of that is what this file is testing (each has its own
-suite: ``apps/scraper/tests/collect/``, ``test_collect_mapping.py``,
+suite: ``tools/retrieval/tests/collect/``, ``test_collect_mapping.py``,
 ``test_collect_ingest.py``, ``test_collect_extract.py``). So every test here
 stubs exactly four seams on the command's own module object (never the
 modules underneath — the point is to exercise the command's *real* wiring
@@ -480,7 +480,7 @@ def test_limit_and_sources_narrow_the_run_context(monkeypatch, tmp_path):
     ``context.sources``) -- that wiring is ``collect_opportunities``'s own
     responsibility. What an adapter *does* with a limit or a source filter
     is the collector's concern and has its own coverage
-    (``apps/scraper/tests/collect/test_runner.py::
+    (``tools/retrieval/tests/collect/test_runner.py::
     test_domain_and_source_filters_narrow_the_run``); this test does not
     re-derive that.
 

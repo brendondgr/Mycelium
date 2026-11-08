@@ -4,7 +4,7 @@ The buttons live on threads Mylo posted (and on the details DM), so they must
 work after a restart: they are handled by an ``on_interaction`` listener keyed on
 the custom id rather than by a view object. Every press is answered ephemerally,
 and every decision is the backend's (:mod:`mylo.linking` →
-``apps.content.announcement_actions``, which starts at the authorization gate).
+``tools.delivery.announcement_actions``, which starts at the authorization gate).
 
 * **Interested** → a reply only the presser sees; the details go by DM.
 * **Remind me** → a picker only the presser sees (several times, DM or thread).

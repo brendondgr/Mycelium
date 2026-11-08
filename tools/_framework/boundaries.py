@@ -32,7 +32,7 @@ _STDLIB = set(sys.stdlib_module_names) | {"__future__"}
 #: Platform code that is itself waiting to be moved into tools. A tool may use
 #: the platform freely, except this: depending on it would tie a tool to code
 #: that is about to become another tool, by the back door.
-LEGACY_PLATFORM = ("apps.content",)
+LEGACY_PLATFORM: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -197,7 +197,7 @@ def create_message(
     ``@everyone`` is the one thing that has no id, so it can only be expressed
     as a parse category. It is therefore gated on an explicit
     ``allowed_mentions["everyone"]`` from the caller, which
-    :mod:`apps.content.reminders_discord` sets only when a lab manager chose it
+    :mod:`tools.delivery.reminders_discord` sets only when a lab manager chose it
     for that alert. Scraped text stays escaped either way
     (``escape_mentions``), so even with the category enabled the ping can only
     come from the operator's own choice and never from ingested content.

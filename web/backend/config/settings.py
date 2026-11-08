@@ -102,7 +102,6 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.accounts",
     "apps.research",
-    "apps.content",
     "apps.billing",
     "apps.integrations",
     "apps.adminpanel",
@@ -473,7 +472,7 @@ RUN_ANALYTICS_PDF_DIR = env_str(
 )
 # One report a day, kept forever, is a slow disk leak. The command sweeps its own
 # directory rather than adding another prune stage to the nightly chain.
-RUN_ANALYTICS_RETENTION_DAYS = env.int("RUN_ANALYTICS_RETENTION_DAYS", default=90)
+# RUN_ANALYTICS_RETENTION_DAYS -> tools/delivery/tool.py
 
 NEO4J_URI = env("NEO4J_URI", default="bolt://localhost:11750")
 NEO4J_USERNAME = env("NEO4J_USERNAME", default="neo4j")
@@ -649,7 +648,7 @@ FELLOWSHIP_CONSTRAINT_EXTRACTION = env.bool(
 # matches (papers, by contrast, are fresh-only). OPPORTUNITY_FEED_MAX caps how many
 # accumulated matches a feed returns, a payload backstop since an accumulating feed
 # grows between prunes. Items still leave the feed when pruned at their deadline.
-OPPORTUNITY_FEED_MAX = env.int("OPPORTUNITY_FEED_MAX", default=250)
+# OPPORTUNITY_FEED_MAX -> tools/delivery/tool.py
 # Opportunity announcements (plan 20261105-mylo-opportunity-announcements): one
 # Discord thread per newly fitting grant, fellowship or conference. Off until
 # every phase has shipped; the dry run works either way.
@@ -664,7 +663,7 @@ OPPORTUNITY_ANNOUNCEMENTS_ENABLED = _cfg["features.announcements"]
 # (never re-sent to the model) but off the feed until it improves or ages out.
 # OPPORTUNITY_MIN_MATCH_PERCENT -> tools/recommendation/tool.py
 
-# High-signal notification gate (apps.content.high_signal, reminders R7). A brutal
+# High-signal notification gate (tools.delivery.high_signal, reminders R7). A brutal
 # floor: abstention is a feature — if nothing clears the bar, send nothing. An alert
 # that fires most days is a digest, and digests are out of scope. HIGH_SIGNAL_FLOOR is
 # a PLACEHOLDER pending shadow-mode calibration on the real RelevanceScore corpus
@@ -672,10 +671,10 @@ OPPORTUNITY_ANNOUNCEMENTS_ENABLED = _cfg["features.announcements"]
 # (D-14). Delivery ships OFF (D-10: high-signal stays in-app-only for now; and it must
 # not deliver on a guessed threshold) — flip HIGH_SIGNAL_DELIVERY_ENABLED only after
 # calibration.
-HIGH_SIGNAL_FLOOR = env.int("HIGH_SIGNAL_FLOOR", default=90)
-HIGH_SIGNAL_WEEKLY_CAP = env.int("HIGH_SIGNAL_WEEKLY_CAP", default=2)
-HIGH_SIGNAL_DEADLINE_MIN_DAYS = env.int("HIGH_SIGNAL_DEADLINE_MIN_DAYS", default=7)
-HIGH_SIGNAL_DEADLINE_MAX_DAYS = env.int("HIGH_SIGNAL_DEADLINE_MAX_DAYS", default=120)
+# HIGH_SIGNAL_FLOOR -> tools/delivery/tool.py
+# HIGH_SIGNAL_WEEKLY_CAP -> tools/delivery/tool.py
+# HIGH_SIGNAL_DEADLINE_MIN_DAYS -> tools/delivery/tool.py
+# HIGH_SIGNAL_DEADLINE_MAX_DAYS -> tools/delivery/tool.py
 HIGH_SIGNAL_DELIVERY_ENABLED = _cfg["features.high_signal"]
 
 # How many days of written daily briefings the Reports page keeps (the
@@ -683,9 +682,9 @@ HIGH_SIGNAL_DELIVERY_ENABLED = _cfg["features.high_signal"]
 # plan: only holders of the scheduled-reports feature are ever given a briefing, so
 # there is nothing to retain on the free tier. Markdown only — the DM'd PDF is an
 # outbox attachment and ages out with the outbox's own sweep.
-BRIEFING_RETENTION_DAYS = env.int("BRIEFING_RETENTION_DAYS", default=90)
+# BRIEFING_RETENTION_DAYS -> tools/delivery/tool.py
 
-# Project collaboration (apps.content.collaboration). Per-action weight written on
+# Project collaboration (tools.delivery.collaboration). Per-action weight written on
 # each RelevanceEvent — the weak relevance labels a future team-signal recompute
 # reads. Positive for engagement, negative for rejection. Tunable so the eventual
 # recompute can be calibrated without a migration; unknown actions fall back to 0.
@@ -709,13 +708,13 @@ RELEVANCE_EVENT_WEIGHTS = {
 # PROJECT_PROFILE_ENGAGEMENT_WEIGHT -> tools/recommendation/tool.py
 # PROJECT_PROFILE_HALFLIFE_DAYS -> tools/recommendation/tool.py
 
-# Cross-member relevance fan-out (apps.content.fanout — Feature F). A shared paper
+# Cross-member relevance fan-out (tools.delivery.fanout — Feature F). A shared paper
 # is suggested to a member when the normalized cosine between the item and the
 # member's profile clears this floor; below-floor rows persist as audited
 # abstentions, never sent. ``FANOUT_ASYNC`` routes the trigger through Celery
 # instead of running inline in the share request (needs a running worker).
-FANOUT_COSINE_FLOOR = env.float("FANOUT_COSINE_FLOOR", default=0.35)
-FANOUT_ASYNC = env.bool("FANOUT_ASYNC", default=False)
+# FANOUT_COSINE_FLOOR -> tools/delivery/tool.py
+# FANOUT_ASYNC -> tools/delivery/tool.py
 
 # Per-item member recommendations (tools.recommendation.member_fit) — the "who in this
 # lab
@@ -885,7 +884,7 @@ TYPESAFE_RERANK_CONTENT_TYPES = env.list(
 TYPESAFE_RERANK_CONCURRENCY = _cfg["nightly.rerank_concurrency"]
 
 # ---------------------------------------------------------------------------
-# Project alerts (apps.content.matchers, apps.content.alerts).
+# Project alerts (tools.delivery.matchers, tools.delivery.alerts).
 #
 # Ships OFF. The three thresholds below decide when a paper is close enough to a
 # project's claimed contribution, a venue's slot, or a stated blocker to be worth
@@ -901,17 +900,13 @@ TYPESAFE_RERANK_CONCURRENCY = _cfg["nightly.rerank_concurrency"]
 # rather than per-feature.
 # ---------------------------------------------------------------------------
 PROJECT_ALERTS_ENABLED = _cfg["features.project_alerts"]
-PROJECT_ALERT_OVERLAP_THRESHOLD = env.float(
-    "PROJECT_ALERT_OVERLAP_THRESHOLD", default=0.62
-)
-PROJECT_ALERT_BLOCKER_THRESHOLD = env.float(
-    "PROJECT_ALERT_BLOCKER_THRESHOLD", default=0.58
-)
-PROJECT_ALERT_SLOT_THRESHOLD = env.float("PROJECT_ALERT_SLOT_THRESHOLD", default=0.55)
+# PROJECT_ALERT_OVERLAP_THRESHOLD -> tools/delivery/tool.py
+# PROJECT_ALERT_BLOCKER_THRESHOLD -> tools/delivery/tool.py
+# PROJECT_ALERT_SLOT_THRESHOLD -> tools/delivery/tool.py
 #: At most this many alerts per target per day. The cap is the product decision,
 #: not a performance one: four things that all need attention today is a reader
 #: who attends to none of them. Overflow is held for the Monday weekly.
-PROJECT_ALERT_DAILY_CAP = env.int("PROJECT_ALERT_DAILY_CAP", default=3)
+# PROJECT_ALERT_DAILY_CAP -> tools/delivery/tool.py
 
 # ---------------------------------------------------------------------------
 # Discord integration (apps.integrations) — identity + lab linking.

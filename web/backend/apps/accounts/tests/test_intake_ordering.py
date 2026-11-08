@@ -9,14 +9,14 @@ form-only flow (C before E), and a null-embedding target is not scorable
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.exceptions import ValidationError
-
-from apps.accounts.intake import IntakeAgent
-from apps.accounts.interests import validate_interests
-from apps.content.guards import (
+from tools.delivery.guards import (
     TargetNotScorable,
     ensure_embedding_ready,
     is_scorable,
 )
+
+from apps.accounts.intake import IntakeAgent
+from apps.accounts.interests import validate_interests
 
 
 def test_import_refuses_an_unvalidated_contract() -> None:

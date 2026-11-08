@@ -115,7 +115,7 @@ def target_for_department(department) -> MatchTarget:
     """A department: its own interest profile, scored under ``target_department``.
 
     Opportunities only: a department's slates feed its announcement channel, which
-    carries calls only a department can take on (``apps.content.dept_level``).
+    carries calls only a department can take on (``tools.delivery.dept_level``).
     """
     interests = _lab_interests(getattr(department, "profile", None))
     return MatchTarget(

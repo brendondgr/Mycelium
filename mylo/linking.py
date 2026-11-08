@@ -410,7 +410,7 @@ def _bind_setup_channel_sync(
     # Bind: prove postability by posting a real confirmation first.
     from django.utils import timezone
 
-    from apps.content.reminders_discord import preflight_channel
+    from tools.delivery.reminders_discord import preflight_channel
 
     outcome = preflight_channel(
         channel_id,
@@ -465,7 +465,7 @@ def _bind_setup_channel_sync(
 # The `/mylo` research + reminder commands (Phase C)
 # --------------------------------------------------------------------------- #
 # Each is a thin async wrapper: the decision and the data live in
-# `apps.content.discord_commands`, which starts every call at the authorization gate.
+# `tools.delivery.discord_commands`, which starts every call at the authorization gate.
 # Nothing here branches on permission — that would be a second place for the policy
 # to live, and the two would eventually disagree.
 async def search(
@@ -505,19 +505,19 @@ async def manageable_reminders(
 
 
 def _search_sync(discord_user_id: str, query: str, guild_id: str) -> tuple[str, dict]:
-    from apps.content import discord_commands
+    from tools.delivery import discord_commands
 
     return discord_commands.search(discord_user_id, query, guild_id)
 
 
 def _digest_sync(discord_user_id: str, lab_slug: str) -> tuple[str, dict]:
-    from apps.content import discord_commands
+    from tools.delivery import discord_commands
 
     return discord_commands.digest(discord_user_id, lab_slug)
 
 
 def _saves_sync(discord_user_id: str, page: int) -> tuple[str, dict]:
-    from apps.content import discord_commands
+    from tools.delivery import discord_commands
 
     return discord_commands.saves(discord_user_id, page)
 
@@ -525,7 +525,7 @@ def _saves_sync(discord_user_id: str, page: int) -> tuple[str, dict]:
 def _snooze_sync(
     discord_user_id: str, reminder_id: str, amount: int, unit: str
 ) -> tuple[str, dict]:
-    from apps.content import discord_commands
+    from tools.delivery import discord_commands
 
     return discord_commands.snooze(
         discord_user_id, reminder_id=reminder_id, amount=amount, unit=unit
@@ -533,13 +533,13 @@ def _snooze_sync(
 
 
 def _cancel_sync(discord_user_id: str, reminder_id: str) -> tuple[str, dict]:
-    from apps.content import discord_commands
+    from tools.delivery import discord_commands
 
     return discord_commands.cancel(discord_user_id, reminder_id=reminder_id)
 
 
 def _manageable_sync(discord_user_id: str, prefix: str) -> tuple[str, dict]:
-    from apps.content import discord_commands
+    from tools.delivery import discord_commands
 
     return discord_commands.list_manageable(discord_user_id, prefix)
 
@@ -595,8 +595,8 @@ def _channel_deleted_sync(guild_id: str, channel_id: str) -> str:
 # --------------------------------------------------------------------------- #
 # Opportunity announcements: the thread buttons and the `/setup` step
 # --------------------------------------------------------------------------- #
-# The decisions live in `apps.content.announcement_actions` and
-# `apps.content.announcement_setup`; both start at the authorization gate.
+# The decisions live in `tools.delivery.announcement_actions` and
+# `tools.delivery.announcement_setup`; both start at the authorization gate.
 async def announcement_action(
     discord_user_id: str,
     post_id: str,
@@ -622,7 +622,7 @@ async def announcement_action(
 def _announcement_action_sync(
     discord_user_id, post_id, action, guild_id, offsets, where, reason
 ) -> tuple[str, dict]:
-    from apps.content import announcement_actions as actions
+    from tools.delivery import announcement_actions as actions
 
     if action == "interested":
         return actions.interested(discord_user_id, post_id, guild_id)
@@ -670,7 +670,7 @@ def _announcement_setup_sync(
     discord_user_id, guild_id, binding_id, op, purpose, channel_id, policy, role_ids,
     bot_user_id,
 ) -> tuple[str, dict]:
-    from apps.content import announcement_setup as setup
+    from tools.delivery import announcement_setup as setup
     from apps.integrations.services import gate, resolve
 
     binding, refusal = _pick_binding(resolve, guild_id, binding_id)
@@ -727,8 +727,8 @@ async def activate_announcements(guild_id: str, binding_id) -> dict:
 
 
 def _activate_announcements_sync(guild_id, binding_id) -> dict:
-    from apps.content import announce
-    from apps.content import announcement_setup as setup
+    from tools.delivery import announce
+    from tools.delivery import announcement_setup as setup
     from apps.integrations.services import resolve
 
     if not announce.enabled():
@@ -753,7 +753,7 @@ async def announcement_manual(
 
 
 def _announcement_manual_sync(discord_user_id, guild_id, binding_id, content_id):
-    from apps.content import announcement_links
+    from tools.delivery import announcement_links
 
     return announcement_links.manual_announce(
         discord_user_id, guild_id, binding_id, content_id
@@ -766,6 +766,6 @@ async def thread_deleted(thread_id: str) -> int:
 
 
 def _thread_deleted_sync(thread_id: str) -> int:
-    from apps.content.discord_announcements import mark_thread_deleted
+    from tools.delivery.discord_announcements import mark_thread_deleted
 
     return mark_thread_deleted(thread_id)

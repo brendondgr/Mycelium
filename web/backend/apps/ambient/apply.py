@@ -16,7 +16,7 @@ field is never touched by anything automatic: every write here traces to one
 answered question.
 
 Project state is not written here. A confirmed development becomes a
-reflection proposal on the project page (``apps/content/ambient_proposals``),
+reflection proposal on the project page (``tools/delivery/ambient_proposals``),
 and the project's editors accept it there.
 """
 

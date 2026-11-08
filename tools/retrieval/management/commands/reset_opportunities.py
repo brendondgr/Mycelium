@@ -14,7 +14,7 @@ links are equally untouched.
 
 **Why the ORM and not ``TRUNCATE``.** Deleting a ``ContentItem`` fires
 ``pre_delete``, which marks any reminder pointing at it as stale
-(:mod:`apps.content.signals`). Truncating at SQL level is far faster and would
+(:mod:`tools.delivery.signals`). Truncating at SQL level is far faster and would
 skip that signal entirely, leaving live reminders firing against snapshots of
 listings that no longer exist. A slow correct wipe beats a fast one that leaves
 someone being reminded about a deadline we can no longer show them.
@@ -24,16 +24,17 @@ display + deadline snapshot taken at save time, so a save outlives the item it
 points at and the Saves page keeps rendering from the snapshot. Those saves will
 **not** re-attach when the "same" opportunity arrives from a new source under a
 new ``(source, external_id)`` — that pairing is genuinely lost, and it is the one
-user-visible cost of the migration. ``--report`` prints how many saves are about
-to be orphaned so the number is known rather than discovered.
+user-visible cost of the migration. The dry run prints how many rows (saves,
+reminders, anything else holding a snapshot) are about to be orphaned, so the
+number is known rather than discovered.
 """
 
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import Count
+from django.db.models import SET_NULL, Count
 
-from tools.retrieval.models import ContentItem, SavedOpportunity
+from tools.retrieval.models import ContentItem
 
 #: The two areas being re-sourced. Fellowships are pointedly absent.
 RESET_TYPES = (ContentItem.Type.GRANT, ContentItem.Type.CONFERENCE)
@@ -85,7 +86,7 @@ class Command(BaseCommand):
             qs.values("type", "source").annotate(n=Count("id")).order_by("type", "-n")
         )
         total = sum(row["n"] for row in breakdown)
-        orphaned = SavedOpportunity.objects.filter(content__in=qs).count()
+        orphaned = _snapshot_holders(qs)
 
         if not total:
             self.stdout.write("Nothing to delete.")
@@ -97,8 +98,9 @@ class Command(BaseCommand):
                 f"    {row['type']:<12} {row['source']:<28} {row['n']:>6}"
             )
         self.stdout.write(
-            f"{orphaned} save(s) point at these and will fall back to their "
-            "snapshot (SET_NULL). They will not re-attach to the new records."
+            f"{orphaned} row(s) — saves, reminders and the like — point at these "
+            "and will fall back to their snapshot (SET_NULL). They will not "
+            "re-attach to the new records."
         )
 
         if not options["yes"]:
@@ -115,3 +117,20 @@ class Command(BaseCommand):
                 f"Deleted {total} item(s) ({deleted} rows incl. cascades)."
             )
         )
+
+
+def _snapshot_holders(items) -> int:
+    """Rows that point at ``items`` and survive their deletion (``SET_NULL``):
+    saves and reminders that fall back to the snapshot they took.
+
+    Found through Django's relation metadata rather than by naming the models,
+    so the corpus never imports the code that keeps them.
+    """
+    total = 0
+    for relation in ContentItem._meta.related_objects:
+        if relation.on_delete is SET_NULL and not relation.many_to_many:
+            total += relation.related_model._default_manager.filter(
+                **{f"{relation.field.name}__in": items}
+            ).count()
+    return total
+

@@ -7,7 +7,15 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
-import tools.retrieval.models
+
+def default_reminder_offsets():
+    """Copied from the model module it was defined in (now
+    ``tools.delivery.models``) so this migration does not import tool code."""
+    return [
+        {"amount": 1, "unit": "month"},
+        {"amount": 1, "unit": "week"},
+        {"amount": 1, "unit": "day"},
+    ]
 
 
 class Migration(migrations.Migration):
@@ -23,7 +31,7 @@ class Migration(migrations.Migration):
             name='LabReminderPolicy',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('default_offsets', models.JSONField(blank=True, default=tools.retrieval.models.default_reminder_offsets)),
+                ('default_offsets', models.JSONField(blank=True, default=default_reminder_offsets)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('default_mentions', models.ManyToManyField(blank=True, related_name='reminder_policy_defaults', to=settings.AUTH_USER_MODEL)),

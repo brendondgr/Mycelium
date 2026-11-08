@@ -70,7 +70,7 @@ touches the rankings the stages above just wrote.
        it can safely be the last stage.
 
 **Who gets a message, and when.** Stages 4 and 5 do not cover the same people, and
-that is the design (``apps.content.delivery``). Stage 4 writes a briefing for every
+that is the design (``tools.delivery.delivery``). Stage 4 writes a briefing for every
 scheduled-eligible target, every day, whatever their cadence — the web app updates
 daily for everyone. Stage 5 and the lab stage push only where cadence says a push is
 due today: daily cadence gets a daily Tuesday to Friday and the Monday weekly,

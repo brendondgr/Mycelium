@@ -125,11 +125,11 @@ binding of a lab or a department that routes that kind. Behind
 `OPPORTUNITY_ANNOUNCEMENTS_ENABLED` (off), the `OPPORTUNITY_ANNOUNCEMENTS` plan
 feature (Lab and Canopy) and the `BOT_SERVER` add-on.
 
-* **Engine** (`apps/content/announce*.py`): slate entrants only, never twice; the
+* **Engine** (`tools/delivery/announce*.py`): slate entrants only, never twice; the
   first run seeds the six best open items (kinds interleaved) and passes over the
   rest for good; a bounded editor writes each post behind a verifier (no digits,
   only offered people) with a template fallback.
-* **Delivery** (`apps/content/discord_announcements.py`) produces outbox rows in
+* **Delivery** (`tools/delivery/discord_announcements.py`) produces outbox rows in
   two thread modes: `forum_thread` (start a thread; its id lands on
   `AnnouncementPost.thread_id`) and `thread_update` (one retry-safe unit: patch the
   thread, edit its opening post, reply, then an optional `after_patch`). A changed
@@ -142,7 +142,7 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   deleted, and a day with nothing closing posts nothing and still takes it down.
 * **Buttons** (`mylo/bot/cogs/announcements.py`, persistent ids
   `ann:<post>:<action>` handled by an `on_interaction` listener) →
-  `apps/content/announcement_actions.py`, each through the gate's `ann_follow` /
+  `tools/delivery/announcement_actions.py`, each through the gate's `ann_follow` /
   `ann_not_for_us` actions against the post's own lab or department.
   *Interested* reacts, saves, sets the target's default nudge (2 weeks, a tag in the
   thread) and DMs the full details with *Change reminder* / *Open the thread* /
@@ -163,12 +163,12 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   (`ann:<post>:unremind`, own reminders only). *Interested* still needs a member,
   and tells a guest to use *Remind me* instead.
 * **`/setup` step** (`📣 Opportunity announcements…` in the `/setup` menu →
-  `apps/content/announcement_setup.py`) configures one binding: **Create them for
+  `tools/delivery/announcement_setup.py`) configures one binding: **Create them for
   me** (a category and three tagged forums), or pick existing forums (each proven
   by starting and deleting a thread), who can start posts (everyone, managers only,
   or chosen roles — replies stay open to everyone), and **Turn on**, which runs the
   activation seed and the closing-soon list straight away.
-* **Search links** (`apps/content/announcement_links.py`): `/mylo search` passes
+* **Search links** (`tools/delivery/announcement_links.py`): `/mylo search` passes
   the server it ran in; a result announced in one of that server's bindings shows
   "💬 Already discussed here → thread", and a manager of a binding there gets
   "📣 Announce to …" (`annx:<binding>:<content>`, gate action `ann_manual`), which
@@ -184,7 +184,7 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   Roles only for the "who can start posts" rules.
 
 * **Departments** hear only about calls a lab could not take on alone
-  (`apps/content/dept_level.py`: institutional selection, department applicant,
+  (`tools/delivery/dept_level.py`: institutional selection, department applicant,
   department-scale programme). A department has one `#dept-opportunities` forum
   routing all three kinds, tagged by kind and reason; its post adds *Why it's here*
   (the reason and the quoted sentence) and names *Labs that could lead*

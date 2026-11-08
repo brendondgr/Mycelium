@@ -23,7 +23,7 @@ a person, lab or department is the recommendation layer's job.
 | The open-source grants/conferences collector (vendored, pure HTTP) | `collect/` |
 | Illinois Fellowship Finder scrape + ingest; the eligibility rule engine | `fellowships/`, `eligibility/` |
 | Host-side Playwright scrape, dormant Grants.gov/NIH/NSF clients | `host/` |
-| `ContentItem`, `ContentDeadline` | `models.py`, `migrations/` |
+| `ContentItem`, `ContentDeadline`, `DeadlineKind` | `models.py`, `migrations/` (the whole `content` migration history) |
 | Embedder (CPU/CUDA) and its wrapper | `embedding.py`, `embeddings.py` |
 | pgvector index, BM25, the `Retrievable`/`VectorIndex` protocols | `index.py`, `lexical.py`, `protocols.py` |
 | Corpus search and the cached query embedding | `search.py`, `query_embedding.py` |
@@ -31,9 +31,11 @@ a person, lab or department is the recommendation layer's job.
 | External DOI / arXiv / URL resolver | `resolver.py` |
 | Commands | `collect_opportunities`, `refresh_dblp_registry`, `scan_literature`, `embedding_device`, `apply_extraction_checkpoint`, `dedupe_content_papers`, `rebuild_content_deadlines`, `prune_opportunities`, `reset_opportunities` |
 
-`models.py` still holds every model of the old `content` app; they move out to
-the recommendation and delivery tools, table names unchanged, as that code
-moves (see `docs/plans/modular-tools/`).
+`models.py` holds the corpus only: `ContentItem`, `ContentDeadline` and the
+`DeadlineKind` vocabulary. The rest of the old `content` app's models moved to
+the recommendation and delivery tools by state-only migrations
+(`0038_hand_off_recommendation_models`, `0039_hand_off_delivery_models`), table
+names unchanged.
 
 ## Doors
 

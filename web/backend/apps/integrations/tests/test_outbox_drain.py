@@ -290,7 +290,7 @@ def test_one_logical_message_is_sent_once_not_once_per_attempt(
 @pytest.mark.django_db
 def test_preflight_channel_still_answers_synchronously(transport) -> None:
     """`/setup` has to tell the admin now whether the bind worked."""
-    from apps.content.reminders_discord import preflight_channel
+    from tools.delivery.reminders_discord import preflight_channel
 
     outcome = preflight_channel("chan-1")
 

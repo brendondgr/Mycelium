@@ -16,7 +16,6 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 
 import pytest
-from django.contrib.auth.models import User
 
 from tools.retrieval.collect.conferences.record import ConferenceInstance, Deadline
 from tools.retrieval.collect.grants.record import Opportunity
@@ -28,7 +27,7 @@ from tools.retrieval.collect.ingest import (
     upsert_items,
 )
 from tools.retrieval.collect.mapping import map_conference, map_grant
-from tools.retrieval.models import ContentItem, SavedOpportunity
+from tools.retrieval.models import ContentItem
 
 TODAY = date(2026, 8, 16)
 NOW = datetime(2026, 8, 16, 12, 0, 0, tzinfo=UTC)
@@ -364,29 +363,6 @@ def test_prune_after_compares_zero_padded():
     assert not ContentItem.objects.filter(
         source="grants:sam_gov", external_id="src:sam_gov:due_august"
     ).exists()
-
-
-@pytest.mark.django_db
-def test_prune_preserves_saved_deadline_via_set_null():
-    user = User.objects.create_user(username="researcher", password="pw")
-    upsert_items(
-        [_grant_item("expiring", close_date="2025-01-01")], today=TODAY_ISO
-    )
-    item = ContentItem.objects.get(external_id="src:nsf:expiring")
-    saved = SavedOpportunity.objects.create(
-        user=user,
-        content=item,
-        area=SavedOpportunity.Area.GRANT,
-        title="Test Research Award",
-        deadline_date="2025-01-01",
-        snapshot={"funder": "Test Funder"},
-    )
-
-    assert prune_expired(today=TODAY_ISO) == 1
-
-    saved.refresh_from_db()
-    assert saved.content_id is None  # SET_NULL, not deleted
-    assert saved.snapshot["funder"] == "Test Funder"
 
 
 # --------------------------------------------------------------------------- #

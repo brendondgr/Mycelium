@@ -149,7 +149,8 @@ class AmbientImportBoundary(SimpleTestCase):
                 elif isinstance(node, ast.Import):
                     modules = [alias.name for alias in node.names]
                 for module in modules:
-                    if module.startswith("apps.content"):
+                    # The matching layer is the recommendation and delivery tools.
+                    if module.startswith(("tools.recommendation", "tools.delivery")):
                         offenders.append(f"{path.relative_to(_AMBIENT)} -> {module}")
         assert not offenders, offenders
 

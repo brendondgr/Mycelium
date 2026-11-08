@@ -1,6 +1,6 @@
 """Turn the nightly analytics JSON into a Discord run summary.
 
-The reading half of the split that :mod:`apps.content.run_analytics` writes. The
+The reading half of the split that :mod:`tools.delivery.run_analytics` writes. The
 daily run's stages execute inside the backend container, where the database and
 the PDF renderer live; the run *summary* is posted from the host, by the same
 bare-stdlib runner that already reports a failed stage. So the container writes

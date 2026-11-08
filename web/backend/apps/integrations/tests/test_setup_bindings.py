@@ -101,7 +101,7 @@ def test_each_binding_keeps_its_own_channels() -> None:
     dept_binding = bind(department=dept, guild_id="g1")
 
     with mock.patch(
-        "apps.content.reminders_discord.preflight_channel", _ok_preflight
+        "tools.delivery.reminders_discord.preflight_channel", _ok_preflight
     ):
         lab_status, _ = linking._bind_setup_channel_sync(
             "11", "g1", "updates", "c-lab", lab_binding.id

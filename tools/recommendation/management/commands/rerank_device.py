@@ -47,7 +47,7 @@ class Command(BaseCommand):
                 self.style.WARNING(
                     "\nThe rerank stage is OFF (RERANK_ENABLED=false). It ships off "
                     "because its evidence is a preference, not a measurement — see "
-                    "apps/content/reranking.py."
+                    "tools/recommendation/reranking.py."
                 )
             )
         elif info["resolved"] == "cpu" and not info["cuda_available"]:

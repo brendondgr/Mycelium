@@ -1,6 +1,6 @@
 """The cross-encoder rerank stage: device selection and reordering.
 
-Like ``apps/scraper/tests/test_embedding_device.py``, these tests never import
+Like ``tools/retrieval/tests/test_embedding_device.py``, these tests never import
 fastembed or onnxruntime. ``cuda_available`` is the one seam that touches the
 runtime and the fastembed constructor is injected through ``sys.modules``, so the
 CUDA branches are exercised on a CPU-only box — which is what this host is, and

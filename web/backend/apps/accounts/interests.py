@@ -37,8 +37,8 @@ Notes on the fields with a non-obvious role:
 - ``keywords`` (with ``statement``) is the semantic fingerprint that *is*
   embedded and retrieved against.
 - ``skills`` reaches the model prompts (the profile block built by
-  ``apps.content.briefing`` and ``tools.recommendation.opportunity_llm``) and the
-  deterministic ``apps.content.matchers.team_gap`` matcher, which reads ``areas``
+  ``tools.delivery.briefing`` and ``tools.recommendation.opportunity_llm``) and the
+  deterministic ``tools.delivery.matchers.team_gap`` matcher, which reads ``areas``
   and ``skills`` together as "what this person says they do". It is deliberately
   *not* embedded and *not* turned into search queries. Fellowship matching still
   does not read it — that gates on ``eligibility``, ``seeking`` and stage.

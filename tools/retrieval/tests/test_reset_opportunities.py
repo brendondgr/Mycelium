@@ -11,7 +11,7 @@ import uuid
 import pytest
 from django.core.management import CommandError, call_command
 
-from tools.retrieval.models import ContentItem, SavedOpportunity
+from tools.retrieval.models import ContentItem
 
 pytestmark = pytest.mark.django_db
 
@@ -77,26 +77,3 @@ def test_source_filter_restricts_the_wipe():
     call_command("reset_opportunities", "--source", "pivot", "--yes")
 
     assert list(ContentItem.objects.values_list("id", flat=True)) == [keep.id]
-
-
-def test_a_save_survives_its_item_via_the_snapshot(django_user_model):
-    """``SavedOpportunity.content`` is SET_NULL with a snapshot taken at save time.
-
-    The save outlives the wipe. It does not re-attach to whatever replaces the
-    item — that pairing is genuinely lost, which is why the command reports the
-    count before deleting.
-    """
-    user = django_user_model.objects.create_user(username="u", password="x")
-    item = _item(ContentItem.Type.GRANT)
-    save = SavedOpportunity.objects.create(
-        user=user,
-        content=item,
-        area=SavedOpportunity.Area.GRANT,
-        title="A grant",
-    )
-
-    call_command("reset_opportunities", "--yes")
-
-    save.refresh_from_db()
-    assert save.content_id is None
-    assert save.title == "A grant"

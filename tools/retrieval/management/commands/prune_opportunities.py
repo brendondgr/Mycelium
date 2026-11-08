@@ -2,7 +2,7 @@
 
 In the daily chain this runs **after** the reminder tick (R2), so a moved deadline
 is always seen live before its item can be deleted. Deleting an item fires the
-prune → reminder-stale signal (``apps.content.signals``) as a backstop:
+prune → reminder-stale signal (``tools.delivery.signals``) as a backstop:
 
     uv run --project web/backend python web/backend/manage.py prune_opportunities
 

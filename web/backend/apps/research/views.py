@@ -12,15 +12,22 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from tools.recommendation.models import ProjectProfile, RelevanceEvent
-from tools.recommendation.team_profile import recompute_project_profile
-from tools.retrieval.models import (
+from tools.delivery.collaboration import (
+    mark_seen,
+    project_seen_map,
+    record_event,
+    share_to_project,
+)
+from tools.delivery.fanout import trigger_fanout
+from tools.delivery.models import (
     Collection,
     CollectionItem,
-    ContentItem,
     ProjectItemSeen,
     ProjectShare,
 )
+from tools.recommendation.models import ProjectProfile, RelevanceEvent
+from tools.recommendation.team_profile import recompute_project_profile
+from tools.retrieval.models import ContentItem
 
 from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
@@ -30,13 +37,6 @@ from apps.accounts.permissions import (
     user_has_lab_access,
 )
 from apps.accounts.services import record_audit_event
-from apps.content.collaboration import (
-    mark_seen,
-    project_seen_map,
-    record_event,
-    share_to_project,
-)
-from apps.content.fanout import trigger_fanout
 from apps.core.people import display_name, initials
 
 from .limits import (
@@ -795,7 +795,7 @@ def _close_invitation(
 # --------------------------------------------------------------------------- #
 # Project collaboration surface — shared feed, external ingest, seen + events.
 # Papers a team shares into a project. Reuses the same visibility cascade that
-# guards the project itself; writes go through apps.content.collaboration.
+# guards the project itself; writes go through tools.delivery.collaboration.
 # --------------------------------------------------------------------------- #
 
 
@@ -1198,7 +1198,8 @@ def _state_payload(project: Project, reader=None) -> dict:
     used a lab default would be describing a different judgement from the one Mylo
     is actually making.
     """
-    from apps.content.timeline_settings import effective_timeline
+    from tools.delivery.timeline_settings import effective_timeline
+
     from apps.research.state import normalise_state
 
     state = getattr(project, "state", None)

@@ -18,15 +18,15 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
-
-from apps.accounts.models import Lab, LabMembership, WatchPreference
-from apps.content.timeline_settings import (
+from tools.delivery.timeline_settings import (
     SOURCE_LAB,
     SOURCE_PROJECT,
     SOURCE_SYSTEM,
     SOURCE_USER,
     effective_timeline,
 )
+
+from apps.accounts.models import Lab, LabMembership, WatchPreference
 from apps.research import state as schema
 from apps.research.models import Project, ProjectMember, ProjectState
 

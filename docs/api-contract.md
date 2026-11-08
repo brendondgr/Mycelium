@@ -1173,7 +1173,7 @@ is always `{"guild_id", "guild_name", "channel_id", "channel_name", "thread_url"
 the web renders it as the Discord logo plus `#channel`, opening in a new tab.
 
 `usability` (every opportunity card, `null` when the view has no reader) is the
-"Can we use this?" strip, computed by `apps/content/usability.py` from record
+"Can we use this?" strip, computed by `tools/delivery/usability.py` from record
 fields only: `{"verdict": "ok" | "warn" | "block" | "unknown", "checks": [{"key",
 "status", "label", "field"}]}`. Keys: `open`, `deadline`, `feasible` (against the
 deadline buffer), `applicant` and `country` (against the lab's or department's

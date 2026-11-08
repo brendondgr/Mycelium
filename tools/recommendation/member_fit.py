@@ -164,7 +164,7 @@ def rank_members(
     """The members this item fits, best first — cosine above ``floor``, capped.
 
     The cosine is read directly (never an RRF rank), the same calibration rule
-    :mod:`apps.content.fanout` follows: only an absolute similarity means anything
+    :mod:`tools.delivery.fanout` follows: only an absolute similarity means anything
     as a threshold.
     """
     if not item_vector or not candidates:

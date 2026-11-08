@@ -21,53 +21,9 @@ from dataclasses import dataclass
 from . import discovery, loader
 from .spec import PHASES, Stage, Tool
 
-#: Stages the platform itself still owns. Each moves into the tool that owns
-#: its command as that code is extracted; the golden plan must not change.
-PLATFORM_STAGES: tuple[Stage, ...] = (
-    Stage("run_reminder_tick", "remind", "Firing due deadline reminders…"),
-    Stage(
-        "prune_briefings",
-        "prune",
-        "Pruning daily briefings past the retention window…",
-        after=("prune_opportunities",),
-    ),
-    Stage(
-        "evaluate_project_alerts",
-        "alert",
-        "Deciding what today changes for each project…",
-    ),
-    Stage(
-        "announce_opportunities",
-        "announce",
-        "Announcing newly fitting grants, fellowships and conferences…",
-    ),
-    Stage(
-        "announce_opportunity_updates",
-        "announce",
-        "Updating announced opportunities and the closing-soon lists…",
-    ),
-    Stage(
-        "generate_daily_briefing",
-        "brief",
-        "Writing each user's and lab's daily briefing…",
-    ),
-    Stage(
-        "send_daily_discord_reports",
-        "deliver",
-        "DMing each linked user their daily PDF report…",
-    ),
-    Stage(
-        "send_lab_digests",
-        "deliver",
-        "Posting each lab's digest to its Discord updates channel…",
-    ),
-    Stage(
-        "generate_weekly_briefing",
-        "weekly",
-        "Writing the Monday weekly for each target…",
-    ),
-    Stage("send_weekly_reports", "weekly", "Queueing the Monday weekly to Discord…"),
-)
+#: Stages the platform itself owns. Every stage today belongs to a tool; a
+#: platform-owned stage would be declared here.
+PLATFORM_STAGES: tuple[Stage, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -65,8 +65,8 @@ run from the repository root. Implementation files and install state belong unde
 - `web/packages/config/`: shared Tailwind v4 tokens used by both.
 - `web/backend/`: Django API — auth, permissions, business logic, orchestration,
   admin, audit logs, API contracts. Django apps are `core`, `accounts`,
-  `research`, `content`, `billing`, `integrations`, `adminpanel`, `ambient`,
-  `knowledge`, `collab`. Tools live in `tools/` (see [`tools.md`](tools.md)).
+  `research`, `billing`, `integrations`, `adminpanel`, `ambient`, `knowledge`,
+  `collab`. Tools live in `tools/` (see [`tools.md`](tools.md)).
 - `web/backend` workers: Celery tasks for reminder ticks, the Discord outbox
   drain, project-profile recompute, and project seeding.
 - Host runners: the nightly research pipeline (`ops/nightly/manual_all.py`, fired by

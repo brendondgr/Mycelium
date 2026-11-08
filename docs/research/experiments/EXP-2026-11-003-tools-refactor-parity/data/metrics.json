@@ -1,0 +1,11 @@
+{
+  "experiment": "EXP-2026-11-003",
+  "primary": "run_files_identical",
+  "phases": {
+    "before": {"commit": "47a8565", "fusion_dense_pool": {"sha256": "c897ed5e064a0c4902bf11b8490c22f9a0bd2175d7c6eba63e2013ad9fb5786c", "R@100": 0.5988, "nDCG@10": 0.2937}, "bm25_only": {"sha256": "2966316d8eeda8a138c191ba5f8d94cabb825b5b1a58d20cc1d2f61aad998f3a", "R@100": 0.6854, "nDCG@10": 0.3282}},
+    "retrieval": {"base_commit": "9980298", "fusion_dense_pool": {"sha256": "c897ed5e064a0c4902bf11b8490c22f9a0bd2175d7c6eba63e2013ad9fb5786c", "R@100": 0.5988, "nDCG@10": 0.2937}, "bm25_only": {"sha256": "2966316d8eeda8a138c191ba5f8d94cabb825b5b1a58d20cc1d2f61aad998f3a", "R@100": 0.6854, "nDCG@10": 0.3282}},
+    "recommendation": {"base_commit": "111634f", "fusion_dense_pool": {"sha256": "c897ed5e064a0c4902bf11b8490c22f9a0bd2175d7c6eba63e2013ad9fb5786c", "R@100": 0.5988, "nDCG@10": 0.2937}, "bm25_only": {"sha256": "2966316d8eeda8a138c191ba5f8d94cabb825b5b1a58d20cc1d2f61aad998f3a", "R@100": 0.6854, "nDCG@10": 0.3282}},
+    "delivery": {"base_commit": "199b680", "fusion_dense_pool": {"sha256": "c897ed5e064a0c4902bf11b8490c22f9a0bd2175d7c6eba63e2013ad9fb5786c", "R@100": 0.5988, "nDCG@10": 0.2937}, "bm25_only": {"sha256": "2966316d8eeda8a138c191ba5f8d94cabb825b5b1a58d20cc1d2f61aad998f3a", "R@100": 0.6854, "nDCG@10": 0.3282}}
+  },
+  "run_files_identical": 1
+}

@@ -49,7 +49,7 @@ is **not advertised on the surface** — no `⌘K` badges in the product chrome.
 
 - `tools/recommendation/targets.py` builds exactly three `MatchTarget` kinds: `user`,
   `lab`, `project`. There is no department builder.
-- `apps/content/views.py` never mentions a department; every feed, save, reminder
+- `tools/delivery/views.py` never mentions a department; every feed, save, reminder
   and briefing route scopes with `?lab=<slug>` only.
 
 So a department workspace offers overview, its labs, roster, projects, profile,

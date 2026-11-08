@@ -57,7 +57,7 @@ Paths are relative to the repository root.
 | A feed card's theme badges (attributed cluster + "Also…") | `ClusterRow` in `web/app/src/components/portal/primitives/cluster-badge.tsx`; rendered under the title by every feed card, not on the rail |
 | A feed card's Deadlines button + dropdown (alerts per round) | `web/app/src/components/portal/primitives/deadline-list.tsx` (`DeadlineMenu`) |
 | A feed card's source row + "View …" button | `web/app/src/components/portal/primitives/source-footer.tsx` (`SourceRow`, `ViewLink`) |
-| The report's ranked entry (title, insight, note, match rail, deadline strip) | `web/app/src/components/portal/primitives/report-entry.tsx`; its print half is `_entry_row` in `web/backend/apps/content/daily_report_pdf.py` |
+| The report's ranked entry (title, insight, note, match rail, deadline strip) | `web/app/src/components/portal/primitives/report-entry.tsx`; its print half is `_entry_row` in `tools/delivery/daily_report_pdf.py` |
 | Decorative motion (threads, seedlings, ring sweep) | `web/app/src/components/portal/motion/` (reduced-motion + in-view-once hooks), keyframes in `web/app/src/app/globals.css`; the sidebar and search vines are gone |
 | Feed card scroll entrance (predictive, fires ahead of the reader) | `web/app/src/components/portal/motion/reveal-on-scroll.tsx` |
 | Workspace background (still contour map) | `web/app/src/components/portal/motion/workspace-ground.tsx`, mounted in `portal/workspace-shell.tsx`; styles `.ws-ground` in `web/app/src/app/globals.css` |
@@ -130,78 +130,78 @@ Paths are relative to the repository root.
 | Projects, membership, invitations, visibility, archiving, collaboration endpoints | `web/backend/apps/research/{models,views,serializers,urls}.py` |
 | Project state (what it claims, blocks on, aims at) | `web/backend/apps/research/state.py` (shape, normalising, the slow fingerprint), model `ProjectState`, endpoints `/api/projects/<id>/state/` and `.../state/confirm/` |
 | Reading a project's state out of a document | `web/backend/apps/research/state_extract.py` — schema, deterministic grounding checks, one bounded repair; proposes only, never saves |
-| Which buffer and window a project is judged against | `web/backend/apps/content/timeline_settings.py` (`effective_timeline`): project override → the reader's own → the lab's → 14/60 |
+| Which buffer and window a project is judged against | `tools/delivery/timeline_settings.py` (`effective_timeline`): project override → the reader's own → the lab's → 14/60 |
 | Per-scope project caps | `web/backend/apps/research/limits.py` |
 
-## Backend — matching & delivery (`apps/content`; ranking in `tools/recommendation`)
+## Matching & delivery, by task (`tools/delivery`, `tools/recommendation`, `tools/retrieval`)
 
-Files below are inside `web/backend/apps/content/`.
+A task index across the three tools; each tool also has its own section below.
 
 | Task | File |
 |---|---|
-| Content items, scores, saves, ignores, reminders, notifications | `models.py` |
-| Manual ignore (per reader): model, endpoints, feed filtering | `models.py` (`IgnoredItem`), `views.py` (`IgnoreItemView`, `IgnoredItemsView`, `_ignored_content_ids`) |
-| Scoring target (user / lab / project) | `targets.py` |
-| Paper pipeline | `pipeline.py`, `interests_query.py`, `retrieval.py`, `lexical.py`, `fusion.py`, `ranking.py`, `suggest.py`, `clustering.py` |
-| What each interest actually searches for (theme-scoped context, capped) | `interests_query.py` (`search_interests`, `INTEREST_CONTEXT_TERMS`) — it appended the whole profile's keywords to every area until EXP-2026-08-020; do not reintroduce a profile-wide suffix |
-| Per-theme slates (depth, entrant diff, pruning, bridges) | `slates.py` — replaces the global Top-25 for any profile with declared areas; the flat `top_rank` signals are still derived from it for existing readers |
-| Per-theme admission (absolute floor OR a theme's relative floor, hard minimum) | `admission.py` (`admit`, `AdmissionStats`), entered from `pipeline.fuse_clusters_pool` |
-| The four-point verdict that replaced the percent match | `verdicts.py` (`derive_verdict` for the rank band, `parse_verdict` for the model's) |
-| Stage one — profile-blind précis, cached per item forever | `comprehension.py`, model `ItemComprehension` in `models.py` |
-| Stage two — per-theme fit write-up (verdict, three beats, caveat, bridge) | `cluster_fit.py`; keyed on (item, cluster, target) at `signals["writeups"]` |
-| Which (theme, item) pairs earn a model call — reuse, entitlement, budget | `theme_run.py` (`plan_theme_writeups` = DB, `execute_theme_plan` = pure, `collect_theme_result`) |
-| Mylo's prose — the per-theme read and the lead paragraph | `narrative.py`; stored as structure on `DailyBriefing.narrative` and read back by the PDF, the app, and Discord |
-| Fellowship bands (matched to a theme vs open to you) | `fellowship_bands.py` — the eligibility gate is unchanged; this only splits what survives it |
-| The `RERANK_METHOD` switch — TypeSafe re-orders each theme's slate head (`typesafe`, default, paid plans) or the local stack stands (`local`); judgements stored at `signals["typesafe"][cluster_id]` and reused by fingerprint | `typesafe_rerank.py`; entered from `pipeline.py::_explain_run` (papers), `opportunities.py::_prepare_match` (grants, conferences) and `_finalize_fellowship_match` (fellowships). Evidence `EXP-2026-09-003`/`-004` |
-| Cross-encoder rerank (ships OFF, `RERANK_ENABLED`) | `reranking.py` — device resolution with CUDA auto-detect and CPU fallback, the lazy model cache, `rerank` and the per-interest/RRF `rerank_order`; entered from `pipeline.py::_apply_rerank` at the tail of `fuse_interests_pool` / `fuse_clusters_pool`. Diagnostics: `manage.py rerank_device --load`. Evidence is a **preference** (`EXP-2026-08-015`…`-017`), not a measurement — see the module docstring |
-| Ranking-stack seams (ORM-free ranking, swappable vector index) | `protocols.py` (`Retrievable`, `VectorIndex`), `retrieval.py` (`PgVectorIndex`) |
-| Theme spread (opt-in, all defaults off) | `fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
-| Grants / conferences / fellowships matching | `opportunities.py`, `fellowships.py`, `opportunity_llm.py`, `pinning.py` |
-| Fellowship eligibility gates (stage ladder, prose constraints) | `fellowships.py` (`STAGE_LADDER`, `_stage_gate`, `_constraint_gates`, `derive_stage`) |
+| Content items and deadlines; scores; saves, ignores, reminders, notifications | `tools/retrieval/models.py`; `tools/recommendation/models.py`; `tools/delivery/models.py` |
+| Manual ignore (per reader): model, endpoints, feed filtering | `tools/delivery/models.py` (`IgnoredItem`), `tools/delivery/views.py` (`IgnoreItemView`, `IgnoredItemsView`, `_ignored_content_ids`) |
+| Scoring target (user / lab / project) | `tools/recommendation/targets.py` |
+| Paper pipeline | `tools/recommendation/pipeline.py`, `tools/recommendation/interests_query.py`, `tools/retrieval/index.py`, `tools/retrieval/lexical.py`, `tools/recommendation/fusion.py`, `tools/recommendation/ranking.py`, `tools/recommendation/suggest.py`, `tools/recommendation/clustering.py` |
+| What each interest actually searches for (theme-scoped context, capped) | `tools/recommendation/interests_query.py` (`search_interests`, `INTEREST_CONTEXT_TERMS`) — it appended the whole profile's keywords to every area until EXP-2026-08-020; do not reintroduce a profile-wide suffix |
+| Per-theme slates (depth, entrant diff, pruning, bridges) | `tools/recommendation/slates.py` — replaces the global Top-25 for any profile with declared areas; the flat `top_rank` signals are still derived from it for existing readers |
+| Per-theme admission (absolute floor OR a theme's relative floor, hard minimum) | `tools/recommendation/admission.py` (`admit`, `AdmissionStats`), entered from `pipeline.fuse_clusters_pool` |
+| The four-point verdict that replaced the percent match | `tools/recommendation/verdicts.py` (`derive_verdict` for the rank band, `parse_verdict` for the model's) |
+| Stage one — profile-blind précis, cached per item forever | `tools/recommendation/comprehension.py`, model `ItemComprehension` in `tools/delivery/models.py` |
+| Stage two — per-theme fit write-up (verdict, three beats, caveat, bridge) | `tools/recommendation/cluster_fit.py`; keyed on (item, cluster, target) at `signals["writeups"]` |
+| Which (theme, item) pairs earn a model call — reuse, entitlement, budget | `tools/recommendation/theme_run.py` (`plan_theme_writeups` = DB, `execute_theme_plan` = pure, `collect_theme_result`) |
+| Mylo's prose — the per-theme read and the lead paragraph | `tools/delivery/narrative.py`; stored as structure on `DailyBriefing.narrative` and read back by the PDF, the app, and Discord |
+| Fellowship bands (matched to a theme vs open to you) | `tools/recommendation/fellowship_bands.py` — the eligibility gate is unchanged; this only splits what survives it |
+| The `RERANK_METHOD` switch — TypeSafe re-orders each theme's slate head (`typesafe`, default, paid plans) or the local stack stands (`local`); judgements stored at `signals["typesafe"][cluster_id]` and reused by fingerprint | `tools/recommendation/typesafe_rerank.py`; entered from `pipeline.py::_explain_run` (papers), `opportunities.py::_prepare_match` (grants, conferences) and `_finalize_fellowship_match` (fellowships). Evidence `EXP-2026-09-003`/`-004` |
+| Cross-encoder rerank (ships OFF, `RERANK_ENABLED`) | `tools/recommendation/reranking.py` — device resolution with CUDA auto-detect and CPU fallback, the lazy model cache, `rerank` and the per-interest/RRF `rerank_order`; entered from `pipeline.py::_apply_rerank` at the tail of `fuse_interests_pool` / `fuse_clusters_pool`. Diagnostics: `manage.py rerank_device --load`. Evidence is a **preference** (`EXP-2026-08-015`…`-017`), not a measurement — see the module docstring |
+| Ranking-stack seams (ORM-free ranking, swappable vector index) | `tools/retrieval/protocols.py` (`Retrievable`, `VectorIndex`), `tools/retrieval/index.py` (`PgVectorIndex`) |
+| Theme spread (opt-in, all defaults off) | `tools/recommendation/fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
+| Grants / conferences / fellowships matching | `tools/recommendation/opportunities.py`, `tools/recommendation/fellowships.py`, `tools/recommendation/opportunity_llm.py`, `tools/recommendation/pinning.py` |
+| Fellowship eligibility gates (stage ladder, prose constraints) | `tools/recommendation/fellowships.py` (`STAGE_LADDER`, `_stage_gate`, `_constraint_gates`, `derive_stage`) |
 | Fellowship eligibility extracted from prose | `tools/retrieval/eligibility/constraints.py`, `tools/retrieval/fellowships/ingest.py` (`extract_fellowship_constraints`) |
-| On-demand whole-corpus refit | `refitting.py` |
-| Post-onboarding live match | `onboarding_match.py`, `scan_status.py` |
-| Member fit ("who is this for?") | `member_fit.py`, `fanout.py` |
-| Project team signal & sharing | `team_profile.py`, `collaboration.py` |
-| Daily briefing (theme sections + per-project parts, over each theme's slate) | `briefing.py`, `briefing_sections.py` |
-| Arranging a day by theme for the report (entrants, standing, quiet) | `theme_report.py` |
-| The legacy flat slate — still the single-vector path, and the derived `top_rank` | `top_feed.py` |
-| Manual re-render + re-send of one report | `report_resend.py` |
-| Briefing history & retention | `models.py` (`DailyBriefing.generated_on`), `views.py` (`BriefingHistoryView`), `management/commands/prune_briefings.py` |
-| Daily PDF report | `daily_report.py`, `daily_report_pdf.py`, `daily_report_send.py` |
+| On-demand whole-corpus refit | `tools/recommendation/refitting.py` |
+| Post-onboarding live match | `tools/recommendation/onboarding_match.py`, `tools/recommendation/scan_status.py` |
+| Member fit ("who is this for?") | `tools/recommendation/member_fit.py`, `tools/delivery/fanout.py` |
+| Project team signal & sharing | `tools/recommendation/team_profile.py`, `tools/delivery/collaboration.py` |
+| Daily briefing (theme sections + per-project parts, over each theme's slate) | `tools/delivery/briefing.py`, `tools/delivery/briefing_sections.py` |
+| Arranging a day by theme for the report (entrants, standing, quiet) | `tools/delivery/theme_report.py` |
+| The legacy flat slate — still the single-vector path, and the derived `top_rank` | `tools/recommendation/top_feed.py` |
+| Manual re-render + re-send of one report | `tools/delivery/report_resend.py` |
+| Briefing history & retention | `tools/delivery/models.py` (`DailyBriefing.generated_on`), `tools/delivery/views.py` (`BriefingHistoryView`), `management/commands/prune_briefings.py` |
+| Daily PDF report | `tools/delivery/daily_report.py`, `tools/delivery/daily_report_pdf.py`, `tools/delivery/daily_report_send.py` |
 | Report formatting sample (no database) | `management/commands/render_sample_report.py` |
-| Report cover art (derived from `web/art/`) | `report_assets/` — `mylo-headshot.png`, `mycelium-logo.png`, `README.md` |
-| Lab Discord digest | `lab_digest.py` |
-| The §8 smoke checklist, against live data | `smoke_reports.py`; command `manage.py smoke_reports [--send]` — twelve system checks, exits non-zero on a failure so it can gate a release |
-| What Mylo proposes about a project's state, from what the reader did | `reflection.py` (deterministic rules, the rendered block), model `ReflectionProposal`, endpoints `/api/reflections/`; UI `web/app/src/components/portal/projects/reflection-card.tsx` |
-| The Monday weekly | `weekly.py` (synthesis + the code frame), `weekly_packet.py` (the closed packet's shape), `weekly_build.py` (building it), `weekly_verify.py` (the citation verifier), `weekly_send.py` (Discord); commands `generate_weekly_briefing`, `send_weekly_reports` |
-| The report body's markdown grammar, stated once for both renderers | `report_grammar.py` — `[P#]` citations, `[O#]` "What changed" citations, `[S:path]` state markers, labelled beats, the code-rendered references block |
-| Deterministic project matchers (no model writes a number) | `matchers/` — `timeline.py` (can this project make that deadline), `overlap.py` (does this threaten the claim), `blockers.py` (does this unblock), `known_literature.py` (does the reader already have it, or write it), `team_gap.py` (does the call need somebody the team lacks), `similarity.py` (raw cosine, never RRF) |
-| Which findings become alerts, and how few | `alerts.py` (five triggers, daily cap, once-ever constraint, the `PROJECT_ALERTS_ENABLED` gate), model `ProjectAlert`; command `evaluate_project_alerts` |
-| The one DM a weekly-cadence reader gets between Mondays | `urgent_alerts.py` — opt-in, any non-Monday, a moved deadline on a saved item inside their buffer, keyed on the alert so it is sent once ever |
-| How an alert is said on each surface | `alert_report.py` — the "Needs your attention" section, the Discord lines, the bell notification |
-| One run's numbers (volume, matched, entered, by category/project/theme, deadline horizon) | `report_stats.py` — derived from the finished `ReportData`, stored on `DailyBriefing.stats`, read back by every surface |
-| The Discord post's shape (overview, statistics, Discord's size limits) | `discord_embeds.py` — `personal_report_embed`, `lab_post_embed`, `fit_embed` |
-| Who gets a Discord push today, and at what local hour | `delivery.py` — `push_kinds` (the cadence matrix), `send_time`/`local_today`, and every dedupe key. The stored sign-up choice is the whole rule: daily means every day including weekends, weekly means Monday only. Cadence governs push only; the nightly run and the web app are unchanged by it |
-| Nightly run analytics | `run_analytics.py`, `analytics_report_pdf.py`, `management/commands/run_analytics_report.py`; the Listening section reads `apps.ambient.read.listening_totals` and is omitted when nothing is listening |
-| Reminders | `reminders.py`, `reminders_tick.py`, `reminders_views.py`, `reminders_discord.py`, `reminders_announce.py`, `reminder_access.py` |
-| Deadline projection | `deadlines_projection.py` |
-| Opportunity announcements: which slate entrants a lab or department hears about, the six-item activation seed, never-twice (`Announcement`, `AnnouncementPost`, `AnnouncementReaction`, `AnnouncementSettings` in `models.py`) | `announce.py` (select, check, align, record); nightly commands `announce_opportunities` (`--dry-run`, `--llm`, `--lab`) and `announce_opportunity_updates` in `ops/nightly/manual_all.py`, both inert while `OPPORTUNITY_ANNOUNCEMENTS_ENABLED` is off |
-| The department path: is a call one only a department can take on (institutional selection, department applicant, department-scale programme, each with the sentence it matched), which of its labs could lead, and scoring a department | `apps/content/dept_level.py` (detector v2; precision in `docs/research/experiments/EXP-2026-11-001-dept-level-precision`), `lab_fit.py` (lab-profile cosine), `targets.target_for_department`; scored only while its announcements are on (`tasks.select_departments`); `discord_announcements.notify_eligible` DMs each member who may be eligible for a department fellowship |
-| Measuring announcements (Interested / Remind me / Not for us rates, web link clicks by surface, route health, held-back reasons, department slate yield and lab-fit scores) | `apps/content/announce_metrics.py` + `manage.py announcement_metrics --since --until --json`; `remind` and `link_click` reactions on `AnnouncementReaction`; web clicks from `DiscordLink`'s `surface` prop via `recordDiscordLinkClick` (`POST /api/announcements/link-click/`). Baseline: `docs/research/experiments/EXP-2026-11-002-announcement-baseline` |
-| Remind me without a Mycelium account (guest reminders) | `gate.authorize_guest` in `apps/integrations/services/gate.py`; `_remind_gate` / `_guest_remind` / `unremind` in `apps/content/announcement_actions.py`; delivery in `discord_announcements.send_due_nudges` / `_dm_nudge`; `recipient_discord_id` on `DiscordOutboxMessage` |
-| Announcements in Discord: forum threads per binding, in-place updates, closing, the daily closing-soon list, nudges (`ClosingSoonPost`, `AnnouncementNudge`); the outbox's `forum_thread` / `thread_update` / `delete_channel` modes | `discord_announcements.py`; outbox modes in `web/backend/apps/integrations/services/outbox.py` (`_deliver_thread_mode`) with REST helpers in `services/discord_api.py` |
-| What the thread buttons do (Interested, Remind me, Not for us, Stop following) and the `/setup` announcements step (create or pick forums, who can post, switch on) | `announcement_actions.py`, `announcement_setup.py`; bot side `mylo/bot/cogs/announcements.py` and the `📣` button in `mylo/bot/cogs/setup.py`, via `mylo/linking.announcement_action` / `announcement_setup` |
-| Search links into announcement threads: "Already discussed here", a manager's "Announce to …", the web card's `discord` / `discord_thread_url`, threads deleted by hand | `announcement_links.py`; `discord_commands.search(…, guild_id)`; `annx:` buttons in `mylo/bot/cogs/announcements.py`; the thread-delete listener in `mylo/bot/cogs/drift.py`; nightly `discord_announcements.verify_threads` |
-| The bounded editor behind each announcement: closed packet, verifier (no digits, only offered people), template fallback | `announce_editor.py` (`edit`, `verify`, `template`, `RUBRIC_VERSION`) |
-| What an announcement showed and whether its call changed (facts snapshot, fingerprint, "What changed" lines); the closing-soon list | `announce_facts.py`; the nightly plan of changed / closed / closing-soon items is `announce_updates.py` |
-| "Can we use this?" — open, deadline vs buffer, who may apply, country, award, eligibility counts, team coverage (record fields only; missing → `unknown`) | `usability.py` (`assess`, `Reader`, `reader_for_lab/department/user`); the serializer field is `_OpportunitySerializer.get_usability` |
-| Is an opportunity still worth showing (feeds + prune share it) | `liveness.py` |
-| Unified search | `search.py`, `search_service.py`, `query_embedding.py` |
-| High-signal alerts | `high_signal.py` |
-| Read surfaces (feeds, saves, notifications) | `views.py`, `serializers.py`, `urls.py` |
-| Display-time formatting shared by serializers (amounts) | `formatting.py` |
-| Celery tasks & target selection | `tasks.py` |
+| Report cover art (derived from `web/art/`) | `tools/delivery/report_assets/` — `mylo-headshot.png`, `mycelium-logo.png`, `README.md` |
+| Lab Discord digest | `tools/delivery/lab_digest.py` |
+| The §8 smoke checklist, against live data | `tools/delivery/smoke_reports.py`; command `manage.py smoke_reports [--send]` — twelve system checks, exits non-zero on a failure so it can gate a release |
+| What Mylo proposes about a project's state, from what the reader did | `tools/delivery/reflection.py` (deterministic rules, the rendered block), model `ReflectionProposal`, endpoints `/api/reflections/`; UI `web/app/src/components/portal/projects/reflection-card.tsx` |
+| The Monday weekly | `tools/delivery/weekly.py` (synthesis + the code frame), `tools/delivery/weekly_packet.py` (the closed packet's shape), `tools/delivery/weekly_build.py` (building it), `tools/delivery/weekly_verify.py` (the citation verifier), `tools/delivery/weekly_send.py` (Discord); commands `generate_weekly_briefing`, `send_weekly_reports` |
+| The report body's markdown grammar, stated once for both renderers | `tools/delivery/report_grammar.py` — `[P#]` citations, `[O#]` "What changed" citations, `[S:path]` state markers, labelled beats, the code-rendered references block |
+| Deterministic project matchers (no model writes a number) | `tools/delivery/matchers/` — `timeline.py` (can this project make that deadline), `overlap.py` (does this threaten the claim), `blockers.py` (does this unblock), `known_literature.py` (does the reader already have it, or write it), `team_gap.py` (does the call need somebody the team lacks), `similarity.py` (raw cosine, never RRF) |
+| Which findings become alerts, and how few | `tools/delivery/alerts.py` (five triggers, daily cap, once-ever constraint, the `PROJECT_ALERTS_ENABLED` gate), model `ProjectAlert`; command `evaluate_project_alerts` |
+| The one DM a weekly-cadence reader gets between Mondays | `tools/delivery/urgent_alerts.py` — opt-in, any non-Monday, a moved deadline on a saved item inside their buffer, keyed on the alert so it is sent once ever |
+| How an alert is said on each surface | `tools/delivery/alert_report.py` — the "Needs your attention" section, the Discord lines, the bell notification |
+| One run's numbers (volume, matched, entered, by category/project/theme, deadline horizon) | `tools/delivery/report_stats.py` — derived from the finished `ReportData`, stored on `DailyBriefing.stats`, read back by every surface |
+| The Discord post's shape (overview, statistics, Discord's size limits) | `tools/delivery/discord_embeds.py` — `personal_report_embed`, `lab_post_embed`, `fit_embed` |
+| Who gets a Discord push today, and at what local hour | `tools/delivery/delivery.py` — `push_kinds` (the cadence matrix), `send_time`/`local_today`, and every dedupe key. The stored sign-up choice is the whole rule: daily means every day including weekends, weekly means Monday only. Cadence governs push only; the nightly run and the web app are unchanged by it |
+| Nightly run analytics | `tools/delivery/run_analytics.py`, `tools/delivery/analytics_report_pdf.py`, `management/commands/run_analytics_report.py`; the Listening section reads `apps.ambient.read.listening_totals` and is omitted when nothing is listening |
+| Reminders | `tools/delivery/reminders.py`, `tools/delivery/reminders_tick.py`, `tools/delivery/reminders_views.py`, `tools/delivery/reminders_discord.py`, `tools/delivery/reminders_announce.py`, `tools/delivery/reminder_access.py` |
+| Deadline projection | `tools/retrieval/deadlines_projection.py` |
+| Opportunity announcements: which slate entrants a lab or department hears about, the six-item activation seed, never-twice (`Announcement`, `AnnouncementPost`, `AnnouncementReaction`, `AnnouncementSettings` in `models.py`) | `tools/delivery/announce.py` (select, check, align, record); nightly commands `announce_opportunities` (`--dry-run`, `--llm`, `--lab`) and `announce_opportunity_updates` in `ops/nightly/manual_all.py`, both inert while `OPPORTUNITY_ANNOUNCEMENTS_ENABLED` is off |
+| The department path: is a call one only a department can take on (institutional selection, department applicant, department-scale programme, each with the sentence it matched), which of its labs could lead, and scoring a department | `tools/delivery/dept_level.py` (detector v2; precision in `docs/research/experiments/EXP-2026-11-001-dept-level-precision`), `tools/delivery/lab_fit.py` (lab-profile cosine), `targets.target_for_department`; scored only while its announcements are on (`tasks.select_departments`); `discord_announcements.notify_eligible` DMs each member who may be eligible for a department fellowship |
+| Measuring announcements (Interested / Remind me / Not for us rates, web link clicks by surface, route health, held-back reasons, department slate yield and lab-fit scores) | `tools/delivery/announce_metrics.py` + `manage.py announcement_metrics --since --until --json`; `remind` and `link_click` reactions on `AnnouncementReaction`; web clicks from `DiscordLink`'s `surface` prop via `recordDiscordLinkClick` (`POST /api/announcements/link-click/`). Baseline: `docs/research/experiments/EXP-2026-11-002-announcement-baseline` |
+| Remind me without a Mycelium account (guest reminders) | `gate.authorize_guest` in `apps/integrations/services/gate.py`; `_remind_gate` / `_guest_remind` / `unremind` in `tools/delivery/announcement_actions.py`; delivery in `discord_announcements.send_due_nudges` / `_dm_nudge`; `recipient_discord_id` on `DiscordOutboxMessage` |
+| Announcements in Discord: forum threads per binding, in-place updates, closing, the daily closing-soon list, nudges (`ClosingSoonPost`, `AnnouncementNudge`); the outbox's `forum_thread` / `thread_update` / `delete_channel` modes | `tools/delivery/discord_announcements.py`; outbox modes in `web/backend/apps/integrations/services/outbox.py` (`_deliver_thread_mode`) with REST helpers in `services/discord_api.py` |
+| What the thread buttons do (Interested, Remind me, Not for us, Stop following) and the `/setup` announcements step (create or pick forums, who can post, switch on) | `tools/delivery/announcement_actions.py`, `tools/delivery/announcement_setup.py`; bot side `mylo/bot/cogs/announcements.py` and the `📣` button in `mylo/bot/cogs/setup.py`, via `mylo/linking.announcement_action` / `announcement_setup` |
+| Search links into announcement threads: "Already discussed here", a manager's "Announce to …", the web card's `discord` / `discord_thread_url`, threads deleted by hand | `tools/delivery/announcement_links.py`; `discord_commands.search(…, guild_id)`; `annx:` buttons in `mylo/bot/cogs/announcements.py`; the thread-delete listener in `mylo/bot/cogs/drift.py`; nightly `discord_announcements.verify_threads` |
+| The bounded editor behind each announcement: closed packet, verifier (no digits, only offered people), template fallback | `tools/delivery/announce_editor.py` (`edit`, `verify`, `template`, `RUBRIC_VERSION`) |
+| What an announcement showed and whether its call changed (facts snapshot, fingerprint, "What changed" lines); the closing-soon list | `tools/delivery/announce_facts.py`; the nightly plan of changed / closed / closing-soon items is `tools/delivery/announce_updates.py` |
+| "Can we use this?" — open, deadline vs buffer, who may apply, country, award, eligibility counts, team coverage (record fields only; missing → `unknown`) | `tools/delivery/usability.py` (`assess`, `Reader`, `reader_for_lab/department/user`); the serializer field is `_OpportunitySerializer.get_usability` |
+| Is an opportunity still worth showing (feeds + prune share it) | `tools/retrieval/liveness.py` |
+| Unified search | `tools/retrieval/search.py`, `tools/delivery/search_service.py`, `tools/retrieval/query_embedding.py` |
+| High-signal alerts | `tools/delivery/high_signal.py` |
+| Read surfaces (feeds, saves, notifications) | `tools/delivery/views.py`, `tools/delivery/serializers.py`, `tools/delivery/urls.py` |
+| Display-time formatting shared by serializers (amounts) | `tools/delivery/formatting.py` |
+| Celery tasks & target selection | `tools/delivery/tasks.py` |
 
 ## Backend — the ambient evidence ledger (`apps/ambient`)
 
@@ -247,9 +247,9 @@ Files below are inside `web/backend/apps/content/`.
 | Developments reaching the alerts (closed blockers, dropped methods) | `alerts.developments_for`, `matchers/developments.py` |
 | Carrying out a yes that edits the declared profile (the only writer of `Profile.interests` in the feature), and its exact undo | `web/backend/apps/ambient/apply.py` (`apply_answers`, first in `deliberate_ambient`; `revert`); provenance in `interests.sources.ambient` |
 | What changed, how and why, with undo — personal and lab | `web/backend/apps/ambient/review.py`, model `AppliedChange`; `/api/ambient/changes/`, `/api/ambient/labs/<slug>/changes/` |
-| A development that makes a project's stated state out of date, proposed to its editors | `web/backend/apps/content/ambient_proposals.py` (`propose`, `withdraw_stale`); `ReflectionProposal` kinds `close_blocker`, `drop_method`; run by `deliver_ambient_questions` |
-| Tonight's questions delivered (DM with buttons, bell), changes and told facts announced | `web/backend/apps/content/management/commands/deliver_ambient_questions.py` |
-| The weekly's "What changed" (personal and project streams, `[O#]` citations) and the daily's "Changed today" lines | `web/backend/apps/content/weekly_changes.py`; rows read through `apps.ambient.read.changes_between`; `[O#]` in `report_grammar.py`, checked by `weekly_verify.py` |
+| A development that makes a project's stated state out of date, proposed to its editors | `tools/delivery/ambient_proposals.py` (`propose`, `withdraw_stale`); `ReflectionProposal` kinds `close_blocker`, `drop_method`; run by `deliver_ambient_questions` |
+| Tonight's questions delivered (DM with buttons, bell), changes and told facts announced | `tools/delivery/management/commands/deliver_ambient_questions.py` |
+| The weekly's "What changed" (personal and project streams, `[O#]` citations) and the daily's "Changed today" lines | `tools/delivery/weekly_changes.py`; rows read through `apps.ambient.read.changes_between`; `[O#]` in `report_grammar.py`, checked by `weekly_verify.py` |
 | The profile's "heard" marks, and conversation proposals on the reflection card | `profile-section.tsx` (`FromConversation`), `projects/reflection-card.tsx` |
 
 ## Backend — the knowledge core (`apps/knowledge`)
@@ -301,7 +301,7 @@ Files below are inside `web/backend/apps/content/`.
 | Discord OAuth, API calls, outbox | `web/backend/apps/integrations/services/` |
 | Slack (ambient Plan 11): events, buttons, install, link codes, outbox | `web/backend/apps/integrations/slack_views.py`, `services/slack_events.py`, `slack_link.py`, `slack_outbox.py`, `slack_api.py`; `services/slack_resolve.py` is Slack's single ORM boundary; the adapter is `apps/ambient/adapters/slack.py` |
 | Microsoft Teams (ambient Plan 11): Bot Framework endpoint, token checks, outbox | `web/backend/apps/integrations/teams_views.py`, `services/teams_auth.py` (RS256 against Microsoft's keys), `teams_events.py`, `teams_outbox.py`, `teams_api.py`; `services/teams_resolve.py` is its ORM boundary; the adapter is `apps/ambient/adapters/teams.py` |
-| Reports on Slack for Slack-only readers and labs | `web/backend/apps/content/slack_reports.py`, command `send_slack_reports` (in `ops/nightly/manual_all.py`) |
+| Reports on Slack for Slack-only readers and labs | `tools/delivery/slack_reports.py`, command `send_slack_reports` (in `ops/nightly/manual_all.py`) |
 | Where the OAuth `redirect_uri` comes from (and why it must not vary) | `_redirect_uri` in `web/backend/apps/integrations/services/oauth.py`, `DISCORD_CALLBACK_ORIGIN` in `web/backend/config/settings.py`; print what to register with `manage.py discord_check` |
 | The portal's "link with a code" panel (join → copy command → wait) | `ActivationCodePanel` in `web/app/src/components/portal/sections/profile-section.tsx`; the command and invite come from `DiscordActivationCodeView` |
 | LLM client | `web/backend/apps/core/llm.py` |
@@ -332,6 +332,17 @@ Files below are inside `web/backend/apps/content/`.
 | Framework tests and fixture tools (one per load state) | `tools/_framework/tests/`, `tools/_framework/tests/fixtures/` |
 | Suite-wide pytest fixtures (platform and tools) | `web/backend/config/pytest_plugin.py` (loaded by `-p` in `web/backend/pyproject.toml`) |
 
+## Delivery tool (`tools/delivery/`)
+
+| Task | Path |
+|---|---|
+| The tool's declaration, settings, nightly stages, URL mount | `tools/delivery/tool.py`; guide `tools/delivery/README.md` |
+| Read / write doors | `tools/delivery/read.py`, `service.py` |
+| What it wires up when loaded (merge handlers, the reminder-stale signal, announcement departments) | `tools/delivery/apps.py` (`ready`), `merge_handlers.py`, `signals.py` |
+| Saves, shares, collections, briefings, reminders, notifications, alerts, reflections, announcements | `tools/delivery/models.py` (app label `delivery`, tables still `content_*`), migrations `tools/delivery/migrations/` |
+| The API the web app reads (feeds, saves, search, reports, reminders, announcements) | `tools/delivery/urls.py`, `views.py`, `reminders_views.py`, `announcement_views.py` — mounted at `api/` right after `apps.research.urls` |
+| Its Celery tasks (share fan-out, announcement activation) | `tools/delivery/tasks.py` |
+
 ## Recommendation tool (`tools/recommendation/`)
 
 | Task | Path |
@@ -354,7 +365,7 @@ Files below are inside `web/backend/apps/content/`.
 |---|---|
 | The tool's declaration, settings, nightly stage | `tools/retrieval/tool.py`; guide `tools/retrieval/README.md` |
 | Read / write doors, events | `tools/retrieval/read.py`, `service.py`, `events.py` |
-| `ContentItem`, `ContentDeadline` (and, until delivery moves, the delivery models) | `tools/retrieval/models.py`, migrations `tools/retrieval/migrations/` (app label `content`) |
+| `ContentItem`, `ContentDeadline`, the `DeadlineKind` vocabulary | `tools/retrieval/models.py`, migrations `tools/retrieval/migrations/` (app label `content`) |
 | pgvector index, BM25, the ranking protocols | `tools/retrieval/index.py`, `lexical.py`, `protocols.py` |
 | Corpus search, cached query embedding | `tools/retrieval/search.py`, `query_embedding.py` |
 | Deadline projection, liveness, duplicate merge | `tools/retrieval/deadlines_projection.py`, `liveness.py`, `dedupe.py` |

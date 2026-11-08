@@ -19,31 +19,27 @@ class RetrievalTool(Tool):
     )
     core = True
     exports = (
-        # The doors.
         "read",
         "service",
         "events",
-        # Modules the rest of the codebase still imports directly while the
-        # matching and delivery code is moved out (see the plan); new code reads
-        # through ``read`` and writes through ``service``.
-        "models",
-        "embeddings",
-        "embedding",
-        "query_embedding",
-        "index",
-        "lexical",
-        "protocols",
-        "search",
-        "liveness",
+        # Imported directly from outside this tool today (the boundary test
+        # checks every such import is listed here). New code uses the doors.
+        "collect",
         "deadlines_projection",
         "dedupe",
-        "ingest",
-        "window",
-        "resolver",
-        "sources",
-        "collect",
+        "embedding",
+        "embeddings",
         "fellowships",
-        "eligibility",
+        "index",
+        "ingest",
+        "lexical",
+        "liveness",
+        "models",
+        "protocols",
+        "query_embedding",
+        "resolver",
+        "search",
+        "window",
     )
     settings = (
         # Literature sources. Keys are secrets: environment only. (The OpenAlex

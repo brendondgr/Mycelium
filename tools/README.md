@@ -29,6 +29,7 @@ tools/
 |---|---|---|---|
 | [`retrieval`](retrieval/README.md) | — | yes | The grounded corpus: sources, collectors, dedup, embeddings, deadlines, search |
 | [`recommendation`](recommendation/README.md) | `retrieval` | yes | Ranks and filters the corpus for every person, lab, department and project |
+| [`delivery`](delivery/README.md) | `retrieval`, `recommendation` | yes | The feeds' API, saves, reports, reminders, alerts, Discord/Slack delivery, announcements |
 
 `make tools-check` prints the live list with each tool's state.
 

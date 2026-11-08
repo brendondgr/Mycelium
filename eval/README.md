@@ -140,7 +140,7 @@ eval/
     datasets.py       ir_datasets -> Retrievable adapters
     index.py          NumpyIndex + the embedding cache
     profiles.py       synthetic multi-cluster profiles + union qrels
-    arms.py           each arm as a thin call into apps.content.*
+    arms.py           each arm as a thin call into the ranking code in tools/ (retrieval, recommendation)
     cluster_metrics.py  per-cluster coverage — the one hand-rolled metric
     scoring.py        ir_measures wrapper + the results contract
     metadata.py       ir_metadata emission (LongEval tracks this)

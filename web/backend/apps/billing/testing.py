@@ -1,7 +1,7 @@
 """Test helpers that put a user or lab on the paid side of the reminder gate.
 
 Reminders require a paid plan **and** synced Discord (see
-:mod:`apps.content.reminder_access`), enforced both when a subscription is created
+:mod:`tools.delivery.reminder_access`), enforced both when a subscription is created
 and again when Mylo tries to deliver it. Every reminder test that is about something
 *else* — mention escaping, outbox retries, tick sealing — therefore needs its actors
 entitled, or it would be asserting the gate instead of its own subject.

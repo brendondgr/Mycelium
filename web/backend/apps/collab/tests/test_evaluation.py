@@ -10,7 +10,7 @@ import json
 
 import pytest
 from django.utils import timezone
-from tools.retrieval.models import Notification
+from tools.delivery.models import Notification
 
 from apps.collab import evaluation, matcher
 from apps.collab.models import MatchFeedback, SearchLog
@@ -161,7 +161,7 @@ def test_readiness_needs_ratings_a_low_not_relevant_rate_and_no_harm(
 
 
 def test_the_analytics_report_carries_the_counts(world):  # noqa: F811
-    from apps.content.run_analytics import collect_run_analytics
+    from tools.delivery.run_analytics import collect_run_analytics
 
     ada, _, project = world
     _real_search(ada, project)

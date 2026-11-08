@@ -183,6 +183,26 @@ ambient_extract_concurrency = 8          # env AMBIENT_EXTRACT_CONCURRENCY
 # Profile-change explanations written per night.
 ambient_explain = 200                    # env AMBIENT_EXPLAIN_NIGHTLY_CAP
 
+# delivery: Puts what was ranked in front of people: the feeds' API, saves and
+# collections, project shares, the daily and weekly reports, reminders,
+# notifications, project alerts, Discord and Slack delivery, and opportunity
+# announcements.
+[tools.delivery]
+enabled = true
+# briefing_retention_days = 90           # env BRIEFING_RETENTION_DAYS
+# opportunity_feed_max = 250             # env OPPORTUNITY_FEED_MAX
+# fanout_cosine_floor = 0.35             # env FANOUT_COSINE_FLOOR
+# fanout_async = false                   # env FANOUT_ASYNC
+# high_signal_floor = 90                 # env HIGH_SIGNAL_FLOOR
+# high_signal_weekly_cap = 2             # env HIGH_SIGNAL_WEEKLY_CAP
+# high_signal_deadline_min_days = 7      # env HIGH_SIGNAL_DEADLINE_MIN_DAYS
+# high_signal_deadline_max_days = 120    # env HIGH_SIGNAL_DEADLINE_MAX_DAYS
+# project_alert_overlap_threshold = 0.62 # env PROJECT_ALERT_OVERLAP_THRESHOLD
+# project_alert_blocker_threshold = 0.58 # env PROJECT_ALERT_BLOCKER_THRESHOLD
+# project_alert_slot_threshold = 0.55    # env PROJECT_ALERT_SLOT_THRESHOLD
+# project_alert_daily_cap = 3            # env PROJECT_ALERT_DAILY_CAP
+# run_analytics_retention_days = 90      # env RUN_ANALYTICS_RETENTION_DAYS
+
 # recommendation: Ranks the whole corpus for every person, lab, department and
 # project against their profiles and interest clusters, takes each target's
 # per-theme slate, and writes the model verdicts.

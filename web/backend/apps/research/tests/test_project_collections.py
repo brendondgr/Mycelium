@@ -3,7 +3,8 @@
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
-from tools.retrieval.models import CollectionItem, ContentItem
+from tools.delivery.models import CollectionItem
+from tools.retrieval.models import ContentItem
 
 from apps.accounts.models import Department, Lab, LabMembership
 from apps.research.models import Project, ProjectMember

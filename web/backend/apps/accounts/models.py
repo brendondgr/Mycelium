@@ -319,7 +319,7 @@ class Profile(models.Model):
 class InstitutionType(models.TextChoices):
     """What kind of organisation a lab or department belongs to.
 
-    Read by opportunity usability checks (``apps.content.usability``) to compare a
+    Read by opportunity usability checks (``tools.delivery.usability``) to compare a
     call's applicant types against who would actually apply. Blank means "not
     said", which makes that check ``unknown`` rather than guessing.
     """

@@ -91,7 +91,7 @@ def enqueue_dm(
     actually happens.
 
     ``not_before`` holds the row until the recipient's local send hour
-    (:func:`apps.content.delivery.send_time`); see :func:`resolve.enqueue_outbox`.
+    (:func:`tools.delivery.delivery.send_time`); see :func:`resolve.enqueue_outbox`.
 
     ``discord_user_id`` instead of ``user`` DMs someone with no Mycelium account
     (a guest's announcement reminder).
@@ -485,7 +485,7 @@ def _notify_undelivered(message, verdict: Classification) -> None:
         verdict.reason,
     )
     try:
-        from apps.content.delivery_failures import notify_delivery_failed
+        from tools.delivery.delivery_failures import notify_delivery_failed
 
         notify_delivery_failed(
             outbox_id=message.pk,
