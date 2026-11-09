@@ -119,6 +119,17 @@ under the composer names the model and whether it runs on this machine. Mylo's
 head beside the fold floats gently while he works (Motion: Full only) and
 stays still under reduced motion.
 
+**"Ask Mylo" is a small button with Mylo's face** on each thing: first among a
+feed card's tools and the opened item's, and beside the title of a project, a
+lab overview and a department's overview. It is a real button and must never be
+mistaken for the decorative portrait beside "Mylo's reason": the painted head
+sits in a primary-green ring, it has the same 30 px target as its neighbours, a
+visible focus ring, "Ask Mylo about <title>" as its name and "Ask Mylo" as its
+tooltip, and it stays at full strength while the card's other tools fade. It
+opens the panel on the conversation about that thing (one per thing) without
+changing the reader's selection, and it is not drawn for someone who may not
+chat — the launcher says why, once.
+
 ## Layout And Components
 
 Use spacious, structured layouts with clear hierarchy. The public site should be persuasive, warm, and content-forward. The authenticated app should be denser, calmer, and built for repeated research workflows.

@@ -14,6 +14,8 @@ export type AskMyloRequest = {
   anchor: AgentAnchor;
   /** The thing's title, for the panel's "About" line before Mylo resolves it. */
   title: string;
+  /** Where the thing was asked about from, to open it again from the panel. */
+  href?: string;
 };
 
 export function askMylo(request: AskMyloRequest) {

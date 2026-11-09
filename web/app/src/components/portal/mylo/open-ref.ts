@@ -47,8 +47,9 @@ export function refHref(ref: { kind: string; key: string; title?: string }): str
 export function openRef(
   ref: { kind: string; key: string; title?: string },
   navigate: (href: string) => void,
+  fallback?: string,
 ) {
   if (ref.kind === "item" && openItemInReader(ref.key)) return;
-  const href = refHref(ref);
+  const href = fallback ?? refHref(ref);
   if (href) navigate(href);
 }

@@ -21,6 +21,7 @@ import { useAgentThread, useUpdateAgentThread } from "@/lib/portal/hooks";
 import { SECTION_ROUTES } from "@/lib/portal/routes";
 
 import { Composer } from "./composer";
+import type { AskMyloRequest } from "./events";
 import { HistoryList } from "./history";
 import { MyloHead } from "./mylo-head";
 import { openRef, splitItemTitle } from "./open-ref";
@@ -34,7 +35,7 @@ export type Session = {
   threadId: string | null;
   draft: NewThread;
   /** The thing an anchored conversation is about, as the button named it. */
-  about: { anchor: AgentAnchor; title: string } | null;
+  about: AskMyloRequest | null;
   /** Still looking for a conversation already open about `about`. */
   resolving?: boolean;
 };
@@ -128,7 +129,13 @@ export function ChatPanel({
               onRename={(next) => meta && update.mutate({ id: meta.id, title: next })}
             />
             {view === "chat" && aboutAnchor && aboutTitle ? (
-              <AboutLine anchor={aboutAnchor} title={aboutTitle} onOpened={wide ? undefined : onClose} />
+              <AboutLine
+                anchor={aboutAnchor}
+                title={aboutTitle}
+                rawTitle={anchorRef?.title ?? aboutTitle}
+                href={session.about?.href}
+                onOpened={wide ? undefined : onClose}
+              />
             ) : null}
           </div>
           <div className="ws-mylo-tools">
@@ -437,10 +444,16 @@ function NotAllowed({ refusal }: { refusal: AgentRefusal }) {
 function AboutLine({
   anchor,
   title,
+  rawTitle,
+  href,
   onOpened,
 }: {
   anchor: AgentAnchor;
   title: string;
+  /** The agent's title, which names an item's kind ("[grant] …"). */
+  rawTitle: string;
+  /** Where the conversation was started from, when it was started here. */
+  href?: string;
   onOpened?: () => void;
 }) {
   const router = useRouter();
@@ -452,7 +465,7 @@ function AboutLine({
         className="ws-mylo-about-link"
         title={title}
         onClick={() => {
-          openRef({ kind: anchor.kind, key: anchor.key, title }, (href) => router.push(href));
+          openRef({ kind: anchor.kind, key: anchor.key, title: rawTitle }, (to) => router.push(to), href);
           onOpened?.();
         }}
       >

@@ -391,9 +391,14 @@ html:not([data-motion="none"])[data-surfaces="glass"] .ws-item:hover {
 }
 
 @media (hover: hover) {
-  .ws-item:not(:hover):not(:focus-within) .ws-actions {
+  /* Mylo's face stays at full strength: it is the way in (plan W). */
+  .ws-item:not(:hover):not(:focus-within) .ws-actions > :not(.ws-mylo-ask) {
     opacity: 0.35;
   }
+}
+
+.ws-actions > * {
+  transition: opacity 0.15s;
 }
 
 .ws-theme {
@@ -3650,6 +3655,45 @@ html[data-motion="none"] *::after {
   .ws-mylo-panel,
   .ws-mylo-launcher,
   .ws-mylo-chev {
+    transition: none;
+  }
+}
+
+/* The Mylo-face button: a real button, distinct from the decorative mark. */
+.ws-mylo-ask {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ws-mylo-ask img {
+  border: 2px solid color-mix(in srgb, var(--primary) 75%, var(--border));
+  border-radius: 999px;
+  background: var(--raise);
+  object-fit: cover;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.ws-mylo-ask:hover img {
+  border-color: var(--link);
+  transform: scale(1.06);
+}
+
+.ws-mylo-ask[data-size="head"] {
+  width: 36px;
+  height: 36px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-mylo-ask img {
     transition: none;
   }
 }
