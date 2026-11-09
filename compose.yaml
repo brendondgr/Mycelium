@@ -311,6 +311,31 @@ services:
           -L "0.0.0.0:$$LLM_TUNNEL_PORT:127.0.0.1:$$LLM_TUNNEL_REMOTE_PORT" \
           "$$LLM_TUNNEL_HOST"
 
+  # Optional relay to a decision server that listens only on this host's
+  # 127.0.0.1 (GAIFA's decide, say), which the backend container cannot reach.
+  # With `[decision] port_relay = true` and `port_url =
+  # "http://host.docker.internal:<port>"` in mycelium.toml, this service (on the
+  # host network) listens on the Docker bridge address that host.docker.internal
+  # names, on that port, and pipes each connection to 127.0.0.1:<port>. The
+  # decision server itself is not touched. Off, it idles. Code:
+  # web/backend/apps/core/decision_relay.py (standard library only).
+  decision-relay:
+    image: ghcr.io/astral-sh/uv:python3.13-bookworm
+    working_dir: /app/web/backend
+    network_mode: host
+    restart: unless-stopped
+    command: ["python", "-u", "-m", "apps.core.decision_relay"]
+    volumes:
+      - .:/app:ro
+    env_file:
+      - .env.example
+      - path: .env
+        required: false
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   postgres:
     image: pgvector/pgvector:pg17
     environment:

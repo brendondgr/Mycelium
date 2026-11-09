@@ -291,6 +291,12 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("decision.port_timeout", "int", 30,
             "Seconds to wait for one decision from the port.",
             env="DECISION_PORT_TIMEOUT"),
+    Setting("decision.port_relay", "bool", False,
+            "Reach a decision server that listens only on this host's "
+            "127.0.0.1 (such as GAIFA's decide): the decision-relay service "
+            "forwards port_url's port on the Docker bridge to the same port on "
+            "the host's loopback. Needs port_url at host.docker.internal.",
+            env="DECISION_PORT_RELAY"),
     # ---- tools (universal policy; each tool adds its own [tools.<name>]) --
     Setting("tools.strict", "bool", False,
             "Stop startup when any tool fails to load, instead of setting the "
@@ -533,6 +539,16 @@ class Instance:
             out.append("email.provider = \"resend\" needs RESEND_API_KEY in .env.")
         if provider == "smtp" and not self.values["email.smtp_host"]:
             out.append("email.provider = \"smtp\" needs email.smtp_host.")
+        if self.values["decision.port_relay"]:
+            from urllib.parse import urlsplit
+
+            host = urlsplit(self.values["decision.port_url"]).hostname or ""
+            if host != "host.docker.internal":
+                out.append(
+                    "decision.port_relay = true forwards host.docker.internal to "
+                    "this host's loopback, so decision.port_url must be "
+                    "http://host.docker.internal:<port>."
+                )
         if self.llm is not None:
             out.extend(self.llm.problems(env))
         return out
