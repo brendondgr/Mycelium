@@ -576,3 +576,130 @@ def test_a_day_with_nothing_closing_takes_yesterdays_list_down(fake) -> None:
 
     assert f"/channels/{first.thread_id}" in fake.paths("DELETE")
     assert ClosingSoonPost.objects.count() == 1
+
+
+# --------------------------------------------------------------------------- #
+# Where a conference is held: full location and the continent tag
+# --------------------------------------------------------------------------- #
+def _conference(place_text="Ann Arbor, MI", **meta):
+    deadline = (TODAY + timedelta(days=60)).isoformat()
+    return ContentItem.objects.create(
+        type=ContentItem.Type.CONFERENCE,
+        source="open-collector",
+        external_id=f"c-{place_text}",
+        source_url="https://example.org/conf",
+        metadata={
+            "name": "Ocean Systems Conference",
+            "place_text": place_text,
+            "prune_after": deadline,
+            "deadlines_structured": [
+                {
+                    "kind": "submission",
+                    "instant": f"{deadline}T11:59:59Z",
+                    "round_label": "Papers",
+                    "is_estimated": False,
+                }
+            ],
+            **meta,
+        },
+    )
+
+
+def _conference_setup():
+    target, (binding,) = _setup()
+    target.settings.conferences = True
+    target.settings.save()
+    tags = {
+        name: f"t-{name}"
+        for name, _e in discord_announcements.FORUM_TAGS["conferences"]
+    }
+    add_route(binding, "conferences", "forum-conf", forum_tag_ids=tags)
+    return target, binding
+
+
+@pytest.mark.django_db
+def test_a_conference_post_shows_the_full_location_and_its_continent_tag(fake):
+    target, _binding = _conference_setup()
+    ann, _ = _announce(target, _conference("Ann Arbor, MI"))
+
+    body = next(
+        b
+        for m, p, b in fake.calls
+        if m == "POST" and p == "/channels/forum-conf/threads"
+    )
+    assert body["applied_tags"] == ["t-Dates published", "t-North America"]
+    description = body["message"]["embeds"][0]["description"]
+    assert description.startswith("**Ann Arbor, Michigan, United States** · 🌎 North")
+    assert ann.snapshot["continent"] == "North America"
+
+
+@pytest.mark.django_db
+def test_a_conference_with_no_known_place_gets_no_continent_tag(fake):
+    target, _binding = _conference_setup()
+    _announce(target, _conference("Pittsburgh"))
+
+    body = next(
+        b
+        for m, p, b in fake.calls
+        if m == "POST" and p == "/channels/forum-conf/threads"
+    )
+    assert body["applied_tags"] == ["t-Dates published"]
+
+
+def test_the_status_tag_survives_the_five_tag_cap() -> None:
+    ann = Announcement(
+        category=ContentItem.Type.CONFERENCE,
+        target_department_id=1,
+        snapshot={"continent": "Europe"},
+        alignment={"dept_reasons": [{"label": f"Reason {n}"} for n in range(3)]},
+    )
+    names = discord_announcements._post_tags(ann, "Closed")
+    assert names[:3] == ["Conference", "Closed", "Europe"]
+
+    class _Route:
+        forum_tag_ids = {n: f"id-{n}" for n in names}
+
+    assert discord_announcements._tags(_Route, names) == [
+        "id-Conference",
+        "id-Closed",
+        "id-Europe",
+        "id-Reason 0",
+        "id-Reason 1",
+    ]
+
+
+def test_grants_never_carry_a_continent() -> None:
+    ann = Announcement(category=ContentItem.Type.GRANT, snapshot={"continent": "Asia"})
+    assert discord_announcements.continent_of(ann) == ""
+
+
+@pytest.mark.django_db
+def test_retagging_adds_the_continent_to_old_threads_without_a_reply(fake):
+    target, _binding = _conference_setup()
+    ann, _ = _announce(target, _conference("Brescia (Italy)"))
+    ann.snapshot = {k: v for k, v in ann.snapshot.items() if k != "continent"}
+    ann.save()
+    fake.calls.clear()
+
+    assert (
+        discord_announcements.retag_conference_threads(dry_run=True)[0]["continent"]
+        == "Europe"
+    )
+    assert fake.calls == []  # a dry run touches nothing
+
+    rows = discord_announcements.retag_conference_threads()
+    post = ann.posts.get()
+    patches = [
+        b
+        for m, p, b in fake.calls
+        if m == "PATCH" and p == f"/channels/{post.thread_id}"
+    ]
+    assert rows and patches == [{"applied_tags": ["t-Dates published", "t-Europe"]}]
+    assert not [p for m, p, _b in fake.calls if m == "POST"]  # no reply, no thread
+    ann.refresh_from_db()
+    assert ann.snapshot["continent"] == "Europe"
+
+    # Re-running queues nothing new for a thread already done.
+    fake.calls.clear()
+    discord_announcements.retag_conference_threads()
+    assert not [p for m, p, _b in fake.calls if m == "PATCH"]

@@ -62,11 +62,13 @@ def item_url(item: ContentItem) -> str:
 
 
 def item_host(item: ContentItem) -> str:
-    """Who offers it: the funder, or for a conference where it is held."""
+    """Who offers it: the funder, or for a conference where it is held — the full
+    location (:func:`tools.retrieval.geography.place_for`), never a bare venue."""
     meta = item.metadata or {}
     if item.type == ContentItem.Type.CONFERENCE:
-        place = ", ".join(str(x) for x in (meta.get("city"), meta.get("country")) if x)
-        return place or str(meta.get("place_text") or "")
+        from tools.retrieval.geography import place_for
+
+        return place_for(meta).display
     return str(meta.get("funder") or meta.get("sponsor") or "")
 
 

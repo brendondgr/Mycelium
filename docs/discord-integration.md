@@ -140,6 +140,18 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   the top. Finished calls are tagged *Closed* and archived. The closing-soon list is
   a new thread each morning in `#grants` and `#fellowships`; yesterday's is
   deleted, and a day with nothing closing posts nothing and still takes it down.
+* **Where a conference is held.** Its post leads with the full location
+  (`tools/retrieval/geography.place_for`: the structured city and country, or the
+  collector's place text with its country read off the end — "Ann Arbor, MI"
+  becomes "Ann Arbor, Michigan, United States"; a venue name is never shown alone)
+  and its continent. The conferences forum and the department forum carry seven
+  continent tags (North America, South America, Europe, Africa, Asia, Oceania,
+  Online), so a reader can filter by where it is; a place Mylo can't read gets no
+  tag rather than a guess. Grants and fellowships have no place in the corpus and
+  carry none. A thread holds at most five tags, kept in the order label or kind,
+  status, continent, department reasons. `manage.py retag_announcement_threads
+  [--dry-run]` adds continents to open threads posted before the tags existed —
+  tags only, no rename or reply. Coverage: EXP-2026-11-005.
 * **Buttons** (`mylo/bot/cogs/announcements.py`, persistent ids
   `ann:<post>:<action>` handled by an `on_interaction` listener) →
   `tools/delivery/announcement_actions.py`, each through the gate's `ann_follow` /

@@ -495,11 +495,17 @@ class Outcome:
 
 
 def snapshot(item: ContentItem) -> dict:
-    return {
+    from tools.retrieval.geography import item_continent
+
+    snap = {
         "title": announce_facts.item_title(item),
         "url": announce_facts.item_url(item),
         "funder": announce_facts.item_host(item),
     }
+    if item.type == ContentItem.Type.CONFERENCE:
+        # Its forum tag: a reader filters the conferences forum by continent.
+        snap["continent"] = item_continent(item.metadata)
+    return snap
 
 
 def run_target(

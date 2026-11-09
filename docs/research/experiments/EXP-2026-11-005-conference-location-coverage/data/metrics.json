@@ -1,0 +1,20 @@
+{
+  "n_conferences": 912,
+  "continent_rate_before": 0.4178,
+  "continent_rate": 0.9035,
+  "country_rate_before": 0.4178,
+  "country_rate": 0.898,
+  "venue_only_before": 107,
+  "venue_only_after": 0,
+  "online_after": 5,
+  "by_continent": {
+    "(none)": 88,
+    "Africa": 7,
+    "Asia": 283,
+    "Europe": 277,
+    "North America": 169,
+    "Oceania": 74,
+    "Online": 5,
+    "South America": 9
+  }
+}

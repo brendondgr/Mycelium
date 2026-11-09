@@ -36,6 +36,7 @@ from tools.delivery.models import (
     AnnouncementSettings,
     ClosingSoonPost,
 )
+from tools.retrieval import geography
 from tools.retrieval.models import ContentItem
 
 GOLD, SAGE, MOSS, BARK, ALERT = 0xC9A35A, 0x8DA66F, 0x5E7A3E, 0x8A6E4B, 0xB5523B
@@ -48,7 +49,20 @@ KINDS = {
 }
 PURPOSE_KIND = {purpose: kind for kind, (_n, _c, purpose) in KINDS.items()}
 
-#: The tags Mylo keeps on each forum it posts in.
+#: Where a conference is held, as a forum tag a reader can filter by. Only
+#: conferences have a place; grants and fellowships never carry one.
+CONTINENT_TAGS = [
+    ("North America", "🌎"),
+    ("South America", "🌎"),
+    ("Europe", "🌍"),
+    ("Africa", "🌍"),
+    ("Asia", "🌏"),
+    ("Oceania", "🌏"),
+    (geography.ONLINE, "💻"),
+]
+CONTINENT_EMOJI = dict(CONTINENT_TAGS)
+
+#: The tags Mylo keeps on each forum it posts in (Discord allows twenty).
 FORUM_TAGS = {
     "grants": [
         ("New call", "🌱"),
@@ -72,6 +86,7 @@ FORUM_TAGS = {
         ("Already open", "📌"),
         ("Updated", "🚨"),
         ("Closed", "🔒"),
+        *CONTINENT_TAGS,
     ],
 }
 #: A department has one forum for every kind, so its tags say the kind and the
@@ -86,6 +101,7 @@ DEPT_FORUM_TAGS = [
     ("Updated", "🚨"),
     ("Daily list", "🗓️"),
     ("Closed", "🔒"),
+    *CONTINENT_TAGS,
 ]
 LABEL_TAG = {
     Announcement.Label.NEW_CALL: "New call",
@@ -148,6 +164,9 @@ def build_embed(
 
     facts = announcement.facts or {}
     parts = [f"**{snap['funder']}**"] if snap.get("funder") else []
+    continent = continent_of(announcement)
+    if continent and continent != snap.get("funder"):
+        parts.append(f"{CONTINENT_EMOJI.get(continent, '')} {continent}".strip())
     if facts.get("award"):
         parts.append(f"**{facts['award']}**")
     fields = []
@@ -334,15 +353,90 @@ def _tags(route, names: list[str]) -> list[str]:
 
 def _post_tags(announcement: Announcement, *extra: str) -> list[str]:
     """Tag names for a thread: the label for a lab; the kind and each
-    department-level reason for a department."""
+    department-level reason for a department; and, for a conference, the
+    continent it is held on.
+
+    Discord applies at most five, and :func:`_tags` keeps the first five, so the
+    order is what survives: the label or kind, the status tag, the continent, then
+    the department-level reasons."""
+    continent = continent_of(announcement)
     if announcement.target_department_id:
         kind = KINDS.get(announcement.category, ("",))[0]
         reasons = (announcement.alignment or {}).get("dept_reasons") or []
-        names = [kind, *(r["label"] for r in reasons)]
+        names = [kind, *extra, continent, *(r["label"] for r in reasons)]
     else:
-        names = [_label_tag(announcement)]
-    # At most five: a kind, three reasons and one status tag.
-    return [*(n for n in names if n), *extra]
+        names = [_label_tag(announcement), *extra, continent]
+    return [n for n in names if n]
+
+
+def retag_conference_threads(*, dry_run: bool = False) -> list[dict]:
+    """Bring every open conference thread's tags up to date with its continent,
+    and refresh the stored location it shows. Tags only: the thread is not renamed,
+    its post is not edited, and nobody is replied to or tagged. One row per thread
+    that changes (or would, with ``dry_run``)."""
+    out = []
+    posts = (
+        AnnouncementPost.objects.filter(
+            announcement__category=ContentItem.Type.CONFERENCE,
+            deleted_at__isnull=True,
+            closed_at__isnull=True,
+        )
+        .exclude(thread_id="")
+        .select_related("announcement__content", "binding__guild")
+    )
+    refreshed: set = set()
+    for post in posts:
+        ann = post.announcement
+        if ann.content is not None and ann.id not in refreshed:
+            refreshed.add(ann.id)
+            from tools.delivery.announce import snapshot
+
+            fresh = snapshot(ann.content)
+            if not dry_run and fresh != ann.snapshot:
+                ann.snapshot = {**(ann.snapshot or {}), **fresh}
+                ann.save(update_fields=["snapshot", "updated_at"])
+            elif dry_run:
+                ann.snapshot = {**(ann.snapshot or {}), **fresh}
+        continent = continent_of(ann)
+        if not continent:
+            continue
+        route = route_for(post.binding, ann.category)
+        if route is None:
+            continue
+        if not dry_run:
+            ensure_forum_tags(route)
+        status = "Updated" if post.update_log else ""
+        names = _post_tags(ann, *([status] if status else []))
+        out.append({"post": post.id, "thread": post.thread_id,
+                    "continent": continent, "tags": names})
+        if dry_run:
+            continue
+        resolve.enqueue_outbox(
+            dedupe_key=f"announce-retag:{post.id}:{continent}",
+            kind="announcement_retag",
+            target_type=resolve.OUTBOX_CHANNEL,
+            channel_id=post.thread_id,
+            lab=ann.target_lab,
+            subject_type="announcement_post",
+            subject_id=str(post.id),
+            mode=resolve.OUTBOX_MODE.THREAD_UPDATE,
+            extra={"patch": {"applied_tags": _tags(route, names)}},
+        )
+    if out and not dry_run:
+        flush()
+    return out
+
+
+def continent_of(announcement: Announcement) -> str:
+    """Where a conference is held, as a continent (or *Online*); ``""`` for a
+    grant, a fellowship, or a place Mylo can't place."""
+    if announcement.category != ContentItem.Type.CONFERENCE:
+        return ""
+    snap = announcement.snapshot or {}
+    if "continent" in snap:
+        return snap["continent"] or ""
+    content = announcement.content
+    return geography.item_continent(content.metadata) if content is not None else ""
 
 
 def _label_tag(announcement: Announcement) -> str:

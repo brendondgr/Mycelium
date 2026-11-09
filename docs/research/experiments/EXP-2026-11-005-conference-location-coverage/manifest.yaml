@@ -1,0 +1,91 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-005
+slug: conference-location-coverage
+title: Conference location and continent coverage
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-11-08
+date_completed: 2026-11-08
+authors: [Brendon (with Claude, Opus 5.5)]
+
+purpose: >
+  Sizes Phase 1 of the Discord forum plan (full conference location and a
+  continent forum tag): how many live conferences get a continent and a
+  country-bearing location line from geography.place_for, against the shipped
+  logic. Supports no paper claim; it checks a product change.
+
+hypothesis: >
+  Before about 42% have a continent; after at least 70%; every venue-only line
+  becomes the full place text (stated in PROTOCOL.md before the run).
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 1c4fb5f
+  branch: discord-forum-upgrades
+  entrypoint: "DATABASE_URL=postgres://mycelium:<pw>@localhost:11450/mycelium uv run --no-sync --directory web/backend python ../../docs/research/experiments/EXP-2026-11-005-conference-location-coverage/run.py --out ../../docs/research/experiments/EXP-2026-11-005-conference-location-coverage/data"
+  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  path: tools/retrieval/geography.py
+  hash: null
+data:
+  name: Mycelium live conference corpus (content_contentitem, type conference)
+  version: live dev database on 2026-11-08 (not snapshotted)
+  split: dev
+  n_examples: 912
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: null
+compute:
+  hardware: "AMD RYZEN AI MAX+ 395, 32 threads, 121 GB RAM; read-only, CPU only"
+  wall_clock_hours: 0.001
+  estimated_cost_usd: 0
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+# llm:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: continent_rate
+  values:
+    continent_rate: {mean: 0.9035, n: 912}
+    continent_rate_before: {mean: 0.4178, n: 912}
+    country_rate: {mean: 0.898, n: 912}
+    country_rate_before: {mean: 0.4178, n: 912}
+    venue_only_before: 107
+    venue_only_after: 0
+    online_after: 5
+    sample_wrong: {mean: 0.0, n: 40}
+baselines_compared: [shipped item_host + structured-country continent]
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: []

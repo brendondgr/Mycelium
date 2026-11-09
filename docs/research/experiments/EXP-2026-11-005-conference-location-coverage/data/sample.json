@@ -1,0 +1,322 @@
+[
+  {
+    "id": "874cc420-b65b-45b2-88af-7d4555c87c4f",
+    "place_text": "Pittsburgh, US",
+    "city": "",
+    "before": "Pittsburgh, US",
+    "after": "Pittsburgh, US",
+    "continent": "North America"
+  },
+  {
+    "id": "f033afd3-2462-4f8d-84a9-e8166cce83d5",
+    "place_text": "Salt Lake City, Utah, USA",
+    "city": "Salt Lake City",
+    "before": "Salt Lake City, United States",
+    "after": "Salt Lake City, Utah, USA",
+    "continent": "North America"
+  },
+  {
+    "id": "e6556a8d-a51d-4bf3-bec0-466bb3febc67",
+    "place_text": "Paris, France",
+    "city": "",
+    "before": "Paris, France",
+    "after": "Paris, France",
+    "continent": "Europe"
+  },
+  {
+    "id": "cce0f678-52bb-46c8-b9d5-6da960f871ad",
+    "place_text": "Beijing, China",
+    "city": "",
+    "before": "Beijing, China",
+    "after": "Beijing, China",
+    "continent": "Asia"
+  },
+  {
+    "id": "3e99d6ae-f515-4572-aa1d-f2d369a495f6",
+    "place_text": "India",
+    "city": "",
+    "before": "India",
+    "after": "India",
+    "continent": "Asia"
+  },
+  {
+    "id": "5fd58c0b-b48d-43b3-8269-7a0c75dd9b51",
+    "place_text": "Nanjing, China",
+    "city": "Nanjing",
+    "before": "Nanjing, China",
+    "after": "Nanjing, China",
+    "continent": "Asia"
+  },
+  {
+    "id": "50bbd01b-7953-4a50-a334-f152ed1ef5db",
+    "place_text": "Brown University, Providence, Rhode Island",
+    "city": "Brown University",
+    "before": "Brown University",
+    "after": "Brown University, Providence, Rhode Island, United States",
+    "continent": "North America"
+  },
+  {
+    "id": "81f9925c-770c-4bb7-afcc-dcd3a4cbc48b",
+    "place_text": "Paris, France",
+    "city": "Paris",
+    "before": "Paris, France",
+    "after": "Paris, France",
+    "continent": "Europe"
+  },
+  {
+    "id": "aa5043e9-8221-4602-ab23-6e119294d302",
+    "place_text": "Barcelona, Spain",
+    "city": "Barcelona",
+    "before": "Barcelona, Spain",
+    "after": "Barcelona, Spain",
+    "continent": "Europe"
+  },
+  {
+    "id": "c2f0982e-3a56-4623-b6d6-637416acc85a",
+    "place_text": "Phuket, Thailand",
+    "city": "Phuket",
+    "before": "Phuket, Thailand",
+    "after": "Phuket, Thailand",
+    "continent": "Asia"
+  },
+  {
+    "id": "80d39621-4c9e-42cc-aa2c-2000af651533",
+    "place_text": "Eindhoven, Netherlands",
+    "city": "Eindhoven",
+    "before": "Eindhoven, Netherlands",
+    "after": "Eindhoven, Netherlands",
+    "continent": "Europe"
+  },
+  {
+    "id": "95f0b24f-baa2-47fe-bc0b-26e4fc2d9149",
+    "place_text": "Austin, USA",
+    "city": "",
+    "before": "Austin, USA",
+    "after": "Austin, USA",
+    "continent": "North America"
+  },
+  {
+    "id": "aff16762-fcb0-497b-9d1a-35bc68f82884",
+    "place_text": "Barbados (tentative)",
+    "city": "Barbados (tentative)",
+    "before": "Barbados (tentative)",
+    "after": "Barbados (tentative)",
+    "continent": "North America"
+  },
+  {
+    "id": "2baf5aa3-0796-426f-aaa6-dbc221dd5578",
+    "place_text": "Nagasaki, Japan",
+    "city": "Nagasaki",
+    "before": "Nagasaki, Japan",
+    "after": "Nagasaki, Japan",
+    "continent": "Asia"
+  },
+  {
+    "id": "18d788b2-0d95-4892-b604-95a5d95c1e31",
+    "place_text": "Athens,Greece",
+    "city": "",
+    "before": "Athens,Greece",
+    "after": "Athens, Greece",
+    "continent": "Europe"
+  },
+  {
+    "id": "14225179-c49d-4e44-b821-9985d36638ce",
+    "place_text": "Seoul, Republic of Korea",
+    "city": "",
+    "before": "Seoul, Republic of Korea",
+    "after": "Seoul, Republic of Korea",
+    "continent": "Asia"
+  },
+  {
+    "id": "b3df60a2-4bbe-40e0-8c75-fd8f3f3bc972",
+    "place_text": "Budapest, Hungary",
+    "city": "",
+    "before": "Budapest, Hungary",
+    "after": "Budapest, Hungary",
+    "continent": "Europe"
+  },
+  {
+    "id": "f5911cbc-1130-4cd8-a3c3-3fb68c88b7ca",
+    "place_text": "Columbus, Ohio",
+    "city": "",
+    "before": "Columbus, Ohio",
+    "after": "Columbus, Ohio, United States",
+    "continent": "North America"
+  },
+  {
+    "id": "b78e6dfa-019a-4ef9-8738-57fed4a2ebdf",
+    "place_text": "Bangkok, Thailand",
+    "city": "Bangkok",
+    "before": "Bangkok, Thailand",
+    "after": "Bangkok, Thailand",
+    "continent": "Asia"
+  },
+  {
+    "id": "4d8183ae-70bc-4f2c-9e62-bc29d8c2fe7b",
+    "place_text": "Onna, Okinawa, Japan",
+    "city": "",
+    "before": "Onna, Okinawa, Japan",
+    "after": "Onna, Okinawa, Japan",
+    "continent": "Asia"
+  },
+  {
+    "id": "3cdb3484-0f47-4f2e-a5a3-c876229bbad3",
+    "place_text": "Nanjing, China",
+    "city": "Nanjing",
+    "before": "Nanjing, China",
+    "after": "Nanjing, China",
+    "continent": "Asia"
+  },
+  {
+    "id": "a4a659f5-9774-4456-8b6d-3e582060e209",
+    "place_text": "Snowbird, Utah, United States",
+    "city": "Snowbird",
+    "before": "Snowbird, United States",
+    "after": "Snowbird, Utah, United States",
+    "continent": "North America"
+  },
+  {
+    "id": "47e40a40-cb5e-4990-b049-7cd44abdae2f",
+    "place_text": "Austin, Texas, USA",
+    "city": "",
+    "before": "Austin, Texas, USA",
+    "after": "Austin, Texas, USA",
+    "continent": "North America"
+  },
+  {
+    "id": "0fa01e13-0e35-4f6d-a7b4-84e310173ba1",
+    "place_text": "Sydney, Australia",
+    "city": "",
+    "before": "Sydney, Australia",
+    "after": "Sydney, Australia",
+    "continent": "Oceania"
+  },
+  {
+    "id": "f2fb1f78-4ca4-4807-9046-18eccc20e99b",
+    "place_text": "Tirana, Albania",
+    "city": "Tirana",
+    "before": "Tirana",
+    "after": "Tirana, Albania",
+    "continent": "Europe"
+  },
+  {
+    "id": "63533ce0-18ed-4f27-bf72-c62f2a3ad506",
+    "place_text": "Budapest, Hungary",
+    "city": "",
+    "before": "Budapest, Hungary",
+    "after": "Budapest, Hungary",
+    "continent": "Europe"
+  },
+  {
+    "id": "2d798acb-69e1-4e89-9bb8-b927cc736905",
+    "place_text": "Qingdao, China",
+    "city": "Qingdao",
+    "before": "Qingdao, China",
+    "after": "Qingdao, China",
+    "continent": "Asia"
+  },
+  {
+    "id": "03e5b304-b768-4168-8062-f2483ac948fa",
+    "place_text": "Basel, Switzerland",
+    "city": "Basel",
+    "before": "Basel, Switzerland",
+    "after": "Basel, Switzerland",
+    "continent": "Europe"
+  },
+  {
+    "id": "423cfaeb-c7b7-4357-a5eb-3f5e6d536e9d",
+    "place_text": "Glasgow, Scotland, United Kingdom",
+    "city": "",
+    "before": "Glasgow, Scotland, United Kingdom",
+    "after": "Glasgow, Scotland, United Kingdom",
+    "continent": "Europe"
+  },
+  {
+    "id": "f25d7caa-e046-43da-b90c-7297ecd60060",
+    "place_text": "Athens, Greece",
+    "city": "",
+    "before": "Athens, Greece",
+    "after": "Athens, Greece",
+    "continent": "Europe"
+  },
+  {
+    "id": "7dd6e17c-de96-4ea1-91b7-65d4bf73a47b",
+    "place_text": "Panama City, Panama",
+    "city": "Panama City",
+    "before": "Panama City",
+    "after": "Panama City, Panama",
+    "continent": "North America"
+  },
+  {
+    "id": "a9cdbc05-36fb-4810-8be7-458fe6794fbd",
+    "place_text": "Radboud University Nijmegen, The Netherlands",
+    "city": "",
+    "before": "Radboud University Nijmegen, The Netherlands",
+    "after": "Radboud University Nijmegen, The Netherlands",
+    "continent": "Europe"
+  },
+  {
+    "id": "f6ac455f-ce44-408a-95ef-505bd6840ddf",
+    "place_text": "Denver, USA",
+    "city": "Denver",
+    "before": "Denver, United States",
+    "after": "Denver, USA",
+    "continent": "North America"
+  },
+  {
+    "id": "240fe8f3-e821-4289-a2ad-76e8565d5ce6",
+    "place_text": "Paris, France",
+    "city": "Paris",
+    "before": "Paris, France",
+    "after": "Paris, France",
+    "continent": "Europe"
+  },
+  {
+    "id": "770395f5-9688-4513-a8dc-6323e390aa19",
+    "place_text": "UNESCO, Paris, France",
+    "city": "",
+    "before": "UNESCO, Paris, France",
+    "after": "UNESCO, Paris, France",
+    "continent": "Europe"
+  },
+  {
+    "id": "f3d7a315-57ea-4b77-8aa5-c8ba03c7e296",
+    "place_text": "Salt Palace Convention Center Salt Lake City, Utah, U.S",
+    "city": "Salt Palace Convention Center Salt Lake City",
+    "before": "Salt Palace Convention Center Salt Lake City",
+    "after": "Salt Palace Convention Center Salt Lake City, Utah, U.S",
+    "continent": "North America"
+  },
+  {
+    "id": "4e912748-4bd7-4d3a-bf25-da4ab38a4301",
+    "place_text": "Shanghai, China",
+    "city": "Shanghai",
+    "before": "Shanghai, China",
+    "after": "Shanghai, China",
+    "continent": "Asia"
+  },
+  {
+    "id": "91d9ad9c-fe84-45f3-9ae6-2befdc9f8a2f",
+    "place_text": "Denver, USA",
+    "city": "",
+    "before": "Denver, USA",
+    "after": "Denver, USA",
+    "continent": "North America"
+  },
+  {
+    "id": "5cfea6eb-1a20-4559-b9fe-a64a699bed97",
+    "place_text": "Sapporo, Japan",
+    "city": "Sapporo",
+    "before": "Sapporo, Japan",
+    "after": "Sapporo, Japan",
+    "continent": "Asia"
+  },
+  {
+    "id": "263844be-9940-4df8-9ed0-bd248181d9bd",
+    "place_text": "Paris, France",
+    "city": "Paris",
+    "before": "Paris, France",
+    "after": "Paris, France",
+    "continent": "Europe"
+  }
+]

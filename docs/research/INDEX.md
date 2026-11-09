@@ -54,11 +54,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-002` | 2026-11-05 | Announcement measures baseline and department lab-fit floor | complete | lab_fit_precision_at_floor 0.6667 | C-029 | [folder](experiments/EXP-2026-11-002-announcement-baseline/RESULTS.md) |
 | `EXP-2026-11-003` | 2026-11-08 | Tools refactor: ranking parity before and after the code moves | complete | run_files_identical 1.0000 | — | [folder](experiments/EXP-2026-11-003-tools-refactor-parity/RESULTS.md) |
 | `EXP-2026-11-004` | 2026-11-08 | Full-text coverage of the paper corpus from free sources | complete | full_text_rate 0.5400 (n=200) | — | [folder](experiments/EXP-2026-11-004-fulltext-coverage/RESULTS.md) |
+| `EXP-2026-11-005` | 2026-11-08 | Conference location and continent coverage | complete | continent_rate 0.9035 (n=912) | — | [folder](experiments/EXP-2026-11-005-conference-location-coverage/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 41 |
+| complete | 42 |
 | planned | 4 |
-| **total** | **45** |
+| **total** | **46** |
