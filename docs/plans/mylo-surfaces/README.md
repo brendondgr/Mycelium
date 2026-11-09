@@ -12,8 +12,9 @@ no prompt logic (`docs/plans/mylo-agent/permissions.md`, "Surfaces").
 | D. Mylo in Discord | [discord.md](discord.md) | Full |
 | W. Mylo chat in the web app | [web-chat.md](web-chat.md) | Entry points and placement fixed against the reworked workspace; visual detail is settled while building |
 
-Nothing here is built. The agent backend these plans stand on is on `main`
-(`dc2c76f`); its own plan is `docs/plans/mylo-agent/`.
+Track S (the shared contract below) has shipped; P, D and W are not built.
+The agent backend these plans stand on is on `main` (`dc2c76f`); its own plan
+is `docs/plans/mylo-agent/`.
 
 ## Owner decisions (2026-11-09)
 
@@ -36,68 +37,45 @@ Nothing here is built. The agent backend these plans stand on is on `main`
 | S-15 | **"Ask Mylo" is a small button with Mylo's face** on each thing (feed cards, the opened item, project and lab pages). Pressing it opens the side panel on a conversation about that thing. |
 | S-16 | **Being in a bound server is trust.** A guest is told what a lab member would be told in that place, named people included (members, a member's declared profile, who could go after a call). Two settings can narrow it, a host ceiling and a level per lab: `full` (default), `no_people`, `public`, `off`. |
 
-## Shared contract (track S)
+## Shared contract (track S) — shipped
 
-Small backend changes both surfaces need. They are built once, in
-`tools/agent/`, before either surface draws anything.
+Built once in `tools/agent/`; both surfaces rely on it. The full shapes are
+in `docs/api-contract.md` (Mylo agent); this is what a surface needs.
 
-### S1. Activity view: what Mylo is doing, without the thinking
+**S1. Activity view (S-9).** `tools/agent/activity.py` decides what a
+surface may show. `stream.follow(thread, view="activity" | "raw")` (default
+`raw`, for the CLI); `service.subscribe(caller, thread, view=...)` and
+`service.thread_events(caller, thread, after=, view=...)` default to
+`activity`; the `events/` and `stream/` routes take `?view=` (default
+`activity`; `raw` is 403 `raw_view_staff_only` unless the user is staff or
+the surface is the CLI). In the activity view:
 
-- `AgentFunction` (`tools/_framework/agentspec.py`) gains `activity: str`, a
-  short present-tense label with optional argument slots, for example
-  `"Searching the corpus for “{query}”"`, `"Reading {ref}"`,
-  `"Looking at your projects"`. Every function in `tools/agent/functions/` and
-  every contributing tool (`fulltext`, `files`) declares one. A framework test
-  fails a function with no label.
-- New `tools/agent/activity.py`: `project(message) -> message | None` turns a
-  stream message into its display form:
-  - `thinking` events and `delta{kind:"thinking"}` become
-    `{type:"activity", state:"thinking"}` with no text.
-  - `tool_call` becomes `{type:"activity", state:"running", label, call_id}`;
-    `tool_result` closes it with `ok` or `failed`. Arguments are not sent
-    beyond what the label shows.
-  - `assistant`, text deltas, `question`, `todos`, `error`, `state`, `note`
-    pass through. `usage`, `recall`, `verdict`, `compact` are dropped.
-- `stream.follow(..., view="activity")` applies the projection. The SSE route
-  and the thread-events route default to `view=activity`. The raw view stays
-  for the CLI surface and for `export`; over HTTP it needs staff.
-- The projection is the only place that decides what a surface may show, so
-  S-9 is enforced on the server, not by each renderer.
+- thinking → `{type: "activity", payload: {state: "thinking"}}`, once per run
+  of thinking, no text;
+- each call → `{type: "activity", payload: {state: "running", label, call_id,
+  name}}`, closed by the same with `state: "ok"` or `"failed"`. Labels come
+  from `AgentFunction.activity` (every function declares one; ref slots show
+  the object's title, never its id). Arguments and results are never sent;
+- `assistant` keeps `text`, `final`, `partial`, `removed`, `model`; empty
+  intermediate steps, `usage`, `recall`, `verdict`, `compact`, `progress`
+  and notes meant for the model are dropped; the rest passes through.
 
-### S2. A conversation about one thing (anchor)
+Stored-event messages keep their `id`, so `Last-Event-ID` still works.
 
-- `AgentThread.settings["anchor"] = {"kind", "key"}`, set at creation and never
-  changed. `kind` is any registered reference kind (`item`, `project`, `lab`,
-  `department`, and `announcement`, added by the Discord plan).
-- At every turn the anchor is resolved **for the current caller** and placed as
-  reference `#1`, with one prompt line: "This conversation is about #1." If the
-  caller may not see it, the turn runs without it.
-- `POST api/tools/agent/threads/` accepts `anchor`, and `GET threads/` filters
-  by it (so the web can reopen the conversation already open about a thing).
-  The web's Mylo-face button and a Discord forum thread both use it.
+**S2. Anchor.** `POST threads/` takes `anchor: {kind, key}` (or
+`"kind:key"`; any registered reference kind) → `settings["anchor"]`, never
+changed, reference `#1`. Each turn resolves it for the current caller and
+audience (`refs.resolve_anchor`); if they cannot see it the turn runs without
+it, title included. `GET threads/?anchor=kind:key` finds the conversations
+already open about a thing; thread JSON carries `anchor` (or null). In code:
+`service.create_thread(user, scope=, surface=, anchor=)`,
+`service.list_threads(user, anchor=)`.
 
-### S3. Pinned chats and where the model runs
-
-- `AgentThread.pinned` (bool, default false). `PATCH threads/<id>/` accepts
-  `pinned`; `list_threads` orders pinned first.
-- `service.status()` and `GET api/tools/agent/status/` return
-  `model: {name, label, location}` where `location` is `local`, `remote` or
-  `cloud`. Until plan P lands, `location` is `local` and `label` is the model
-  name. Each `assistant` event records the same three fields.
-
-### Validation (track S)
-
-```bash
-cd web/backend && uv run --no-sync pytest -c pyproject.toml ../../tools/agent/tests ../../tools/_framework/tests -q
-uv run --no-sync python ../../tools/_framework/golden.py write   # then review the diff
-make tools-check
-```
-
-Accept when: a thread that used three functions streams three labelled activity
-steps and no thinking text under `view=activity`; the raw view is refused to a
-non-staff session; an anchored thread shows `#1` on every turn and drops it for
-a caller who cannot see it; migration `agent 0002` (pinned) applies on the
-Compose Postgres.
+**S3. Pinned and the model.** `AgentThread.pinned` (agent migration
+`0002_thread_pinned`); `PATCH threads/<id>/ {pinned}`; lists are pinned
+first. `GET status/` and `service.status()` return `{model: {name, label,
+location}}` (`location` is `local` until plan P; `label` is the name), and
+every `assistant` event's payload has the same `model` object.
 
 ## How the three plans run together
 
@@ -112,7 +90,8 @@ P1 → P2 → P3 ─────────────> P4 → P5             
 - **P4 edits `tools/agent/llmcall.py` and `rebuild.py`; D1 edits `rebuild.py`
   and `loop.py`.** These two phases are not run at the same time. Do D1 first,
   then P4.
-- **S before D1 and W1.** S adds agent migration `0002`; D1 adds `0003`.
+- **S before D1 and W1** (S is on `main`). S added agent migration `0002`;
+  D1 adds `0003`.
 - **W touches only `web/app/`** once S has landed, so it can run in parallel
   with D and P. W3 edits the two feed files other front-end work also edits
   (`feed/opportunity-feed.tsx`, `sections/research-papers-section.tsx`); merge

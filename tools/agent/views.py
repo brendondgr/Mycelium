@@ -32,6 +32,7 @@ def _thread_json(t) -> dict:
             else str(t.scope_department_id or t.scope_project_id or "") or None
         ),
         "archived": t.archived,
+        "pinned": t.pinned,
         "parent": str(t.parent_id) if t.parent_id else None,
         "fork_seq": t.fork_seq,
         "created_at": t.created_at.isoformat(),
@@ -104,6 +105,7 @@ class ThreadView(_Base):
             thread_id,
             title=request.data.get("title"),
             archived=request.data.get("archived"),
+            pinned=request.data.get("pinned"),
         )
         return Response(_thread_json(thread))
 

@@ -154,12 +154,17 @@ def list_threads(
             | Q(purpose__icontains=q)
             | Q(digest__text__icontains=q)
         ).distinct()
-    return list(rows.order_by("-last_activity_at")[:limit])
+    return list(rows.order_by("-pinned", "-last_activity_at")[:limit])
 
 
-def update_thread(user, thread_id, *, title=None, archived=None) -> AgentThread:
+def update_thread(
+    user, thread_id, *, title=None, archived=None, pinned=None
+) -> AgentThread:
     thread = get_thread(user, thread_id)
     fields = []
+    if pinned is not None:
+        thread.pinned = _truthy(pinned)
+        fields.append("pinned")
     if title is not None:
         thread.title = str(title)[:200]
         fields.append("title")
@@ -169,6 +174,12 @@ def update_thread(user, thread_id, *, title=None, archived=None) -> AgentThread:
     if fields:
         thread.save(update_fields=[*fields, "updated_at"])
     return thread
+
+
+def _truthy(value) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
 
 
 def delete_thread(user, thread_id) -> None:
@@ -651,11 +662,12 @@ def catalog_view(caller: Caller) -> list[dict]:
 
 
 def status() -> dict:
-    from .llmcall import model_name
+    """``{"model": {name, label, location}}``, or ``model: None`` with why."""
+    from .llmcall import model_info
 
-    name = model_name()
-    if name:
-        return {"model": name}
+    info = model_info()
+    if info:
+        return {"model": info}
     return {
         "model": None,
         "code": "no_model",

@@ -54,6 +54,10 @@ the API and a developer CLI; the web chat UI and Discord come next.
   person opted out (D-3).
 - **No model, no failure.** With no `LLM_MODEL` the tool still loads; the API
   answers `no_model` with a fix.
+- **Which model answers.** `llmcall.model_info()` is `{name, label,
+  location}`; `service.status()` returns it and every `assistant` event
+  records it (S-3). Until model servers exist, `location` is `local`.
+- **Pinned chats.** `AgentThread.pinned`; `list_threads` puts them first.
 
 ## Doors
 
