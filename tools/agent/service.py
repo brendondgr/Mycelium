@@ -323,10 +323,67 @@ def start_turn(thread: AgentThread) -> None:
     AgentThread.objects.filter(pk=thread.pk).update(settings=data)
 
 
-def subscribe(caller: Caller, thread: AgentThread, *, after: int = 0, **kw):
+def check_view(caller: Caller, view: str) -> str:
+    """``activity`` (default) for everyone; ``raw`` — thinking, arguments,
+    results — only for the CLI and staff."""
+    from .activity import VIEWS
+
+    if view not in VIEWS:
+        raise ServiceError(
+            "bad_view", f"Unknown view {view!r}.", f"Use one of {', '.join(VIEWS)}."
+        )
+    if view == "raw" and not (
+        caller.surface == "cli" or getattr(caller.user, "is_staff", False)
+    ):
+        raise ServiceError(
+            "raw_view_staff_only",
+            "The raw view is for staff.",
+            "Leave out view, or use view=activity.",
+            status=403,
+        )
+    return view
+
+
+def subscribe(
+    caller: Caller,
+    thread: AgentThread,
+    *,
+    after: int = 0,
+    view: str = "activity",
+    **kw,
+):
     if thread.user_id != caller.user.pk:
         raise ServiceError("not_found", "No such conversation.", status=404)
-    return stream.follow(thread, after=after, **kw)
+    return stream.follow(thread, after=after, view=check_view(caller, view), **kw)
+
+
+def thread_events(
+    caller: Caller, thread: AgentThread, *, after: int = 0, view: str = "activity"
+) -> list[dict]:
+    """Stored events after ``after`` in the requested view, each as
+    ``{seq, type, ts, payload}``."""
+    from .activity import Projector
+
+    if thread.user_id != caller.user.pk:
+        raise ServiceError("not_found", "No such conversation.", status=404)
+    view = check_view(caller, view)
+    projector = Projector(thread) if view == "activity" else None
+    out = []
+    for event in store.events(thread, after=after):
+        message = stream.event_message(event)
+        if projector is not None:
+            message = projector.project(message)
+            if message is None:
+                continue
+        out.append(
+            {
+                "seq": message["id"],
+                "type": message["type"],
+                "ts": message["ts"],
+                "payload": message.get("payload", {}),
+            }
+        )
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -572,6 +629,7 @@ __all__ = [
     "answer",
     "cancel",
     "catalog_view",
+    "check_view",
     "create_thread",
     "delete_thread",
     "export",
@@ -586,5 +644,6 @@ __all__ = [
     "set_preferences",
     "status",
     "subscribe",
+    "thread_events",
     "update_thread",
 ]

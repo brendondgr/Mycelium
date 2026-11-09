@@ -35,6 +35,12 @@ the API and a developer CLI; the web chat UI and Discord come next.
   local-model repairs), then the citation check (`verify.py`) on a final
   answer. Everything is an `AgentEvent`; streaming is Redis pub/sub
   (`stream.py`, SSE at `threads/<id>/stream/`).
+- **What a person sees.** `activity.py` projects the log into the activity
+  view: no thinking text, each call shown only as its function's `activity`
+  label (every `AgentFunction` declares one; a framework test fails one that
+  does not), no arguments or results. `stream.follow(view=...)` applies it;
+  the HTTP routes default to it, and the raw view is for the CLI, export and
+  staff.
 - **Memory.** The profile block and scope block (`memory.py`), per-message
   recall stored as a `recall` event (`recall.py`), titles, purposes and
   digests after a turn (`memory_after.py`), and the learning pass
