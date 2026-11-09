@@ -60,7 +60,9 @@ original PDF is always kept.
 
 `[tools.fulltext]` in `mycelium.toml` (`make config ARGS="explain tools.fulltext"`):
 `sources` (which, in what order), `contact_email` (empty uses
-`SCRAPER_CONTACT_EMAIL`), `min_chars`, `concurrency`, `disable_ttl_hours`.
+`SCRAPER_CONTACT_EMAIL`), `min_chars`, `concurrency`, `disable_ttl_hours`,
+`data_dir` (empty: `data/fulltext/`), `redis_url` (empty: the broker's host,
+database 7).
 
 The publisher keys are secrets, set in `.env` only: `ELSEVIER_API_KEY`,
 `ELSEVIER_INST_TOKEN`, `SPRINGER_API_KEY`, `WILEY_TDM_TOKEN`, `CORE_API_KEY`.
@@ -77,6 +79,23 @@ manage.py fulltext_sources --check    # ask each keyed provider, live
 the key, the Article Retrieval API does not), `refused: token or network`
 (Wiley answers a made-up token and a real token from the wrong network with
 the same 403), `quota exhausted`, or `unreachable`.
+
+## Storage and requests
+
+| Piece | Where |
+|---|---|
+| `FulltextDocument` — one retrieved paper: ids, metadata, source, `licensed`, file paths, linked `ContentItem` | `models.py` |
+| `FulltextRequest` — one identifier asked for: status, explanation, `retryable`, `next_steps`, route, every source's answer | `models.py` |
+| `SourceVerdict` — the remembered definitive "no" answers, shared by every worker | `models.py` |
+| Files: `data/fulltext/files/<aa>/<sha256>.<ext>` (original) and `.md` (document); `data_dir` moves it | `store.py` |
+| Run requests: answer stored papers from the store, fetch the rest, store, audit, publish | `jobs.py`, Celery task `tools.fulltext.run_requests` in `tasks.py` |
+| Switch-offs, strikes and throttles in Redis (its own database, default 7), so workers agree | `state.py` |
+
+One store per instance: everything fetched is readable by every signed-in user.
+A fetch of licensed content (Elsevier, Wiley, Crossref publisher links,
+Springer's subscription endpoint) writes an audit event,
+`fulltext.licensed_fetch`. The `fulltext.retrieved` event fires once per newly
+stored paper (`events.py`).
 
 ## Doors
 

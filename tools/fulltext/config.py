@@ -71,9 +71,11 @@ def problems() -> list[str]:
 
 
 def data_root() -> Path:
-    """Where the tool keeps its files: gitignored ``data/fulltext/`` at the
-    repository root (never relative to the working directory)."""
-    return REPO_ROOT / "data" / "fulltext"
+    """Where the tool keeps its files: ``[tools.fulltext] data_dir``, else the
+    gitignored ``data/fulltext/`` at the repository root (never relative to the
+    working directory)."""
+    configured = _get("FULLTEXT_DATA_DIR")
+    return Path(configured).resolve() if configured else REPO_ROOT / "data" / "fulltext"
 
 
 def cache_dir() -> Path:

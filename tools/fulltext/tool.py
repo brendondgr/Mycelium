@@ -79,6 +79,24 @@ class FulltextTool(Tool):
             env="FULLTEXT_DISABLE_TTL_HOURS",
             django="FULLTEXT_DISABLE_TTL_HOURS",
         ),
+        Setting(
+            "data_dir",
+            "str",
+            "",
+            "Where retrieved papers are stored. Empty uses data/fulltext/ at "
+            "the repository root.",
+            env="FULLTEXT_DATA_DIR",
+            django="FULLTEXT_DATA_DIR",
+        ),
+        Setting(
+            "redis_url",
+            "str",
+            "",
+            "Redis for switch-offs and throttles shared by every worker. Empty "
+            "uses the Celery broker's host, database 7.",
+            env="FULLTEXT_REDIS_URL",
+            django="FULLTEXT_REDIS_URL",
+        ),
         # The instance's publisher keys. Elsevier, Springer Nature and Wiley
         # are off without them; CORE works without its key, more slowly.
         _key(

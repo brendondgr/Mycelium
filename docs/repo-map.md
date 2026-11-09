@@ -394,6 +394,10 @@ A task index across the three tools; each tool also has its own section below.
 | PDF / JATS / Elsevier XML / HTML → markdown | `tools/fulltext/engine/convert.py` |
 | The instance's publisher keys → the engine's credentials; health check | `tools/fulltext/config.py`, `tools/fulltext/health.py` |
 | Which sources are on, and the live key check (`manage.py fulltext_sources [--check]`) | `tools/fulltext/management/commands/fulltext_sources.py`, `tools/fulltext/engine/probe.py` |
+| Retrieved papers, requests, remembered answers | `tools/fulltext/models.py` (app label `fulltext`), migrations `tools/fulltext/migrations/` |
+| The paper files on disk (`data/fulltext/files/`) | `tools/fulltext/store.py` |
+| Running requests (store-first, fetch, store, audit, event); the Celery task | `tools/fulltext/jobs.py`, `tools/fulltext/tasks.py` |
+| Worker-shared switch-offs and throttles (Redis db 7) | `tools/fulltext/state.py` |
 
 ## Host runners & operations
 
