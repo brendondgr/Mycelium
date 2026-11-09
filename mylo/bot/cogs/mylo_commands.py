@@ -30,7 +30,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ... import linking, listening
+from ... import chat, linking, listening
 from ...runstate import read_run_state
 
 BRAND = 0x3B7A57
@@ -118,7 +118,26 @@ class MyloCog(commands.Cog, name="Mylo"):
                 f"`{state.get('failed_stage', '?')}` ({state.get('finished_at', '?')})."
             )
         lines.extend(await self._listening_lines(interaction))
+        lines.append(await self._chat_line())
         await interaction.followup.send("\n".join(lines), ephemeral=True)
+
+    async def _chat_line(self) -> str:
+        """Mylo chat: is a model configured, and is the stream bus up?"""
+        try:
+            state = await chat.health()
+        except Exception:  # noqa: BLE001 — health must answer regardless
+            return "Chat: ❓ could not check."
+        if not state.get("enabled"):
+            return "Chat: off on this Mycelium."
+        model = state.get("model")
+        model_part = (
+            f"model **{model.get('label') or model.get('name')}** "
+            f"({model.get('location', 'local')})"
+            if model
+            else "**no model configured**"
+        )
+        bus = "stream bus up" if state.get("bus") else "**stream bus down** (answers poll)"
+        return f"Chat: {model_part}; {bus}."
 
     async def _listening_lines(self, interaction: discord.Interaction) -> list[str]:
         """Listening state for the server `/mylo health` was run in.

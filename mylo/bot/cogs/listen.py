@@ -28,14 +28,9 @@ import logging
 import discord
 from discord.ext import commands
 
-from ... import listening
+from ... import chat, listening
 
 log = logging.getLogger(__name__)
-
-#: What Mylo says when somebody tells it something in a DM. Deliberately almost
-#: nothing: what Mylo asks, and when, is Plan 06's, and a provisional second
-#: voice here would be one to unpick later.
-_DM_ACK = "Got it — I'll take that into account. You can say *shut off* any time."
 
 #: Sent once, by DM, to somebody in a listening server who has not opted in.
 _NOTICE = (
@@ -109,35 +104,38 @@ class ListenCog(commands.Cog, name="Listening"):
             await self._forward(message, from_mylo=True, explicit=False)
             return
 
+        # Mylo chat first (plan D): is this a question for Mylo?
+        route = chat.route(message, self.bot.user)
         is_dm = message.guild is None
         if is_dm:
-            await self._handle_dm(message)
+            await self._handle_dm(message, route)
             return
 
-        mentioned = self.bot.user is not None and self.bot.user in message.mentions
-        if not mentioned and not self.stage_b:
+        mentioned = route.kind == "chat"
+        if route.kind == "reply_hint":
+            await self._chat("hint", message)
+        if mentioned or self.stage_b:
             # Stage A: without the Message Content intent the body is empty
-            # anyway, so there is nothing to carry and nothing to drop.
-            return
-        await self._forward(message, explicit=mentioned)
+            # anyway, so there is nothing to carry and nothing to drop. A
+            # question addressed to Mylo is still recorded only under the
+            # lab's and the person's Discord consent (S-7).
+            await self._forward(message, explicit=mentioned)
+        if mentioned:
+            await self._chat("ask", message, route.text)
 
-    async def _handle_dm(self, message: discord.Message) -> None:
-        """A DM is a conversation, not a command. No syntax, no parsing."""
+    async def _chat(self, what: str, message, *args) -> None:
+        get_cog = getattr(self.bot, "get_cog", None)
+        cog = get_cog("Chat") if get_cog is not None else None
+        if cog is not None:
+            await getattr(cog, what)(message, *args)
+
+    async def _handle_dm(self, message: discord.Message, route=None) -> None:
+        """A DM is a conversation with Mylo (plan D). An answer to one of
+        Mylo's ambient questions keeps priority (Plan 06); anything else is a
+        question for the agent, whose quiet-thread pass learns from it like
+        web chat (S-7). A DM is no longer stored as an explicit note."""
         if message.author.bot:
             return
-        outcome = await listening.heard(
-            guild_id="",
-            message_id=str(message.id),
-            text=message.content or "",
-            sent_at=message.created_at,
-            author_id=str(message.author.id),
-            attachment_urls=_attachment_urls(message),
-            is_dm=True,
-            explicit=True,
-            reply_to_id=_reply_to(message),
-        )
-        # An answer to one of Mylo's questions, or "stop asking", gets its own
-        # reply (Plan 06) instead of the plain acknowledgement.
         said = await listening.dialogue(
             str(message.author.id),
             message.content or "",
@@ -149,11 +147,8 @@ class ListenCog(commands.Cog, name="Listening"):
             except discord.HTTPException:
                 pass
             return
-        if outcome.get("stored"):
-            try:
-                await message.channel.send(_DM_ACK)
-            except discord.HTTPException:
-                pass
+        if route is not None and route.kind == "chat":
+            await self._chat("ask", message, route.text)
 
     async def _forward(
         self, message: discord.Message, *, from_mylo: bool = False, explicit=False

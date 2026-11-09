@@ -230,21 +230,26 @@ class GuildMessageTests(unittest.TestCase):
 
 
 class DirectMessageTests(unittest.TestCase):
-    def test_a_dm_is_a_conversation_not_a_command(self) -> None:
+    def test_a_dm_is_a_conversation_with_mylo(self) -> None:
+        """Plan D: a DM that is not an answer to an ambient question goes to
+        Mylo chat, not to the ledger as a note, and gets no acknowledgement."""
         fake = FakeListening()
         cog = _cog(fake)
+        asked = []
+
+        class Chat:
+            async def ask(self, message, text):
+                asked.append(text)
+
+        cog.bot.get_cog = lambda name: Chat() if name == "Chat" else None
         channel = FakeChannel()
         message = _message(guild=False, content="we dropped the simulation approach",
                            channel=channel)
         with mock.patch.object(listen_module, "listening", fake):
             _run(cog.on_message(message))
-        call = fake.calls[0]
-        self.assertTrue(call["is_dm"])
-        self.assertTrue(call["explicit"])
-        self.assertEqual(call["text"], "we dropped the simulation approach")
-        # No syntax was parsed and nothing was interpreted — just an acknowledgement.
-        self.assertEqual(len(channel.sent), 1)
-        self.assertIn("shut off", channel.sent[0])
+        self.assertEqual(fake.calls, [])  # not stored as an explicit note
+        self.assertEqual(asked, ["we dropped the simulation approach"])
+        self.assertEqual(channel.sent, [])
 
     def test_an_answer_to_a_question_gets_the_dialogues_reply(self) -> None:
         """Plan 06: a DM that answers one of Mylo's questions is answered in
@@ -414,8 +419,8 @@ class ResilienceTests(unittest.TestCase):
         with mock.patch.object(listen_module, "listening", fake):
             _run(cog.on_message(_message()))  # must not raise
 
-    def test_a_blocked_acknowledgement_is_survivable(self) -> None:
-        fake = FakeListening()
+    def test_a_blocked_dialogue_reply_is_survivable(self) -> None:
+        fake = FakeListening(reply="Done.")
         cog = _cog(fake)
 
         class Blocked(FakeChannel):
@@ -424,7 +429,7 @@ class ResilienceTests(unittest.TestCase):
 
         with mock.patch.object(listen_module, "listening", fake):
             _run(cog.on_message(_message(guild=False, channel=Blocked())))
-        self.assertEqual(len(fake.calls), 1)
+        self.assertEqual(len(fake.turns), 1)
 
 
 class ReactionTests(unittest.TestCase):
