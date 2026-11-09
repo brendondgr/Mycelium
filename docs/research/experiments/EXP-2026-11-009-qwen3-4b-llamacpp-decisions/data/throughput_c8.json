@@ -1,0 +1,16 @@
+{
+ "backend": "port",
+ "model": "openai:qwen3-4b-q4_k_m",
+ "protocol": "openai",
+ "calls": 48,
+ "concurrency": 8,
+ "ok": 48,
+ "failures": 0,
+ "wall_seconds": 3.575,
+ "throughput_calls_per_s": 13.427,
+ "latency_ms_p50": 672.9,
+ "latency_ms_p95": 1068.7,
+ "latency_ms_max": 1130.2,
+ "client_latency_ms_mean": 583.9,
+ "errors": []
+}

@@ -1,0 +1,111 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-009
+slug: qwen3-4b-llamacpp-decisions
+title: Does a stock 4B instruct model on llama.cpp make usable rerank decisions through the port path?
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-11-09
+date_completed: 2026-11-09
+authors: [brendondgr]
+
+purpose: >
+  First live test of the [decision] backend = "port" path's openai protocol:
+  Qwen3-4B (Q4_K_M GGUF) served by llama.cpp llama-server (Vulkan, Radeon
+  8060S), asked the production rerank questions via first-token logprobs on
+  the same 165 states as EXP-2026-11-007, compared pair for pair with d3-lite,
+  plus a throughput sweep. Feasibility of llama.cpp as a local decision host,
+  and whether a general instruct model can stand in for a decision model.
+
+hypothesis: >
+  Stated prior: Qwen3-4B beats d3-lite on the off-theme control, most on
+  grants. Falsifier: the paired AUC-difference interval includes or sits below
+  zero, or grant AUC stays under 0.65.
+  OUTCOME: refuted. Every answer saturated — worth >= 0.999995 on all 165 pairs
+  (on- and off-theme), every fit argmax "read", every venue_fit 1.0 — so worth
+  AUC is 0.489 (ties), 0.201 below d3-lite with a 95% paired bootstrap interval
+  of [-0.280, -0.129]. The transport works: 0 failures, and llama.cpp serves
+  calls in parallel (22.8 calls/s at 4 in flight vs 7.2 at 1).
+
+code:
+  commit: "4348152"
+  branch: main
+  entrypoint: "uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-009-qwen3-4b-llamacpp-decisions/code/run.py --states $S/states.json --url http://127.0.0.1:5180 && for c in 1 4 8; do uv run --no-sync --project web/backend python web/backend/manage.py decision_check --url http://127.0.0.1:5180 --calls 48 --concurrency $c --json docs/research/experiments/EXP-2026-11-009-qwen3-4b-llamacpp-decisions/data/throughput_c$c.json; done && python3 docs/research/experiments/EXP-2026-11-009-qwen3-4b-llamacpp-decisions/code/analyse.py"
+  dirty: true  # this folder only; another session's changelog line and related-work notes were also uncommitted (ISSUES.md 1)
+config:
+  path: docs/research/experiments/EXP-2026-11-009-qwen3-4b-llamacpp-decisions/code/run.py
+  hash: null
+data:
+  name: EXP-2026-11-007 states (one reader's per-theme slates + off-theme controls, production store)
+  version: "built 2026-11-09 by EXP-2026-11-007 code/extract.py; kept outside the repo (profile text)"
+  split: test
+  n_examples: 165 # 120 on-theme + 45 off-theme controls
+  qrels: "none — off-theme control is a construction; stored verdict is a system output"
+  hash: null
+  card: null
+seeds: [0] # bootstrap resampling only
+n_runs: 1
+
+environment:
+  python: "3.13 (host venv ~/.cache/mycelium-backend-venv)"
+  lockfile: web/backend/uv.lock
+  container: "none — llama-server b11912 (ggml-org prebuilt ubuntu-vulkan-x64, sha256 821984cc…704a) on the host"
+compute:
+  hardware: "AMD Ryzen AI MAX+ 395, 121 GB RAM, Radeon 8060S (RADV STRIX_HALO, Vulkan); all layers on the GPU"
+  wall_clock_hours: 0.03 # 87.5 s main pass + determinism + ~12 s throughput sweep
+  estimated_cost_usd: 0
+
+llm:
+  model: "local/Qwen/Qwen3-4B-GGUF:Qwen3-4B-Q4_K_M.gguf@sha256:7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5"
+  temperature: 0.0
+  max_tokens: 1
+  prompt_files: ["web/backend/apps/core/decisions.py", "tools/recommendation/typesafe_rerank.py"]
+  prompt_hash: null
+  total_input_tokens: 279933 # main pass, as llama-server reports prompt tokens
+  total_output_tokens: 0 # one token per question, not counted separately
+  nondeterminism_note: >
+    Five pairs asked three times returned identical worth (max abs difference
+    0.0). Thinking disabled through chat_template_kwargs.
+
+metrics:
+  primary: worth_auc # ROC AUC of P(worth=yes): top-3 items on their own theme vs on a theme whose slate does not hold them
+  values:
+    worth_auc: 0.4889 # n=45 vs 45; all values tied near 1.0
+    worth_auc_d3: 0.6899 # EXP-2026-11-007, identical pairs
+    worth_auc_diff: -0.201
+    worth_auc_diff_ci_low: -0.2798 # 95% paired bootstrap, 2000 resamples, seed 0
+    worth_auc_diff_ci_high: -0.1286
+    worth_auc_paper: 0.4667 # n=15
+    worth_auc_grant: 0.5 # n=15
+    worth_auc_conference: 0.5 # n=15
+    fit_auc: 0.5388
+    paired_win_rate: 0.0
+    worth_saturated_share: 1.0 # n=120 on-theme
+    worth_distinct_2dp: 1
+    verdict_exact: 0.4667 # n=120; argmax is "read" for all 120
+    verdict_spearman_fit: -0.171
+    grant_eligible_mean: 1.0
+    determinism_max_abs_diff_worth: 0.0
+    real_state_latency_ms_p50: 554.4 # per pair, 3-4 questions, sequential
+    real_state_latency_ms_p95: 765.7
+    real_state_pairs_per_s_sequential: 1.886
+    throughput_c1: 7.189 # synthetic state, n=48
+    throughput_c4: 22.792
+    throughput_c8: 13.427
+    latency_p50_ms_c1: 139.2
+    latency_p50_ms_c4: 128.3
+    latency_p50_ms_c8: 672.9
+baselines_compared: ["d3-lite on the decide port (EXP-2026-11-007 quality, EXP-2026-11-008 throughput)"]
+statistical_test: "paired bootstrap over 45 control pairs, 2000 resamples, seed 0"
+
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-007, EXP-2026-11-008]
