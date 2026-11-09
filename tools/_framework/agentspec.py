@@ -66,6 +66,13 @@ class AgentFunction:
     #: The group it is listed and switched off under. Defaults to the part of
     #: the name before the first underscore (``corpus_search`` → ``corpus``).
     group: str = ""
+    #: What a surface shows while the function runs: a short present-tense
+    #: label, optionally with ``{argument}`` slots (``"Reading {item}"``,
+    #: ``"Searching the corpus for “{query}”"``). It is the only part of a
+    #: call a person sees (``tools/agent/activity.py``); a slot naming an
+    #: ``x-ref`` argument shows the object's title, never its id. Use slots
+    #: only for required arguments. A framework test fails an empty label.
+    activity: str = ""
 
     def __post_init__(self) -> None:
         if not self.group:
@@ -91,6 +98,28 @@ class AgentFunction:
             if kind:
                 out[key] = kind
         return out
+
+
+def activity_problems(fn: AgentFunction) -> list[str]:
+    """Why a function's activity label is unusable; empty when it is sound."""
+    import string
+
+    label = (fn.activity or "").strip()
+    if not label:
+        return [f"{fn.name}: no activity label"]
+    out = []
+    props = (fn.parameters or {}).get("properties") or {}
+    required = set((fn.parameters or {}).get("required") or ())
+    try:
+        slots = [s for _, s, _, _ in string.Formatter().parse(label) if s]
+    except ValueError as exc:
+        return [f"{fn.name}: activity label does not parse ({exc})"]
+    for slot in slots:
+        if slot not in props:
+            out.append(f"{fn.name}: activity slot {{{slot}}} is not a parameter")
+        elif slot not in required:
+            out.append(f"{fn.name}: activity slot {{{slot}}} is not required")
+    return out
 
 
 def _strip_private(value: Any) -> Any:

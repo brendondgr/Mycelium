@@ -239,11 +239,52 @@ def follow(
     max_seconds: float | None = None,
     poll: float = 1.0,
     stop_when_idle: bool = False,
+    view: str = "raw",
 ) -> Iterator[dict]:
     """Stored events after ``after``, then live messages, with no gap and no
     duplicate: subscribe first, replay from the database, then drop any live
     stored event whose seq was already sent. Yields ``{"type": "heartbeat"}``
-    every ``HEARTBEAT_SECONDS`` of silence."""
+    every ``HEARTBEAT_SECONDS`` of silence.
+
+    ``view="activity"`` passes every message through
+    :class:`tools.agent.activity.Projector` (what a person may see: no
+    thinking, no arguments beyond a label, no results). ``"raw"`` is the log
+    as stored, for the CLI, export and staff."""
+    from .activity import Projector, check_view
+
+    if check_view(view) == "raw":
+        yield from _follow(
+            thread,
+            after=after,
+            follow_live=follow_live,
+            max_seconds=max_seconds,
+            poll=poll,
+            stop_when_idle=stop_when_idle,
+        )
+        return
+    projector = Projector(thread)
+    for message in _follow(
+        thread,
+        after=after,
+        follow_live=follow_live,
+        max_seconds=max_seconds,
+        poll=poll,
+        stop_when_idle=stop_when_idle,
+    ):
+        shown = projector.project(message)
+        if shown is not None:
+            yield shown
+
+
+def _follow(
+    thread,
+    *,
+    after: int,
+    follow_live: bool,
+    max_seconds: float | None,
+    poll: float,
+    stop_when_idle: bool,
+) -> Iterator[dict]:
     from . import store
     from .models import AgentThread
 

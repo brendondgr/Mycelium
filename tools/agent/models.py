@@ -66,6 +66,8 @@ class AgentThread(models.Model):
     #: Loaded functions, numbered references, todos. Survives compaction.
     settings = models.JSONField(default=dict, blank=True)
     archived = models.BooleanField(default=False)
+    #: Kept at the top of the person's list (S3).
+    pinned = models.BooleanField(default=False)
     parent = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="forks"
     )

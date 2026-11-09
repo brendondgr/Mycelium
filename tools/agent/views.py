@@ -10,7 +10,7 @@ from django.http import StreamingHttpResponse
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import refs, service, store
+from . import refs, service
 from .service import ServiceError
 from .surfaces import web
 
@@ -32,17 +32,15 @@ def _thread_json(t) -> dict:
             else str(t.scope_department_id or t.scope_project_id or "") or None
         ),
         "archived": t.archived,
+        "pinned": t.pinned,
         "parent": str(t.parent_id) if t.parent_id else None,
         "fork_seq": t.fork_seq,
         "created_at": t.created_at.isoformat(),
         "last_activity_at": t.last_activity_at.isoformat(),
+        "anchor": (t.settings or {}).get("anchor"),
         "todos": (t.settings or {}).get("todos", []),
         "references": (t.settings or {}).get("refs", []),
     }
-
-
-def _event_json(e) -> dict:
-    return {"seq": e.seq, "type": e.type, "ts": e.ts.isoformat(), "payload": e.payload}
 
 
 class _Base(APIView):
@@ -78,6 +76,7 @@ class ThreadsView(_Base):
             request.user,
             q=request.query_params.get("q", ""),
             archived=request.query_params.get("archived") in ("1", "true"),
+            anchor=request.query_params.get("anchor") or None,
         )
         return Response({"threads": [_thread_json(t) for t in rows]})
 
@@ -91,6 +90,7 @@ class ThreadsView(_Base):
             scope=scope,
             surface="web",
             title=str(request.data.get("title", "")),
+            anchor=request.data.get("anchor") or None,
         )
         return Response(_thread_json(thread), status=201)
 
@@ -105,6 +105,7 @@ class ThreadView(_Base):
             thread_id,
             title=request.data.get("title"),
             archived=request.data.get("archived"),
+            pinned=request.data.get("pinned"),
         )
         return Response(_thread_json(thread))
 
@@ -177,18 +178,20 @@ class EventsView(_Base):
             after = int(request.query_params.get("after", 0))
         except ValueError:
             after = 0
-        return Response(
-            {
-                "events": [_event_json(e) for e in store.events(thread, after=after)],
-                "state": thread.state,
-            }
+        events = service.thread_events(
+            web.caller(request, thread),
+            thread,
+            after=after,
+            view=request.query_params.get("view", "activity"),
         )
+        return Response({"events": events, "state": thread.state})
 
 
 class StreamView(_Base):
     """Server-sent events: stored events after ``Last-Event-ID`` (or
     ``?after=``), then live ones. ``?once=1`` replays and closes;
-    ``?until_idle=1`` closes once the turn has ended."""
+    ``?until_idle=1`` closes once the turn has ended. ``?view=activity``
+    (default) is what a person may see; ``?view=raw`` is staff-only."""
 
     def get(self, request, thread_id):
         from . import stream
@@ -210,6 +213,7 @@ class StreamView(_Base):
             after=after,
             follow_live=not once,
             stop_when_idle=request.query_params.get("until_idle") in ("1", "true"),
+            view=request.query_params.get("view", "activity"),
         )
         response = StreamingHttpResponse(
             (stream.sse_format(m) for m in follow), content_type="text/event-stream"

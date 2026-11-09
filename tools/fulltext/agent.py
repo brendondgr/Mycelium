@@ -35,9 +35,10 @@ LINE_CHARS = 1200
 _HEADING = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 
 
-def _f(name, summary, description, handler, *, params, required=(), output):
+def _f(name, activity, summary, description, handler, *, params, required=(), output):
     return AgentFunction(
         name=name,
+        activity=activity,
         summary=summary,
         description=description,
         parameters={"type": "object", "properties": params, "required": list(required)},
@@ -59,6 +60,7 @@ _DOC = _ref("doc", "A stored full text: #n or doc:<id> (instead of item).")
 FUNCTIONS = (
     _f(
         "fulltext_availability",
+        "Checking whether {item} has full text",
         "Is a paper's full text stored, or within legal reach?",
         "Whether Mycelium already holds the full text of a paper, or could get a legal "
         "copy (open access, or the instance's publisher keys). Nothing is fetched.",
@@ -69,6 +71,7 @@ FUNCTIONS = (
     ),
     _f(
         "fulltext_read_paper",
+        "Reading the paper",
         "Read a stored paper's full text, by line or section.",
         "Read the stored full text of a paper, line-numbered, from a line offset or "
         "from a named section (e.g. 'Methods'). Without either, shows the section list "
@@ -84,6 +87,7 @@ FUNCTIONS = (
     ),
     _f(
         "fulltext_search_paper",
+        "Searching the paper for “{query}”",
         "Find where a stored paper says something.",
         "Search the stored full text of one paper for words; returns matching lines "
         "with their line numbers and sections, to read further with "

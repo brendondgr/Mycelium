@@ -48,6 +48,17 @@ def model_name() -> str:
     return config.get("model") or getattr(settings, "LLM_MODEL", "") or ""
 
 
+def model_info() -> dict | None:
+    """``{name, label, location}`` of the model that answers chat, or ``None``
+    when none is configured. ``location`` is ``local``, ``remote`` or
+    ``cloud`` (S-3); until the server registry exists every model is the
+    instance's own, so it is ``local`` and ``label`` is the model name."""
+    name = model_name()
+    if not name:
+        return None
+    return {"name": name, "label": name, "location": "local"}
+
+
 def default_port() -> ModelPort:
     """The instance's model through the shared client, streamed."""
     from apps.core.llm import build_llm_client
