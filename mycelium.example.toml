@@ -265,6 +265,14 @@ enabled = true
 # max_risk = "read"                      # env AGENT_MAX_RISK
 # redis_db = 8                           # env AGENT_REDIS_DB
 # parallel_calls = true                  # env AGENT_PARALLEL_CALLS
+# discord_access = "public"              # env AGENT_DISCORD_ACCESS
+# discord_guest_level = "full"           # env AGENT_DISCORD_GUEST_LEVEL
+# discord_guest_daily_turns = 10         # env AGENT_DISCORD_GUEST_DAILY_TURNS
+# discord_place_daily_turns = 200        # env AGENT_DISCORD_PLACE_DAILY_TURNS
+# discord_channel_session_hours = 24     # env AGENT_DISCORD_CHANNEL_SESSION_HOURS
+# discord_closed_thread_days = 30        # env AGENT_DISCORD_CLOSED_THREAD_DAYS
+# discord_ping_after_minutes = 10        # env AGENT_DISCORD_PING_AFTER_MINUTES
+# discord_turn_timeout_minutes = 30      # env AGENT_DISCORD_TURN_TIMEOUT_MINUTES
 
 # delivery: Puts what was ranked in front of people: the feeds' API, saves and
 # collections, project shares, the daily and weekly reports, reminders,

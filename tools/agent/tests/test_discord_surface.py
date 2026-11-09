@@ -523,3 +523,62 @@ def test_a_guest_may_forget_their_own_questions(server):
         discord_user_id="4242", guild_id=GUILD, place_id="th-9"
     )
     assert "blanked 1" in line
+
+
+# --------------------------------------------------------------------------- #
+# D5: learning, retention, removal
+# --------------------------------------------------------------------------- #
+
+
+def _quiet(handles):
+    AgentThread.objects.filter(pk__in=[h.thread_id for h in handles]).update(
+        last_activity_at=timezone.now() - timedelta(hours=2)
+    )
+
+
+def test_learning_reads_a_dm_and_never_a_shared_place(server, monkeypatch):
+    from tools._framework import events as bus
+    from tools.agent import learning
+
+    handed = []
+    monkeypatch.setattr(bus, "publish", lambda name, **kw: handed.append(kw))
+    dm = ask(server.member_id, guild="", channel="dm-100", text="I study tides")
+    member = ask(server.member_id, thread="th-9", parent="general", text="in thread")
+    guest = ask("4242", channel="general", text="guest words")
+    _quiet([dm, member, guest])
+    assert learning.run_pass() == 1
+    assert [m["text"] for m in handed[0]["messages"]] == ["I study tides"]
+    assert handed[0]["thread_id"] == dm.thread_id
+
+
+def test_a_closed_announcements_conversation_is_swept_after_the_set_days(
+    server, settings
+):
+    from tools.agent import tasks
+    from tools.delivery.models import AnnouncementPost
+
+    announcement(server)
+    h = ask(server.member_id, thread="th-1", parent="forum-1")
+    settings.AGENT_DISCORD_CLOSED_THREAD_DAYS = 30
+    AnnouncementPost.objects.filter(thread_id="th-1").update(
+        closed_at=timezone.now() - timedelta(days=10)
+    )
+    assert tasks.retention_sweep() == 0
+    AnnouncementPost.objects.filter(thread_id="th-1").update(
+        closed_at=timezone.now() - timedelta(days=31)
+    )
+    assert tasks.retention_sweep() == 1
+    assert not AgentThread.objects.filter(pk=h.thread_id).exists()
+
+
+def test_a_removed_binding_or_a_left_server_closes_its_links(server):
+    h = ask(server.member_id, thread="th-9", parent="general")
+    resolve.remove_binding(server.binding)
+    assert AgentThreadLink.objects.get(thread_id=h.thread_id).closed_at is not None
+    assert ask(server.member_id, thread="th-9", parent="general").code == "unbound"
+    server.binding.state = "active"
+    server.binding.save()
+    h2 = ask(server.member_id, thread="th-9", parent="general")
+    assert h2.thread_id != h.thread_id  # a fresh conversation after re-activation
+    resolve.mark_guild_kicked(GUILD)
+    assert AgentThreadLink.objects.filter(closed_at=None).count() == 0

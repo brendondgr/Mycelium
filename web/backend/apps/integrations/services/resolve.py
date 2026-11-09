@@ -800,6 +800,7 @@ def remove_binding(binding, *, actor=None) -> None:
     every other binding in the server, and the target's other servers, carry on."""
     binding.state = DiscordTargetBinding.State.REMOVED
     binding.save(update_fields=["state", "updated_at"])
+    _close_chat_links(binding_id=binding.pk)
     audit.discord_audit(
         action="discord.binding.removed",
         actor=actor,
@@ -808,10 +809,21 @@ def remove_binding(binding, *, actor=None) -> None:
     )
 
 
+def _close_chat_links(**where) -> None:
+    """Mylo chat's conversations in a removed binding or a left server are
+    closed (plan D); the agent's retention sweep deletes them later."""
+    from tools._framework import services
+
+    agent = services.get("agent")
+    if agent is not None:
+        agent.discord_surface().close_links(**where)
+
+
 def mark_guild_kicked(guild_id: str) -> None:
     link = get_guild_link(guild_id)
     if not link or link.state == DiscordGuildLink.State.KICKED:
         return
+    _close_chat_links(guild_id=str(guild_id))
     link.state = DiscordGuildLink.State.KICKED
     link.save(update_fields=["state", "updated_at"])
     audit.discord_audit(

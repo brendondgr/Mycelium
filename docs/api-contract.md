@@ -236,6 +236,9 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 
 Session auth + CSRF; every route needs a verified email. A thread is readable
 only by the person who started it — an org admin gets 404 like anyone else.
+A Discord conversation in a thread or channel is a *shared* thread with no owner
+(plan D): no route here lists or returns one (404). A Discord DM is the person's
+own thread and is listed like a web one.
 Errors are `{code, detail, fix}`. POST routes also answer without the trailing
 slash; `stream/` and `events/` answer only with it, which is fine behind nginx
 or the dev gateway (both send `/api` straight to Django) — through the bare
@@ -260,7 +263,7 @@ unverified email) plus `status/`.
 | `threads/<id>/export/?as=json\|md` | GET | The log as JSON, or a Markdown transcript with citations resolved; anything the caller can no longer see shows as unavailable |
 | `refs/search/?q=&kinds=&thread=` | GET | Candidates for the `@` picker, each already visible to the caller |
 | `preferences/` | GET, PATCH | `{chat_enabled, learning, discord_allowed, groups_off}`; `learning` is ambient's Mylo-chat consent (on unless turned off) |
-| `policy/<lab\|department>/<slug or id>/` | GET, PATCH | The org's narrowing policy `{groups_off, discord_channels_off, max_risk, members_inform_org, set}`; members read it, owners and admins change it (audited); it can never widen the instance or switch the agent on or off |
+| `policy/<lab\|department>/<slug or id>/` | GET, PATCH | The org's narrowing policy `{groups_off, discord_channels_off, max_risk, members_inform_org, discord_guests, discord_guests_ceiling, discord_guests_in_force, set}`; members read it, owners and admins change it (audited); it can never widen the instance or switch the agent on or off. `discord_guests` (`full`\|`no_people`\|`public`\|`off`) is what someone without an account is told in the org's Discord server; `discord_guests_ceiling` (the host's `[tools.agent] discord_guest_level`, `off` unless `discord_access = "public"`) is read-only, and `discord_guests_in_force` is the lower of the two |
 
 **The activity view** (`tools/agent/activity.py`) is what a person may see of
 a turn; Mylo's thinking never reaches a surface (S-9). Each message keeps the

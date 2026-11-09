@@ -441,6 +441,44 @@ See `discord-bot/tasks_loops.py`.
 
 ---
 
+## 13. Mylo Chat (this repository)
+
+Mylo answers questions in Discord with the same agent the web app uses
+(`tools/agent/`). The bot only enqueues a turn and watches it; the turn runs in
+the Celery worker. Rules that hold for any change here:
+
+- **One listener.** `mylo/bot/cogs/listen.py` holds the only `on_message`. It
+  asks `mylo/chat.py::route` first: a DM, an `@Mylo` (or its role) and a reply
+  to Mylo are questions; a reply with the ping off arrives without text and
+  gets "I can only read replies that ping me." at most once an hour. A DM that
+  answers one of Mylo's ambient questions keeps going to `listening.dialogue`.
+  No Message Content intent, no "Hey Mylo" (S-4).
+- **The cog decides nothing.** `mylo/bot/cogs/chat.py` delivers; access is the
+  Discord gate (`chat`, `chat_guest`, `chat_manage`, `chat_self`,
+  `chat_forget`) and then the agent's own gate, both reached through the
+  agent's Discord surface (`tools/agent/surfaces/discord.py`). The cog and
+  the bridge hold no permission rule and no prompt text.
+- **Nothing can ping.** Every send and edit uses `AllowedMentions.none()`;
+  `chat_render.neutralise` defuses `<@…>`, `@everyone` and `@here` in model
+  output. The only exception is a slow answer (over
+  `discord_ping_after_minutes`): a new reply that allows the asker's id and
+  nothing else.
+- **Activity, never thinking (S-9).** The status line comes from the activity
+  view; a status edit is throttled to one per 1.5 seconds.
+- **Rendering is pure.** `mylo/bot/chat_render.py` imports neither Django nor
+  Discord I/O: splitting under 2,000 characters without breaking a code fence,
+  the Sources list (masked links, embeds suppressed), the model line.
+- **Restarts lose nothing.** Each question has an `AgentDiscordTurn`; on
+  `on_ready` and `on_resumed` the cog delivers pending answers once, or says
+  "I lost track of this one. Ask again."
+- **Commands.** `/mylo ask`, `/mylo forget`, `/mylo chat on|off`,
+  `/mylo chat here on|off`, `/mylo chat guests …` live in
+  `mylo/bot/cogs/mylo_commands.py` (one `/mylo` group, a `chat` subgroup).
+  They reach production only after `@Mylo sync global`.
+- **Tests** use fakes only: `mylo/tests/test_chat_cog.py` (fake transport) and
+  `test_chat_render.py`; the backend side is `tools/agent/tests/test_discord_*`.
+  `manage.py smoke_agent_discord` runs the whole path against the real model.
+
 ## Sources
 
 - [discord.py documentation](https://discordpy.readthedocs.io/en/latest/) — API reference and changelog (v2.7.1)

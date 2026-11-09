@@ -46,6 +46,9 @@ def announcement_post_for_thread(thread_id: str) -> dict | None:
         "binding_id": post.binding_id,
         "title": post.thread_name or (ann.snapshot or {}).get("title", ""),
         "closed": bool(post.closed_at or ann.closed_at),
+        "closed_at": (post.closed_at or ann.closed_at).isoformat()
+        if (post.closed_at or ann.closed_at)
+        else "",
     }
 
 
