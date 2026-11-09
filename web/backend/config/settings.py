@@ -513,6 +513,15 @@ LLM_REASONING_STYLE = env("LLM_REASONING_STYLE", default="effort")
 # sent as `thinking_token_budget` in the request's extra_body so the server
 # reserves room to reason before answering. Keep >= 512 (see clusters.py).
 LLM_THINKING_BUDGET = env.int("LLM_THINKING_BUDGET", default=512)
+# Model servers ([llm] default / allow_cloud / fallback, [llm.providers.<name>],
+# [llm.routes] in mycelium.toml). "local" is synthesised from the LLM_* values
+# above unless declared. The table holds key *variable names* only;
+# apps.core.llm_servers reads a key from the environment when it builds a client.
+LLM_SERVERS = INSTANCE.llm.servers
+LLM_ROUTES = INSTANCE.llm.routes
+LLM_DEFAULT_SERVER = _cfg["llm.default"]
+LLM_ALLOW_CLOUD = _cfg["llm.allow_cloud"]
+LLM_FALLBACK = _cfg["llm.fallback"]
 
 # TypeSafe System One (apps/core/systemone.py). A decision model, not a text
 # generator: typed questions in, calibrated probabilities out. Prototype seam

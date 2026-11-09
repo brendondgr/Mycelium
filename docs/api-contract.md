@@ -224,6 +224,7 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 |---|---|---|
 | `users/` `users/<id>/` | GET / GET, PATCH | Roster; detail; assign plan + quota |
 | `labs/` `labs/<slug>/` | GET / GET, PATCH | Lab roster; detail; assign plan |
+| `llm/servers/` | GET | Read-only. `{default, allow_cloud, fallback, servers: [{server, label, kind, location, enabled, callable, default, model, ok, error, cached, base_url, api_key_env, has_key, models: [{id, label, context_window, capabilities, loaded}]}], routes: {"*" or component: {server, model, label, location, requested, problem}}}`. A dead server is `ok: false` with the reason, still HTTP 200. `?refresh=1` skips the discovery cache. Never carries a key, only the name of its variable |
 
 ### Tools — `/api/tools/`
 
@@ -240,7 +241,7 @@ slash.
 
 | Route | Methods | Purpose |
 |---|---|---|
-| `status/` | GET | `{model: {name, label, location}}` — `location` is `local`, `remote` or `cloud` (always `local` until model servers land; `label` is then the model name) — or `{model: null, code: "no_model", detail, fix}` when no model is configured. Every `assistant` event's payload carries the same `model` object |
+| `status/` | GET | `{model: {name, label, location}}` — `location` is `local`, `remote` or `cloud` (from the server `[llm.routes] agent` names; `label` is the server's label when the host set one, else the model name) — or `{model: null, code: "no_model", detail, fix}` when no model is configured. Every `assistant` event's payload carries the same `model` object |
 | `catalog/?scope=&ref=` | GET | Every function with `allowed` and, if not, `layer`, `code`, `detail`, `fix` — the gate's own answer for this caller |
 | `threads/` | GET, POST | List the caller's threads, pinned first, then most recent (`?q=` searches title, purpose and their own words; `?archived=1`; `?anchor=<kind>:<key>` keeps the threads about that object); create one in `{scope: personal\|lab\|department\|project, ref, anchor}` (lab slug, department or project id). 404 for a scope the caller cannot see. `anchor` — `{kind, key}` or `"kind:key"`, any reference kind (`item`, `project`, `lab`, `department`, …) — makes the thread about that object for good: it is reference `#1`, and every turn resolves it again for the caller (left out of the turn if they can no longer see it). 404 `anchor_not_visible` if the creator cannot see it, 400 `bad_anchor` for an unknown kind |
 | `threads/<id>/` | GET, PATCH, DELETE | One thread (state, `anchor` or null, `pinned`, todos, `references`); rename, archive or pin (`{title, archived, pinned}`); delete it and its events |

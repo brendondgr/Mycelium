@@ -54,9 +54,20 @@ the API and a developer CLI; the web chat UI and Discord come next.
   person opted out (D-3).
 - **No model, no failure.** With no `LLM_MODEL` the tool still loads; the API
   answers `no_model` with a fix.
-- **Which model answers.** `llmcall.model_info()` is `{name, label,
-  location}`; `service.status()` returns it and every `assistant` event
-  records it (S-3). Until model servers exist, `location` is `local`.
+- **Which model answers.** Chat is component `agent`: it goes to the server
+  `[llm.routes] agent` names (default: `local`, the `.env` endpoint), and
+  `[tools.agent] model` overrides that server's model. The route is fixed for
+  a turn (`llmcall.default_port`). `llmcall.model_info()` is `{name, label,
+  location}` (`local`, `remote` or `cloud`; `label` is the server's label when
+  the host gave one, else the model name); `service.status()` returns it and
+  every `assistant` event records it (S-3). `health.report()` adds whether the
+  server answers.
+- **Reasoning state stays with its server.** Anthropic thinking signatures and
+  Gemini thought signatures are kept on the `thinking` event as `opaque`;
+  `rebuild.messages()` hands them back only to a server of the same kind and
+  drops them when the route changes. The activity view never shows them.
+- **A context overflow compacts.** If the server rejects a prompt as too long,
+  the turn clears old results or summarizes once and retries.
 - **Pinned chats.** `AgentThread.pinned`; `list_threads` puts them first.
 
 ## Doors
@@ -72,9 +83,13 @@ the API and a developer CLI; the web chat UI and Discord come next.
 - `manage.py agent chat --user <name> [--scope lab:<slug>|project:<uuid>]` —
   chat from the terminal (audited as `surface=cli`); `manage.py agent catalog
   --user <name>` shows what that person may use and why not.
-- The output cap is off by default (`max_output_tokens = 0`); the context
-  window is `context_window` (default 32768) because the endpoint does not
-  report it.
+- The output cap is off by default (`max_output_tokens = 0`). The context
+  window is `context_window` when set; at its default `0` it is what the
+  model server reports (vLLM, llama.cpp, Ollama, Anthropic, Gemini), else
+  32768.
+- Model servers are the host's choice in `mycelium.toml`
+  (`docs/skills/configure.md`, "Model servers"); `manage.py llm_check` lists
+  them and their routes, `manage.py llm_probe <server> --deep` tests one.
 
 ## Tests
 

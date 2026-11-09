@@ -42,31 +42,56 @@ class NoModel(RuntimeError):
     """No model is configured on this instance."""
 
 
-def model_name() -> str:
-    from django.conf import settings
-
-    return config.get("model") or getattr(settings, "LLM_MODEL", "") or ""
+#: The component name chat is routed and counted under ([llm.routes] agent).
+COMPONENT = "agent"
 
 
-def model_info() -> dict | None:
+def route():
+    """The server chat goes to (``apps.core.llm_servers.resolve("agent")``)."""
+    from apps.core import llm_servers
+
+    return llm_servers.resolve(COMPONENT)
+
+
+def model_name(current=None) -> str:
+    """``[tools.agent] model`` overrides the model of whichever server
+    ``llm.routes.agent`` names; otherwise that server's model."""
+    current = current or route()
+    return config.get("model") or current.model or ""
+
+
+def model_info(current=None) -> dict | None:
     """``{name, label, location}`` of the model that answers chat, or ``None``
     when none is configured. ``location`` is ``local``, ``remote`` or
-    ``cloud`` (S-3); until the server registry exists every model is the
-    instance's own, so it is ``local`` and ``label`` is the model name."""
-    name = model_name()
+    ``cloud`` (S-3). ``label`` is the server's label when the host gave one,
+    else the model name."""
+    from apps.core import llm_servers
+
+    current = current or route()
+    name = model_name(current)
     if not name:
         return None
-    return {"name": name, "label": name, "location": "local"}
+    entry = llm_servers.server(current.server) or {}
+    label = current.label if entry.get("label_stated") else name
+    return {"name": name, "label": label, "location": current.location}
+
+
+def current_kind() -> str:
+    """The wire kind chat goes to now; opaque reasoning state is replayed only
+    to a server of the same kind."""
+    return route().kind
 
 
 def default_port() -> ModelPort:
-    """The instance's model through the shared client, streamed."""
+    """The routed server through the shared client, streamed. The route is
+    resolved once here, so it holds for the whole turn."""
     from apps.core.llm import build_llm_client
 
-    name = model_name()
+    current = route()
+    name = model_name(current)
     if not name:
         raise NoModel("no model configured")
-    client = build_llm_client(component="agent")
+    client = build_llm_client(component=COMPONENT)
     cap = int(config.get("max_output_tokens") or 0)
 
     def port(*, messages, tools, tool_choice, on_delta, should_stop):
@@ -100,6 +125,9 @@ class Reply:
     finish: str | None
     usage: dict | None
     repairs: list[str] = field(default_factory=list)
+    #: Reasoning state the server needs back verbatim (``{"kind", "blocks"}``),
+    #: stored on the ``thinking`` event and never shown (S-9).
+    opaque: dict | None = None
 
 
 _THINK = re.compile(r"<think>(.*?)(</think>|$)", re.S)
@@ -326,6 +354,7 @@ def parse(
         finish=response.finish_reason,
         usage=dict(response.usage or {}) or None,
         repairs=repairs,
+        opaque=dict(getattr(response, "opaque", None) or {}) or None,
     )
 
 

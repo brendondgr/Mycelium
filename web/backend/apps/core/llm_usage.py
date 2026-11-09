@@ -29,6 +29,10 @@ logger = logging.getLogger(__name__)
 #: as "unlabelled" is the point — it makes an unlabelled call site findable.
 UNKNOWN_COMPONENT = "unlabelled"
 
+#: The server a call is counted under when the client names none: the
+#: ``.env`` endpoint, which is what every call reached before servers existed.
+DEFAULT_SERVER = "local"
+
 #: Both spellings appear across OpenAI-compatible servers.
 _PROMPT_KEYS = ("prompt_tokens", "input_tokens")
 _COMPLETION_KEYS = ("completion_tokens", "output_tokens")
@@ -59,8 +63,11 @@ def record(
     ok: bool,
     usage: Mapping[str, Any] | None = None,
     day: date | None = None,
+    server: str = DEFAULT_SERVER,
 ) -> None:
-    """Add one call (and its tokens) to today's ledger row. Never raises."""
+    """Add one call (and its tokens) to today's ledger row for this component
+    on this server. Never raises. No price is attached: tokens are the record
+    (S-13)."""
     try:
         from django.db.models import F
         from django.utils import timezone
@@ -73,8 +80,11 @@ def record(
 
         # get_or_create then a targeted UPDATE: the update is a single atomic
         # statement, so parallel stages accumulate rather than overwrite.
-        LLMUsageDaily.objects.get_or_create(day=row_day, component=label)
-        LLMUsageDaily.objects.filter(day=row_day, component=label).update(
+        where = (server or DEFAULT_SERVER).strip()[:60] or DEFAULT_SERVER
+        LLMUsageDaily.objects.get_or_create(day=row_day, component=label,
+                                            server=where)
+        LLMUsageDaily.objects.filter(day=row_day, component=label,
+                                     server=where).update(
             calls=F("calls") + 1,
             failures=F("failures") + (0 if ok else 1),
             prompt_tokens=F("prompt_tokens") + prompt_tokens,

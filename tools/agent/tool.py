@@ -33,9 +33,10 @@ class AgentTool(Tool):
         _s(
             "context_window",
             "int",
-            32768,
+            0,
             "The model's context window in tokens; drives the meter and "
-            "compaction (the endpoint does not report it reliably).",
+            "compaction. 0 asks the model server (vLLM, llama.cpp, Ollama, "
+            "Anthropic and Gemini report it) and falls back to 32768.",
         ),
         _s("max_steps", "int", 25, "Model calls per turn."),
         _s(
