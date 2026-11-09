@@ -2931,6 +2931,20 @@ html[data-motion="none"] *::after {
   }
 }
 
+/* Wide and open: the panel is a column of the page. The shell gives up the
+   panel's width, so the header and the section stay fully in view. */
+:root {
+  --ws-mylo-w: max(360px, min(420px, 40vw));
+}
+
+.ws-shell {
+  transition: padding-right 0.32s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+:root[data-mylo-open] .ws-shell {
+  padding-right: var(--ws-mylo-w);
+}
+
 .ws-mylo-layer {
   position: fixed;
   inset: 0;
@@ -2967,8 +2981,8 @@ html[data-motion="none"] *::after {
 }
 
 .ws-mylo-layer[data-wide] .ws-mylo-panel {
-  width: min(420px, 40vw);
-  min-width: 360px;
+  width: var(--ws-mylo-w);
+  box-shadow: none;
 }
 
 .ws-mylo-layer[data-open] .ws-mylo-panel {
@@ -3316,11 +3330,16 @@ html[data-motion="none"] *::after {
   text-transform: uppercase;
 }
 
+.ws-mylo-scroll:has(> .ws-mylo-empty) {
+  display: grid;
+}
+
 .ws-mylo-empty {
   display: grid;
+  align-content: center;
   justify-items: center;
   gap: 10px;
-  padding: 28px 8px 8px;
+  padding: 8px;
   text-align: center;
 }
 
@@ -3765,6 +3784,7 @@ html[data-motion="none"] *::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ws-shell,
   .ws-mylo-panel,
   .ws-mylo-launcher,
   .ws-mylo-chev {

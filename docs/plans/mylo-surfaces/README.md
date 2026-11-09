@@ -31,12 +31,17 @@ is `docs/plans/mylo-agent/`.
 | S-8 | **Web panel icons:** history, new chat, pin a chat. No per-answer bookmarks. |
 | S-9 | **Mylo never shows its thinking.** Both surfaces show what Mylo is doing ("Reading the call", "Looking at your projects"), never the reasoning text. |
 | S-10 | **A DM needs an activated account.** A linked Mycelium account with a verified email. There are no guests in DMs. |
-| S-11 | **In a bound server, being there is enough.** Anyone who can post in a server that an activated lab or department has connected may ask Mylo there, with or without an account, and is answered there. Guest limits (10 a day per person, 200 a day per server) are settings. |
+| S-11 | **In a bound server, being there is enough.** Anyone who can post in a server that an activated lab or department has connected may ask Mylo there, with or without an account, and is answered there. Guest limits per person and per server are settings, off by default (S-17). |
 | S-12 | **Mylo pings only for a slow answer.** A normal answer replaces the status message silently. An answer that took longer than about ten minutes (a setting) is posted as a new reply that mentions the asker and nobody else. |
 | S-13 | **No spend cap.** Other model servers are made available, not switched on; the instance keeps using its local model. Tokens are recorded per server. |
 | S-14 | **No fallback from a local server to a cloud one** unless the host lists that server in `llm.fallback`. |
 | S-15 | **"Ask Mylo" is a small button with Mylo's face** on each thing (feed cards, the opened item, project and lab pages). Pressing it opens the side panel on a conversation about that thing. |
 | S-16 | **Being in a bound server is trust.** A guest is told what a lab member would be told in that place, named people included (members, a member's declared profile, who could go after a call). Two settings can narrow it, a host ceiling and a level per lab: `full` (default), `no_people`, `public`, `off`. |
+| S-17 | **Guests are limited only where someone set it up.** Everything is on by default for a person in a bound server: guest level `full`, no daily limit. The host's ceiling, the lab's level and the two limits apply only once someone changes them. |
+| S-18 | **Discord conversations are not readable in the web app.** |
+| S-19 | **No personal opt-out from what guests are told.** A guest sees about a person what a lab member sees there. |
+| S-20 | **The bottom-right launcher stays** alongside the Mylo-face buttons. |
+| S-21 | **On a wide screen the open panel is a column of the page:** the page gives up the panel's width, nothing is covered. The chat names the model only when it does not run on this machine. |
 
 ## Shared contract (track S) — shipped
 
@@ -104,20 +109,6 @@ P1 → P2 → P3 ─────────────> P4 → P5             
 
 Shortest path to something usable: S → D1–D3 (Mylo answers in Discord on the
 local model), with P1–P3 alongside.
-
-## Open questions
-
-Three remain. Each has the answer the plans assume; none blocks a start.
-
-1. **Should a shared Discord conversation be readable in the web app** by the
-   lab's members [after D5]? Assumed: no, not in this release.
-2. **Should a member be able to keep themself out of what guests are told**
-   [D1]? Assumed: no new switch. A guest sees about a person only what a lab
-   member already sees in that channel, which is what the person declared.
-   The host and the lab can lower the guest level for everyone (S-16).
-3. **Keep the bottom-right launcher as well as the Mylo-face buttons** [W2]?
-   Assumed: yes. The buttons ask about one thing; the launcher is the way to
-   ask about anything else.
 
 ## Exclusions common to all three
 

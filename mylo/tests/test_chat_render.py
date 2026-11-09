@@ -73,7 +73,7 @@ class SourcesAndModelTests(unittest.TestCase):
 
     def test_the_model_line(self) -> None:
         local = {"name": "qwen", "label": "Qwen", "location": "local"}
-        self.assertIn("Qwen", render.model_line(local, first=True))
+        self.assertEqual(render.model_line(local, first=True), "")
         self.assertEqual(render.model_line(local, first=False), "")
         cloud = {"name": "c", "label": "Cloud model", "location": "cloud"}
         self.assertIn("in the cloud", render.model_line(cloud, first=False))
@@ -83,7 +83,7 @@ class SourcesAndModelTests(unittest.TestCase):
         chunks = render.answer_chunks(
             "It is due Friday (#1).",
             [{"n": 1, "title": "Call", "url": "https://x.org"}],
-            {"label": "Qwen", "location": "local"},
+            {"label": "Qwen", "location": "cloud"},
             first=True,
         )
         self.assertEqual(len(chunks), 1)

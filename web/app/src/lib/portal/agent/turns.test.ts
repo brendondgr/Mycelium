@@ -289,8 +289,9 @@ describe("availability", () => {
     });
   });
 
-  it("names where the model runs", () => {
-    expect(modelLine(model)).toBe("Qwen · runs on this machine");
+  it("says where the model runs only when it is not this machine", () => {
+    expect(modelLine(model)).toBeNull();
+    expect(modelLine({ ...model, location: "cloud" })).toBe("Qwen · runs on a cloud service");
   });
 });
 

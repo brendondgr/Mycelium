@@ -104,8 +104,10 @@ Preferred Mylo direction:
 Talking to Mylo happens in one side panel, opened from anywhere: the launcher
 (Mylo's painted head, fixed at the bottom right of every signed-in page,
 hidden while the panel is open) or a Mylo-face button on a thing. At 980 px
-and wider the panel lies over the reading pane and the page stays usable;
-below that it is a full-screen sheet. Its header holds the title (renamable),
+and wider the panel is a column of the page: the header and the section give
+up its width and nothing is covered. Below that it is a full-screen sheet.
+An empty conversation centres Mylo's head, greeting and starter questions in
+the panel. Its header holds the title (renamable),
 an "About" line for a conversation about one thing, and three icons — history,
 new chat, pin — plus close.
 
@@ -114,8 +116,8 @@ fold under the question: while Mylo works its header names the current step
 with a quiet shimmer ("Searching the corpus for …"), opened it lists the steps
 with a tick or a cross, and when the answer arrives it reads "Looked at 3
 things". The words are the server's labels; the panel has none of its own.
-Citations in an answer are small numbered pills that open the item. One line
-under the composer names the model and whether it runs on this machine. Mylo's
+Citations in an answer are small numbered pills that open the item. A line
+under the composer names the model only when it does not run on this machine. Mylo's
 head beside the fold floats gently while he works (Motion: Full only) and
 stays still under reduced motion.
 

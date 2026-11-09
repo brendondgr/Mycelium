@@ -60,10 +60,13 @@ export function availabilityFrom(
   return { state: "allowed", model: status.model };
 }
 
-/** "Local model · runs on this machine" (S-3). */
-export function modelLine(model: { label: string; name: string; location: string }): string {
+/**
+ * The line under the composer. Nothing for a model on this machine; when the
+ * answer comes from somewhere else the chat says so (S-3).
+ */
+export function modelLine(model: { label: string; name: string; location: string }): string | null {
+  if (model.location === "local") return null;
   const name = model.label || model.name;
-  if (model.location === "local") return `${name} · runs on this machine`;
   if (model.location === "cloud") return `${name} · runs on a cloud service`;
   return `${name} · runs on another server`;
 }

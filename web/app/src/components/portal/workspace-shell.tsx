@@ -34,7 +34,7 @@ export function WorkspaceShell({
   return (
     <PortalProvider user={user}>
       <div
-        className="flex h-screen flex-col overflow-hidden bg-background text-foreground"
+        className="ws-shell flex h-screen flex-col overflow-hidden bg-background text-foreground"
         style={{ fontFamily: "var(--font-inter)", fontSize: "var(--d-fs)" }}
       >
         <ScopeGuard />

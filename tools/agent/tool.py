@@ -116,14 +116,14 @@ class AgentTool(Tool):
         _s(
             "discord_guest_daily_turns",
             "int",
-            10,
+            0,
             "Questions per guest per day in Discord. 0 = no limit.",
         ),
         _s(
             "discord_place_daily_turns",
             "int",
-            200,
-            "Questions per Discord server per day. 0 = no limit.",
+            0,
+            "Guest questions per Discord server per day. 0 = no limit.",
         ),
         _s(
             "discord_channel_session_hours",

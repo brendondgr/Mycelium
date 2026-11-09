@@ -161,8 +161,8 @@ def sources_block(sources: list[dict]) -> str:
 
 
 def model_line(model: dict | None, *, first: bool) -> str:
-    """Which model answered and where it runs (S-3): on every answer when it
-    runs elsewhere, on a conversation's first answer when it runs here."""
+    """Which model answered, said only when it does not run on this machine
+    (S-3, S-21). ``first`` is kept for callers; a local model is never named."""
     if not model:
         return ""
     label = str(model.get("label") or model.get("name") or "")
@@ -170,9 +170,7 @@ def model_line(model: dict | None, *, first: bool) -> str:
         return ""
     where = model.get("location") or "local"
     if where == "local":
-        if not first:
-            return ""
-        return f"-# {neutralise(label)} · runs on this Mycelium's own computer"
+        return ""
     place = "in the cloud" if where == "cloud" else "on another server"
     return f"-# {neutralise(label)} · runs {place}"
 

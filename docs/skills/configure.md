@@ -137,8 +137,9 @@ agent = "claude"         # Mylo's chat; the nightly components stay on local
   API host) is never called while `llm.allow_cloud = false`; `validate`
   reports it. Turning the switch on is the host's decision: say in one plain
   sentence that prompts (profiles, papers, the person's questions) will then
-  leave the machine for that provider. The web chat and Discord say which
-  model answers and where it runs.
+  leave the machine for that provider. The web chat and Discord then say which
+  model answers and that it runs elsewhere; a model on this machine is not
+  named.
 - Fallback is off by default. A server falls back only to the servers listed in
   `llm.fallback`, so a local model never falls back to a cloud one unless the
   host listed it (and `allow_cloud` is on).
@@ -163,8 +164,10 @@ Who may ask Mylo in Discord is the host's choice, in `[tools.agent]`:
   department lowers it for its own server with `/mylo chat guests …` or in its
   settings (`AgentOrgPolicy.discord_guests`); the lower of the two applies.
   Say plainly that being in the server is treated as trust (S-16).
-- Limits: `discord_guest_daily_turns` (10 per guest) and
-  `discord_place_daily_turns` (200 guest questions per server).
+- Limits: `discord_guest_daily_turns` (questions per guest per day) and
+  `discord_place_daily_turns` (guest questions per server per day). Both are
+  `0` by default, which is no limit: a guest is limited only where the host
+  or the lab set it up that way.
 - `discord_channel_session_hours` (24), `discord_closed_thread_days` (30),
   `discord_ping_after_minutes` (10, when a slow answer pings the asker) and
   `discord_turn_timeout_minutes` (30).

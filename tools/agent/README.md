@@ -89,7 +89,11 @@ the API, a developer CLI, the web chat panel and Discord.
   department stands, but only for functions that declare a guest level
   (`AgentFunction.guest`: `public`, `no_people`, `full`), capped by
   `discord_guest_level` and the org's `AgentOrgPolicy.discord_guests`
-  (`permissions.guest_level`). A guest is never learned from.
+  (`permissions.guest_level`); both default to `full` and the daily limits
+  to none. What a guest still lacks at `full` needs an account to mean
+  anything (their own profile, saves, files, earlier conversations,
+  introductions) or a viewer the knowledge app can check (a project's
+  concepts). A guest is never learned from.
 
 ## Doors
 

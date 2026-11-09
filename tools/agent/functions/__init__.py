@@ -81,6 +81,7 @@ AGENT = (
         f"{H}.core:update_todos",
         group="agent",
         core=True,
+        guest="public",
         output="person",
         params={
             "items": {
@@ -147,6 +148,7 @@ AGENT = (
         f"{H}.core:read_result",
         group="agent",
         core=True,
+        guest="public",
         output="person",
         params={
             "call_id": {"type": "string", "x-ref": "thread"},

@@ -47,6 +47,7 @@ def _f(name, activity, summary, description, handler, *, params, required=(), ou
         output=output,
         scopes=ALL,
         min_role={},
+        guest="public",
     )
 
 
