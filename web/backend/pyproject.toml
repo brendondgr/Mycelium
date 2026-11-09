@@ -41,6 +41,14 @@ dependencies = [
     # Server-side PDF generation for the daily Discord "Mylo Report" (pure-Python,
     # no system libraries — apps.content.daily_report_pdf).
     "reportlab>=4.2.0,<5.0.0",
+    # Model servers (apps/core/llmkit, apps/core/llm_bridge.py): httpx for
+    # discovery and health, the Anthropic and Gemini SDKs for those kinds. Both
+    # SDKs are imported lazily; a missing one is a reported problem, not a
+    # failed start. Ordinary dependencies, not an extra: a plain `uv run`
+    # strips extras on this project.
+    "httpx>=0.27,<1.0",
+    "anthropic>=0.40,<1.0",
+    "google-genai>=1.0,<2.0",
 ]
 
 [project.optional-dependencies]
@@ -101,6 +109,9 @@ conflicts = [[{ extra = "embeddings" }, { extra = "embeddings-gpu" }]]
 [tool.ruff]
 line-length = 88
 target-version = "py313"
+# Vendored from the llm-integration skill and kept byte-close to upstream so a
+# re-vendor is a plain diff (apps/core/llmkit/VENDORED.md).
+extend-exclude = ["apps/core/llmkit"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

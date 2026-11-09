@@ -15,6 +15,7 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
+from apps.core.llm import is_context_length_error
 from django.db import close_old_connections
 
 from . import (
@@ -206,6 +207,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
     steps = 0
     seen: dict[str, int] = {}
     failed_steps = 0
+    overflowed = False
     repaired = False
     force_final = ""
     while True:
@@ -274,17 +276,29 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             return AgentThread.State.IDLE
         stream.publish_transient(thread, "meter", used=size, window=window)
 
-        reply = call(
-            port,
-            messages=[{"role": "system", "content": system}, *msgs],
-            tools=tools,
-            tool_choice="none" if force_final else ("auto" if tools else None),
-            known={fn.name for fn in loaded},
-            on_delta=lambda kind, text: stream.publish_transient(
-                thread, "delta", kind=kind, text=text
-            ),
-            should_stop=lambda: stream.cancel_requested(thread.pk),
-        )
+        try:
+            reply = call(
+                port,
+                messages=[{"role": "system", "content": system}, *msgs],
+                tools=tools,
+                tool_choice="none" if force_final else ("auto" if tools else None),
+                known={fn.name for fn in loaded},
+                on_delta=lambda kind, text: stream.publish_transient(
+                    thread, "delta", kind=kind, text=text
+                ),
+                should_stop=lambda: stream.cancel_requested(thread.pk),
+            )
+        except Exception as exc:
+            # The server says the prompt overflowed although the estimate
+            # fit: compact once and try again (P4).
+            if overflowed or not is_context_length_error(exc):
+                raise
+            overflowed = True
+            if compaction.clear_old_results(thread, events) or compaction.summarize(
+                thread, events, port, rebuild.messages
+            ):
+                continue
+            raise
         steps += 1
         if reply.usage:
             store.append(
@@ -293,8 +307,13 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                 {"usage": reply.usage, "step": steps},
                 tokens=int(reply.usage.get("total_tokens") or 0),
             )
-        if reply.thinking:
-            store.append(thread, "thinking", {"text": reply.thinking})
+        if reply.thinking or reply.opaque:
+            store.append(
+                thread,
+                "thinking",
+                {"text": reply.thinking,
+                 **({"opaque": reply.opaque} if reply.opaque else {})},
+            )
         if reply.finish == "cancelled":
             if reply.text:
                 store.append(

@@ -96,7 +96,14 @@ def user_text(payload: dict, recall: str | None) -> str:
     return "\n\n".join(p for p in parts if p)
 
 
-def messages(thread, events) -> list[dict]:
+def messages(thread, events, *, kind: str | None = None) -> list[dict]:
+    """``kind`` is the wire kind of the server the next call goes to (default:
+    chat's current route). Opaque reasoning state recorded on a ``thinking``
+    event goes back on the assistant message after it only for that kind."""
+    if kind is None:
+        from .llmcall import current_kind
+
+        kind = current_kind()
     settings = thread.settings or {}
     cleared = set(settings.get("cleared", []))
     start = 0
@@ -109,10 +116,15 @@ def messages(thread, events) -> list[dict]:
         if e.type == "recall"
     }
     out: list[dict] = []
+    opaque = None
     for e in events:
         if e.seq <= start:
             continue
         p = e.payload
+        if e.type == "thinking":
+            held = p.get("opaque")
+            opaque = held if held and held.get("kind") == kind else None
+            continue
         if e.type == "user":
             out.append({"role": "user", "content": user_text(p, recall.get(e.seq))})
         elif e.type == "assistant":
@@ -132,6 +144,9 @@ def messages(thread, events) -> list[dict]:
                 ]
             elif msg["content"] is None:
                 msg["content"] = ""
+            if opaque:
+                msg["opaque"] = opaque
+            opaque = None
             out.append(msg)
         elif e.type == "tool_result":
             out.append(

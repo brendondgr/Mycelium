@@ -24,7 +24,17 @@ SUMMARY_PROMPT = (
 
 
 def window() -> int:
-    return int(config.get("context_window"))
+    """``[tools.agent] context_window`` when the host set one; otherwise what
+    chat's server reports for its model (32768 when it reports nothing)."""
+    stated = int(config.get("context_window") or 0)
+    if stated > 0:
+        return stated
+    from apps.core import llm_servers
+
+    from .llmcall import model_name, route
+
+    current = route()
+    return llm_servers.context_window(current.server, model_name(current))
 
 
 def clear_old_results(thread: AgentThread, events) -> bool:

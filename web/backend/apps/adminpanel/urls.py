@@ -31,4 +31,8 @@ urlpatterns = [
         views.AdminLabDetailView.as_view(),
         name="admin-lab-detail-no-slash",
     ),
+    path("llm/servers/", views.AdminLLMServersView.as_view(),
+         name="admin-llm-servers"),
+    path("llm/servers", views.AdminLLMServersView.as_view(),
+         name="admin-llm-servers-no-slash"),
 ]
