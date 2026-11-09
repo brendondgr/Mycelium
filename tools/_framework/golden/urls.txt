@@ -597,6 +597,8 @@ api/admin/labs/	admin-labs	AdminLabListView
 api/admin/labs	admin-labs-no-slash	AdminLabListView
 api/admin/labs/<slug:slug>/	admin-lab-detail	AdminLabDetailView
 api/admin/labs/<slug:slug>	admin-lab-detail-no-slash	AdminLabDetailView
+api/admin/llm/servers/	admin-llm-servers	AdminLLMServersView
+api/admin/llm/servers	admin-llm-servers-no-slash	AdminLLMServersView
 api/ambient/projects/<uuid:pk>/conversation/	ambient-project-conversation	ProjectConversationView
 api/ambient/projects/<uuid:pk>/channel-hints/	ambient-project-channel-hints	ProjectChannelHintView
 api/ambient/attributions/<int:ref_id>/correct/	ambient-attribution-correct	AttributionCorrectView

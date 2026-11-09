@@ -22,7 +22,7 @@ at the repository root, and all implementation and install state lives under
 | Relational store | PostgreSQL 17 + pgvector | `postgres` service |
 | Cache / broker / job state | Redis 8 | `redis` service |
 | Embeddings | fastembed / ONNX Runtime (`BAAI/bge-small-en-v1.5`), CPU or CUDA | `tools/retrieval/embedding.py` |
-| LLM | OpenAI-compatible endpoint (self-hosted vLLM is the reference target) | `apps/core/llm.py` |
+| LLM | Model servers the host declares in `mycelium.toml` (`[llm.providers.<name>]`: OpenAI-compatible — vLLM, llama.cpp, LM Studio, LiteLLM, DeepSeek, OpenAI — plus native Anthropic, Gemini and Ollama). `local`, the `.env` endpoint (self-hosted vLLM is the reference target), is the default every component uses; `[llm.routes]` points a component (only Mylo's chat so far) at another server. Cloud servers are never called while `llm.allow_cloud` is false; fallback only to servers listed in `llm.fallback`. OpenAI-shaped servers use the shared `LLMClient`; the rest go through the vendored `llmkit` (`llm_bridge.py`) | `apps/core/llm.py`, `apps/core/llm_servers.py`, `apps/core/llm_bridge.py`, `apps/core/llmkit/` |
 | Decision model | Chosen by `[decision] backend` in `mycelium.toml`: `jev` (TypeSafe System One, `jev-1.13.0`, remote), `port` (a model the operator serves at `[decision] port_url`: a decide server such as GAIFA's, or llama.cpp / vLLM read through first-token logprobs, protocol detected from `GET /v1/models`), `off`, or `auto` (the default: jev with a key, else port with a URL, else off). It re-orders the top window of every theme's slate, one (theme, item) question per call, for paid plans; the local stack still does retrieval and the pool. `jev` sends each target's profile text and the candidate's public text off-host per pair; `port` sends them only to the operator's server; `off` sends nothing. A port must be reachable from wherever the nightly runs (from the backend container, `host.docker.internal` and a server not bound to `127.0.0.1` only) | `apps/core/decisions.py`, `apps/core/systemone.py`, `tools/recommendation/typesafe_rerank.py` |
 | Edge gateway | Nginx, single origin | `web/infra/nginx/` |
 | Python deps & commands | `uv` | `web/backend/` |
@@ -153,7 +153,7 @@ they never stop the run, and both do nothing while
 
 | App | Responsibility |
 |---|---|
-| `core` | Shared infrastructure: health endpoint, the pgvector extension migration, the exactly-one-FK helper (`db.py`), the OpenAI-compatible LLM client (`llm.py`), and transactional email (`mail/`) |
+| `core` | Shared infrastructure: health endpoint, the pgvector extension migration, the exactly-one-FK helper (`db.py`), the shared LLM client (`llm.py`), the model-server registry and routing (`llm_servers.py`), the bridge to Anthropic, Gemini and Ollama (`llm_bridge.py` over the vendored `llmkit/`), and transactional email (`mail/`) |
 | `accounts` | Identity & organization: users, profiles, departments, labs, memberships, permission roles, academic titles, audit events, derived membership. Owns session auth (CSRF, login/logout/me), the invite-only sign-up gate, lab invitations, the interests contract, and profile/lab intake (`intake/`) |
 | `research` | Projects scoped to a user, lab, or department: membership, visibility over the org hierarchy, plan-gated creation and archiving, team collaboration (shares, feed, link ingest, seen ledger, events), and collections |
 | `billing` | Subscriptions, per-seat billing, add-ons, and tier-based entitlement resolution. `entitlements.py` is the single read path; an expired plan reverts to Free at read time with no cleanup job. It is a module the instance switches on (`billing.mode` in `mycelium.toml`): with billing off (the default) no tier decides anything — every feature is granted and every limit comes from `[limits]` or a staff override; with `subscriptions` the limits come from `[limits.tiers.*]`, and features are withheld only if `billing.enforce_features` is also on |
@@ -231,7 +231,7 @@ graph phase has not started.
 | Django | `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CORS_ALLOWED_ORIGINS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `PUBLIC_HOSTNAME` |
 | Frontend wiring | `NEXT_PUBLIC_API_BASE_URL`, `API_INTERNAL_URL` |
 | Data services | `DATABASE_URL`, `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` |
-| LLM | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS` (instance key `llm.max_tokens`; 0 = no output cap, the default), `LLM_REASONING`, `LLM_REASONING_STYLE`, `LLM_THINKING_BUDGET` |
+| LLM | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS` (instance key `llm.max_tokens`; 0 = no output cap, the default), `LLM_REASONING`, `LLM_REASONING_STYLE`, `LLM_THINKING_BUDGET` — together the server `local`. More servers: `[llm] default / allow_cloud / fallback`, `[llm.providers.<name>]`, `[llm.routes]` in `mycelium.toml`; each server's key variable (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, …, named by its `api_key_env`) in `.env` |
 | TypeSafe | `TYPESAFE_API_KEY`, `TYPESAFE_MODEL` (pinned version, never `jev-latest`), `TYPESAFE_BASE_URL`, `TYPESAFE_TIMEOUT`, `TYPESAFE_MAX_RETRIES` |
 | Slate reranker switch | `[decision]` keys `backend`, `port_url`, `port_protocol`, `port_model`, `port_timeout` (`DECISION_*`; the old `RERANK_METHOD` still maps `typesafe` → `jev`, `local` → `off`, but gives way to a `backend` set in `mycelium.toml`), `DECISION_PORT_API_KEY` in `.env`, `TYPESAFE_RERANK_WINDOW`, `TYPESAFE_RERANK_CONTENT_TYPES`, `TYPESAFE_RERANK_CONCURRENCY`; `OPPORTUNITY_LLM_CONCURRENCY` for the opportunity scorer and `WRITEUP_LLM_CONCURRENCY` for the précis and per-theme write-up calls |
 | Embedding | `EMBEDDING_DEVICE` (`auto`/`cuda`/`cpu`), `EMBEDDING_BATCH_SIZE_CPU`, `EMBEDDING_BATCH_SIZE_GPU` |
@@ -393,9 +393,9 @@ re-send a silent no-op.
 
 The nightly run measures itself. A final, non-fatal `run_analytics_report` stage
 reads the rows the run just wrote — coverage, discovery, recommendations, report
-delivery — plus the per-day LLM ledger (`core.LLMUsageDaily`, written from
-`apps.core.llm.LLMClient.complete`, which is the one seam every LLM caller routes
-through). It leaves the metrics at `RUN_ANALYTICS_JSON_PATH` and a PDF in
+delivery — plus the per-day LLM ledger (`core.LLMUsageDaily`, one row per
+component per model server, written by the shared client — `LLMClient` or the
+`llmkit` bridge — that every LLM caller gets from `build_llm_client`). It leaves the metrics at `RUN_ANALYTICS_JSON_PATH` and a PDF in
 `RUN_ANALYTICS_PDF_DIR`.
 
 The split exists because the two halves run in different worlds: the stages

@@ -138,3 +138,34 @@ class AdminLabDetailView(APIView):
             raise ValidationError({"detail": [str(exc)]}) from exc
         lab.refresh_from_db()
         return Response(AdminLabDetailSerializer(lab).data)
+
+
+class AdminLLMServersView(APIView):
+    """``GET api/admin/llm/servers/``: every model server and each route.
+
+    Read-only and staff-only. Changing servers means editing ``mycelium.toml``
+    on the host. A dead server is a row with ``ok: false``, never an error
+    status; no key appears, only the name of the variable that holds it.
+    """
+
+    permission_classes = [IsStaffOrSuperuser]
+
+    def get(self, request: Request) -> Response:
+        from apps.core import llm_servers
+
+        table = llm_servers.table()
+        servers = llm_servers.options(force=request.query_params.get("refresh")
+                                      in ("1", "true"))
+        for row in servers:
+            entry = table.servers.get(row["server"]) or {}
+            row["base_url"] = entry.get("base_url") or None
+            row["api_key_env"] = entry.get("api_key_env") or None
+            row["has_key"] = bool(llm_servers.api_key(entry).strip()
+                                  not in ("", "EMPTY")) if entry else False
+        return Response({
+            "default": table.default,
+            "allow_cloud": table.allow_cloud,
+            "fallback": table.fallback,
+            "servers": servers,
+            "routes": llm_servers.routes(),
+        })
