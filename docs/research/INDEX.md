@@ -57,11 +57,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-005` | 2026-11-08 | Full-text coverage after the PubMed id repair (Q-057) | complete | full_text_rate 0.6500 (n=200) | — | [folder](experiments/EXP-2026-11-005-fulltext-coverage-own-ids/RESULTS.md) |
 | `EXP-2026-11-006` | 2026-11-08 | Conference location and continent coverage | complete | continent_rate 0.9035 (n=912) | — | [folder](experiments/EXP-2026-11-006-conference-location-coverage/RESULTS.md) |
 | `EXP-2026-11-007` | 2026-11-09 | Can a 0.85B decision model served on this host answer the TypeSafe rerank questions? | complete | discrimination_auc_worth 0.6899 | — | [folder](experiments/EXP-2026-11-007-d3-lite-local-decision-smoke/RESULTS.md) |
+| `EXP-2026-11-008` | 2026-11-09 | How many decisions per second does the local decide port sustain through Mycelium's client? | complete | throughput_c1 7.1320 | — | [folder](experiments/EXP-2026-11-008-decision-port-throughput/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 44 |
+| complete | 45 |
 | planned | 4 |
-| **total** | **48** |
+| **total** | **49** |

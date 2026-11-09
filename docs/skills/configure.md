@@ -56,6 +56,14 @@ cover almost every instance:
 4. **Does the model endpoint bill per call?** (A paid API wants a nightly
    budget; a self-hosted model does not.)
 
+One more only if they care how slates are ordered: **which decision model
+re-orders each theme's top items?** TypeSafe's hosted Jev (`[decision] backend
+= "jev"`, `TYPESAFE_API_KEY` in `.env`, sends profile text off the host), a
+model they serve (`backend = "port"`, `port_url = "http://host:port"`: a decide
+server, or llama.cpp / vLLM), or none (`off`). Leaving it at `auto` picks Jev
+with a key, a port with a URL, else none. After setting a port, run
+`manage.py decision_check` to confirm it answers from where the nightly runs.
+
 Then get a structured recommendation instead of reasoning one out yourself:
 
 ```bash

@@ -1,0 +1,16 @@
+{
+ "failures_c1": 0,
+ "failures_c4": 0,
+ "failures_c8": 0,
+ "latency_p50_ms_c1": 131.0,
+ "latency_p50_ms_c4": 501.8,
+ "latency_p50_ms_c8": 918.7,
+ "latency_p95_ms_c1": 181.6,
+ "latency_p95_ms_c4": 517.2,
+ "latency_p95_ms_c8": 940.5,
+ "model": "decide:d3-lite@03560c26f5199c3c04129a2ccb38960c913635e0",
+ "throughput_c1": 7.132,
+ "throughput_c4": 7.993,
+ "throughput_c8": 8.56,
+ "throughput_gain_c8_over_c1": 1.2
+}

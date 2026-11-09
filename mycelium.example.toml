@@ -144,6 +144,29 @@ slack = false                            # env SLACK_ENABLED
 # The Microsoft Teams integration.
 teams = false                            # env TEAMS_ENABLED
 
+# The decision model that re-orders the head of each theme's slate: TypeSafe's
+# hosted Jev, a model you serve on a port, or none.
+[decision]
+# Which decision model re-orders the top of each theme's slate. jev:
+# TypeSafe's hosted model (TYPESAFE_API_KEY in .env; sends profile and item
+# text off this host). port: a model you serve yourself at port_url
+# (llama.cpp, vLLM or a decide server). off: no decision model, the plain
+# ranking stands. auto: jev with a key, else port with a URL, else off.
+backend = "auto"                         # env DECISION_BACKEND; auto | jev | port | off
+# Where the self-hosted decision model answers, e.g. "http://127.0.0.1:8080"
+# (a trailing /v1 is fine). A key, if the server wants one, goes in .env as
+# DECISION_PORT_API_KEY.
+port_url = ""                            # env DECISION_PORT_URL
+# decide: a decision server's POST /v1/decide. openai: an OpenAI-compatible
+# chat server read through logprobs (llama.cpp's llama-server, vLLM). auto:
+# detected from GET /v1/models.
+port_protocol = "auto"                   # env DECISION_PORT_PROTOCOL; auto | decide | openai
+# The model to ask on that server. Blank: the server's default (decide) or the
+# first one it lists (openai).
+port_model = ""                          # env DECISION_PORT_MODEL
+# Seconds to wait for one decision from the port.
+port_timeout = 30                        # env DECISION_PORT_TIMEOUT
+
 # The modular tools under tools/. These keys govern all of them; each
 # installed tool also reads its own [tools.<name>] section below.
 [tools]

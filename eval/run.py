@@ -36,7 +36,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ["RERANK_ENABLED"] = "false"
 # Same reason: the TypeSafe slate stage is a production switch, and an arm that
 # wants it is written as an arm (`typesafe_noul`, `typesafe_score`).
-os.environ["RERANK_METHOD"] = "local"
+os.environ["DECISION_BACKEND"] = "off"
 
 import django  # noqa: E402
 

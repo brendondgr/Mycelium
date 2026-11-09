@@ -1,0 +1,94 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-008
+slug: decision-port-throughput
+title: How many decisions per second does the local decide port sustain through Mycelium's client?
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-11-09
+date_completed: 2026-11-09
+
+authors: [brendondgr]
+
+purpose: >
+  Capacity check for the new [decision] backend = "port" path
+  (apps/core/decisions.py). Measures throughput and latency of GAIFA's decide
+  server (d3-lite) at 1, 4 and 8 requests in flight, through the
+  decision_check management command, with a fixed synthetic state. Planning
+  input for the nightly rerank's concurrency setting; no quality claim.
+
+hypothesis: >
+  Exploratory, with one stated expectation: the decide mod takes a GAIFA GPU
+  queue lease per call, so concurrency should raise latency rather than
+  throughput. Falsifier for that expectation: throughput at 8 in flight more
+  than 1.5x throughput at 1.
+  OUTCOME: expectation held — 7.13 calls/s at 1, 8.56 at 8 (1.20x), p50 latency
+  131 ms -> 919 ms. Zero failures in 144 calls.
+
+code:
+  commit: 746b02b
+  branch: main
+  entrypoint: "for c in 1 4 8; do uv run --no-sync --project web/backend python web/backend/manage.py decision_check --url http://127.0.0.1:5107 --calls 48 --concurrency $c --json docs/research/experiments/EXP-2026-11-008-decision-port-throughput/data/run_c$c.json; done && python3 docs/research/experiments/EXP-2026-11-008-decision-port-throughput/code/collect.py"
+  dirty: true  # the decision switch itself was uncommitted at run time and lands in the same commit; ISSUES.md 1
+config:
+  path: web/backend/apps/core/management/commands/decision_check.py
+  hash: null
+data:
+  name: synthetic — one hand-written state in decision_check.SAMPLE_STATE
+  version: "2026-11-09"
+  split: test
+  n_examples: 144 # 48 calls at each of 3 concurrency levels, one state
+  qrels: null
+  hash: null
+  card: null
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13 (host venv at ~/.cache/mycelium-backend-venv)"
+  lockfile: web/backend/uv.lock
+  container: "none — run on the host; the decide server is GAIFA's, outside this repository"
+compute:
+  hardware: "AMD Ryzen AI MAX+ 395, 121 GB RAM, Radeon 8060S integrated GPU (decide reports device cuda)"
+  wall_clock_hours: 0.005 # 18.3 s of measured calls plus warm-up
+  estimated_cost_usd: 0
+
+llm:
+  model: "local/vllm-sr/d3-lite@03560c26f5199c3c04129a2ccb38960c913635e0"
+  temperature: null
+  max_tokens: null
+  prompt_files: ["web/backend/apps/core/management/commands/decision_check.py"]
+  prompt_hash: null
+  total_input_tokens: 0 # the decide server reports no token counts
+  total_output_tokens: 0
+  nondeterminism_note: >
+    Not measured here; EXP-2026-11-007 found d3-lite deterministic.
+
+metrics:
+  primary: throughput_c1 # calls per second, one in flight
+  values:
+    throughput_c1: 7.132 # n=48
+    throughput_c4: 7.993 # n=48
+    throughput_c8: 8.56 # n=48
+    throughput_gain_c8_over_c1: 1.2
+    latency_p50_ms_c1: 131.0
+    latency_p95_ms_c1: 181.6
+    latency_p50_ms_c4: 501.8
+    latency_p95_ms_c4: 517.2
+    latency_p50_ms_c8: 918.7
+    latency_p95_ms_c8: 940.5
+    failures_total: 0 # n=144
+baselines_compared: ["concurrency 1"]
+statistical_test: null
+
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-007]

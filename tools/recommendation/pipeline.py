@@ -1482,7 +1482,7 @@ def _explain_run(
       because there is no theme to scope anything to.
     """
     if clusters and slate_groups:
-        # The RERANK_METHOD switch (tools.recommendation.typesafe_rerank): with
+        # The [decision] switch (tools.recommendation.typesafe_rerank): with
         # ``typesafe``, each theme's top window is re-ordered by the decision
         # model before the slate is cut. Nothing is added or dropped; the
         # judgements ride into ``signals["typesafe"]`` through the rows' extras.
@@ -1611,7 +1611,7 @@ def cluster_suggestions(
     * **No global score order.** ``rank`` is the item's best position across its
       theme slates — every theme's 1st, then every 2nd — with the fused order
       only breaking ties, and anything in no slate after all of them. The slates
-      are the ranking the run produced under whichever ``RERANK_METHOD`` was
+      are the ranking the run produced under whichever ``[decision]`` backend was
       active (TypeSafe re-orders their heads; ``local`` leaves the fused order
       standing), so the feed follows that method rather than the pre-rerank
       fusion. Numbering by ``pairs`` put an item TypeSafe had pushed to 17th in

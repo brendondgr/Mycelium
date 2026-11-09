@@ -1,4 +1,4 @@
-"""The RERANK_METHOD switch: what moves, what never does, and what is reused.
+"""The decision-backend switch: what moves, what never does, and what is reused.
 
 Offline. A fake client answers with fixed probabilities; no network, no SDK.
 Each test names the failure it exists to catch.
@@ -23,6 +23,9 @@ class _Item:
 
 class _Client:
     """Answers ``worth`` per item title; raises for titles in ``broken``."""
+
+    model = "jev-1.13.0"
+    backend = "jev"
 
     def __init__(self, worth: dict[str, float], broken: set[str] = frozenset()):
         self.worth = worth
@@ -62,8 +65,9 @@ def _items(n: int) -> dict[str, _Item]:
 
 @pytest.fixture(autouse=True)
 def _typesafe_on(settings):
-    settings.RERANK_METHOD = "typesafe"
+    settings.DECISION_BACKEND = "jev"
     settings.TYPESAFE_API_KEY = "k"
+    settings.DECISION_PORT_URL = ""
     settings.TYPESAFE_MODEL = "jev-1.13.0"
     settings.TYPESAFE_RERANK_WINDOW = 3
     settings.TYPESAFE_RERANK_CONTENT_TYPES = [
@@ -167,9 +171,9 @@ def test_slate_groups_wrapper_keeps_hits_and_scores():
 
 def test_switch_off_key_missing_or_type_unlisted_disables(settings):
     assert ts.enabled_for("paper") is True
-    settings.RERANK_METHOD = "local"
+    settings.DECISION_BACKEND = "off"
     assert ts.enabled_for("paper") is False
-    settings.RERANK_METHOD = "typesafe"
+    settings.DECISION_BACKEND = "jev"
     settings.TYPESAFE_API_KEY = ""
     assert ts.enabled_for("paper") is False
     settings.TYPESAFE_API_KEY = "k"
@@ -178,11 +182,56 @@ def test_switch_off_key_missing_or_type_unlisted_disables(settings):
     assert ts.enabled_for("grant") is True
 
 
-def test_unknown_method_is_local():
-    from django.test import override_settings
+@pytest.mark.parametrize(
+    "configured,key,url,expected",
+    [
+        ("auto", "k", "", "jev"),
+        ("auto", "k", "http://127.0.0.1:5107", "jev"),
+        ("auto", "", "http://127.0.0.1:5107", "port"),
+        ("auto", "", "", "off"),
+        ("port", "k", "http://127.0.0.1:5107", "port"),
+        ("port", "k", "", "off"),
+        ("jev", "", "http://127.0.0.1:5107", "off"),
+        ("typesafe", "k", "", "jev"),  # the old RERANK_METHOD spellings
+        ("local", "k", "http://x", "off"),
+        ("banana", "k", "http://x", "off"),
+    ],
+)
+def test_backend_resolution(settings, configured, key, url, expected):
+    settings.DECISION_BACKEND = configured
+    settings.TYPESAFE_API_KEY = key
+    settings.DECISION_PORT_URL = url
+    assert ts.backend() == expected
+    assert ts.enabled_for("paper") is (expected != "off")
 
-    with override_settings(RERANK_METHOD="banana"):
-        assert ts.method() == "local"
+
+def test_judgement_names_backend_and_model():
+    client = _Client({"d0": 0.4})
+    client.model, client.backend = "decide:d3-lite@abc", "port"
+    _, judgements = _run({"c1": ["d0"]}, client)
+    judged = judgements["d0"]["c1"]
+    assert (judged["backend"], judged["model"]) == ("port", "decide:d3-lite@abc")
+
+
+def test_switching_model_invalidates_reuse():
+    _, first = _run({"c1": ["d0", "d1"]}, _Client({"d0": 0.1, "d1": 0.9}))
+    other = _Client({"d0": 0.1, "d1": 0.9})
+    other.model = "decide:d3-lite@abc"
+    _run({"c1": ["d0", "d1"]}, other, prior=first)
+    assert len(other.calls) == 2
+
+
+def test_an_unreachable_port_keeps_fused_order():
+    class _Down:
+        backend = "port"
+
+        @property
+        def model(self):
+            raise ConnectionError("refused")
+
+    groups, judgements = _run({"c1": ["d0", "d1", "d2"]}, _Down())
+    assert groups == {"c1": ["d0", "d1", "d2"]}
+    assert judgements == {}
 
 
 def test_head_ids_accepts_hits_or_ids():

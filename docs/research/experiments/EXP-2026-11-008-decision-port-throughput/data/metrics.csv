@@ -1,0 +1,4 @@
+concurrency,calls,ok,failures,throughput_calls_per_s,latency_ms_p50,latency_ms_p95,latency_ms_max
+1,48,48,0,7.132,131.0,181.6,187.2
+4,48,48,0,7.993,501.8,517.2,528.4
+8,48,48,0,8.56,918.7,940.5,988.8
