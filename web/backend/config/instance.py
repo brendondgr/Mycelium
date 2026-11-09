@@ -249,6 +249,18 @@ SETTINGS: tuple[Setting, ...] = (
             "cap, so a reasoning model is never starved before it answers; set "
             "a number only if your endpoint needs one.",
             env="LLM_MAX_TOKENS"),
+    Setting("llm.default", "str", "local",
+            "The model server every component uses unless [llm.routes] sends "
+            "it elsewhere. \"local\" is the endpoint in .env (LLM_BASE_URL, "
+            "LLM_MODEL) unless you declare [llm.providers.local] yourself."),
+    Setting("llm.allow_cloud", "bool", False,
+            "Let a cloud server (OpenAI, Anthropic, Gemini, DeepSeek or another "
+            "public API) be called. Off: a cloud server never loads and no text "
+            "leaves this host for one."),
+    Setting("llm.fallback", "list", [],
+            "Servers tried, in order, when the routed one is down. Empty: no "
+            "fallback. A cloud server listed here is still skipped while "
+            "allow_cloud is false."),
     # ---- decision model ---------------------------------------------------
     Setting(
         "decision.backend", "choice", "auto",
@@ -346,8 +358,10 @@ SECTION_HELP = {
                 "none.",
     "nightly": "Cost controls for the nightly run: how many model calls and how "
                "much parallelism it may use.",
-    "llm": "The language model. The endpoint and model name live in .env "
-           "(LLM_BASE_URL, LLM_MODEL); this section holds policy.",
+    "llm": "The language model servers. The local endpoint lives in .env "
+           "(LLM_BASE_URL, LLM_MODEL) and is the server named \"local\"; more "
+           "servers are declared as [llm.providers.<name>] sections and chosen "
+           "per component in [llm.routes]. Keys stay in .env.",
     "tools": "The modular tools under tools/. These keys govern all of them; each "
              "installed tool also reads its own [tools.<name>] section below.",
 }
@@ -481,6 +495,9 @@ class Instance:
     #: Each installed tool's resolved ``[tools.<name>]`` section
     #: (:class:`tools._framework.config.ToolConfig`), keyed by tool name.
     tools: dict[str, Any] = field(default_factory=dict)
+    #: The model servers (``[llm.providers.*]`` plus the synthesised
+    #: ``local``) and the per-component routes (``[llm.routes]``).
+    llm: LLMServers | None = None
 
     def __getitem__(self, key: str) -> Any:
         return self.values[key]
@@ -516,6 +533,8 @@ class Instance:
             out.append("email.provider = \"resend\" needs RESEND_API_KEY in .env.")
         if provider == "smtp" and not self.values["email.smtp_host"]:
             out.append("email.provider = \"smtp\" needs email.smtp_host.")
+        if self.llm is not None:
+            out.extend(self.llm.problems(env))
         return out
 
 
@@ -582,6 +601,7 @@ def resolve(
     raw_file = dict(read_file(path) if file_values is None else file_values)
 
     raw_file, tool_file = _split_tool_keys(raw_file)
+    raw_file, server_file, route_file = _split_llm_keys(raw_file)
     unknown = sorted(k for k in raw_file if k not in BY_KEY)
     if unknown:
         raise ConfigError(
@@ -632,9 +652,316 @@ def resolve(
         env,
         values["tools.disabled"],
     )
+    llm = resolve_llm(values, server_file, route_file, env)
+    warnings.extend(llm.warnings)
     return Instance(values=values, sources=sources, profile=profile,
                     path=path if path and path.is_file() else None,
-                    warnings=warnings, tools=tools)
+                    warnings=warnings, tools=tools, llm=llm)
+
+
+# --------------------------------------------------------------------------- #
+# Model servers — [llm.providers.<name>] and [llm.routes]
+# --------------------------------------------------------------------------- #
+
+#: Server kinds. Each is served by apps/core/llmkit; the OpenAI-shaped ones
+#: (everything but anthropic, gemini and ollama) go through the shared
+#: OpenAI-compatible client the components were tuned on.
+LLM_KINDS = ("openai_compatible", "vllm", "llamacpp", "ollama", "openai",
+             "anthropic", "gemini", "deepseek")
+#: Kinds that speak the OpenAI chat-completions wire format.
+LLM_OPENAI_KINDS = ("openai_compatible", "vllm", "llamacpp", "openai", "deepseek")
+#: Kinds that are a public API by definition.
+LLM_CLOUD_KINDS = ("openai", "anthropic", "gemini", "deepseek")
+#: Kinds with no sensible default address: the host must say where it is.
+LLM_URL_KINDS = ("openai_compatible", "vllm", "llamacpp", "ollama")
+#: The key variable a hosted kind reads when the section names none.
+LLM_DEFAULT_KEY_ENV = {"openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY",
+                       "gemini": "GEMINI_API_KEY", "deepseek": "DEEPSEEK_API_KEY"}
+LLM_LOCATIONS = ("local", "remote", "cloud")
+#: Public API hosts (suffix match) that make a server ``cloud``.
+LLM_CLOUD_HOSTS = (
+    "api.openai.com", "openai.azure.com", "api.anthropic.com",
+    "googleapis.com", "api.deepseek.com", "openrouter.ai", "api.together.xyz",
+    "api.together.ai", "api.groq.com", "api.mistral.ai", "api.fireworks.ai",
+    "api.perplexity.ai", "api.x.ai", "api.cohere.com", "inference.ai.azure.com",
+    "api-inference.huggingface.co", "router.huggingface.co",
+)
+
+#: Fields a ``[llm.providers.<name>]`` section may set, and their types.
+LLM_SERVER_FIELDS: dict[str, str] = {
+    "kind": "str", "base_url": "str", "api_key_env": "str", "model": "str",
+    "label": "str", "enabled": "bool", "location": "str", "timeout": "float",
+    "connect_timeout": "float", "context_window": "int", "reasoning": "str",
+    "model_allow": "list", "model_deny": "list",
+}
+_REASONING_LEVELS = ("none", "low", "medium", "high")
+_SERVER_PREFIX = "llm.providers."
+_ROUTE_PREFIX = "llm.routes."
+
+_LLM_EXAMPLE = [
+    "",
+    "# More model servers. \"local\" above is the endpoint in .env; declare",
+    "# [llm.providers.local] only to change its label or location. A server",
+    "# names the variable that holds its key; the key itself lives in .env.",
+    "#",
+    "# [llm.providers.claude]",
+    "# kind = \"anthropic\"                # " + " | ".join(LLM_KINDS),
+    "# api_key_env = \"ANTHROPIC_API_KEY\"",
+    "# model = \"...\"                     # one the server lists (llm_check)",
+    "# enabled = true                     # cloud also needs allow_cloud = true",
+    "#",
+    "# [llm.routes]                       # component = \"server\" or \"server:model\"",
+    "# agent = \"claude\"",
+]
+
+
+@dataclass
+class LLMServers:
+    """The resolved model servers and routes. Holds key *names*, never keys."""
+
+    servers: dict[str, dict[str, Any]]
+    routes: dict[str, str]
+    default: str
+    allow_cloud: bool
+    fallback: list[str]
+    warnings: list[str] = field(default_factory=list)
+
+    def callable(self, name: str) -> bool:
+        """Whether ``name`` may be called: declared, enabled, cloud allowed."""
+        server = self.servers.get(name)
+        if server is None or not server["enabled"]:
+            return False
+        if server["location"] == "cloud" and not self.allow_cloud:
+            # The synthesised local server is whatever .env already pointed
+            # at; turning on the cloud switch must not be needed to keep an
+            # existing install working.
+            return bool(server.get("synthesized"))
+        return True
+
+    def problems(self, environ: Mapping[str, str]) -> list[str]:
+        out: list[str] = []
+        for name, server in self.servers.items():
+            where = f"[llm.providers.{name}]"
+            if server["kind"] not in LLM_KINDS:
+                out.append(f"{where} kind = {server['kind']!r} is not one of "
+                           f"{', '.join(LLM_KINDS)}.")
+                continue
+            if not server["enabled"]:
+                continue
+            if server["kind"] in LLM_URL_KINDS and not server["base_url"]:
+                out.append(f"{where} kind = \"{server['kind']}\" needs base_url.")
+            if (server["location"] == "cloud" and not self.allow_cloud
+                    and not server.get("synthesized")):
+                out.append(f"{where} is a cloud server but llm.allow_cloud = "
+                           "false; it will not be called. Set llm.allow_cloud = "
+                           "true or enabled = false.")
+            key_env = server["api_key_env"]
+            if (key_env and not server.get("synthesized")
+                    and not str(environ.get(key_env, "")).strip()):
+                out.append(f"{where} api_key_env = \"{key_env}\" is not set in "
+                           ".env.")
+            if not server["model"] and not server.get("synthesized"):
+                out.append(f"{where} has no model. Pick one the server lists "
+                           "(`manage.py llm_check`).")
+        names = [("llm.default", self.default)]
+        names += [(f"llm.routes.{c}", r.partition(":")[0])
+                  for c, r in self.routes.items()]
+        for key, name in names:
+            server = self.servers.get(name)
+            if server is None:
+                out.append(f"{key} names {name!r}, which is not a declared "
+                           f"server ({', '.join(sorted(self.servers))}).")
+            elif not server["enabled"]:
+                out.append(f"{key} names {name!r}, which is disabled.")
+        for name in self.fallback:
+            if name not in self.servers:
+                out.append(f"llm.fallback names {name!r}, which is not a "
+                           "declared server.")
+        return out
+
+
+def derive_location(kind: str, base_url: str) -> str:
+    """``local``, ``remote`` or ``cloud``, from the kind and the address.
+
+    Hosted kinds and known public API hosts are ``cloud``; loopback, private
+    ranges, ``host.docker.internal`` and single-label names (a Compose
+    service on this host) are ``local``; anything else is ``remote``.
+    """
+    import ipaddress
+    from urllib.parse import urlsplit
+
+    if kind in LLM_CLOUD_KINDS and not base_url:
+        return "cloud"
+    host = (urlsplit(base_url if "//" in base_url else f"//{base_url}")
+            .hostname or "").lower().rstrip(".")
+    if not host:
+        return "cloud" if kind in LLM_CLOUD_KINDS else "local"
+    if any(host == h or host.endswith("." + h) for h in LLM_CLOUD_HOSTS):
+        return "cloud"
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+    if ip is not None:
+        if ip.is_loopback or ip.is_private or ip.is_link_local:
+            return "local"
+        return "cloud" if kind in LLM_CLOUD_KINDS else "remote"
+    if (host in ("localhost", "host.docker.internal") or "." not in host
+            or host.endswith((".localhost", ".local", ".internal", ".lan",
+                              ".home.arpa"))):
+        return "local"
+    return "cloud" if kind in LLM_CLOUD_KINDS else "remote"
+
+
+def _split_llm_keys(flat: Mapping[str, Any]):
+    """Separate ``llm.providers.<name>.<field>`` and ``llm.routes.<component>``."""
+    rest: dict[str, Any] = {}
+    servers: dict[str, dict[str, Any]] = {}
+    routes: dict[str, Any] = {}
+    for key, value in flat.items():
+        if key.startswith(_SERVER_PREFIX):
+            name, _, sub = key[len(_SERVER_PREFIX):].partition(".")
+            if not sub:
+                raise ConfigError(f"{key}: a server is a table, "
+                                  f"[llm.providers.{name}].")
+            servers.setdefault(name, {})[sub] = value
+        elif key.startswith(_ROUTE_PREFIX):
+            routes[key[len(_ROUTE_PREFIX):]] = value
+        else:
+            rest[key] = value
+    return rest, servers, routes
+
+
+def _server_value(name: str, sub: str, raw: Any) -> Any:
+    where = f"llm.providers.{name}.{sub}"
+    if sub in ("api_key", "key", "token", "password", "secret"):
+        raise ConfigError(f"{where}: keys never go in {CONFIG_FILENAME}. Put the "
+                          "key in .env and name its variable with api_key_env.")
+    kind = LLM_SERVER_FIELDS.get(sub)
+    if kind is None:
+        raise ConfigError(f"{where}: unknown field. A server takes "
+                          f"{', '.join(LLM_SERVER_FIELDS)}.")
+    if kind == "float":
+        try:
+            if isinstance(raw, bool):
+                raise ValueError
+            return float(raw)
+        except (TypeError, ValueError):
+            raise ConfigError(f"{where}: expected a number, got {raw!r}.") from None
+    if kind == "list":
+        items = raw if isinstance(raw, (list, tuple)) else str(raw).split(",")
+        return [str(item).strip() for item in items if str(item).strip()]
+    value = _coerce(Setting(where, kind, None, ""), raw, CONFIG_FILENAME)
+    if sub == "location" and value not in LLM_LOCATIONS:
+        raise ConfigError(f"{where}: {raw!r} is not one of "
+                          f"{', '.join(LLM_LOCATIONS)}.")
+    if sub == "reasoning" and value not in _REASONING_LEVELS:
+        raise ConfigError(f"{where}: {raw!r} is not one of "
+                          f"{', '.join(_REASONING_LEVELS)}.")
+    if sub == "kind":
+        value = value.strip().lower()
+    return value
+
+
+def _env_float(environ: Mapping[str, str], name: str, default: float) -> float:
+    try:
+        return float(str(environ.get(name, "")).strip() or default)
+    except ValueError:
+        return default
+
+
+def resolve_llm(values: Mapping[str, Any], server_file: Mapping[str, Mapping],
+                route_file: Mapping[str, Any],
+                environ: Mapping[str, str]) -> LLMServers:
+    """The server table: the synthesised ``local`` plus every declared one.
+
+    ``local`` is built from the ``LLM_*`` variables the backend has always read,
+    so an install with no ``[llm.providers]`` resolves to exactly today's
+    endpoint. A ``[llm.providers.local]`` section overrides it field by field.
+    """
+    servers: dict[str, dict[str, Any]] = {}
+    for name in ["local", *[n for n in server_file if n != "local"]]:
+        fields = {sub: _server_value(name, sub, raw)
+                  for sub, raw in (server_file.get(name) or {}).items()}
+        synthesized = name == "local" and "kind" not in fields and \
+            "base_url" not in fields
+        if name == "local":
+            base = {
+                "kind": "openai_compatible",
+                "base_url": str(environ.get("LLM_BASE_URL", "")).strip()
+                or "http://localhost:8001/v1",
+                "api_key_env": "LLM_API_KEY",
+                "model": str(environ.get("LLM_MODEL", "")).strip(),
+                "label": "Local model",
+                "timeout": _env_float(environ, "LLM_TIMEOUT", 60.0),
+                "connect_timeout": _env_float(environ, "LLM_CONNECT_TIMEOUT", 5.0),
+            }
+            if not synthesized:
+                # A declared local server is the host's own, not the .env one.
+                base = {"label": "Local model"}
+            fields = {**base, **fields}
+        kind = str(fields.get("kind") or "openai_compatible")
+        base_url = str(fields.get("base_url") or "")
+        stated = fields.get("location")
+        server = {
+            "name": name,
+            "kind": kind,
+            "base_url": base_url,
+            "api_key_env": fields.get("api_key_env")
+            or LLM_DEFAULT_KEY_ENV.get(kind, ""),
+            "model": str(fields.get("model") or ""),
+            "label": str(fields.get("label") or name.replace("_", " ").title()),
+            "enabled": bool(fields.get("enabled", True)),
+            "location": stated or derive_location(kind, base_url),
+            "location_stated": bool(stated),
+            "timeout": float(fields.get("timeout") or 60.0),
+            "connect_timeout": float(fields.get("connect_timeout") or 5.0),
+            "context_window": int(fields.get("context_window") or 0),
+            "reasoning": fields.get("reasoning") or "",
+            "model_allow": list(fields.get("model_allow") or []),
+            "model_deny": list(fields.get("model_deny") or []),
+            "synthesized": synthesized,
+        }
+        servers[name] = server
+    routes = {}
+    for component, raw in route_file.items():
+        text = str(raw).strip()
+        if not text or text.startswith(":"):
+            raise ConfigError(f"llm.routes.{component}: expected \"server\" or "
+                              f"\"server:model\", got {raw!r}.")
+        routes[component] = text
+    llm = LLMServers(
+        servers=servers,
+        routes=routes,
+        default=str(values.get("llm.default") or "local").strip(),
+        allow_cloud=bool(values.get("llm.allow_cloud")),
+        fallback=list(values.get("llm.fallback") or []),
+    )
+    local = servers["local"]
+    if local["synthesized"] and local["location"] == "cloud":
+        llm.warnings.append(
+            "The local server (LLM_BASE_URL) is a cloud endpoint: every "
+            "component's text leaves this host. Declare it as its own server "
+            "if that is not intended.")
+    return llm
+
+
+def llm_key_kind(key: str) -> str | None:
+    """The value type of a dynamic ``llm.providers.*`` / ``llm.routes.*`` key."""
+    if key.startswith(_ROUTE_PREFIX) and len(key) > len(_ROUTE_PREFIX):
+        return "str"
+    if key.startswith(_SERVER_PREFIX):
+        _name, _, sub = key[len(_SERVER_PREFIX):].partition(".")
+        return LLM_SERVER_FIELDS.get(sub)
+    return None
+
+
+def parse_llm_value(key: str, raw: str) -> Any:
+    """A command-line string as the TOML value a dynamic llm key takes."""
+    if key.startswith(_ROUTE_PREFIX):
+        return str(raw).strip()
+    name, _, sub = key[len(_SERVER_PREFIX):].partition(".")
+    return _server_value(name, sub, raw)
 
 
 # --------------------------------------------------------------------------- #
@@ -741,6 +1068,8 @@ def render(profile: str, overrides: Mapping[str, Any] | None = None) -> str:
     for setting in SETTINGS:
         section = setting.section
         if section != current:
+            if current == "llm":
+                out.extend(_LLM_EXAMPLE)
             if current is not None:
                 out.append("")
             help_key = "limits.tiers" if section.startswith("limits.tiers") else section
