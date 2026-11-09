@@ -122,9 +122,47 @@ def test_apply_corrects_rows(corpus):
 
 def test_command_dry_run(corpus, monkeypatch):
     monkeypatch.setattr(pubmed_repair, "efetch_client", lambda: _fake_fetch([]))
+    monkeypatch.setattr(pubmed_repair, "idconv_client", lambda: lambda ids: {})
     out = StringIO()
     call_command("repair_pubmed_ids", stdout=out)
     text = out.getvalue()
     assert "DRY RUN" in text and "Would correct 3 of 5 PubMed row(s)" in text
     corpus["p2"].refresh_from_db()
     assert corpus["p2"].metadata["pmcid"] == "PMC22"
+
+
+def test_idconv_catches_foreign_pmcids_references_do_not_show(db):
+    """EXP-2026-11-005: PMCIDs another PMID owns, on PubMed and absorbing rows."""
+    articles = {
+        "20": _article("20", '<ArticleId IdType="doi">10.20/own</ArticleId>'),
+        "21": _article("21", '<ArticleId IdType="doi">10.21/own</ArticleId>'
+                             '<ArticleId IdType="pmc">PMC21</ArticleId>'),
+        "22": _article("22", '<ArticleId IdType="doi">10.22/own</ArticleId>'),
+    }
+    pubmed_foreign = _paper("PubMed", "doi:10.20/own", pmid="20", doi="10.20/own",
+                            pmcid="PMC555")
+    absorbed = _paper("OpenAlex", "doi:10.21/own", pmid="21", doi="10.21/own",
+                      pmcid="PMC777")
+    legit = _paper("PubMed", "doi:10.22/own", pmid="22", doi="10.22/own",
+                   pmcid="PMC888")
+    asked = []
+
+    def idconv(pmcids):
+        asked.extend(pmcids)
+        return {"PMC555": "123", "PMC777": "456", "PMC888": "22"}
+
+    def fetch(pmids):
+        return ("<PubmedArticleSet>" + "".join(articles[p] for p in pmids)
+                + "</PubmedArticleSet>")
+
+    stats = repair_pubmed_ids(apply=True, fetch=fetch, idconv=idconv)
+    assert sorted(asked) == ["PMC555", "PMC777", "PMC888"]
+    assert stats.pmcid_cleared == 1 and stats.pmcid_unverified == 1
+    assert stats.other_source_pmcid_fixed == 1
+    assert stats.pmcid_foreign_by_idconv == 2
+    for row in (pubmed_foreign, absorbed, legit):
+        row.refresh_from_db()
+    assert pubmed_foreign.metadata["pmcid"] is None
+    assert pubmed_foreign.external_id == "doi:10.20/own"
+    assert absorbed.metadata["pmcid"] == "PMC21"
+    assert legit.metadata["pmcid"] == "PMC888"

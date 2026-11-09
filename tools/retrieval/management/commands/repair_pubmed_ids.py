@@ -46,10 +46,13 @@ class Command(BaseCommand):
         verb = "Corrected" if apply else "Would correct"
         style = self.style.SUCCESS if apply else self.style.WARNING
         self.stdout.write(style(
-            f"{verb} {stats.rows_changed} of {stats.pubmed_rows} PubMed row(s); "
+            f"{verb} {stats.rows_changed - stats.other_source_pmcid_fixed} of "
+            f"{stats.pubmed_rows} PubMed row(s); "
             f"{stats.duplicates_exposed} duplicate(s) exposed "
             "(merge with dedupe_content_papers), "
             f"{stats.external_id_collisions} external_id collision(s) kept, "
+            f"{stats.other_source_pmcid_fixed} other-source row(s) given back "
+            "their own PMCID, "
             f"{stats.foreign_pmid_rows} other-source row(s) with a citing "
             "paper's PMID (not changed)."
         ))
