@@ -87,3 +87,22 @@ grant eligibility is 1.0 everywhere — not a weak signal, no signal.
 See `PROTOCOL.md` §Procedure. Needs the scratch `states.json` from
 `EXP-2026-11-007` (not committed — it holds profile text) or a fresh
 `extract.py` run, which will give different slates.
+
+## AMENDMENTS
+
+**2026-11-09: the throughput comparison was unfair, and the conclusion is
+withdrawn.**
+
+- §4 says "throughput favours llama.cpp" (3.2× d3-lite). That set llama.cpp's
+  8 slots against d3-lite behind GAIFA's decide server, which handles one
+  request at a time.
+- Both were measured on the ~400-character synthetic state.
+- `EXP-2026-11-012` then measured both like for like on the 165 real states:
+
+| Model | Pairs/s, real states |
+| --- | --- |
+| Qwen3-4B on llama.cpp, 1/4/8 in flight | 1.80 / 1.50 / 1.59 |
+| d3-lite, 1/4/8 pairs per pass | 2.32 / 2.22 / 2.26 |
+
+On production input d3-lite is about 1.4× faster, and concurrency helps
+neither model. The quality findings above are unaffected.

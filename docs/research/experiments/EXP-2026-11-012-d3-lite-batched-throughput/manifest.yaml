@@ -1,0 +1,103 @@
+# The machine-readable half of the record. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+
+id: EXP-2026-11-012
+slug: d3-lite-batched-throughput
+title: d3-lite throughput when pairs share a forward pass
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-11-09
+date_completed: 2026-11-09
+authors: [brendondgr]
+
+purpose: >
+  Fairness correction. EXP-2026-11-008 measured d3-lite's concurrency only
+  through GAIFA's decide server, whose per-call lock and GPU lease serialize
+  requests, and EXP-2026-11-009 then compared it with llama.cpp's 8 parallel
+  slots. This run lets d3-lite work on K pairs per forward pass outside the
+  server (arm A) and measures llama.cpp on the real states at 1/4/8 in flight
+  (arm B, added after arm A), so both models are compared like for like.
+
+hypothesis: >
+  Stated before the run: batching K pairs into one d3-lite pass raises
+  throughput nearly in proportion at small K, above 20 pairs/s at K=8 on the
+  synthetic state (beating llama.cpp Qwen3-4B's 22.8 would refute the earlier
+  ranking), with batched answers within 1e-3 of sequential.
+  OUTCOME: refuted. Synthetic K=8 / K=1 = 1.32x; real states flat (2.22-2.50
+  pairs/s). Real-state parity 0.035. But arm B showed llama.cpp is also flat on
+  real states (1.50-1.80 pairs/s), so d3-lite is 1.39x faster there; the
+  EXP-009 llama.cpp lead was a short-state artifact.
+
+code:
+  commit: 6b37f03
+  branch: main
+  entrypoint: "see RESULTS.md section 8: code/dump_bodies.py, then code/bench.py (GAIFA decide venv), then code/qwen_real.py against llama-server :5180, then code/analyse.py"
+  dirty: true  # another session's docs only; ISSUES.md 1
+config:
+  path: tools/recommendation/typesafe_rerank.py
+  hash: null
+data:
+  name: "EXP-2026-11-007 states (165 real pairs, scratch only) + decision_check.SAMPLE_STATE (synthetic)"
+  version: "2026-11-09"
+  split: test
+  n_examples: 213 # 165 real pairs + 48 synthetic calls, per configuration
+  qrels: null
+  hash: null
+  card: null
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.12.13 (arm A, GAIFA decide venv) / 3.13 (arm B, host venv)"
+  lockfile: web/backend/uv.lock
+  container: "none — run on the host"
+compute:
+  hardware: "AMD Ryzen AI MAX+ 395, 121 GB unified RAM, Radeon 8060S integrated GPU"
+  wall_clock_hours: 0.3
+  estimated_cost_usd: 0
+
+llm:
+  model: "local/vllm-sr/d3-lite@03560c26f5199c3c04129a2ccb38960c913635e0; local/Qwen/Qwen3-4B-GGUF Q4_K_M on llama.cpp b11912"
+  temperature: 0.0
+  max_tokens: 1
+  prompt_files: ["tools/recommendation/typesafe_rerank.py", "web/backend/apps/core/management/commands/decision_check.py"]
+  prompt_hash: null
+  total_input_tokens: 0 # not counted in this throughput run
+  total_output_tokens: 0
+  nondeterminism_note: >
+    Both models are deterministic one pair at a time (EXP-007, EXP-009).
+    d3-lite's batched answers differ from sequential by up to 0.035 on real
+    states (padding / bf16); recorded in ISSUES.md 3.
+
+metrics:
+  primary: d3_over_qwen_best_real # best pairs/s on real states, d3-lite / Qwen3-4B
+  values:
+    d3_real_seq: 2.498 # n=165
+    d3_real_batch1: 2.319 # n=165
+    d3_real_batch4: 2.219 # n=165
+    d3_real_batch8: 2.258 # n=165
+    d3_synthetic_seq: 7.429 # n=48
+    d3_synthetic_batch1: 8.288 # n=48
+    d3_synthetic_batch4: 11.806 # n=48
+    d3_synthetic_batch8: 10.976 # n=48
+    d3_synthetic_gain_batch8_over_batch1: 1.324 # n=48
+    d3_real_gain_batch8_over_batch1: 0.974 # n=165
+    qwen_real_c1: 1.799 # n=165
+    qwen_real_c4: 1.495 # n=165
+    qwen_real_c8: 1.594 # n=165
+    qwen_real_latency_p50_ms_c1: 583.2 # n=165
+    qwen_real_latency_p50_ms_c4: 2709.7 # n=165
+    qwen_real_latency_p50_ms_c8: 4959.9 # n=165
+    d3_best_real: 2.498 # n=165
+    qwen_best_real: 1.799 # n=165
+    d3_over_qwen_best_real: 1.389 # n=165
+    d3_real_batch8_max_abs_diff: 0.033518 # n=165
+    d3_synthetic_batch8_max_abs_diff: 0.000979 # n=48
+baselines_compared: ["EXP-2026-11-008 d3-lite via decide server", "EXP-2026-11-009 Qwen3-4B on llama.cpp (synthetic)"]
+statistical_test: null
+
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-007, EXP-2026-11-008, EXP-2026-11-009]

@@ -1,0 +1,3029 @@
+{
+ "meta": {
+  "batch_size": 32,
+  "device": "AMD Radeon 8060S Graphics",
+  "experiment": "EXP-2026-11-012",
+  "load_s": 3.04,
+  "model": "vllm-sr/d3-lite@03560c26f5199c3c04129a2ccb38960c913635e0",
+  "python": "3.12.13",
+  "run_at": "2026-11-09T15:56:09-0500",
+  "synthetic_calls": 48,
+  "torch": "2.15.0a0+rocm10.2.0a20260926"
+ },
+ "results": {
+  "real": {
+   "batch_1": {
+    "max_abs_diff_vs_seq": 0.0,
+    "pairs": 165,
+    "wall_s": 71.1445
+   },
+   "batch_4": {
+    "max_abs_diff_vs_seq": 0.03466753460445632,
+    "pairs": 165,
+    "wall_s": 74.3423
+   },
+   "batch_8": {
+    "max_abs_diff_vs_seq": 0.03351803322485197,
+    "pairs": 165,
+    "wall_s": 73.0685
+   },
+   "seq": {
+    "pairs": 165,
+    "wall_s": 66.066
+   }
+  },
+  "real_answers_seq": [
+   {
+    "answers": {
+     "fit": [
+      0.02523002028465271,
+      0.16004526615142822,
+      0.24488338828086853,
+      0.5698413252830505
+     ],
+     "worth": [
+      0.9162168111551585
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "2aaaa68b-5c2c-409e-9def-d53d611dbdcc",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.04091361339436109,
+      0.2230894010507978,
+      0.33874098806219977,
+      0.39725599749264134
+     ],
+     "worth": [
+      0.8658635954301478
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "25dd3f8b-95de-4aa7-8003-778f01d0361a",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.02397056326462009,
+      0.23111601157288922,
+      0.16317838856718764,
+      0.581735036595303
+     ],
+     "worth": [
+      0.8236763231850767
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "f3f022be-5738-458c-ae6f-496394ebeb11",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.0786428692633555,
+      0.402027168915283,
+      0.27913883952361734,
+      0.2401911222977442
+     ],
+     "worth": [
+      0.7418467402458191
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "a3e6033e-be0d-4df4-a067-96e2b62a7912",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.15434001956343535,
+      0.34358857014247357,
+      0.26822946857038327,
+      0.2338419417237078
+     ],
+     "worth": [
+      0.5961632969282092
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "a067a770-40b1-40da-8e9b-d3666c9bc699",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.23414542224353155,
+      0.3352962880449166,
+      0.2698637722493512,
+      0.16069451746220065
+     ],
+     "worth": [
+      0.3326008915901184
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "e89ae856-a885-44c6-87bc-bab04938d73c",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.2903355338399445,
+      0.3560571047957457,
+      0.2551950197279824,
+      0.09841234163632734
+     ],
+     "worth": [
+      0.4530844851409052
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "a9c5a7c5-c2fb-427f-8c6b-eeb3daec065e",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.032022841990504605,
+      0.18747637094876998,
+      0.25472188565258425,
+      0.5257789014081411
+     ],
+     "worth": [
+      0.9045996069908142
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "9c595686-ae79-425c-9355-a83197a9c8b2",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.017731514422534518,
+      0.20934090720142484,
+      0.30345905844543697,
+      0.4694685199306037
+     ],
+     "worth": [
+      0.9407917401312551
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "fae55d71-e8a0-4473-92d1-a144f43f0848",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.03659932369886821,
+      0.32757759582366935,
+      0.3077727900113581,
+      0.3280502904661043
+     ],
+     "worth": [
+      0.8851969442428524
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "36ba055f-6461-4a48-909c-97205d957dad",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.4650530919071978,
+      0.32673922911448544,
+      0.16097306074886905,
+      0.04723461822944771
+     ],
+     "worth": [
+      0.24093047197473919
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "25dd3f8b-95de-4aa7-8003-778f01d0361a",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.08214605783252547,
+      0.33290354161493946,
+      0.3329405561001723,
+      0.25200984445236274
+     ],
+     "worth": [
+      0.674809992313385
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "5277952e-7cde-437a-a1e4-c7e351f26411",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.18166056546063072,
+      0.29533067785696204,
+      0.3925648092115642,
+      0.130443947470843
+     ],
+     "worth": [
+      0.29833593075466364
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "89414ac0-c059-4a69-b2e3-32980cb30cef",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.2285451659126629,
+      0.4264277942904173,
+      0.24537796513372556,
+      0.09964907466319425
+     ],
+     "worth": [
+      0.2881448056741001
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "2b6c8549-3fb3-4b20-ae57-196c32c239a7",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.48932562007495195,
+      0.29484639011094554,
+      0.17578433715975786,
+      0.040043652654344626
+     ],
+     "worth": [
+      0.16872308161029462
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "da1b6d84-2ee6-430e-b846-c36588e60499",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.42791949746192626,
+      0.3396948500045795,
+      0.16911112884183685,
+      0.0632745236916574
+     ],
+     "worth": [
+      0.17742819819706382
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "a067a770-40b1-40da-8e9b-d3666c9bc699",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.20654441465023268,
+      0.4174855364475799,
+      0.2735644186708643,
+      0.10240563023132311
+     ],
+     "worth": [
+      0.45033754556365174
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "aae34f8a-485b-4562-b50e-0c6769abb210",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.0529907302596711,
+      0.39390337026972283,
+      0.20889021222788604,
+      0.34421568724272006
+     ],
+     "worth": [
+      0.5846068015460254
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "f3f022be-5738-458c-ae6f-496394ebeb11",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.07258137261434366,
+      0.3459970031231865,
+      0.3403801594646263,
+      0.2410414647978435
+     ],
+     "worth": [
+      0.8003581047004744
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "fae55d71-e8a0-4473-92d1-a144f43f0848",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.07886962258880852,
+      0.3720939055432181,
+      0.27127121313585706,
+      0.2777652587321163
+     ],
+     "worth": [
+      0.7573259956043066
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "2aaaa68b-5c2c-409e-9def-d53d611dbdcc",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.12452423853709405,
+      0.34155096331421425,
+      0.32421325429479575,
+      0.20971154385389595
+     ],
+     "worth": [
+      0.39524906873703003
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "89414ac0-c059-4a69-b2e3-32980cb30cef",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.1372729262303252,
+      0.4159878554342368,
+      0.26120362074976594,
+      0.1855355975856721
+     ],
+     "worth": [
+      0.5699213573360039
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "03d0de81-c44a-4c8b-839d-569c2b70faa7",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.061793794416122344,
+      0.36802803099051,
+      0.33159990863502364,
+      0.23857826595834397
+     ],
+     "worth": [
+      0.8345996488750086
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "9d5e3d4a-768e-4d3e-86a3-19efc131c11d",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.047323654808212205,
+      0.32414215440889277,
+      0.3323488198330758,
+      0.2961853709498193
+     ],
+     "worth": [
+      0.8889878922031231
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "81ad2ea3-b52d-4f7c-841e-0cdf28dc89e6",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.21054002956360623,
+      0.3610907548828535,
+      0.28229821148959117,
+      0.14607100406394904
+     ],
+     "worth": [
+      0.7480436340557446
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "9993fec7-3396-4ea6-8960-9944299a404e",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.5011121071957954,
+      0.27644008604019943,
+      0.1551438432570088,
+      0.06730396350699636
+     ],
+     "worth": [
+      0.4416160846719792
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "aae34f8a-485b-4562-b50e-0c6769abb210",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.1227264553308487,
+      0.2938117980957031,
+      0.33869025111198425,
+      0.24477149546146393
+     ],
+     "worth": [
+      0.7215316295623779
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "f020cb7c-9e24-4052-99c6-e3cbaa37fbf1",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.4791717004652575,
+      0.2336018120289119,
+      0.19814925191028793,
+      0.08907723559554272
+     ],
+     "worth": [
+      0.5937541900203881
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "8cac1a96-f22a-48af-9d49-8d21b3783f6a",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.15921093286259572,
+      0.2411421799489531,
+      0.33831452819236324,
+      0.2613323589960879
+     ],
+     "worth": [
+      0.7896005393624226
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "e3c737b4-6fdf-4587-a510-ecc357e305a5",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.20608066898343955,
+      0.32853897426906303,
+      0.2347025205283606,
+      0.23067783621913682
+     ],
+     "worth": [
+      0.7604142540755012
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "89414ac0-c059-4a69-b2e3-32980cb30cef",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.6464440178391038,
+      0.193431986917317,
+      0.10260254813281783,
+      0.05752144711076135
+     ],
+     "worth": [
+      0.46769285202026367
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "6ab07c24-8760-4a10-afca-15b04fbd7ccd",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.1158025594129205,
+      0.42075858932887805,
+      0.1854759981678427,
+      0.2779628530903588
+     ],
+     "worth": [
+      0.5657740662761311
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "f3f022be-5738-458c-ae6f-496394ebeb11",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.88980475775554,
+      0.07800490732418222,
+      0.02468177033433577,
+      0.00750856458594196
+     ],
+     "worth": [
+      0.08941091463847585
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "d03c7545-b6f2-4f21-95b9-627a0faaa0f7",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.4544104957349577,
+      0.29496066869889465,
+      0.20024833010404658,
+      0.05038050546210111
+     ],
+     "worth": [
+      0.3621460985497803
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "81ad2ea3-b52d-4f7c-841e-0cdf28dc89e6",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.814642227350573,
+      0.11722935515177348,
+      0.055314368247138035,
+      0.012814049250515517
+     ],
+     "worth": [
+      0.08889472484588623
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "8eadb012-766c-47b1-b98d-ef32baa65802",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.7233759895595906,
+      0.15897608099460753,
+      0.09337325568074836,
+      0.024274673765053482
+     ],
+     "worth": [
+      0.19503673292860685
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "2f695573-6ac2-4614-a903-222338a3af48",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.46148593895182144,
+      0.25495066822941614,
+      0.23181668765489222,
+      0.05174670516387015
+     ],
+     "worth": [
+      0.30134437672231335
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "57736e92-8149-44d3-a48f-7a6c59d42045",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.8852115619731001,
+      0.06407037627972272,
+      0.043502712461272186,
+      0.007215349285904942
+     ],
+     "worth": [
+      0.0794780460116704
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "c63ce356-e5b0-4b6f-9c87-9ffea5a7535a",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.7783587487970433,
+      0.12765708423044067,
+      0.07690448228004036,
+      0.017079684692475745
+     ],
+     "worth": [
+      0.15735928948758973
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "fb013d47-39c9-4bef-b46a-90b0f7ac8288",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.5194822031182379,
+      0.22645885089723544,
+      0.2006978273495708,
+      0.053361118634955865
+     ],
+     "worth": [
+      0.345323760946877
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "a8ed99f6-ade7-4865-b3e4-4ac3ad883099",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.6414713859558105
+     ],
+     "fit": [
+      0.007375043237872223,
+      0.11716321675740828,
+      0.05080645825871587,
+      0.8246552817460037
+     ],
+     "worth": [
+      0.9291377233007174
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "3f615d82-4992-4381-a358-ef88756c162b",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.689835786819458
+     ],
+     "fit": [
+      0.011442507457325597,
+      0.12438748603145379,
+      0.057049873419340605,
+      0.80712013309188
+     ],
+     "worth": [
+      0.8338915457161801
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "a5f8c0af-81b2-494e-916c-ea5122a5755a",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.06065937695922324
+     ],
+     "fit": [
+      0.03521261547869674,
+      0.4299928472187365,
+      0.13961947692436233,
+      0.39517506037820443
+     ],
+     "worth": [
+      0.1763190381622028
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "fa03ba63-7f3e-4a3e-9ef7-476aa08659f6",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.19785786854373624
+     ],
+     "fit": [
+      0.0072487784966918205,
+      0.12392999411321272,
+      0.056401313502654093,
+      0.8124199138874414
+     ],
+     "worth": [
+      0.9086590287135035
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "686c6e50-d67a-477b-a37b-f44973f4718e",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.06460451382849003
+     ],
+     "fit": [
+      0.019057789213988156,
+      0.18744585814591574,
+      0.10827345058201131,
+      0.6852229020580848
+     ],
+     "worth": [
+      0.6533503933742525
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "fce076ba-7dcc-4675-b83d-e6b0da765c9b",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.45347052812576294
+     ],
+     "fit": [
+      0.006679414340049754,
+      0.17483393937497088,
+      0.045983623948795654,
+      0.7725030223361837
+     ],
+     "worth": [
+      0.9262024302214746
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "4ed6f5f0-5bd5-45ec-878a-7ec6d01ea356",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.6506347462345735
+     ],
+     "fit": [
+      0.02334551790058353,
+      0.240810846355113,
+      0.10749548978190725,
+      0.6283481459623963
+     ],
+     "worth": [
+      0.6568684978226275
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "e59904c8-6f89-4664-a89e-ff0a955ac252",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.21255844831466675
+     ],
+     "fit": [
+      0.00504501321093103,
+      0.0822633457367053,
+      0.039765635071816505,
+      0.8729260059805471
+     ],
+     "worth": [
+      0.9728643604259384
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "e39d93cc-dd29-4fa8-b789-273d85394778",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.09695670970432556
+     ],
+     "fit": [
+      0.01707595088415419,
+      0.1806486312902048,
+      0.11148247517303941,
+      0.6907929426526016
+     ],
+     "worth": [
+      0.7332415958272935
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "ce292cb0-6421-4271-9133-991e5400d86d",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.22210368016825677
+     ],
+     "fit": [
+      0.021974271695437902,
+      0.266882157827668,
+      0.14902210596443596,
+      0.5621214645124581
+     ],
+     "worth": [
+      0.7027330994606018
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "68e702fd-a1ac-40f8-a98f-5a3ae680f54a",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.5876556634902954
+     ],
+     "fit": [
+      0.008105007324847686,
+      0.08518290860845248,
+      0.05951261013657063,
+      0.8471994739301292
+     ],
+     "worth": [
+      0.882909158598296
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "44c4b292-986a-4da0-a6e8-5bf629ff250a",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.1926365615034616
+     ],
+     "fit": [
+      0.053572893940998526,
+      0.35042357966935006,
+      0.18968351467972272,
+      0.4063200117099287
+     ],
+     "worth": [
+      0.6149243712425232
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "6acd10be-49af-4657-9611-a532a85625dc",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.04526285894606797
+     ],
+     "fit": [
+      0.01479708825489057,
+      0.11932414425133653,
+      0.0894864604077419,
+      0.776392307086031
+     ],
+     "worth": [
+      0.7996213197538846
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "fce076ba-7dcc-4675-b83d-e6b0da765c9b",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.11879524942622333
+     ],
+     "fit": [
+      0.014795880930079679,
+      0.16534026151903267,
+      0.10440736380674724,
+      0.7154564937441404
+     ],
+     "worth": [
+      0.8296602717143217
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "aa76c94a-11f0-40cd-a80e-b273f08f5e12",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.4069171194384765
+     ],
+     "fit": [
+      0.011131536846221826,
+      0.12311979795761951,
+      0.07479189134299304,
+      0.7909567738531657
+     ],
+     "worth": [
+      0.8491800174361462
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "779f3b1d-5f8e-49a9-9395-c00b64c67af4",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.028785214163723923
+     ],
+     "fit": [
+      0.01575152232780163,
+      0.14403811365436975,
+      0.10539737540106058,
+      0.734812988616768
+     ],
+     "worth": [
+      0.7207835912704468
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "f621cd30-66bb-4cdb-9e14-a60fc294450a",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.03903135182999275
+     ],
+     "fit": [
+      0.03244252094131871,
+      0.3133785391593888,
+      0.2511784704270385,
+      0.40300046947225404
+     ],
+     "worth": [
+      0.8674154877662659
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "fe818e32-90a2-4818-a012-c898f09f0262",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.9118277822771419
+     ],
+     "fit": [
+      0.025008965237717413,
+      0.22802160846598954,
+      0.16836259992074482,
+      0.5786068263755483
+     ],
+     "worth": [
+      0.9220046148450902
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "ef86b6a1-4770-4146-b05c-924ec63a0a33",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.7902099607916171
+     ],
+     "fit": [
+      0.021949093543561993,
+      0.20473903188773582,
+      0.1307994410678807,
+      0.6425124335008215
+     ],
+     "worth": [
+      0.9444480958497506
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "5e8964db-d550-4e7e-8c96-d4c4105c800c",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.07055793387183842
+     ],
+     "fit": [
+      0.025028498050785684,
+      0.204291352121247,
+      0.19135318090579645,
+      0.5793269689221708
+     ],
+     "worth": [
+      0.9393352446257214
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "0f9dc419-ab37-4325-bcc9-8f3c8c2920f3",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.9047744746016064
+     ],
+     "fit": [
+      0.018462630819754817,
+      0.1789771069412805,
+      0.1204027242733506,
+      0.6821575379656141
+     ],
+     "worth": [
+      0.96970907485817
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "1879b0a2-b21e-4909-ae4d-46d4f4d03373",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.08826349960383402
+     ],
+     "fit": [
+      0.016841616795242147,
+      0.14700094139205183,
+      0.1262869113364613,
+      0.7098705304762447
+     ],
+     "worth": [
+      0.9611808550225848
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "af6788ba-2bf6-4c25-821b-8b2a43ea3f14",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.10888557962242945
+     ],
+     "fit": [
+      0.02884970967155058,
+      0.24688671437320592,
+      0.2803677310035835,
+      0.44389584495166
+     ],
+     "worth": [
+      0.92280932343325
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "6acd10be-49af-4657-9611-a532a85625dc",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.19990639687142392
+     ],
+     "fit": [
+      0.019833272803262893,
+      0.1761508775687989,
+      0.20312853649383592,
+      0.6008873131341023
+     ],
+     "worth": [
+      0.9482538280683351
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "45628870-efbb-4965-a4ba-fa9ab0861020",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.305172324180603
+     ],
+     "fit": [
+      0.007027934800484876,
+      0.0997820351729348,
+      0.06537640122156013,
+      0.8278136288050202
+     ],
+     "worth": [
+      0.9803116248524812
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "45628870-efbb-4965-a4ba-fa9ab0861020",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.03911173576782559
+     ],
+     "fit": [
+      0.03343775447227663,
+      0.3661775347613391,
+      0.19107438984488748,
+      0.40931032092149683
+     ],
+     "worth": [
+      0.5458816615272558
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "829e49ed-d7dc-4ba2-a474-390d9d84c3d9",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.09203158584072366
+     ],
+     "fit": [
+      0.020563180508004784,
+      0.24596063356305392,
+      0.1081686587778463,
+      0.6253075271510949
+     ],
+     "worth": [
+      0.9346139361365591
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "0f9dc419-ab37-4325-bcc9-8f3c8c2920f3",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.0930742283565636
+     ],
+     "fit": [
+      0.026090924507008582,
+      0.2832356683499399,
+      0.16055935776003577,
+      0.5301140493830158
+     ],
+     "worth": [
+      0.7826983203112078
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "f5ba1258-34a8-44e4-9f97-c14845135811",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.5677062103835878
+     ],
+     "fit": [
+      0.016574972242301745,
+      0.25396288765773334,
+      0.11825152358234424,
+      0.6112106165176207
+     ],
+     "worth": [
+      0.9047752090154231
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "c290cee6-af86-471b-818e-d42f2317cf68",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.5469274520874023
+     ],
+     "fit": [
+      0.006527783945526327,
+      0.11747501280690802,
+      0.05599653832980019,
+      0.8200006649177655
+     ],
+     "worth": [
+      0.9677171274550053
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "4bc107ce-686d-4668-a3c4-0300b8202be1",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.1502502307370374
+     ],
+     "fit": [
+      0.015488022563337733,
+      0.20925558596789348,
+      0.09417642424945996,
+      0.6810799672193089
+     ],
+     "worth": [
+      0.9509711578198923
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "da50c5a6-a207-4a9f-ad0c-502c3c5218c7",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.4951116292211899
+     ],
+     "fit": [
+      0.018402396763990643,
+      0.26217149124103273,
+      0.08550445452263426,
+      0.6339216574723424
+     ],
+     "worth": [
+      0.7537621968055099
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "03427563-d44a-40be-95e1-2dafacc70f44",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.02023237093071195
+     ],
+     "fit": [
+      0.20867370379974998,
+      0.373852407542652,
+      0.24049723506714754,
+      0.17697665359045048
+     ],
+     "worth": [
+      0.551631536982564
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "c267608d-c629-45b4-b8af-e6cc3c263c9e",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.22780408983546896
+     ],
+     "fit": [
+      0.06119821524771062,
+      0.3425478598935769,
+      0.2418656322151538,
+      0.3543882926435587
+     ],
+     "worth": [
+      0.776642049403099
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "b4f2a857-88e6-4617-9b8f-7afe76d9c33e",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.10659656246294268
+     ],
+     "fit": [
+      0.16227353867480845,
+      0.3745647016977563,
+      0.2455515973932803,
+      0.2176101622341549
+     ],
+     "worth": [
+      0.6170527935028076
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "4f71ce35-e119-49b7-ac66-148bdc50d8ad",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.022881171629772715
+     ],
+     "fit": [
+      0.29986545890369204,
+      0.3693797345367034,
+      0.19471471301786175,
+      0.13604009354174276
+     ],
+     "worth": [
+      0.42624018866539565
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "7d9f2c29-6a90-4fab-8eee-54dc3bdebe35",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.19557600014770032
+     ],
+     "fit": [
+      0.1450289658461357,
+      0.36050952018066523,
+      0.24799643826479373,
+      0.2464650757084053
+     ],
+     "worth": [
+      0.7654716372489929
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "7e4fc5ba-1ea4-4465-a735-da30601339b2",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.756746366217949
+     ],
+     "fit": [
+      0.0468546358177574,
+      0.29344790080756317,
+      0.22072163892084215,
+      0.43897582445383726
+     ],
+     "worth": [
+      0.9055354325313737
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "7198361e-39ee-4197-b3e9-5554b237b4d6",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.03478231410616316
+     ],
+     "fit": [
+      0.16072693467140198,
+      0.36264824867248535,
+      0.2636380195617676,
+      0.2129867970943451
+     ],
+     "worth": [
+      0.6013770937098805
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "8d7b1139-c8c6-4ead-bd55-c2bcf4d93cef",
+    "control": false
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.021234337161353464
+     ],
+     "fit": [
+      0.3109417650384237,
+      0.3870327290008285,
+      0.17564182506924347,
+      0.1263836808915043
+     ],
+     "worth": [
+      0.45271702251681617
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "7ce65f79-3af1-40fb-8ba5-80c8a8af4bc3",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.03446049834219374,
+      0.29681192501730064,
+      0.16702296583251808,
+      0.5017046108079876
+     ],
+     "venue_fit": [
+      0.8033840299661168
+     ],
+     "worth": [
+      0.3216247760765321
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "5bd83325-7ce0-45e0-bf64-afe80fee460c",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.025399562066046752,
+      0.2600849280509536,
+      0.1534845238681306,
+      0.561030986014869
+     ],
+     "venue_fit": [
+      0.8741061426965552
+     ],
+     "worth": [
+      0.6540589332580566
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "87e24902-f926-47ec-9e8d-347cf85ba819",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.00872602929437724,
+      0.12193016012675241,
+      0.062457621444047894,
+      0.8068861891348225
+     ],
+     "venue_fit": [
+      0.9680300191654273
+     ],
+     "worth": [
+      0.9296695909002545
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "8538d693-9960-4742-980c-20d8ec2617ac",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.009092681177650996,
+      0.12363764735786353,
+      0.06494352269875647,
+      0.8023261487657289
+     ],
+     "venue_fit": [
+      0.9722636287719181
+     ],
+     "worth": [
+      0.9320124387741089
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "64b1f21e-615d-4d89-8d09-5c683f425f2d",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.008847827767690029,
+      0.12593704098458564,
+      0.06094071465622433,
+      0.8042744165915
+     ],
+     "venue_fit": [
+      0.9772982956750731
+     ],
+     "worth": [
+      0.9148536443414128
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "9f742175-ec11-49f5-8843-ba4c1d955caf",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.014479326706288329,
+      0.15116769270279656,
+      0.08453412374747975,
+      0.7498188568434354
+     ],
+     "venue_fit": [
+      0.8171084048913182
+     ],
+     "worth": [
+      0.8067365999974847
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "63533ce0-18ed-4f27-bf72-c62f2a3ad506",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.007647243087075797,
+      0.10619246526161456,
+      0.056268466424622285,
+      0.8298918252266874
+     ],
+     "venue_fit": [
+      0.9292745520973611
+     ],
+     "worth": [
+      0.872716592658809
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "c80c0ce4-f270-4add-89a7-6b1ac2606b3a",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.01706803262038614,
+      0.18412173274476876,
+      0.10451570425782326,
+      0.6942945303770218
+     ],
+     "venue_fit": [
+      0.8303920750378382
+     ],
+     "worth": [
+      0.5591888427734375
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "7ec4ec91-048b-4012-a932-b616a2e76b73",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.011830712371106042,
+      0.1485811285565696,
+      0.08448673572284927,
+      0.755101423349475
+     ],
+     "venue_fit": [
+      0.9317453434188265
+     ],
+     "worth": [
+      0.9227141004396364
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "38ad75bf-484f-4f31-a3ea-5bfcf21ef68f",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.031293328968038145,
+      0.2647335241166261,
+      0.1862643666053726,
+      0.5177087803099631
+     ],
+     "venue_fit": [
+      0.8137751100394859
+     ],
+     "worth": [
+      0.6685270071029663
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "62cb521b-4054-4556-9d2d-b51620282c77",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.009162295302522713,
+      0.11346994705040185,
+      0.058595588328837246,
+      0.8187721693182382
+     ],
+     "venue_fit": [
+      0.9686674944783651
+     ],
+     "worth": [
+      0.9257411636633027
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "c1bfa750-4ac4-4ff5-8941-ec9a1eeb6128",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.01862325054188774,
+      0.16990599890698113,
+      0.10202291375886402,
+      0.7094478367922671
+     ],
+     "venue_fit": [
+      0.7168367336295088
+     ],
+     "worth": [
+      0.5715138145830091
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "7e2c78d2-df6e-4451-bcf2-389c6b6db5c1",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.007018490395482168,
+      0.0829671343003045,
+      0.04189463804318874,
+      0.8681197372610245
+     ],
+     "venue_fit": [
+      0.9731300708850676
+     ],
+     "worth": [
+      0.9419084681638726
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "8da88c4a-f5b1-424f-82ba-68041cbe8b77",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.012153286124667938,
+      0.13194557631177972,
+      0.058241048954694,
+      0.7976600886088583
+     ],
+     "venue_fit": [
+      0.9191680756025331
+     ],
+     "worth": [
+      0.8102704407315022
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "9f742175-ec11-49f5-8843-ba4c1d955caf",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.010231971664488526,
+      0.10925781645433741,
+      0.05396927107893473,
+      0.8265409408022393
+     ],
+     "venue_fit": [
+      0.9173876593940055
+     ],
+     "worth": [
+      0.8858115937057612
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "64b1f21e-615d-4d89-8d09-5c683f425f2d",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.02080054701564964,
+      0.2221429724685279,
+      0.1317097204941041,
+      0.6253467600217184
+     ],
+     "venue_fit": [
+      0.9472666135770593
+     ],
+     "worth": [
+      0.847007597893703
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "7812855b-c3b6-4fe3-b549-b4f54c2b6ceb",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.005707210110542499,
+      0.06568520724149146,
+      0.044017405711665555,
+      0.8845901769363005
+     ],
+     "venue_fit": [
+      0.9812853756725111
+     ],
+     "worth": [
+      0.9434145092964172
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "1360532a-154f-48a1-a3c9-2e4d3ad9c44c",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.004787659673559419,
+      0.05215838108556669,
+      0.03363717674488289,
+      0.909416782495991
+     ],
+     "venue_fit": [
+      0.9686200185737005
+     ],
+     "worth": [
+      0.9531622181539816
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "2874ad8d-5bdf-4fef-a81f-7e16c5ed47cb",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.0039730174651975625,
+      0.046004377519732235,
+      0.0327390061353287,
+      0.9172835988797415
+     ],
+     "venue_fit": [
+      0.9788460148068657
+     ],
+     "worth": [
+      0.9602650606523616
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "0925ce25-e153-48b6-95f8-6011639f43b2",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.008700538394225618,
+      0.08237370817969103,
+      0.0686229911870398,
+      0.8403027622390435
+     ],
+     "venue_fit": [
+      0.9514197459074176
+     ],
+     "worth": [
+      0.8369335310280411
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "05ee9ba5-d9ba-450c-98d8-84337174720f",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.004328420857426367,
+      0.050719842385574955,
+      0.03516259049320956,
+      0.9097891462637892
+     ],
+     "venue_fit": [
+      0.9415809196704901
+     ],
+     "worth": [
+      0.9020807608652002
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "8ecff6f1-fea9-4824-972c-dfe543d20d5f",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.010275737679142381,
+      0.1099574523127461,
+      0.07953616461308775,
+      0.8002306453950238
+     ],
+     "venue_fit": [
+      0.9291662254681058
+     ],
+     "worth": [
+      0.8786796789672804
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "30fbf02f-d3c8-4ecb-a811-2f49639112d2",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.010626060065707807,
+      0.10543965656295066,
+      0.08251763964788433,
+      0.8014166437234572
+     ],
+     "venue_fit": [
+      0.9377823823523646
+     ],
+     "worth": [
+      0.8593393948378888
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "df68c5e8-a40b-4241-8e9d-80564bfc2627",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.07204809784889221,
+      0.26591983437538147,
+      0.23080623149871826,
+      0.43122583627700806
+     ],
+     "venue_fit": [
+      0.8464750556036863
+     ],
+     "worth": [
+      0.7402634024620056
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "78932093-10f2-408a-8296-370e81f7a356",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.027690462561767826,
+      0.20835187875962347,
+      0.1691422896896132,
+      0.5948153689889955
+     ],
+     "venue_fit": [
+      0.928433615188288
+     ],
+     "worth": [
+      0.9339895387588373
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "36b2fcb8-fa90-4e1f-a02b-847083f82c1e",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.1487163641515103,
+      0.3845029782874153,
+      0.23783872739682144,
+      0.22894193016425296
+     ],
+     "venue_fit": [
+      0.2932383418083191
+     ],
+     "worth": [
+      0.3858941014377505
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "0fd9925d-f602-45cc-8f82-2fcd32b9df6b",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.05829357225536766,
+      0.329311452895892,
+      0.29592432910373073,
+      0.31647064574500966
+     ],
+     "venue_fit": [
+      0.8487585186958313
+     ],
+     "worth": [
+      0.8365998614847702
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "bf9c83ce-413a-4e2e-a97b-6572ce66c9da",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.08534227865914377,
+      0.3106963863068137,
+      0.2504577282713861,
+      0.3535036067626564
+     ],
+     "venue_fit": [
+      0.7095560642944594
+     ],
+     "worth": [
+      0.7226881765518136
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "50ee4a5f-e1db-42f4-8a3f-f92eee919bed",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.10276813958239764,
+      0.32707897316037077,
+      0.2774032097667934,
+      0.2927496774904382
+     ],
+     "venue_fit": [
+      0.6985913723287396
+     ],
+     "worth": [
+      0.6819834113121033
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "78e53c0f-ab51-48eb-b3ee-7bbd7531a0fa",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.05205256806255242,
+      0.3090772892265325,
+      0.2500746222204571,
+      0.388795520490458
+     ],
+     "venue_fit": [
+      0.7192291831740494
+     ],
+     "worth": [
+      0.8363571763038635
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "874cc420-b65b-45b2-88af-7d4555c87c4f",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.0378001558616769,
+      0.23683513877417994,
+      0.1874753399750243,
+      0.5378893653891188
+     ],
+     "venue_fit": [
+      0.9440579625381074
+     ],
+     "worth": [
+      0.9000239446777064
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "557bf0da-0e0c-4036-b35a-39911448c163",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.06970863425761134,
+      0.34134195454870403,
+      0.23217205982502984,
+      0.3567773513686548
+     ],
+     "venue_fit": [
+      0.7196183419113857
+     ],
+     "worth": [
+      0.7620434874600692
+     ]
+    },
+    "cluster_id": "c-robotics-emerging-tech",
+    "content_id": "432afba9-64c1-4179-82df-b626d3b839b1",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.021848849463861075,
+      0.1922040538742232,
+      0.15404042257278214,
+      0.6319066740891336
+     ],
+     "venue_fit": [
+      0.8605191111564636
+     ],
+     "worth": [
+      0.9305987843438349
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "3e99d6ae-f515-4572-aa1d-f2d369a495f6",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.04065182623333516,
+      0.30186934909808566,
+      0.2067235168789245,
+      0.45075530778965467
+     ],
+     "venue_fit": [
+      0.8037162779654181
+     ],
+     "worth": [
+      0.7035950035928191
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "9139a0f2-f375-4806-8944-7fc772afcd80",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.053568983916256994,
+      0.3116641261367169,
+      0.2536538475171591,
+      0.38111304242986704
+     ],
+     "venue_fit": [
+      0.9102037955911664
+     ],
+     "worth": [
+      0.8216777795053191
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "58c8f993-b96e-49a5-856a-1f8d5657e488",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.01942606270313263,
+      0.17649541795253754,
+      0.14496755599975586,
+      0.659110963344574
+     ],
+     "venue_fit": [
+      0.9523664634862438
+     ],
+     "worth": [
+      0.9390864968299866
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "5c641ddb-12bd-4630-86be-a906960f6ed2",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.047209472903150515,
+      0.29209332243646235,
+      0.2288055756148976,
+      0.4318916290454895
+     ],
+     "venue_fit": [
+      0.8736833409259712
+     ],
+     "worth": [
+      0.8303137545334363
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "75edbd8f-2b54-4469-8613-49913732a5bd",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.030683440687537037,
+      0.22193990358416116,
+      0.20364562901571504,
+      0.5437310267125868
+     ],
+     "venue_fit": [
+      0.9226894722390724
+     ],
+     "worth": [
+      0.8824266326789056
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "64bf056b-246a-4301-b89e-d2a215f1ff07",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.03496831342861234,
+      0.29052022482273954,
+      0.21226210484545485,
+      0.4622493569031933
+     ],
+     "venue_fit": [
+      0.8034046651454865
+     ],
+     "worth": [
+      0.7940953733296581
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "7e2c78d2-df6e-4451-bcf2-389c6b6db5c1",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.02851745262812419,
+      0.219953549020598,
+      0.19063332428329946,
+      0.5608956740679784
+     ],
+     "venue_fit": [
+      0.9205857768436605
+     ],
+     "worth": [
+      0.89413750802651
+     ]
+    },
+    "cluster_id": "c-computer-vision-sensing",
+    "content_id": "8ee1cc0e-fccf-471b-a1d3-236bac46bb69",
+    "control": false
+   },
+   {
+    "answers": {
+     "fit": [
+      0.25203429901497665,
+      0.3926263036541252,
+      0.2184638017873823,
+      0.1368755955435158
+     ],
+     "worth": [
+      0.3952525854110718
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "2aaaa68b-5c2c-409e-9def-d53d611dbdcc",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.26371830898313453,
+      0.38184890435523466,
+      0.26619777281729706,
+      0.08823501384433369
+     ],
+     "worth": [
+      0.4054245948791504
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "25dd3f8b-95de-4aa7-8003-778f01d0361a",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.14973199518930955,
+      0.4896907070555651,
+      0.18794287550960104,
+      0.17263442224552433
+     ],
+     "worth": [
+      0.16804781055307952
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "f3f022be-5738-458c-ae6f-496394ebeb11",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.1397370186565659,
+      0.3454432035039423,
+      0.32665820449628513,
+      0.18816157334320666
+     ],
+     "worth": [
+      0.6679432392120361
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "fae55d71-e8a0-4473-92d1-a144f43f0848",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.3772395196968389,
+      0.34478899322764583,
+      0.19420717367221157,
+      0.08376431340330372
+     ],
+     "worth": [
+      0.3739178963328035
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "36ba055f-6461-4a48-909c-97205d957dad",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.26371830898313453,
+      0.38184890435523466,
+      0.26619777281729706,
+      0.08823501384433369
+     ],
+     "worth": [
+      0.4054245948791504
+     ]
+    },
+    "cluster_id": "c-ai-for-healthcare-biomedicine",
+    "content_id": "25dd3f8b-95de-4aa7-8003-778f01d0361a",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.46390461921691895,
+      0.34198158979415894,
+      0.1568041890859604,
+      0.03730960190296173
+     ],
+     "worth": [
+      0.17486397140336166
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "aae34f8a-485b-4562-b50e-0c6769abb210",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.14973199518930955,
+      0.4896907070555651,
+      0.18794287550960104,
+      0.17263442224552433
+     ],
+     "worth": [
+      0.16804781055307952
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "f3f022be-5738-458c-ae6f-496394ebeb11",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.1397370186565659,
+      0.3454432035039423,
+      0.32665820449628513,
+      0.18816157334320666
+     ],
+     "worth": [
+      0.6679432392120361
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "fae55d71-e8a0-4473-92d1-a144f43f0848",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.8692337209788432,
+      0.07848717213804146,
+      0.047592296841798,
+      0.004686810041317269
+     ],
+     "worth": [
+      0.022713268979549613
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "9993fec7-3396-4ea6-8960-9944299a404e",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.46390461921691895,
+      0.34198158979415894,
+      0.1568041890859604,
+      0.03730960190296173
+     ],
+     "worth": [
+      0.17486397140336166
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "aae34f8a-485b-4562-b50e-0c6769abb210",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.7774192654647899,
+      0.14347954027597076,
+      0.06498756229417603,
+      0.014113631965063364
+     ],
+     "worth": [
+      0.048739209044885504
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "f020cb7c-9e24-4052-99c6-e3cbaa37fbf1",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.9748258796357431,
+      0.019329118699625038,
+      0.004797185113393739,
+      0.0010478165512381944
+     ],
+     "worth": [
+      0.004201635103982355
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "d03c7545-b6f2-4f21-95b9-627a0faaa0f7",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.6014332052026591,
+      0.2895346522612848,
+      0.08474319999632389,
+      0.024288942539732218
+     ],
+     "worth": [
+      0.12384419980529099
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "81ad2ea3-b52d-4f7c-841e-0cdf28dc89e6",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.8061548606593045,
+      0.11865461071560438,
+      0.061278627350009315,
+      0.013911901275081767
+     ],
+     "worth": [
+      0.06701587536103183
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "8eadb012-766c-47b1-b98d-ef32baa65802",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.5781096564596686
+     ],
+     "fit": [
+      0.007270382429180975,
+      0.07718599525528919,
+      0.049950648793309585,
+      0.8655929735222203
+     ],
+     "worth": [
+      0.8469922668783705
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "3f615d82-4992-4381-a358-ef88756c162b",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.6596155762672424
+     ],
+     "fit": [
+      0.003797845620844059,
+      0.039810573617753406,
+      0.023950304055204378,
+      0.9324412767061981
+     ],
+     "worth": [
+      0.9478152496017013
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "a5f8c0af-81b2-494e-916c-ea5122a5755a",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.05735715701617264
+     ],
+     "fit": [
+      0.032211143403458806,
+      0.2701615383097472,
+      0.12750960838977393,
+      0.57011770989702
+     ],
+     "worth": [
+      0.1710081223993283
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "fa03ba63-7f3e-4a3e-9ef7-476aa08659f6",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.09324377219416069
+     ],
+     "fit": [
+      0.0204339246354865,
+      0.290127032470844,
+      0.11570387820071254,
+      0.573735164692957
+     ],
+     "worth": [
+      0.583810031414032
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "ce292cb0-6421-4271-9133-991e5400d86d",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.21580188297930186
+     ],
+     "fit": [
+      0.020615435522334708,
+      0.32116593953472555,
+      0.12321408470827089,
+      0.5350045402346688
+     ],
+     "worth": [
+      0.713475086883453
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "68e702fd-a1ac-40f8-a98f-5a3ae680f54a",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.5986413955688477
+     ],
+     "fit": [
+      0.013489285659836604,
+      0.16423551952400922,
+      0.07824131203384918,
+      0.744033882782305
+     ],
+     "worth": [
+      0.641065199406898
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "44c4b292-986a-4da0-a6e8-5bf629ff250a",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.03455266972807535
+     ],
+     "fit": [
+      0.015641308039021577,
+      0.19553173966073142,
+      0.09519309515413607,
+      0.6936338571461109
+     ],
+     "worth": [
+      0.24661651641354637
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "fe818e32-90a2-4818-a012-c898f09f0262",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.9355325977662979
+     ],
+     "fit": [
+      0.005195408422092908,
+      0.06512725137917565,
+      0.032861473814973306,
+      0.8968158663837581
+     ],
+     "worth": [
+      0.9577760660731194
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "ef86b6a1-4770-4146-b05c-924ec63a0a33",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.8241064530531724
+     ],
+     "fit": [
+      0.003488373741789218,
+      0.04714180514408007,
+      0.022087596170733765,
+      0.927282224943397
+     ],
+     "worth": [
+      0.969617619657779
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "5e8964db-d550-4e7e-8c96-d4c4105c800c",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.2730880542449983
+     ],
+     "fit": [
+      0.00920206277794259,
+      0.1061483693763902,
+      0.07005959480474742,
+      0.8145899730409197
+     ],
+     "worth": [
+      0.9338081200776064
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "45628870-efbb-4965-a4ba-fa9ab0861020",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.038173567077067865
+     ],
+     "fit": [
+      0.0374923908617064,
+      0.29112142432898813,
+      0.13879305175987278,
+      0.5325931330494327
+     ],
+     "worth": [
+      0.11724344204204373
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "829e49ed-d7dc-4ba2-a474-390d9d84c3d9",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.0901202423888481
+     ],
+     "fit": [
+      0.01949243795410299,
+      0.19491600881377602,
+      0.10399432422223878,
+      0.6815972290098822
+     ],
+     "worth": [
+      0.7956353067050965
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "0f9dc419-ab37-4325-bcc9-8f3c8c2920f3",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.01695017175656132
+     ],
+     "fit": [
+      0.018911447023759652,
+      0.17120039144157634,
+      0.09704690245824116,
+      0.7128412590764228
+     ],
+     "worth": [
+      0.44865649938583374
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "c267608d-c629-45b4-b8af-e6cc3c263c9e",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.23249465227127075
+     ],
+     "fit": [
+      0.005270191070730354,
+      0.07376088390626796,
+      0.04187671524284972,
+      0.879092209780152
+     ],
+     "worth": [
+      0.9552505087498613
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "b4f2a857-88e6-4617-9b8f-7afe76d9c33e",
+    "control": true
+   },
+   {
+    "answers": {
+     "eligible": [
+      0.11745305841893572
+     ],
+     "fit": [
+      0.013591648782929705,
+      0.11924559423102,
+      0.07684106250932522,
+      0.7903216944767251
+     ],
+     "worth": [
+      0.7698329091072083
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "4f71ce35-e119-49b7-ac66-148bdc50d8ad",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.045278927978813346,
+      0.24585631373466815,
+      0.18204353276883434,
+      0.5268212255176842
+     ],
+     "venue_fit": [
+      0.4627593159675598
+     ],
+     "worth": [
+      0.11589327767888913
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "5bd83325-7ce0-45e0-bf64-afe80fee460c",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.06492283243628466,
+      0.30956533781860274,
+      0.22932207755239364,
+      0.3961897521927189
+     ],
+     "venue_fit": [
+      0.68697617572404
+     ],
+     "worth": [
+      0.3253798484802246
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "87e24902-f926-47ec-9e8d-347cf85ba819",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.007800931296929852,
+      0.07343369459063072,
+      0.04867039073835123,
+      0.8700949833740882
+     ],
+     "venue_fit": [
+      0.8879981306195955
+     ],
+     "worth": [
+      0.8561020407737517
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "8538d693-9960-4742-980c-20d8ec2617ac",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.009355431161203482,
+      0.08480562777801526,
+      0.06847494649305158,
+      0.8373639945677297
+     ],
+     "venue_fit": [
+      0.9110826849937439
+     ],
+     "worth": [
+      0.8982559971641302
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "38ad75bf-484f-4f31-a3ea-5bfcf21ef68f",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.03019575549034348,
+      0.20287179682384696,
+      0.18254133820945515,
+      0.5843911094763544
+     ],
+     "venue_fit": [
+      0.6909742745466747
+     ],
+     "worth": [
+      0.5293067535964622
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "62cb521b-4054-4556-9d2d-b51620282c77",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.0073974062654201846,
+      0.08431740101225796,
+      0.045962147393281506,
+      0.8623230453290404
+     ],
+     "venue_fit": [
+      0.9311013887159629
+     ],
+     "worth": [
+      0.9207326885675727
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "c1bfa750-4ac4-4ff5-8941-ec9a1eeb6128",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.010129443772836727,
+      0.12204460908239884,
+      0.06399399453432887,
+      0.8038319526104356
+     ],
+     "venue_fit": [
+      0.8505860909644934
+     ],
+     "worth": [
+      0.8707004915282204
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "1360532a-154f-48a1-a3c9-2e4d3ad9c44c",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.008517334221829969,
+      0.0976601017682625,
+      0.05889160920140965,
+      0.8349309548084979
+     ],
+     "venue_fit": [
+      0.8359885687233721
+     ],
+     "worth": [
+      0.8733847661843757
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "2874ad8d-5bdf-4fef-a81f-7e16c5ed47cb",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.008301113198719163,
+      0.0927208527943689,
+      0.06398406958682389,
+      0.8349939644200881
+     ],
+     "venue_fit": [
+      0.7604450214041776
+     ],
+     "worth": [
+      0.8715478518143936
+     ]
+    },
+    "cluster_id": "c-knowledge-graphs-retrieval",
+    "content_id": "0925ce25-e153-48b6-95f8-6011639f43b2",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.05388232793439791,
+      0.27398577842834926,
+      0.24512471715220654,
+      0.4270071764850463
+     ],
+     "venue_fit": [
+      0.6622435450553894
+     ],
+     "worth": [
+      0.2977581024169922
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "36b2fcb8-fa90-4e1f-a02b-847083f82c1e",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.02322821457554189,
+      0.17069100860899739,
+      0.12868235282196716,
+      0.6773984239934936
+     ],
+     "venue_fit": [
+      0.5609857105621272
+     ],
+     "worth": [
+      0.2439366579055786
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "0fd9925d-f602-45cc-8f82-2fcd32b9df6b",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.029997384473817862,
+      0.15853799052710882,
+      0.18510734069532614,
+      0.6263572843037472
+     ],
+     "venue_fit": [
+      0.7402521151229109
+     ],
+     "worth": [
+      0.15429951020628943
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "bf9c83ce-413a-4e2e-a97b-6572ce66c9da",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.005643351750373206,
+      0.05714131431380316,
+      0.04404588635680724,
+      0.8931694475790164
+     ],
+     "venue_fit": [
+      0.26735204458236694
+     ],
+     "worth": [
+      0.798211491027988
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "3e99d6ae-f515-4572-aa1d-f2d369a495f6",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.009597053905070117,
+      0.073694685090857,
+      0.0564187570396514,
+      0.8602895039644215
+     ],
+     "venue_fit": [
+      0.5704168933381502
+     ],
+     "worth": [
+      0.3295467892154094
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "9139a0f2-f375-4806-8944-7fc772afcd80",
+    "control": true
+   },
+   {
+    "answers": {
+     "fit": [
+      0.036997162081280066,
+      0.28713295077631584,
+      0.19576183107317857,
+      0.48010805606922546
+     ],
+     "venue_fit": [
+      0.030324504232601586
+     ],
+     "worth": [
+      0.13586097955703735
+     ]
+    },
+    "cluster_id": "c-agentic-ai-orchestration",
+    "content_id": "58c8f993-b96e-49a5-856a-1f8d5657e488",
+    "control": true
+   }
+  ],
+  "synthetic": {
+   "batch_1": {
+    "max_abs_diff_vs_seq": 0.0,
+    "pairs": 48,
+    "wall_s": 5.7915
+   },
+   "batch_4": {
+    "max_abs_diff_vs_seq": 0.0007512964623450635,
+    "pairs": 48,
+    "wall_s": 4.0658
+   },
+   "batch_8": {
+    "max_abs_diff_vs_seq": 0.0009787713504235199,
+    "pairs": 48,
+    "wall_s": 4.373
+   },
+   "seq": {
+    "pairs": 48,
+    "wall_s": 6.4612
+   }
+  }
+ }
+}

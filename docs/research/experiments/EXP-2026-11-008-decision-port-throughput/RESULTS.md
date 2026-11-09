@@ -63,3 +63,13 @@ reloaded the model, which `decision_check` showed in an unrecorded check.
 
 See `PROTOCOL.md` §Procedure. Needs GAIFA's decide running on
 `127.0.0.1:5107`.
+
+## AMENDMENTS
+
+**2026-11-09: the cause was misattributed.** §1 and §4 credit the flat curve
+to GAIFA's GPU lease. `EXP-2026-11-012` ran d3-lite in-process with no server,
+and one pair at a time it did 7.43 pairs/s against 7.13 here, so the server
+costs about 4%. Batching 4–8 pairs per forward pass reached only 11.8 pairs/s
+on this state, and nothing on real states (about 2.3 pairs/s at every batch
+size). The limit is the model's compute on this GPU, not the queue. The
+practical advice (1–2 in flight) stands.
