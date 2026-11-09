@@ -122,6 +122,10 @@ class AnthropicProvider(Provider):
         created = raw.get("created_at")
         if isinstance(created, str):
             created = _iso_to_epoch(created)
+        elif hasattr(created, "timestamp"):
+            # Mycelium: the SDK's model_dump() returns a datetime, not a string;
+            # left as-is, sort_models() fails on `-created` (VENDORED.md).
+            created = int(created.timestamp())
         return ModelInfo(
             id=mid,
             provider=self.name,

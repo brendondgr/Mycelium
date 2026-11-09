@@ -22,6 +22,12 @@ Local changes, and nothing else:
   (12 checks, since `agent.py` is not here) and its `main()` takes `argv`, so
   `apps/core/test_llmkit.py` can run it inside `make test`.
 
+- `providers/anthropic_provider.py` converts the model's `created_at` to epoch
+  seconds when the SDK hands back a `datetime` (it does in `anthropic` 0.125);
+  upstream only converted strings, so `sort_models()` raised `TypeError` and
+  discovery of every Anthropic server failed. Found by
+  `apps/core/test_llm_servers.py` against the mock Anthropic server.
+
 The folder is excluded from ruff (`[tool.ruff] extend-exclude`) so a re-vendor
 is a plain diff against the skill. Mycelium code reaches it through
 `apps/core/llm_servers.py` and `apps/core/llm_bridge.py` only.
