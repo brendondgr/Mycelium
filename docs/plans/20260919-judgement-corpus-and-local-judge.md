@@ -1,6 +1,10 @@
 # Judgement Corpus and a Local Slate Judge — Implementation Plan
 
-**Status:** proposed, nothing built.
+**Status:** proposed. Phase 3's switch shipped in a different shape on
+2026-11-09: `[decision] backend = auto | jev | port | off` in
+`apps/core/decisions.py` (a port speaks the decide protocol or OpenAI-compatible
+logprobs), with `decision_check` in place of `judge_check`. Phases 1, 2, 4–6
+(the corpus, exporter, fine-tune and cut-over) remain unbuilt.
 **Correlation ID:** `20260919-judgement-corpus`
 **Evidence so far:** `EXP-2026-09-003` (one reader's slates), `EXP-2026-09-004`
 (LongEval, yes/no framing beats the rubric). Nothing here changes a claim in

@@ -16,7 +16,7 @@ and it answers that with three rules in order:
    never reaches a prompt at all, and gets the deterministic write-up, which is
    the baseline product rather than a degraded one.
 3. **Budget third.** Whatever is left is ordered by position within the theme —
-   the slate's own order, so it follows whichever ``RERANK_METHOD`` produced it —
+   the slate's own order, so it follows whichever ``[decision]`` backend produced it —
    with entrants ahead of standing members at the same position, and cut at the
    run budget. What does not fit carries to the next run rather than being
    dropped. Position leads because the head of a slate is the head of the feed:

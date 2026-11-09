@@ -1,4 +1,4 @@
-"""EXP-2026-11-007: latency and tokens per step of a scripted tool loop.
+"""EXP-2026-11-010: latency and tokens per step of a scripted tool loop.
 
 The model calls are real; the function results are scripted (a fixed ~1 500
 character result per call), so the only thing measured is what the model and
@@ -9,7 +9,7 @@ Run from the repository root:
 
     UV_PROJECT_ENVIRONMENT=~/.cache/mycelium-backend-venv \\
       uv run --no-sync --project web/backend python \\
-      docs/research/experiments/EXP-2026-11-007-agent-loop-cost/code/run.py
+      docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/run.py
 
 Writes data/metrics.json and data/metrics.csv, and logs/run.log. Exits non-zero
 (and writes logs/attempt.json) when the endpoint cannot be reached.

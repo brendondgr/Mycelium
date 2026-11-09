@@ -873,7 +873,7 @@ def _prepare_match(
         )
         from tools.recommendation.theme_run import plan_theme_writeups
 
-        # The RERANK_METHOD switch: re-order each theme's top window by the
+        # The [decision] switch: re-order each theme's top window by the
         # decision model before the slate is cut (see
         # tools.recommendation.typesafe_rerank).
         if typesafe_rerank.enabled_for(content_type, target.persist_kwargs):

@@ -57,8 +57,8 @@ class Feature:
 
     # The intelligence line — Spore and up.
     LLM_FIT_SCORING = "llm_fit_scoring"  # reasoned match verdict; Free = semantic only
-    # TypeSafe reorders the head of each theme's slate (RERANK_METHOD=typesafe);
-    # Free keeps the local order.
+    # A decision model (Jev or a self-hosted port, [decision] backend) reorders
+    # the head of each theme's slate; Free keeps the local order.
     TYPESAFE_RERANK = "typesafe_rerank"
     SCHEDULED_REPORTS = "scheduled_reports"  # master gate: any timer-driven delivery
     GRANT_ALERTS = "grant_alerts"

@@ -18,6 +18,7 @@ create_admin
 createcachetable
 createsuperuser
 dbshell
+decision_check
 dedupe_content_papers
 deliberate_ambient
 deliver_ambient_questions

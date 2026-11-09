@@ -56,14 +56,16 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-004` | 2026-11-08 | Full-text coverage of the paper corpus from free sources | complete | full_text_rate 0.5400 (n=200) | — | [folder](experiments/EXP-2026-11-004-fulltext-coverage/RESULTS.md) |
 | `EXP-2026-11-005` | 2026-11-08 | Full-text coverage after the PubMed id repair (Q-057) | complete | full_text_rate 0.6500 (n=200) | — | [folder](experiments/EXP-2026-11-005-fulltext-coverage-own-ids/RESULTS.md) |
 | `EXP-2026-11-006` | 2026-11-08 | Conference location and continent coverage | complete | continent_rate 0.9035 (n=912) | — | [folder](experiments/EXP-2026-11-006-conference-location-coverage/RESULTS.md) |
-| `EXP-2026-11-007` | 2026-11-09 | Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop | failed | — | — | [folder](experiments/EXP-2026-11-007-agent-loop-cost/RESULTS.md) |
-| `EXP-2026-11-008` | 2026-11-09 | Mylo agent baseline: tasks, permission probes, memory, equal-budget comparison | failed | — | — | [folder](experiments/EXP-2026-11-008-mylo-agent-baseline/RESULTS.md) |
+| `EXP-2026-11-007` | 2026-11-09 | Can a 0.85B decision model served on this host answer the TypeSafe rerank questions? | complete | discrimination_auc_worth 0.6899 | — | [folder](experiments/EXP-2026-11-007-d3-lite-local-decision-smoke/RESULTS.md) |
+| `EXP-2026-11-008` | 2026-11-09 | How many decisions per second does the local decide port sustain through Mycelium's client? | complete | throughput_c1 7.1320 | — | [folder](experiments/EXP-2026-11-008-decision-port-throughput/RESULTS.md) |
+| `EXP-2026-11-010` | 2026-11-09 | Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop | failed | — | — | [folder](experiments/EXP-2026-11-010-agent-loop-cost/RESULTS.md) |
+| `EXP-2026-11-011` | 2026-11-09 | Mylo agent baseline: tasks, permission probes, memory, equal-budget comparison | failed | — | — | [folder](experiments/EXP-2026-11-011-mylo-agent-baseline/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 43 |
+| complete | 45 |
 | failed | 2 |
 | planned | 4 |
-| **total** | **49** |
+| **total** | **51** |

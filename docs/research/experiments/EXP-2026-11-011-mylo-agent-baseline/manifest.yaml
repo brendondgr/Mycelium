@@ -6,7 +6,7 @@
 # honest fields is worth more than one with ten plausible ones — write `unknown`
 # and say what could not be recovered in ISSUES.md.
 
-id: EXP-2026-11-008
+id: EXP-2026-11-011
 slug: mylo-agent-baseline
 title: "Mylo agent baseline: tasks, permission probes, memory, equal-budget comparison"
 status: failed # attempt 1 (2026-11-09): the model endpoint's upstream was down; harness verified by a dry run
@@ -32,10 +32,10 @@ hypothesis: >
 code:
   commit: e0ab02d
   branch: mylo-agent
-  entrypoint: "UV_PROJECT_ENVIRONMENT=~/.cache/mycelium-backend-venv uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-008-mylo-agent-baseline/code/run.py"
+  entrypoint: "UV_PROJECT_ENVIRONMENT=~/.cache/mycelium-backend-venv uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-011-mylo-agent-baseline/code/run.py"
   dirty: true  # the Mylo agent change was uncommitted when scaffolded; see ISSUES.md
 config:
-  path: "docs/research/experiments/EXP-2026-11-008-mylo-agent-baseline/code/tasks.py"
+  path: "docs/research/experiments/EXP-2026-11-011-mylo-agent-baseline/code/tasks.py"
   hash: null
 data:
   name: seeded agent-eval world (code/world.py, database mycelium_agent_eval)
@@ -85,4 +85,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: [EXP-2026-11-007]
+related: [EXP-2026-11-010]

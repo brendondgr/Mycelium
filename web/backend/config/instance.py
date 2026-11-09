@@ -249,6 +249,36 @@ SETTINGS: tuple[Setting, ...] = (
             "cap, so a reasoning model is never starved before it answers; set "
             "a number only if your endpoint needs one.",
             env="LLM_MAX_TOKENS"),
+    # ---- decision model ---------------------------------------------------
+    Setting(
+        "decision.backend", "choice", "auto",
+        "Which decision model re-orders the top of each theme's slate. jev: "
+        "TypeSafe's hosted model (TYPESAFE_API_KEY in .env; sends profile and "
+        "item text off this host). port: a model you serve yourself at "
+        "port_url (llama.cpp, vLLM or a decide server). off: no decision "
+        "model, the plain ranking stands. auto: jev with a key, else port with "
+        "a URL, else off.",
+        env="DECISION_BACKEND", choices=("auto", "jev", "port", "off"),
+    ),
+    Setting("decision.port_url", "str", "",
+            "Where the self-hosted decision model answers, e.g. "
+            "\"http://127.0.0.1:8080\" (a trailing /v1 is fine). A key, if the "
+            "server wants one, goes in .env as DECISION_PORT_API_KEY.",
+            env="DECISION_PORT_URL"),
+    Setting(
+        "decision.port_protocol", "choice", "auto",
+        "decide: a decision server's POST /v1/decide. openai: an "
+        "OpenAI-compatible chat server read through logprobs (llama.cpp's "
+        "llama-server, vLLM). auto: detected from GET /v1/models.",
+        env="DECISION_PORT_PROTOCOL", choices=("auto", "decide", "openai"),
+    ),
+    Setting("decision.port_model", "str", "",
+            "The model to ask on that server. Blank: the server's default "
+            "(decide) or the first one it lists (openai).",
+            env="DECISION_PORT_MODEL"),
+    Setting("decision.port_timeout", "int", 30,
+            "Seconds to wait for one decision from the port.",
+            env="DECISION_PORT_TIMEOUT"),
     # ---- tools (universal policy; each tool adds its own [tools.<name>]) --
     Setting("tools.strict", "bool", False,
             "Stop startup when any tool fails to load, instead of setting the "
@@ -311,6 +341,9 @@ SECTION_HELP = {
     "signup": "Who can create an account, and whether email must be verified.",
     "email": "How mail leaves the instance. Keys and passwords stay in .env.",
     "features": "Optional features, all off unless switched on.",
+    "decision": "The decision model that re-orders the head of each theme's "
+                "slate: TypeSafe's hosted Jev, a model you serve on a port, or "
+                "none.",
     "nightly": "Cost controls for the nightly run: how many model calls and how "
                "much parallelism it may use.",
     "llm": "The language model. The endpoint and model name live in .env "
@@ -510,9 +543,20 @@ def _legacy_env(environ: Mapping[str, str]) -> dict[str, tuple[str, str]]:
     """Old env names that still mean something, as {key: (raw, env_name)}.
 
     ``EMAIL_ENABLED=true`` predates ``EMAIL_PROVIDER`` and meant "send through
-    Resend"; honour it so an existing deployment keeps mailing.
+    Resend"; honour it so an existing deployment keeps mailing. The same for
+    ``RERANK_METHOD``.
     """
     out: dict[str, tuple[str, str]] = {}
+    # RERANK_METHOD predates [decision] backend: typesafe meant Jev, local meant
+    # no decision model.
+    if not environ.get("DECISION_BACKEND", "").strip():
+        method = environ.get("RERANK_METHOD", "").strip().lower()
+        if method:
+            legacy = {"typesafe": "jev", "local": "off"}
+            if method not in ("auto", "jev", "port", "off"):
+                # An unknown old value never stopped a boot; it meant local.
+                method = legacy.get(method, "off")
+            out["decision.backend"] = (method, "RERANK_METHOD")
     if not environ.get("EMAIL_PROVIDER", "").strip():
         enabled = environ.get("EMAIL_ENABLED", "").strip().lower()
         if enabled in _TRUE:

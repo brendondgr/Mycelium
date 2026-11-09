@@ -1,4 +1,4 @@
-"""EXP-2026-11-008: the Mylo agent baseline.
+"""EXP-2026-11-011: the Mylo agent baseline.
 
 Seeds a deterministic world into its own database (``mycelium_agent_eval``),
 runs every task three times with the instance's model, grades outcomes, and
@@ -6,7 +6,7 @@ writes data/metrics.json, data/metrics.csv and logs/runs.jsonl.
 
     UV_PROJECT_ENVIRONMENT=~/.cache/mycelium-backend-venv \\
       uv run --no-sync --project web/backend python \\
-      docs/research/experiments/EXP-2026-11-008-mylo-agent-baseline/code/run.py [--dry-run]
+      docs/research/experiments/EXP-2026-11-011-mylo-agent-baseline/code/run.py [--dry-run]
 
 ``--dry-run`` replaces the model with a scripted one that answers every task
 with "I can't tell." — it checks the harness (seeding, threads, graders,

@@ -1,4 +1,4 @@
-# EXP-2026-11-007 — Issues
+# EXP-2026-11-010 — Issues
 
 - 2026-11-09, attempt 1: `InternalServerError 502 — upstream error: ConnectError:
   All connection attempts failed` from the relay at `localhost:4000` (model

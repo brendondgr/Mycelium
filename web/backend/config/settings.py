@@ -867,17 +867,24 @@ RERANK_CONTENT_TYPES = env.list(
     "RERANK_CONTENT_TYPES", default=["paper", "grant", "conference"]
 )
 
-# Which reranker decides the head of each theme's slate
-# (tools.recommendation.typesafe_rerank).
-# "local" is the stack above exactly as deployed. "typesafe" keeps that stack for
-# retrieval and the pool, then asks TypeSafe's decision model one question per
-# (theme, item) for the top TYPESAFE_RERANK_WINDOW of every theme and reorders
-# that head by the returned probability. Without a key it degrades to "local".
-# Gated to paid plans through billing.entitlements (Feature.TYPESAFE_RERANK);
-# with BILLING_ENFORCE_ENTITLEMENTS off that gate grants everyone.
-# Evidence: EXP-2026-09-003 (one reader's preference) and EXP-2026-09-004
-# (+0.0185 nDCG@10 over BM25 on LongEval, interval spanning zero).
-RERANK_METHOD = env("RERANK_METHOD", default="typesafe")
+# Which decision model re-orders the head of each theme's slate
+# (tools.recommendation.typesafe_rerank over apps.core.decisions), set by
+# [decision] in mycelium.toml. "jev" asks TypeSafe's hosted model, "port" a model
+# the operator serves (llama.cpp, vLLM or a decide server at DECISION_PORT_URL),
+# "off" leaves the stack above exactly as deployed, and "auto" (the default)
+# takes jev with a key, else port with a URL, else off. The old RERANK_METHOD
+# env name still works (typesafe = jev, local = off). It reorders the top
+# TYPESAFE_RERANK_WINDOW of every theme by the returned probability. Gated to
+# paid plans through billing.entitlements (Feature.TYPESAFE_RERANK); with
+# BILLING_ENFORCE_ENTITLEMENTS off that gate grants everyone.
+# Evidence: EXP-2026-09-003, EXP-2026-09-004 (Jev); EXP-2026-11-007 (d3-lite on
+# a port: works, but below the discrimination bar).
+DECISION_BACKEND = _cfg["decision.backend"]
+DECISION_PORT_URL = _cfg["decision.port_url"]
+DECISION_PORT_PROTOCOL = _cfg["decision.port_protocol"]
+DECISION_PORT_MODEL = _cfg["decision.port_model"]
+DECISION_PORT_TIMEOUT = _cfg["decision.port_timeout"]
+DECISION_PORT_API_KEY = env("DECISION_PORT_API_KEY", default="")
 TYPESAFE_RERANK_WINDOW = env.int("TYPESAFE_RERANK_WINDOW", default=20)
 TYPESAFE_RERANK_CONTENT_TYPES = env.list(
     "TYPESAFE_RERANK_CONTENT_TYPES",

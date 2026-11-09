@@ -6,7 +6,7 @@
 # honest fields is worth more than one with ten plausible ones — write `unknown`
 # and say what could not be recovered in ISSUES.md.
 
-id: EXP-2026-11-007
+id: EXP-2026-11-010
 slug: agent-loop-cost
 title: "Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop"
 status: failed # attempt 1 (2026-11-09): the model endpoint's upstream was down; rerun when it is up
@@ -29,7 +29,7 @@ hypothesis: >
 code:
   commit: e0ab02d
   branch: mylo-agent
-  entrypoint: "UV_PROJECT_ENVIRONMENT=~/.cache/mycelium-backend-venv uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-007-agent-loop-cost/code/run.py"
+  entrypoint: "UV_PROJECT_ENVIRONMENT=~/.cache/mycelium-backend-venv uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/run.py"
   dirty: true  # the Mylo agent change was uncommitted when scaffolded; see ISSUES.md
 config:
   path: "tools/agent/tool.py (defaults)"
@@ -82,4 +82,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: [EXP-2026-11-008]
+related: [EXP-2026-11-011]

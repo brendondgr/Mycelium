@@ -1,24 +1,31 @@
-"""TypeSafe rerank of each theme's slate head — the ``RERANK_METHOD`` switch.
+"""Decision-model rerank of each theme's slate head — the ``[decision]`` switch.
 
 Retrieval and fusion (:mod:`.retrieval`, :mod:`.lexical`, :mod:`.fusion`) decide
 *which* candidates a target sees and, per theme, in what order; the optional
 cross-encoder (:mod:`.reranking`) may reorder the head of that pool. This stage
 sits **after** all of it: once each theme's own ranked group exists and before
-the slate is cut, it asks TypeSafe's decision model one question per (theme,
+the slate is cut, it asks a decision model one question per (theme,
 item) pair for the top ``TYPESAFE_RERANK_WINDOW`` of every group and reorders
 that head by the returned ``worth`` probability, fused position breaking ties.
 Nothing below the window moves, nothing is added or dropped, and the pool is
 exactly what production already built.
 
-``RERANK_METHOD`` chooses:
+``[decision] backend`` (``DECISION_BACKEND``; :mod:`apps.core.decisions`)
+chooses who answers:
 
-* ``local`` — the deployed stack as it was: BM25 + dense fusion, plus the
+* ``off`` — the deployed stack as it was: BM25 + dense fusion, plus the
   cross-encoder when ``RERANK_ENABLED``. Not a line of this module runs.
-* ``typesafe`` — the same local stack produces the ordering, then this module
-  re-orders each theme's top window. It is the default. Without a
-  ``TYPESAFE_API_KEY`` it degrades to ``local`` with one log line, and any
-  failed call leaves that whole theme in fused order: a slate is never a mix of
-  judged and unjudged rows.
+* ``jev`` — TypeSafe's hosted Jev re-orders each theme's top window.
+* ``port`` — the same, answered by a model the operator serves at
+  ``[decision] port_url`` (llama.cpp, vLLM, or a decide server).
+* ``auto`` (the default) — ``jev`` with a key, else ``port`` with a URL, else
+  ``off``. A backend missing its key or URL degrades to ``off`` with one log
+  line, and any failed call leaves that whole theme in fused order: a slate is
+  never a mix of judged and unjudged rows.
+
+The old ``RERANK_METHOD`` values still work (``typesafe`` = ``jev``, ``local``
+= ``off``). The stored key stays ``signals["typesafe"]`` so the API contract is
+unchanged; each judgement names its ``backend`` and ``model``.
 
 Why one item per call, and why ``worth``
 ----------------------------------------
@@ -53,9 +60,10 @@ into the call — model, question version, profile text, strand, candidate text.
 An unchanged pair is served from the previous run's row and costs nothing; the
 opportunity feeds are a stock, so most nights most pairs are reused.
 
-What leaves the host: the target's profile text and the candidate's public text,
-per pair, to ``api.typesafe.ai``. That is a deployment decision recorded in
-``docs/architecture.md``; ``local`` sends nothing anywhere.
+What leaves the host: with ``jev``, the target's profile text and the
+candidate's public text, per pair, to ``api.typesafe.ai``. That is a deployment
+decision recorded in ``docs/architecture.md``; ``port`` sends them only to the
+operator's own server, and ``off`` sends nothing anywhere.
 """
 
 from __future__ import annotations
@@ -75,9 +83,6 @@ from tools.retrieval.models import ContentItem
 
 logger = logging.getLogger(__name__)
 
-METHOD_LOCAL = "local"
-METHOD_TYPESAFE = "typesafe"
-METHODS = (METHOD_LOCAL, METHOD_TYPESAFE)
 
 #: Bump whenever a question or the state layout below changes, so stored
 #: judgements from the old wording are not reused under the new one.
@@ -108,13 +113,19 @@ def _setting(name: str, default: Any) -> Any:
     return getattr(settings, name, default)
 
 
-def method() -> str:
-    """``local`` or ``typesafe``; an unknown value is ``local`` with a warning."""
-    value = str(_setting("RERANK_METHOD", METHOD_TYPESAFE) or "").strip().lower()
-    if value not in METHODS:
-        logger.warning("RERANK_METHOD=%r is not one of %s; using local", value, METHODS)
-        return METHOD_LOCAL
-    return value
+def backend() -> str:
+    """The backend that will answer: ``jev``, ``port`` or ``off``.
+
+    A configured backend missing its key or URL is ``off``, logged once per
+    process: the nightly run must never fail because a sidecar is unconfigured.
+    """
+    from apps.core import decisions
+    from django.conf import settings
+
+    resolved, reason = decisions.resolve(settings)
+    if resolved == decisions.OFF and decisions.configured(settings) != decisions.OFF:
+        _warn_once(f"decision rerank off: {reason}")
+    return resolved
 
 
 def enabled_for(
@@ -122,23 +133,18 @@ def enabled_for(
 ) -> bool:
     """Is the TypeSafe stage on for ``content_type`` and this target?
 
-    Requires ``RERANK_METHOD=typesafe``, a listed content type, a key, and —
-    when ``persist_kwargs`` names a target — a plan that carries
-    ``Feature.TYPESAFE_RERANK`` (paid tiers; Free keeps the local order). The
-    entitlement is read through ``billing.entitlements``, the single read path,
-    so with enforcement off it grants everyone. A missing key is logged once per
-    process and falls back to ``local``: the nightly run must never fail because
-    a sidecar is unconfigured.
+    Requires a decision backend that resolves to ``jev`` or ``port``, a listed
+    content type, and — when ``persist_kwargs`` names a target — a plan that
+    carries ``Feature.TYPESAFE_RERANK`` (paid tiers; Free keeps the local
+    order). The entitlement is read through ``billing.entitlements``, the single
+    read path, so with enforcement off it grants everyone.
     """
-    if method() != METHOD_TYPESAFE or not content_type:
+    if not content_type or backend() == "off":
         return False
     allowed = _setting("TYPESAFE_RERANK_CONTENT_TYPES", DEFAULT_CONTENT_TYPES)
     if isinstance(allowed, str):
         allowed = [a.strip() for a in allowed.split(",")]
     if content_type not in {str(a) for a in allowed}:
-        return False
-    if not _setting("TYPESAFE_API_KEY", ""):
-        _warn_once("RERANK_METHOD=typesafe but TYPESAFE_API_KEY is empty; using local")
         return False
     if persist_kwargs is not None and not target_is_entitled(persist_kwargs):
         return False
@@ -239,7 +245,10 @@ def build_state(profile_text: str, cluster: Cluster, candidate: dict) -> dict:
 
 
 def questions_for(content_type: str) -> dict:
-    from apps.core.systemone import noul, score
+    """The questions as plain specs (:mod:`apps.core.decisions`); Jev receives
+    exactly the Noul / Score objects it did before the switch."""
+    from apps.core.decisions import score
+    from apps.core.decisions import yesno as noul
 
     out = {
         "worth": noul(
@@ -365,13 +374,16 @@ def attach(
 
 
 def _client(content_type: str):
-    from apps.core.systemone import build_systemone_client
+    from apps.core.decisions import JEV, build_decision_client
 
-    return build_systemone_client(component=f"typesafe_rerank.{content_type}")
+    which = backend()
+    # Jev keeps the ledger label it always had; a port is counted apart.
+    prefix = "typesafe_rerank" if which == JEV else "port_rerank"
+    return build_decision_client(component=f"{prefix}.{content_type}")
 
 
 def _judgement_from(
-    result: Any, content_type: str, fp: str, model: str
+    result: Any, content_type: str, fp: str, model: str, which: str = ""
 ) -> Judgement | None:
     answers = result.answers_as_dicts()
     worth = answers.get("worth", {}).get("noul")
@@ -399,6 +411,7 @@ def _judgement_from(
         ),
         "fingerprint": fp,
         "model": model,
+        "backend": str(getattr(result, "backend", "") or which),
         "judged_on": timezone.now().date().isoformat(),
         "reused": False,
     }
@@ -418,7 +431,7 @@ def reorder_id_groups(
     window_size: int | None = None,
     concurrency: int | None = None,
 ) -> tuple[dict[str, list[str]], dict[str, dict[str, Judgement]]]:
-    """Reorder the head of every theme's id list by TypeSafe ``worth``.
+    """Reorder the head of every theme's id list by the decision model's ``worth``.
 
     Returns ``(groups, judgements)``. ``groups`` keeps every key and every id;
     only the first ``window_size`` of each theme may change order. A theme with
@@ -428,7 +441,24 @@ def reorder_id_groups(
     size = window_size or window()
     by_cluster = {c.id: c for c in clusters}
     profile_text = profile_block(interests, profile_meta)
-    model = str(_setting("TYPESAFE_MODEL", ""))
+    # The model id goes into every fingerprint, so a switch of backend or model
+    # re-asks instead of reusing another judge's answers. A port names its model
+    # only once asked; an unreachable port leaves every theme in fused order.
+    if client is None and any(list(ids)[:size] for ids in groups.values()):
+        try:
+            client = _client(content_type)
+        except Exception as exc:  # noqa: BLE001 — never fail the nightly run
+            logger.warning("decision client unavailable: %s", exc)
+            client = None
+    try:
+        model = str(getattr(client, "model", "") or _setting("TYPESAFE_MODEL", ""))
+    except Exception as exc:  # noqa: BLE001 — an unreachable port, say
+        emit(
+            f"decision rerank ({content_type}): backend unreachable ({exc}); "
+            "fused order kept"
+        )
+        return {k: [str(i) for i in v] for k, v in groups.items()}, {}
+    which = str(getattr(client, "backend", "") or "")
 
     # Plan every (theme, item) in the windows; reuse what the fingerprint allows.
     todo: list[tuple[str, str, dict, str]] = []  # (cluster_id, cid, state, fp)
@@ -460,9 +490,12 @@ def reorder_id_groups(
                 todo.append((cluster_id, str(cid), state, fp))
 
     asked = failed = 0
+    if todo and client is None:
+        emit(
+            f"decision rerank ({content_type}): no decision backend; fused order kept"
+        )
+        todo = []
     if todo:
-        if client is None:
-            client = _client(content_type)
         questions = questions_for(content_type)
         workers = max(
             1,
@@ -476,15 +509,15 @@ def reorder_id_groups(
         def one(job):
             cluster_id, cid, state, fp = job
             try:
-                result = client.ask(state, questions, model=model or None)
+                result = client.ask(state, questions)
                 return (
                     cluster_id,
                     cid,
-                    _judgement_from(result, content_type, fp, result.model),
+                    _judgement_from(result, content_type, fp, model, which),
                 )
             except Exception as exc:  # noqa: BLE001 — a failed pair is a kept fused position
                 logger.warning(
-                    "typesafe rerank call failed for %s/%s: %s", cluster_id, cid, exc
+                    "decision rerank call failed for %s/%s: %s", cluster_id, cid, exc
                 )
                 return cluster_id, cid, None
 
@@ -517,9 +550,13 @@ def reorder_id_groups(
         moved = sum(1 for a, b in zip(head, reordered, strict=True) if a != b)
         moved_total += moved
         out[cluster_id] = reordered + tail
-        emit(f"typesafe {cluster.label}: top-{len(head)} reordered, {moved} moved")
+        emit(
+            f"{which or 'decision'} {cluster.label}: top-{len(head)} reordered, "
+            f"{moved} moved"
+        )
     emit(
-        f"typesafe rerank ({content_type}): {asked} asked, {reused} reused, "
+        f"decision rerank ({which or 'none'}, {content_type}): {asked} asked, "
+        f"{reused} reused, "
         f"{failed} failed, {moved_total} moved"
         + (f", {skipped} theme(s) left in fused order" if skipped else "")
     )

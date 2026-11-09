@@ -108,6 +108,23 @@ def test_legacy_email_enabled_means_resend():
     assert cfg["email.provider"] == "smtp"
 
 
+@pytest.mark.parametrize(
+    "old,new",
+    [("typesafe", "jev"), ("local", "off"), ("port", "port"), ("banana", "off")],
+)
+def test_legacy_rerank_method_maps_to_decision_backend(old, new):
+    cfg = resolve(env={"RERANK_METHOD": old})
+    assert cfg["decision.backend"] == new
+    assert cfg.sources["decision.backend"] == "env:RERANK_METHOD"
+    # The new name wins over the old one.
+    cfg = resolve(env={"RERANK_METHOD": "typesafe", "DECISION_BACKEND": "port"})
+    assert cfg["decision.backend"] == "port"
+
+
+def test_decision_backend_defaults_to_auto():
+    assert resolve()["decision.backend"] == "auto"
+
+
 def test_list_values_from_file_and_env():
     assert resolve(file={"signup.allowed_domains": ["FSU.edu", " x.org "]})[
         "signup.allowed_domains"

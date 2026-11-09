@@ -1,0 +1,16 @@
+{
+ "backend": "port",
+ "model": "decide:d3-lite@03560c26f5199c3c04129a2ccb38960c913635e0",
+ "protocol": "decide",
+ "calls": 48,
+ "concurrency": 1,
+ "ok": 48,
+ "failures": 0,
+ "wall_seconds": 6.731,
+ "throughput_calls_per_s": 7.132,
+ "latency_ms_p50": 131.0,
+ "latency_ms_p95": 181.6,
+ "latency_ms_max": 187.2,
+ "client_latency_ms_mean": 134.1,
+ "errors": []
+}

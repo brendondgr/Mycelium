@@ -2,7 +2,7 @@
 
 **Status:** Phases 0–8 built 2026-11-09 (`tools/agent`, `tools/files`; see
 "Implementation notes" at the end). Open: the Phase 0 gate
-(`EXP-2026-11-007`) and the Phase 9 baseline (`EXP-2026-11-008`) are written
+(`EXP-2026-11-010`) and the Phase 9 baseline (`EXP-2026-11-011`) are written
 and attempted but have no numbers, because the model endpoint was down; rerun
 both, then delete this plan. The owner settled D-1, D-5 and D-6 and accepted
 the overall design. The permission model is in

@@ -1,0 +1,57 @@
+{
+ "area": {
+  "eligible_mean": 0.2865,
+  "venue_fit_mean_off": 0.66,
+  "venue_fit_mean_on": 0.8707
+ },
+ "availability": 1.0,
+ "d3_argmax_distribution": {
+  "file": 27,
+  "read": 74,
+  "skim": 5,
+  "skip": 14
+ },
+ "determinism_max_abs_diff_worth": 0.0,
+ "discrimination_auc_fit": 0.4593,
+ "discrimination_auc_worth": 0.6899,
+ "discrimination_paired_win_rate": 0.8222,
+ "fused_vs_worth_kendall_mean": 0.0619,
+ "latency_server_ms_p50": 366.7,
+ "latency_server_ms_p95": 550.6,
+ "moved_share": 0.8167,
+ "n_control": 45,
+ "n_on_theme": 120,
+ "n_pairs": 165,
+ "per_type": {
+  "conference": {
+   "auc_worth": 0.7644,
+   "verdict_exact": 0.4,
+   "worth_mean_on": 0.8132
+  },
+  "grant": {
+   "auc_worth": 0.5378,
+   "verdict_exact": 0.2,
+   "worth_mean_on": 0.7918
+  },
+  "paper": {
+   "auc_worth": 0.8267,
+   "verdict_exact": 0.1,
+   "worth_mean_on": 0.5354
+  }
+ },
+ "stored_verdict_distribution": {
+  "file": 20,
+  "read": 56,
+  "skim": 40,
+  "skip": 4
+ },
+ "verdict_exact": 0.2333,
+ "verdict_n": 120,
+ "verdict_spearman_fit": -0.2839,
+ "verdict_within_one": 0.5833,
+ "wall_seconds_main": 65.88,
+ "worth_distinct_2dp": 57,
+ "worth_mean_off_theme": 0.4961,
+ "worth_mean_on_theme_top3": 0.7195,
+ "worth_saturated_share": 0.0667
+}
