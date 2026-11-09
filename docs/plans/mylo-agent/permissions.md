@@ -122,7 +122,7 @@ is a small platform change, made in Phase 2.
 | 1 | **Loaded** | the framework: the owning tool is `LOADED` | not in the catalog at all |
 | 2 | **Instance policy** | `[tools.agent]` in `mycelium.toml`: `groups_off`, `max_risk` (`read` in this pass), and per surface `surfaces.<name>.groups_off` and `surfaces.<name>.max_risk` | "Collaborator search is turned off on this instance." |
 | 3 | **Features and entitlements** | the function's `feature` through `features.*` and `billing.entitlements.has_feature(user, …)` (only when `billing.enforce_features` is on). The base feature is `agent`; groups can have their own, such as `agent_files` | "File questions are part of the Lab plan." |
-| 4 | **Organization policy** | `AgentOrgPolicy` for the thread's lab or department, set by its owner or admins: whether Mylo is on in the org's shared spaces (D-5), allowed groups, which of the org's Discord channels may use it, the maximum risk members may use (never above the instance), and whether members' chats may inform the lab's understanding | "Your lab hasn't turned Mylo on in Discord. A lab admin can do this in the lab settings." |
+| 4 | **Organization policy** | `AgentOrgPolicy` for the thread's lab or department, set by its owner or admins. It is optional and can only narrow: groups turned off, Discord channels excluded, the maximum risk members may use (never above the instance), and whether members' chats may inform the lab's understanding. It is not an on/off switch (D-5) | "Your lab has turned off collaborator search for Mylo." |
 | 5 | **Scope and role** | the caller can see the scope (`Project.is_visible_to`, lab and department membership) and holds `min_role` for it | "Only lab admins can see member fit." |
 | 6 | **Object arguments** | the `x-ref` resolvers, argument by argument | "`#4` is a project you can't open." |
 | 7 | **Person's settings** | `AgentPreference`: Mylo chat off for themselves, groups they turned off, Discord use allowed, learning opt-out (D-3) | "You've turned off Mylo in Discord. Turn it back on in your account settings." |
@@ -143,9 +143,9 @@ people are refused.
 - **Instance:** `mycelium.toml`, declared as `Setting`s in `tools/agent/tool.py`.
 - **Organization:** `AgentOrgPolicy` (exactly one of lab or department), edited
   through `api/tools/agent/policy/<org>/` by the org's owner or admins. Each
-  change writes an `AuditEvent`. When there is no row, Mylo is off in the
-  org's shared spaces (Discord channels, lab threads opened by the org), and
-  each member's own personal use is unaffected. This matches the
+  change writes an `AuditEvent`. When there is no row, nothing is narrowed:
+  the agent is available wherever the host and the person have it on (D-5).
+  This matches the
   configuration layer's rule that instance policy lives in the file and
   per-object overrides live in the app.
 - **Person:** `AgentPreference`, edited at `api/tools/agent/preferences/`.
