@@ -188,15 +188,18 @@ graph phase has not started.
   semantic vectors; `ContentItem.search_vector` is a trigger-maintained tsvector
   and there is a pg_trgm title index for fuzzy search.
 - **Redis** — Celery broker/result backend plus several named caches (`signup`
-  lockouts, the `scan` status flag, query embeddings). The `ambient`
+  lockouts, the `scan` status flag, query embeddings). The full-text tool keeps
+  its source switch-offs and throttles in db 7 of the main Redis
+  (`[tools.fulltext] redis_url`). The `ambient`
   raw-message buffer has **its own instance** (`redis-ambient`, started with
   `--save "" --appendonly no` and no volume): it is the only store that ever
   holds a person's actual words, it holds them under a TTL measured in hours,
   and nothing copies them to Postgres or to disk — including a Redis snapshot.
   Inside Docker `AMBIENT_CACHE_URL` points at it; the host gateway reads it from
   `.env`. Unset, it falls back to db 6 of the main Redis, which persists.
-- **Filesystem** — Discord outbox attachments (`DISCORD_OUTBOX_ATTACHMENT_DIR`)
-  and the daily-run state file. Object storage is not wired up.
+- **Filesystem** — Discord outbox attachments (`DISCORD_OUTBOX_ATTACHMENT_DIR`),
+  the daily-run state file, and papers retrieved by the full-text tool
+  (`data/fulltext/`). Object storage is not wired up.
 
 ## Configuration & secrets
 

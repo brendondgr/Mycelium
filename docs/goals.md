@@ -59,7 +59,12 @@ load is set aside (or, if the platform needs it, stops startup with the reason)
 and nothing depending on it runs. Each tool has its own `[tools.<name>]` section
 in `mycelium.toml` and declares its own nightly stages. The first three are the
 layers Mycelium already had: retrieval (the corpus), recommendation (ranking
-against profiles) and delivery (feeds, reports, reminders, announcements).
+against profiles) and delivery (feeds, reports, reminders, announcements). The
+fourth, fulltext, is the first new one: it gets the paper itself (from PubMed
+Central, Europe PMC, arXiv and the open-access locators, plus Elsevier,
+Springer Nature and Wiley when the operator sets the instance's keys) and keeps
+the original and a markdown rendering, as the read path later tools use for
+whole papers. It has no API or app surface yet.
 
 **Foundation & identity.** Monorepo, service boundaries, Compose stack, and
 secrets management. Session auth with CSRF, a configurable sign-up gate (its

@@ -92,6 +92,17 @@ announcements, high-signal messages, reranking, Slack, Teams.
 nightly run may make (`"unlimited"` by default — set it if your model bills per
 call); the rest bound parallelism and per-night batch sizes.
 
+**`[tools]` and `[tools.<name>]`** — `strict` and `disabled` for every tool,
+then one section per installed tool with `enabled` and the keys its `tool.py`
+declares (`make config ARGS="explain tools.<name>"`; see
+[`tools/README.md`](../tools/README.md)). A tool's API keys are secrets and live
+in `.env` only. For example the full-text tool's publisher keys —
+`ELSEVIER_API_KEY`, `ELSEVIER_INST_TOKEN`, `SPRINGER_API_KEY`,
+`WILEY_TDM_TOKEN`, `CORE_API_KEY` — are one set for the whole instance; without
+them only those publishers' APIs are off, and
+`manage.py fulltext_sources --check` says whether a key is rejected or valid
+but not entitled from this network.
+
 ## Common changes
 
 ```bash
