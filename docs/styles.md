@@ -120,37 +120,47 @@ Cards should be readable and soft. Avoid harsh black borders, pure white surface
 
 ### How a recommendation states itself
 
-Never as a percentage. A percent implied a measurement nobody made: a language
-model was asked to guess a similarity and the number was rendered next to a real
-embedding cosine, with nothing to tell a reader which was which.
+**A percentage only when it is a measurement.** The original ban was on a
+language model's guessed similarity rendered as a percent beside a real
+embedding cosine, with nothing to tell the reader which was which. That ban
+stands: no model-guessed number is ever shown as a percent.
 
-Two elements replaced it — but they are **not** shown everywhere, and the split
-matters:
+**The feed card states the measured match.** Every card in the app's feeds
+(papers, grants, fellowships, conferences) and its opened item carry, top-left,
+the item's **embedding similarity** to the reader's (or the lab's) profile —
+the `embedding_match` cosine the backend already serves — as a ring and a
+figure. Hovering or focusing it opens a breakdown by theme. Each theme pill
+under the card carries that theme's share: `per_cluster` is a fusion score that
+runs past 1, so a theme's figure is the overall similarity scaled by how
+strongly that theme pulled the item relative to the theme that pulled it most.
+The breakdown says this in words. An item with no measured similarity shows no
+figure at all — never a substitute.
 
-- **Position within its own theme.** "3rd in Medical AI Agents", never "3rd
-  overall". Scores from two themes are not comparable, so a global position is a
-  claim the system cannot support.
-- **A four-point verdict** — Read, Skim, File, Skip. Filled primary green for
-  Read, sage for Skim, neutral surface for File. A Skip is never chipped: the
-  item keeps its place in the list and its reference row, and spending a badge on
-  it would spend the reader's attention on the one judgement that says not to.
+**Every feed card has one skeleton**, whatever its kind: match and New on the
+left, the tools (remind, save, not-for-me) on the right; the title, two lines at
+most; one **source line** (the venue's short name, or the funder or award class
+with the money, or a conference's acronym and place — never wrapped, cut with an
+ellipsis, full text on hover); one **meta line** (authors and year, or the
+deadline pill with the posting date, event dates or stage); Mylo's reason on one
+line; then at most three colour-coded theme pills on one line, each with its
+figure. The opened item keeps the same top row, then the primary link on its own
+ruled row with the deadline picker at its right (a conference's rankings sit
+level with its site link), then every theme, Mylo's take with the caveat, and
+**About** straight after it.
 
-**The ranked document shows both. The feed does not.** Position and verdict
-appear in the report entry, the printed PDF, the Discord digest and the briefing
-— surfaces that present one ordered pass through a day, where a position is read
-against the item above it. The **app's feed cards carry no judgement element at
-all**: no percent, no position, no verdict chip. A feed interleaves themes and
-scrolls indefinitely, so a per-theme position rendered down its left edge read as
-a column of repeated, apparently unsorted numbers, and a reserved gutter stood
-empty on every row that carried no judgement. The backend still computes and
-stores both, and the API still serves `verdict`, `position` and `position_of`, so
-restoring a display is a frontend-only change — it is a deliberate omission, not
-a missing feature.
+**Position and verdict stay off the feed.** "3rd in Medical AI Agents" and the
+four-point verdict — Read, Skim, File, Skip — appear in the report entry, the
+printed PDF, the Discord digest and the briefing, surfaces that present one
+ordered pass through a day. Position is always within its own theme, never
+overall: scores from two themes are not comparable. Read is filled primary
+green, Skim sage, File neutral surface; a Skip is never chipped. The app's feed
+cards carry neither: a feed interleaves themes and scrolls indefinitely, so a
+per-theme position down its left edge read as a column of unsorted numbers. The
+API still serves `verdict`, `position` and `position_of`.
 
-What the feed card carries instead is the written reason, the **caveat** — the
-strongest reason this might not be worth your time, which is never empty — and
-the theme it was matched under. The public site's feed preview must follow the
-app, not the report.
+The caveat — the strongest reason the item might not be worth your time, never
+empty — is in the opened item under "Why it might not", not on the card. The
+public site's feed preview must follow the app, not the report.
 
 **Gold is not used for verdicts.** It stays reserved for opportunity and deadline
 signals, so a grant's closing date never competes visually with a relevance
@@ -210,8 +220,8 @@ Every app view should account for loading, empty, populated, error, permission d
 - **Background:** a still contour map at about a third of full strength. It is fixed behind the scroll area and masked away from the centre band where text sits, never blank and never animated.
 - **Density:** compact, comfortable (the default) or open. This is a reader setting that reaches every page through the `--d-*` variables, not a per-page choice.
 - **Chrome:** the workspace switcher is a header dropdown, the section navigation is a left rail that collapses to icons, and settings are listed in the account menu.
-- **Feeds:** one page that scrolls through the cards. On wide screens the opened item is pinned on the right at the visible height and scrolls on its own. Below that it opens as a drawer. Every feed has search, sort, filter menus and grouping by theme.
-- **Cards:** Mylo's reason sits on one line with his portrait, then the caveat, who the item suits and why, the key facts and the themes. There are no percent, position or verdict marks on a card, as stated above.
+- **Feeds:** one page that scrolls through the cards. On wide screens the opened item is pinned on the right, below the feed's controls, and scrolls on its own. Below that it opens as a drawer. Every feed has search, filter menus, sort and grouping by theme. The controls stay pinned at the top while the cards scroll: the search on its own line, then the result count on the left with the filters and sort aligned right.
+- **Cards:** one skeleton for every kind, as described above: the measured match and tools, the title, the source line, the meta line, Mylo's reason on one line, and the theme pills with their figures. No position or verdict marks.
 - **Loading:** a placeholder in the shape of the page, which cross-fades into the content. Spinners are not used for a page's first load.
 
 ## Voice And Copy
