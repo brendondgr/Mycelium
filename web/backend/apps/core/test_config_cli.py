@@ -80,3 +80,46 @@ def test_dotenv_parsing(tmp_path):
     env = tmp_path / ".env"
     env.write_text('# c\nA=1\nB="two words"\n\nC=\n')
     assert cli.read_dotenv(env) == {"A": "1", "B": "two words", "C": ""}
+
+
+def test_llm_keys_are_known_and_parsed():
+    assert cli.known_key("llm.default")
+    assert cli.known_key("llm.routes.agent")
+    assert cli.known_key("llm.providers.claude.kind")
+    assert not cli.known_key("llm.providers.claude.api_key")
+    assert cli.parse_cli_value("llm.providers.x.enabled", "false") is False
+    assert cli.parse_cli_value("llm.providers.x.timeout", "30") == 30.0
+    assert cli.parse_cli_value("llm.routes.agent", " claude ") == "claude"
+
+
+def test_edit_adds_a_server_section_and_a_dotted_route():
+    text = inst.render("lab")
+    edited = cli.edit_file(text, {
+        "llm.providers.claude.kind": "anthropic",
+        "llm.providers.claude.api_key_env": "ANTHROPIC_API_KEY",
+        "llm.routes.intake.clusters": "claude",
+    }, set())
+    flat = inst._flatten(tomllib.loads(edited))
+    assert flat["llm.providers.claude.kind"] == "anthropic"
+    assert flat["llm.routes.intake.clusters"] == "claude"
+    # Setting the quoted route again replaces it in place.
+    again = cli.edit_file(edited, {"llm.routes.intake.clusters": "local"}, set())
+    assert inst._flatten(tomllib.loads(again))["llm.routes.intake.clusters"] == "local"
+    assert again.count('"intake.clusters"') == 1
+
+
+def test_rendered_file_and_server_rows_hold_no_key(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-secret-value")
+    monkeypatch.setenv("LLM_API_KEY", "local-secret-value")
+    for profile in inst.PROFILE_NAMES:
+        assert "secret-value" not in inst.render(profile)
+    cfg = inst.resolve(Path("/nonexistent"), cli.environment(), file_values={
+        "llm.providers.claude.kind": "anthropic",
+        "llm.providers.claude.model": "m",
+        "llm.allow_cloud": True,
+    })
+    rows = cli.llm_rows(cfg)
+    text = repr(rows) + repr(cfg.llm) + repr(cfg.problems(cli.environment()))
+    assert "secret-value" not in text
+    claude = next(r for r in rows if r["server"] == "claude")
+    assert claude["has_key"] is True and claude["api_key_env"] == "ANTHROPIC_API_KEY"

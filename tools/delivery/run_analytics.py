@@ -518,7 +518,10 @@ def collect_llm_usage(day: date) -> LLMUsage:
     rows = LLMUsageDaily.objects.filter(day=day)
     components = [
         ComponentUsage(
-            component=row.component,
+            # A component that also ran on another model server is listed once
+            # per server; the .env endpoint ("local") keeps the bare name.
+            component=(row.component if row.server == "local"
+                       else f"{row.component} @ {row.server}"),
             calls=int(row.calls),
             failures=int(row.failures),
             prompt_tokens=int(row.prompt_tokens),

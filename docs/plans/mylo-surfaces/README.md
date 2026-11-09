@@ -8,11 +8,12 @@ no prompt logic (`docs/plans/mylo-agent/permissions.md`, "Surfaces").
 
 | Plan | File | Detail |
 | --- | --- | --- |
-| P. Model servers | [model-providers.md](model-providers.md) | Full |
+| P. Model servers | Shipped 2026-11-09; plan deleted. How to configure: `docs/skills/configure.md` ("Model servers"); code: `apps/core/llm_servers.py`, `llm_bridge.py`, `llmkit/` | Done |
 | D. Mylo in Discord | [discord.md](discord.md) | Full |
-| W. Mylo chat in the web app | shipped (plan deleted) | The side panel, launcher, Mylo-face button, history and settings; see `docs/repo-map.md` ("Mylo's chat panel") and `docs/styles.md` ("Mylo's chat panel") |
+| W. Mylo chat in the web app | Shipped 2026-11-09; plan deleted. The side panel, launcher, Mylo-face button, history and settings; code: `web/app/src/components/portal/mylo/`, `web/app/src/lib/portal/agent/`; patterns: `docs/styles.md` ("Mylo's chat panel") | Done |
 
-Track S (the shared contract below) and W (web chat) have shipped; P and D are not built.
+Track S (the shared contract below), plan P (model servers) and plan W (web
+chat) have shipped; D is not built.
 The agent backend these plans stand on is on `main` (`dc2c76f`); its own plan
 is `docs/plans/mylo-agent/`.
 
@@ -74,7 +75,8 @@ already open about a thing; thread JSON carries `anchor` (or null). In code:
 **S3. Pinned and the model.** `AgentThread.pinned` (agent migration
 `0002_thread_pinned`); `PATCH threads/<id>/ {pinned}`; lists are pinned
 first. `GET status/` and `service.status()` return `{model: {name, label,
-location}}` (`location` is `local` until plan P; `label` is the name), and
+location}}` (filled from the server `[llm.routes] agent` names since plan P;
+`label` is the server's label when the host set one, else the model name), and
 every `assistant` event's payload has the same `model` object.
 
 ## How the three plans run together
@@ -82,14 +84,14 @@ every `assistant` event's payload has the same `model` object.
 ```
 S  (shared contract) ──┬──> D1 → D2 → D3 → D4 → D5      Discord
                        └──> W1 → W2 → W3 → W4 → W5      Web
-P1 → P2 → P3 ─────────────> P4 → P5                     Model servers
+P1 → P2 → P3 ─────────────> P4 → P5                     Model servers (shipped)
 ```
 
-- **P1–P3 touch only `web/backend/apps/core/` and `web/backend/config/`.** They
-  can run in parallel with S and with D1–D3.
-- **P4 edits `tools/agent/llmcall.py` and `rebuild.py`; D1 edits `rebuild.py`
-  and `loop.py`.** These two phases are not run at the same time. Do D1 first,
-  then P4.
+- **P shipped before D1.** P4 changed `tools/agent/llmcall.py`, `rebuild.py`
+  (opaque reasoning state on the `thinking` event, replayed to the same server
+  kind only), `loop.py` (a context-length error compacts once and retries),
+  `compaction.py` and `health.py`; D1 builds on those. P added no agent
+  migration, so D1 still takes `0003`.
 - **S before D1 and W1** (S is on `main`). S added agent migration `0002`;
   D1 adds `0003`.
 - **W touches only `web/app/`** once S has landed, so it can run in parallel

@@ -69,9 +69,11 @@ gives no ordering (`EXP-2026-11-009`). The local model of choice is d3-lite on a
 decide server (`port_protocol = "decide"`, `port_model = "d3-lite"`): on real
 states it beats a 4B model on llama.cpp and gains nothing from concurrency, so
 set `nightly.rerank_concurrency` to 1–2 (`EXP-2026-11-012`). The nightly asks
-from inside the backend container, so a server bound to `127.0.0.1` on the
-host is unreachable at `host.docker.internal`. It must listen where the
-container can reach it, for example on the Docker bridge address.
+from inside the backend container, so a server bound to the host's `127.0.0.1`
+(GAIFA's decide is) is out of its reach. Turn on `decision.port_relay` with
+`port_url = "http://host.docker.internal:<port>"`: the `decision-relay`
+service forwards that port to the host's loopback, and the server is left as
+it is. Then `make restart` and run `decision_check` inside the backend.
 
 Then get a structured recommendation instead of reasoning one out yourself:
 
@@ -97,6 +99,54 @@ make restart
 mail provider, verification with nowhere to send the code, a code mode with no
 code in `.env`). Fix each one with the user before restarting — never restart
 on a failing `validate`.
+
+## Model servers
+
+The instance's own model is the server named `local`: the endpoint in `.env`
+(`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`). It stays the default and stays in
+use. Other servers are made *available*; nothing switches to one until the host
+routes a component to it.
+
+```toml
+[llm]
+default = "local"        # what every component uses unless routed
+allow_cloud = false      # the single cloud switch; off = nothing leaves the host
+fallback = []            # servers tried in order when the routed one is down
+
+[llm.providers.claude]   # one section per extra server
+kind = "anthropic"       # openai_compatible | vllm | llamacpp | ollama | openai | anthropic | gemini | deepseek
+api_key_env = "ANTHROPIC_API_KEY"   # the variable's NAME; the key goes in .env
+model = "…"              # one the server lists: `manage.py llm_check`
+# base_url = "http://gpu-box:8000/v1"   needed for openai_compatible, vllm, llamacpp, ollama
+# location = "remote"    # local | remote | cloud; derived from kind and address if unset
+# label, enabled, timeout, connect_timeout, context_window, reasoning,
+# model_allow, model_deny are optional
+
+[llm.routes]             # component = "server" or "server:model"
+agent = "claude"         # Mylo's chat; the nightly components stay on local
+```
+
+- Add a server: `ops/mycelium config set llm.providers.gpu.kind vllm
+  llm.providers.gpu.base_url http://gpu-box:8000/v1 llm.providers.gpu.model
+  Qwen/Qwen3-8B`, then `config validate`, `make restart`, and
+  `manage.py llm_check` (lists every server, its models and context windows,
+  and each route). `manage.py llm_probe <server> --deep` tests one server the
+  way Mycelium uses it. Azure's v1 endpoint, LM Studio, LiteLLM and other
+  OpenAI-style APIs are `openai_compatible` with a `base_url`.
+- A **cloud** server (OpenAI, Anthropic, Gemini, DeepSeek, or a known public
+  API host) is never called while `llm.allow_cloud = false`; `validate`
+  reports it. Turning the switch on is the host's decision: say in one plain
+  sentence that prompts (profiles, papers, the person's questions) will then
+  leave the machine for that provider. The web chat and Discord say which
+  model answers and where it runs.
+- Fallback is off by default. A server falls back only to the servers listed in
+  `llm.fallback`, so a local model never falls back to a cloud one unless the
+  host listed it (and `allow_cloud` is on).
+- There is no spend cap and no price table: tokens are recorded per component
+  and per server in the daily ledger. `[tools.agent] daily_turns` is the only
+  brake on chat.
+- Never put a key in `mycelium.toml` (the loader refuses an `api_key` field).
+  Only the variable name goes there.
 
 ## Answering "why am I limited?"
 

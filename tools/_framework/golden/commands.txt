@@ -44,6 +44,7 @@ grant_institution
 high_signal_shadow
 inspectdb
 llm_check
+llm_probe
 loaddata
 loadtest_purge
 makemessages

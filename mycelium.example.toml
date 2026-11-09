@@ -144,13 +144,39 @@ slack = false                            # env SLACK_ENABLED
 # The Microsoft Teams integration.
 teams = false                            # env TEAMS_ENABLED
 
-# The language model. The endpoint and model name live in .env (LLM_BASE_URL,
-# LLM_MODEL); this section holds policy.
+# The language model servers. The local endpoint lives in .env (LLM_BASE_URL,
+# LLM_MODEL) and is the server named "local"; more servers are declared as
+# [llm.providers.<name>] sections and chosen per component in [llm.routes].
+# Keys stay in .env.
 [llm]
 # Most tokens one model reply may use, thinking included. 0 sends no cap, so a
 # reasoning model is never starved before it answers; set a number only if
 # your endpoint needs one.
 max_tokens = 0                           # env LLM_MAX_TOKENS
+# The model server every component uses unless [llm.routes] sends it
+# elsewhere. "local" is the endpoint in .env (LLM_BASE_URL, LLM_MODEL) unless
+# you declare [llm.providers.local] yourself.
+default = "local"
+# Let a cloud server (OpenAI, Anthropic, Gemini, DeepSeek or another public
+# API) be called. Off: a cloud server never loads and no text leaves this host
+# for one.
+allow_cloud = false
+# Servers tried, in order, when the routed one is down. Empty: no fallback. A
+# cloud server listed here is still skipped while allow_cloud is false.
+fallback = []
+
+# More model servers. "local" above is the endpoint in .env; declare
+# [llm.providers.local] only to change its label or location. A server
+# names the variable that holds its key; the key itself lives in .env.
+#
+# [llm.providers.claude]
+# kind = "anthropic"                # openai_compatible | vllm | llamacpp | ollama | openai | anthropic | gemini | deepseek
+# api_key_env = "ANTHROPIC_API_KEY"
+# model = "..."                     # one the server lists (llm_check)
+# enabled = true                     # cloud also needs allow_cloud = true
+#
+# [llm.routes]                       # component = "server" or "server:model"
+# agent = "claude"
 
 # The decision model that re-orders the head of each theme's slate: TypeSafe's
 # hosted Jev, a model you serve on a port, or none.
@@ -174,6 +200,11 @@ port_protocol = "auto"                   # env DECISION_PORT_PROTOCOL; auto | de
 port_model = ""                          # env DECISION_PORT_MODEL
 # Seconds to wait for one decision from the port.
 port_timeout = 30                        # env DECISION_PORT_TIMEOUT
+# Reach a decision server that listens only on this host's 127.0.0.1 (such as
+# GAIFA's decide): the decision-relay service forwards port_url's port on the
+# Docker bridge to the same port on the host's loopback. Needs port_url at
+# host.docker.internal.
+port_relay = false                       # env DECISION_PORT_RELAY
 
 # The modular tools under tools/. These keys govern all of them; each
 # installed tool also reads its own [tools.<name>] section below.
@@ -222,7 +253,7 @@ ambient_explain = 200                    # env AMBIENT_EXPLAIN_NIGHTLY_CAP
 enabled = true
 # model = ""                             # env AGENT_MODEL
 # max_output_tokens = 0                  # env AGENT_MAX_OUTPUT_TOKENS
-# context_window = 32768                 # env AGENT_CONTEXT_WINDOW
+# context_window = 0                     # env AGENT_CONTEXT_WINDOW
 # max_steps = 25                         # env AGENT_MAX_STEPS
 # result_cap_tokens = 4000               # env AGENT_RESULT_CAP_TOKENS
 # daily_turns = 0                        # env AGENT_DAILY_TURNS

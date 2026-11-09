@@ -113,6 +113,8 @@ def jsonable(value: Any) -> Any:
 
 def parse_cli_value(key: str, raw: str) -> Any:
     """A command-line string as the TOML value it should be written as."""
+    if inst.llm_key_kind(key) is not None:
+        return inst.parse_llm_value(key, raw)
     tool = tool_key(key)
     if tool is not None:
         cls, setting = tool
@@ -174,7 +176,27 @@ def die(message: str, as_json: bool, code: int = 1) -> int:
 
 
 def known_key(key: str) -> bool:
-    return key in inst.BY_KEY or tool_key(key) is not None
+    return (key in inst.BY_KEY or tool_key(key) is not None
+            or inst.llm_key_kind(key) is not None)
+
+
+def llm_rows(cfg) -> list[dict]:
+    """Each model server as shown to an operator: key *names*, never keys."""
+    env = environment()
+    rows = []
+    for name, server in cfg.llm.servers.items():
+        key_env = server["api_key_env"]
+        rows.append({
+            "server": name, "label": server["label"], "kind": server["kind"],
+            "location": server["location"], "base_url": server["base_url"],
+            "model": server["model"], "enabled": server["enabled"],
+            "callable": cfg.llm.callable(name),
+            "api_key_env": key_env or None,
+            "has_key": bool(key_env and str(env.get(key_env, "")).strip()
+                            not in ("", "EMPTY")),
+            "from": "env (LLM_*)" if server["synthesized"] else "mycelium.toml",
+        })
+    return rows
 
 
 def matching_keys(prefix: str) -> list[str]:
@@ -187,6 +209,17 @@ def matching_keys(prefix: str) -> list[str]:
 # --------------------------------------------------------------------------- #
 
 _HEADER = re.compile(r"^\s*\[([^\[\]]+)\]\s*(#.*)?$")
+_ASSIGN = re.compile(r'^(\s*)("[^"]+"|[A-Za-z0-9_\-]+)(\s*=\s*)(.*)$')
+
+
+def _section_and_name(key: str) -> tuple[str, str]:
+    """Where a dotted key lives: ``llm.routes.intake.clusters`` is the quoted
+    key ``"intake.clusters"`` in ``[llm.routes]``."""
+    if key.startswith("llm.routes."):
+        name = key.removeprefix("llm.routes.")
+        return "llm.routes", (f'"{name}"' if "." in name else name)
+    sec, _, name = key.rpartition(".")
+    return sec, name
 
 
 def _split_value_comment(rest: str) -> tuple[str, str]:
@@ -216,9 +249,10 @@ def edit_file(text: str, changes: dict[str, Any], removals: set[str]) -> str:
             section = header.group(1).strip()
             out.append(line)
             continue
-        match = re.match(r"^(\s*)([A-Za-z0-9_\-]+)(\s*=\s*)(.*)$", line)
+        match = _ASSIGN.match(line)
         if match and not line.lstrip().startswith("#"):
-            key = f"{section}.{match.group(2)}" if section else match.group(2)
+            name = match.group(2).strip('"')
+            key = f"{section}.{name}" if section else name
             if key in removals:
                 seen.add(key)
                 continue
@@ -235,7 +269,7 @@ def edit_file(text: str, changes: dict[str, Any], removals: set[str]) -> str:
 
     missing = [k for k in changes if k not in seen]
     for key in missing:
-        sec, _, name = key.rpartition(".")
+        sec, name = _section_and_name(key)
         assignment = f"{name} = {inst._toml_value(changes[key])}"
         # Find the section and append at its end; else add the section.
         start = None
@@ -337,6 +371,7 @@ def cmd_show(args) -> int:
             "file": str(cfg.path) if cfg.path else None,
             "values": {k: {"value": jsonable(cfg[k]), "source": cfg.sources[k]}
                        for k in keys},
+            "llm": {"servers": llm_rows(cfg), "routes": cfg.llm.routes},
             "problems": cfg.problems(environment()),
         }, True)
         return 0
@@ -351,6 +386,18 @@ def cmd_show(args) -> int:
         source = cfg.sources[key]
         tag = dim(source) if source == "default" else yellow(source)
         print(f"  {inst.BY_KEY[key].name:<28} {shown(cfg[key]):<24} {tag}")
+    print(f"\n{bold('[llm.providers]')}")
+    for row in llm_rows(cfg):
+        state = "on" if row["callable"] else ("off" if not row["enabled"]
+                                              else "blocked")
+        key = (f"key {row['api_key_env']} {'set' if row['has_key'] else 'unset'}"
+               if row["api_key_env"] else "no key")
+        print(f"  {row['server']:<12} {row['kind']:<18} {row['location']:<7} "
+              f"{state:<8} {row['model'] or '-':<24} {dim(key + '; ' + row['from'])}")
+    if cfg.llm.routes:
+        print(f"\n{bold('[llm.routes]')}")
+        for component, route in sorted(cfg.llm.routes.items()):
+            print(f"  {component:<28} {route}")
     for name, tool_cfg in sorted(cfg.tools.items()):
         if args.changed and all(s == "default" for s in tool_cfg.sources.values()) \
                 and tool_cfg.enabled:
@@ -453,6 +500,14 @@ def cmd_get(args) -> int:
 
 def value_and_source(cfg, key: str) -> tuple[Any, str]:
     """A key's resolved value and the layer it came from, platform or tool."""
+    if inst.llm_key_kind(key) is not None:
+        if key.startswith("llm.routes."):
+            return cfg.llm.routes.get(key.removeprefix("llm.routes.")), \
+                "mycelium.toml"
+        name, _, sub = key.removeprefix("llm.providers.").partition(".")
+        server = cfg.llm.servers.get(name) or {}
+        return server.get(sub), ("env (LLM_*)" if server.get("synthesized")
+                                 else "mycelium.toml")
     tool = tool_key(key)
     if tool is None:
         return cfg[key], cfg.sources[key]
@@ -464,6 +519,8 @@ def value_and_source(cfg, key: str) -> tuple[Any, str]:
 
 
 def _env_name(key: str) -> str | None:
+    if inst.llm_key_kind(key) is not None:
+        return None
     tool = tool_key(key)
     if tool is None:
         return inst.BY_KEY[key].env
@@ -543,6 +600,9 @@ def cmd_validate(args) -> int:
             print(red(f"✗ {problem}"))
     else:
         print(green(f"✓ configuration is valid ({cfg.profile} profile)"))
+    if not args.json:
+        for warning in cfg.llm.warnings:
+            print(yellow(f"! {warning}"))
     return 1 if problems else 0
 
 

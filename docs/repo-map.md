@@ -152,7 +152,7 @@ A task index across the three tools; each tool also has its own section below.
 | Which (theme, item) pairs earn a model call — reuse, entitlement, budget | `tools/recommendation/theme_run.py` (`plan_theme_writeups` = DB, `execute_theme_plan` = pure, `collect_theme_result`) |
 | Mylo's prose — the per-theme read and the lead paragraph | `tools/delivery/narrative.py`; stored as structure on `DailyBriefing.narrative` and read back by the PDF, the app, and Discord |
 | Fellowship bands (matched to a theme vs open to you) | `tools/recommendation/fellowship_bands.py` — the eligibility gate is unchanged; this only splits what survives it |
-| The `[decision]` switch — a decision model re-orders each theme's slate head (`jev` hosted, `port` self-hosted, `auto` default, paid plans) or the local stack stands (`off`); judgements stored at `signals["typesafe"][cluster_id]` with their `backend` and `model`, reused by fingerprint | `tools/recommendation/typesafe_rerank.py` over `web/backend/apps/core/decisions.py`; entered from `pipeline.py::_explain_run` (papers), `opportunities.py::_prepare_match` (grants, conferences) and `_finalize_fellowship_match` (fellowships). Evidence `EXP-2026-09-003`/`-004` (Jev), `EXP-2026-11-007`/`-008` (d3-lite on a port) |
+| The `[decision]` switch — a decision model re-orders each theme's slate head (`jev` hosted, `port` self-hosted, `auto` default, paid plans) or the local stack stands (`off`); judgements stored at `signals["typesafe"][cluster_id]` with their `backend` and `model`, reused by fingerprint | `tools/recommendation/typesafe_rerank.py` over `web/backend/apps/core/decisions.py`; entered from `pipeline.py::_explain_run` (papers), `opportunities.py::_prepare_match` (grants, conferences) and `_finalize_fellowship_match` (fellowships). Evidence `EXP-2026-09-003`/`-004` (Jev), `EXP-2026-11-007`/`-008`/`-012` (d3-lite on a port) |
 | Cross-encoder rerank (ships OFF, `RERANK_ENABLED`) | `tools/recommendation/reranking.py` — device resolution with CUDA auto-detect and CPU fallback, the lazy model cache, `rerank` and the per-interest/RRF `rerank_order`; entered from `pipeline.py::_apply_rerank` at the tail of `fuse_interests_pool` / `fuse_clusters_pool`. Diagnostics: `manage.py rerank_device --load`. Evidence is a **preference** (`EXP-2026-08-015`…`-017`), not a measurement — see the module docstring |
 | Ranking-stack seams (ORM-free ranking, swappable vector index) | `tools/retrieval/protocols.py` (`Retrievable`, `VectorIndex`), `tools/retrieval/index.py` (`PgVectorIndex`) |
 | Theme spread (opt-in, all defaults off) | `tools/recommendation/fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
@@ -306,13 +306,17 @@ A task index across the three tools; each tool also has its own section below.
 | Reports on Slack for Slack-only readers and labs | `tools/delivery/slack_reports.py`, command `send_slack_reports` (in `ops/nightly/manual_all.py`) |
 | Where the OAuth `redirect_uri` comes from (and why it must not vary) | `_redirect_uri` in `web/backend/apps/integrations/services/oauth.py`, `DISCORD_CALLBACK_ORIGIN` in `web/backend/config/settings.py`; print what to register with `manage.py discord_check` |
 | The portal's "link with a code" panel (join → copy command → wait) | `ActivationCodePanel` in `web/app/src/components/portal/sections/profile-section.tsx`; the command and invite come from `DiscordActivationCodeView` |
-| LLM client | `web/backend/apps/core/llm.py` |
+| LLM client | `web/backend/apps/core/llm.py` (`build_llm_client(component=…)` routes to the component's server; `FallbackClient`) |
+| Model servers: the `[llm.providers.*]` / `[llm.routes]` table, routing (`resolve`), discovery, health, context windows | `web/backend/apps/core/llm_servers.py`; config keys in `web/backend/config/instance.py` (`resolve_llm`, `derive_location`); `manage.py llm_check` (in `apps/accounts`), `manage.py llm_probe`; staff view `GET api/admin/llm/servers/` in `web/backend/apps/adminpanel/views.py` |
+| Anthropic, Gemini and native Ollama behind the shared client surface | `web/backend/apps/core/llm_bridge.py` (`KitClient`) over `web/backend/apps/core/llmkit/` (vendored from the llm-integration skill; `VENDORED.md`, `selftest.py` run by `test_llmkit.py`) |
+| Mock model servers for tests (vLLM, llama.cpp, Ollama, Anthropic, Gemini) | `web/backend/apps/core/llm_testservers.py` |
 | TypeSafe System One client (typed decisions with calibrated probabilities) | `web/backend/apps/core/systemone.py` — every call counted in the LLM ledger |
 | Decision backend switch: question specs, `jev` / `port` (decide or OpenAI-logprob protocol) / `off` resolution, the port client | `web/backend/apps/core/decisions.py`; config keys `[decision]` in `web/backend/config/instance.py` |
+| Decision relay: a decision server bound to the host's 127.0.0.1 (GAIFA's decide) made reachable from the containers at `host.docker.internal` (`[decision] port_relay`) | `web/backend/apps/core/decision_relay.py` (standard library only), the `decision-relay` service in `compose.yaml` (host network, idles when off) |
 | Transactional email (send one) | `web/backend/apps/core/mail/messages.py` (`send_email`, `app_url`, the `TEMPLATES` registry) |
 | Email transport & Django backend | `web/backend/apps/core/mail/{client,backend}.py` — Resend over stdlib urllib; wired as `EMAIL_BACKEND` so `django.core.mail` routes through it |
 | Email templates (HTML + text pairs) | `web/backend/templates/email/` — `base.html`, `_button.html`, and one pair per entry in `TEMPLATES` |
-| LLM call / token ledger | `web/backend/apps/core/{models,llm_usage}.py` |
+| LLM call / token ledger (per component, per model server) | `web/backend/apps/core/{models,llm_usage}.py` |
 | Health endpoint, exactly-one-FK helper | `web/backend/apps/core/{views,db}.py` |
 | Django settings / URLs / Celery | `web/backend/config/` |
 
@@ -512,7 +516,8 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `rebuild_content_deadlines`, `backfill_project_seen`, `backfill_slate_size`, `dedupe_content_papers`, `repair_pubmed_ids` | Backfills |
 | `run_billing_tick`, `reconcile_seats` | Billing period roll / seat reconciliation |
 | `embedding_device` | Report and benchmark the embedding device |
-| `llm_check` | LLM reachability pre-flight |
+| `llm_check` | LLM reachability pre-flight; every model server, its models and the routes |
+| `llm_probe` | Probe one configured model server (`--deep`: reply, stream, function call) |
 | `typesafe_check` | TypeSafe System One reachability check (one fixed question, never database text) |
 | `decision_check` | Which decision backend the switch resolves to, then latency and throughput (`--url`, `--calls`, `--concurrency`, `--json`; one fixed state, never database text) |
 | `send_test_email` | Send one email through the real stack to check the transport (`--to`, `--template`) |

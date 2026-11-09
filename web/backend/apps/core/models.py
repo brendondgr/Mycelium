@@ -19,7 +19,7 @@ from django.db import models
 
 
 class LLMUsageDaily(models.Model):
-    """One day's LLM call and token totals for one calling component.
+    """One day's LLM call and token totals for one component on one server.
 
     ``component`` is the label the caller passed to
     :func:`apps.core.llm.build_llm_client` — ``papers``, ``briefing``,
@@ -36,6 +36,12 @@ class LLMUsageDaily(models.Model):
         max_length=60,
         help_text="Which caller made the requests — 'papers', 'briefing', …",
     )
+    server = models.CharField(
+        max_length=60,
+        default="local",
+        help_text="Which model server answered — a [llm.providers] name; 'local' "
+        "is the .env endpoint.",
+    )
     calls = models.PositiveIntegerField(default=0)
     failures = models.PositiveIntegerField(
         default=0,
@@ -49,11 +55,11 @@ class LLMUsageDaily(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-day", "component"]
+        ordering = ["-day", "component", "server"]
         constraints = [
             models.UniqueConstraint(
-                fields=["day", "component"],
-                name="core_llm_usage_unique_day_component",
+                fields=["day", "component", "server"],
+                name="core_llm_usage_unique_day_component_server",
             ),
         ]
         verbose_name = "LLM daily usage"
