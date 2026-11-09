@@ -334,6 +334,8 @@ class AgentDiscordTurn(models.Model):
     channel_id = models.CharField(max_length=32, blank=True, default="")
     status_message_id = models.CharField(max_length=32, blank=True, default="")
     discord_user_id = models.CharField(max_length=32)
+    #: Asked without an account: counted against the guest limits.
+    guest = models.BooleanField(default=False)
     state = models.CharField(
         max_length=10, choices=State.choices, default=State.PENDING
     )

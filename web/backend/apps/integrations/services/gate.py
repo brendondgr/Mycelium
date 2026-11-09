@@ -43,6 +43,7 @@ from . import audit, resolve, state
 
 class Denial(StrEnum):
     NOT_LINKED = "not_linked"
+    NOT_VERIFIED = "not_verified"
     RATE_LIMITED = "rate_limited"
     NOT_ENTITLED = "not_entitled"
     FORBIDDEN = "forbidden"
@@ -77,6 +78,8 @@ class _Action:
     lab_feature: str = ""
     #: Rate-limit bucket name; falls back to the default bucket.
     bucket: str = "command"
+    #: The linked account must have a verified email (S-10).
+    verified: bool = False
 
 
 _ACTIONS: dict[str, _Action] = {
@@ -115,6 +118,15 @@ _ACTIONS: dict[str, _Action] = {
     "ann_manual": _Action(lab_permission="manage", lab_feature="bot_server"),
     # `/mylo populate` posts many threads at once and calls the model per item.
     "ann_populate": _Action(lab_permission="manage", lab_feature="bot_server"),
+    # Mylo chat (plan D). Asking needs an activated account (linked, verified
+    # email) and, in a server, the server's binding to carry the bot add-on;
+    # what the asker may then *see* is the agent's own gate, never this one.
+    # A guest (no account) asks through authorize_guest as ``chat_guest``.
+    "chat": _Action(lab_feature="bot_server", bucket="chat", verified=True),
+    "chat_guest": _Action(bucket="chat"),
+    # Stopping someone else's answer, and the channel and guest switches, speak
+    # for the team: the same right as `/setup`.
+    "chat_manage": _Action(lab_permission="manage", lab_feature="bot_server"),
 }
 
 _DEFAULT_ACTION = _Action()
@@ -125,6 +137,10 @@ _NOT_LINKED = (
 )
 _RATE_LIMITED = "That's a lot at once — give me a moment and try again."
 _FORBIDDEN = "You don't have access to that."
+_NOT_VERIFIED = (
+    "Your Mycelium account isn't activated yet: verify its email first, then ask "
+    "me again. Open your profile in Mycelium to resend the link."
+)
 _LOCKED = "Too many attempts. Try again in about an hour."
 
 
@@ -149,6 +165,11 @@ def authorize(
     user = resolve.resolve_user(str(discord_user_id))
     if user is None:
         return _deny(action, discord_user_id, Denial.NOT_LINKED, _NOT_LINKED)
+
+    if spec.verified and not _is_verified(user):
+        return _deny(
+            action, discord_user_id, Denial.NOT_VERIFIED, _NOT_VERIFIED, user=user
+        )
 
     # 2 — how often. Before any lookup, so this cannot become a probing oracle.
     if state.is_locked_out(str(discord_user_id)):
@@ -178,6 +199,15 @@ def authorize(
             return _deny(
                 action, discord_user_id, Denial.FORBIDDEN, _FORBIDDEN, user=user
             )
+    elif spec.lab_feature and binding_id not in (None, ""):
+        # No permission on the target, only its plan: asking in a lab's server
+        # does not need membership of that lab (the agent decides what is seen).
+        binding = _resolve_binding(binding_id, guild_id=guild_id)
+        if binding is None:
+            return _deny(
+                action, discord_user_id, Denial.FORBIDDEN, _FORBIDDEN, user=user
+            )
+        lab, department = binding.lab, binding.department
 
     # 4 — whether the plan covers it, checked here rather than trusted from install.
     if spec.lab_feature and department is not None:
@@ -255,6 +285,11 @@ def authorize_guest(
 # --------------------------------------------------------------------------- #
 # Stages
 # --------------------------------------------------------------------------- #
+def _is_verified(user) -> bool:
+    profile = getattr(user, "profile", None)
+    return bool(getattr(profile, "is_verified", False))
+
+
 def _within_rate(discord_user_id: str, bucket: str) -> bool:
     limits = getattr(settings, "DISCORD_COMMAND_RATE_LIMITS", {}) or {}
     limit, window = limits.get(bucket, limits.get("command", (20, 60)))

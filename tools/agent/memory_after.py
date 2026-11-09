@@ -104,10 +104,11 @@ def maybe_notice(thread) -> None:
 
 
 def after_turn(caller, thread, port) -> None:
+    if thread.shared:
+        # No owner and no list to show it in: no title call, no recall
+        # digest, no learning notice (plan D). Its place names it.
+        return
     events = store.events(thread)
     title_and_purpose(thread, events, port)
-    if thread.shared:
-        # No owner: no recall digest and no learning notice (plan D).
-        return
     update_digest(thread, events)
     maybe_notice(thread)

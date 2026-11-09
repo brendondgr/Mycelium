@@ -775,6 +775,14 @@ def status() -> dict:
     }
 
 
+def discord_surface():
+    """The Discord surface (``surfaces/discord.py``) for the bot, which reaches
+    the agent only through ``services.get("agent")`` (plan D)."""
+    from .surfaces import discord
+
+    return discord
+
+
 __all__ = [
     "Audience",
     "Caller",
@@ -786,6 +794,7 @@ __all__ = [
     "check_view",
     "create_thread",
     "delete_thread",
+    "discord_surface",
     "export",
     "fork_thread",
     "get_org_policy",

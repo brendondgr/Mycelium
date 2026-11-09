@@ -265,11 +265,10 @@ def org_policies(scope):
 
 
 def _channel_off(caller) -> Decision | None:
-    if caller.surface == "discord" and caller.via.get("channel_id"):
+    here = {str(caller.via.get(k) or "") for k in ("channel_id", "parent_id")} - {""}
+    if caller.surface == "discord" and here:
         for policy in org_policies(caller.scope):
-            if str(caller.via["channel_id"]) in {
-                str(c) for c in policy.discord_channels_off
-            }:
+            if here & {str(c) for c in policy.discord_channels_off}:
                 return _deny(
                     4,
                     "channel_off",

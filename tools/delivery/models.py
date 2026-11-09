@@ -1470,7 +1470,8 @@ class AnnouncementPost(models.Model):
         related_name="announcement_posts",
     )
     channel_id = models.CharField(max_length=32)  # the forum
-    thread_id = models.CharField(max_length=32, blank=True, default="")
+    # Indexed: Mylo looks a post up by its thread on every question asked there.
+    thread_id = models.CharField(max_length=32, blank=True, default="", db_index=True)
     thread_name = models.CharField(max_length=100, blank=True, default="")
     outbox_key = models.CharField(max_length=200, blank=True, default="")
     # [{"on": "2026-11-05", "changes": [...], "reply_id": "..."}] — one per update.
