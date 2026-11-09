@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "tmp-root-stale"]
+  "exclude": ["node_modules", "tmp-root-stale", "vitest.config.ts", "src/**/*.test.ts"]
 }
