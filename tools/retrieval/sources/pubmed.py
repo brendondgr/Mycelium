@@ -22,6 +22,31 @@ BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 BATCH = 200
 
 
+def article_own_ids(art: ET.Element) -> tuple[str | None, str | None]:
+    """The ``(doi, pmcid)`` of one ``PubmedArticle`` — its own, never a citation's.
+
+    ``PubmedData`` also carries a ``ReferenceList`` whose cited papers each have
+    an ``ArticleIdList`` of their own, so a ``.//ArticleIdList/ArticleId`` search
+    picks up every reference's DOI and PMCID (and keeping the last one stored a
+    cited paper's ids on most rows, Q-057). Read only the article's own list,
+    falling back to the ``ELocationID`` DOI when PubMed's list has none.
+    """
+    doi = pmcid = None
+    for aid in art.findall("PubmedData/ArticleIdList/ArticleId"):
+        idtype = aid.get("IdType")
+        text = (aid.text or "").strip() or None
+        if idtype == "doi" and doi is None:
+            doi = text
+        elif idtype == "pmc" and pmcid is None:
+            pmcid = text
+    if doi is None:
+        for el in art.findall("MedlineCitation/Article/ELocationID"):
+            if el.get("EIdType") == "doi" and (el.text or "").strip():
+                doi = el.text.strip()
+                break
+    return doi, pmcid
+
+
 class PubMedScraper(BaseScraper):
     name = "PubMed"
     rate_per_sec = 3.0  # 3/s without key, 10/s with key.
@@ -155,14 +180,7 @@ class PubMedScraper(BaseScraper):
                     elif coll:
                         authors.append(coll)
 
-            # Identifiers from ArticleIdList.
-            doi = pmcid = None
-            for aid in art.findall(".//ArticleIdList/ArticleId"):
-                idtype = aid.get("IdType")
-                if idtype == "doi":
-                    doi = aid.text
-                elif idtype == "pmc":
-                    pmcid = aid.text
+            doi, pmcid = article_own_ids(art)
 
             # Year / date.
             year = None

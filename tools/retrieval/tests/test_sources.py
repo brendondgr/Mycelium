@@ -146,3 +146,62 @@ def test_pubmed_parse_xml():
     assert rec.pmcid == "PMC123"
     assert "Background: Spores compute." in rec.abstract
     assert rec.publication_date == "2026-06-02"
+
+
+_REFERENCE_LIST = """
+          <ReferenceList>
+            <Reference>
+              <Citation>A cited paper.</Citation>
+              <ArticleIdList>
+                <ArticleId IdType="doi">10.1016/j.bandl.2004.10.010</ArticleId>
+                <ArticleId IdType="pmc">PMC999</ArticleId>
+              </ArticleIdList>
+            </Reference>
+          </ReferenceList>
+"""
+
+
+def _pubmed_article(own_ids: str, elocation: str = "") -> str:
+    return f"""
+    <PubmedArticleSet>
+      <PubmedArticle>
+        <MedlineCitation>
+          <PMID>42389617</PMID>
+          <Article><ArticleTitle>Own paper</ArticleTitle>{elocation}</Article>
+        </MedlineCitation>
+        <PubmedData>
+          <ArticleIdList>
+            <ArticleId IdType="pubmed">42389617</ArticleId>
+            {own_ids}
+          </ArticleIdList>
+          {_REFERENCE_LIST}
+        </PubmedData>
+      </PubmedArticle>
+    </PubmedArticleSet>
+    """
+
+
+def test_pubmed_ignores_the_reference_lists_ids():
+    """Q-057: a cited paper's DOI/PMCID must never become the article's own."""
+    xml = _pubmed_article(
+        '<ArticleId IdType="doi">10.63144/ijt.2026.6735</ArticleId>'
+        '<ArticleId IdType="pmc">PMC13321850</ArticleId>'
+    )
+    [rec] = PubMedScraper._parse_xml(xml)
+    assert rec.doi == "10.63144/ijt.2026.6735"
+    assert rec.pmcid == "PMC13321850"
+
+
+def test_pubmed_without_own_ids_takes_none_from_references():
+    [rec] = PubMedScraper._parse_xml(_pubmed_article(""))
+    assert rec.doi is None
+    assert rec.pmcid is None
+
+
+def test_pubmed_falls_back_to_elocation_doi():
+    xml = _pubmed_article(
+        "", '<ELocationID EIdType="doi" ValidYN="Y">10.5/Own</ELocationID>'
+    )
+    [rec] = PubMedScraper._parse_xml(xml)
+    assert rec.doi == "10.5/own"
+    assert rec.pmcid is None
