@@ -175,6 +175,21 @@ def test_a_plain_member_may_not_configure_the_lab(db) -> None:
 
 
 @pytest.mark.django_db
+def test_populating_the_forums_is_for_managers_only(db) -> None:
+    manager, member = _linked("pop-manager"), _linked("pop-member", OUTSIDER)
+    lab = _lab()
+    LabMembership.objects.create(user=manager, lab=lab, role=LabMembership.Role.ADMIN)
+    LabMembership.objects.create(user=member, lab=lab, role=LabMembership.Role.MEMBER)
+
+    ok = gate.authorize(discord_user_id=SNOWFLAKE, action="ann_populate",
+                        lab_slug=lab.slug)
+    refused = gate.authorize(discord_user_id=OUTSIDER, action="ann_populate",
+                             lab_slug=lab.slug)
+    assert ok.ok
+    assert refused.denial is Denial.FORBIDDEN
+
+
+@pytest.mark.django_db
 def test_a_forged_slug_reveals_nothing_about_which_labs_exist(db) -> None:
     """The security property: naming a real lab you cannot see must look exactly
     like naming one that does not exist.

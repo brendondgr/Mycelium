@@ -43,6 +43,26 @@ async def db(fn, /, *args, **kwargs):
     return await sync_to_async(fn, thread_sensitive=True)(*args, **kwargs)
 
 
+async def db_long(fn, /, *args, **kwargs):
+    """Like :func:`db`, for a call that may run for minutes (one that calls the
+    model per item). ``db`` runs every call on one shared thread, so a long call
+    there would stall every other command until it finished; this one gets a
+    thread of its own and closes that thread's connection when it is done."""
+    setup_django()
+    from asgiref.sync import sync_to_async
+
+    def run():
+        from django.db import close_old_connections, connection
+
+        close_old_connections()
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            connection.close()
+
+    return await sync_to_async(run, thread_sensitive=False)()
+
+
 def portal_url() -> str:
     """The portal profile URL to point users at (from Django settings)."""
     setup_django()

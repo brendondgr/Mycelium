@@ -318,6 +318,50 @@ class MyloCog(commands.Cog, name="Mylo"):
         else:
             await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
+    # --------------------------------------------------------------- populate
+    @mylo.command(
+        name="populate",
+        description="Fill this server's opportunity forums with the best open items.",
+    )
+    @app_commands.describe(
+        count="How many of each kind each forum should carry (1–10, default 5).",
+        target="Which lab or department, when this server holds more than one.",
+    )
+    @app_commands.guild_only()
+    async def populate(
+        self,
+        interaction: discord.Interaction,
+        count: app_commands.Range[int, 1, 10] = 5,
+        target: str | None = None,
+    ) -> None:
+        # Managers only (the backend's gate decides). Each new post runs Mylo's
+        # editor, so this can take a few minutes: defer, then follow up once.
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        status, payload = await linking.populate_forums(
+            str(interaction.user.id),
+            str(interaction.guild_id),
+            target or None,
+            count,
+        )
+        message = payload.get("message", "Something went wrong.")
+        if status == "choose":
+            names = ", ".join(f"**{b['name']}**" for b in payload.get("bindings", []))
+            message = (
+                "This server holds more than one lab or department "
+                f"({names}). Run it again and pick one with `target`."
+            )
+        await interaction.followup.send(message[:2000], ephemeral=True)
+
+    @populate.autocomplete("target")
+    async def _populate_targets(self, interaction: discord.Interaction, current: str):
+        rows = await linking.guild_bindings(str(interaction.guild_id or ""))
+        current = (current or "").casefold()
+        return [
+            app_commands.Choice(name=row["name"][:100], value=str(row["binding_id"]))
+            for row in rows
+            if current in row["name"].casefold()
+        ][:25]
+
     # ----------------------------------------------------------------- digest
     @mylo.command(name="digest", description="Your compiled research report.")
     @app_commands.describe(lab="A lab's report instead of your own (optional).")

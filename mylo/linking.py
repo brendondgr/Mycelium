@@ -708,7 +708,8 @@ def _announcement_setup_sync(
             _row, first = setup.switch(binding, on=(op == "on"), actor=actor)
             message = (
                 "Announcements are **on**. Mylo is posting the six most relevant open "
-                "items and the closing-soon list now; after that, only new ones."
+                "items and the closing-soon list now; after that, only new ones. "
+                "Want more in each forum? Run `/mylo populate`."
                 if first
                 else ("Announcements are **on**." if op == "on" else
                       "Announcements are **off**. Existing threads stay.")
@@ -737,6 +738,49 @@ def _activate_announcements_sync(guild_id, binding_id) -> dict:
     if refusal is not None:
         return {"posted": 0, "reason": "no_binding"}
     return setup.activate_now(binding)
+
+
+async def populate_forums(
+    discord_user_id: str, guild_id: str, binding_id, count: int
+) -> tuple[str, dict]:
+    """``/mylo populate``: fill this server's opportunity forums (it calls the model
+    per item, so it runs on a thread of its own)."""
+    return await mycelium.db_long(
+        _populate_forums_sync, str(discord_user_id), str(guild_id), binding_id,
+        int(count),
+    )
+
+
+def _populate_forums_sync(discord_user_id, guild_id, binding_id, count):
+    from apps.integrations.services import gate, resolve
+
+    from tools.delivery import announce_populate
+
+    binding, refusal = _pick_binding(resolve, guild_id, binding_id)
+    if refusal is not None:
+        return refusal
+    verdict = gate.authorize(
+        discord_user_id=discord_user_id,
+        action="ann_populate",
+        guild_id=guild_id,
+        binding_id=binding.id,
+    )
+    if not verdict.ok:
+        return (str(verdict.denial), {"message": verdict.message})
+    return announce_populate.populate(binding, count, actor=verdict.user)
+
+
+async def guild_bindings(guild_id: str) -> list[dict]:
+    """The labs and departments bound in a server, for a command's picker."""
+    return await mycelium.db(_guild_bindings_sync, str(guild_id))
+
+
+def _guild_bindings_sync(guild_id: str) -> list[dict]:
+    from apps.integrations.services import resolve
+
+    return [
+        _binding_summary(resolve, b) for b in resolve.bindings_for_guild(guild_id)
+    ]
 
 
 async def announcement_manual(

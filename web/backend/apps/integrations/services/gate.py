@@ -113,6 +113,8 @@ _ACTIONS: dict[str, _Action] = {
     # and so is posting a search result to the team's forum by hand.
     "ann_setup": _Action(lab_permission="manage", lab_feature="bot_server"),
     "ann_manual": _Action(lab_permission="manage", lab_feature="bot_server"),
+    # `/mylo populate` posts many threads at once and calls the model per item.
+    "ann_populate": _Action(lab_permission="manage", lab_feature="bot_server"),
 }
 
 _DEFAULT_ACTION = _Action()

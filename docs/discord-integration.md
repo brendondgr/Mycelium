@@ -180,6 +180,18 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   by starting and deleting a thread), who can start posts (everyone, managers only,
   or chosen roles — replies stay open to everyone), and **Turn on**, which runs the
   activation seed and the closing-soon list straight away.
+* **`/mylo populate count:<1–10> [target:]`** (`tools/delivery/announce_populate.py`,
+  gate action `ann_populate`, managers only) fills this server's forums with the
+  target's best open items, `count` of each kind (default 5). It tops up: an item
+  already posted here counts, so a second run posts nothing. It keeps every earlier
+  decision (held back, closed, deleted by hand), posts items passed over at
+  activation through the same checks and editor as a nightly post (labelled
+  *Already open*, origin *manual*, audited as `announcements.populated`), and calls
+  the editor at most `2 × count` times per kind. It refuses until announcements are
+  on and seeded, since the seed is what stops the next nightly run announcing the
+  backlog. It runs on a thread of its own (`mycelium.db_long`) so a few minutes of
+  model calls never stall other commands. `target` autocompletes, and is needed
+  only in a server that holds more than one lab or department.
 * **Search links** (`tools/delivery/announcement_links.py`): `/mylo search` passes
   the server it ran in; a result announced in one of that server's bindings shows
   "💬 Already discussed here → thread", and a manager of a binding there gets

@@ -27,8 +27,8 @@ class BotConstructionTests(unittest.TestCase):
     def test_mylo_group_exposes_every_subcommand(self) -> None:
         names = {command.name for command in MyloCog.mylo.commands}
         # Observability (health/lastrun), link health (status), research
-        # (search/digest/saves), reminder control (snooze/cancel) and listening
-        # (listening/note). All in one cog because discord.py cannot share an
+        # (search/digest/saves), reminder control (snooze/cancel), listening
+        # (listening/note) and filling the opportunity forums (populate). All in one cog because discord.py cannot share an
         # app_commands.Group across cogs. Channel setup stays the top-level
         # /setup command, and listening's *server* switch lives there too —
         # `/mylo listening` is personal, and nobody should have to ask a manager
@@ -46,6 +46,7 @@ class BotConstructionTests(unittest.TestCase):
                 "cancel",
                 "listening",
                 "note",
+                "populate",
             },
         )
 
@@ -68,6 +69,15 @@ class BotExtensionLoadTests(unittest.IsolatedAsyncioTestCase):
             # Every /mylo subcommand reaches the tree, not just the group itself.
             group = commands["mylo"]
             self.assertIn("search", {c.name for c in group.commands})
+            # /mylo populate: a bounded count, and a target only for servers that
+            # hold more than one lab or department.
+            populate = next(c for c in group.commands if c.name == "populate")
+            params = {p.name: p for p in populate.parameters}
+            self.assertEqual(set(params), {"count", "target"})
+            self.assertEqual((params["count"].min_value, params["count"].max_value),
+                             (1, 10))
+            self.assertFalse(params["target"].required)
+            self.assertTrue(params["target"].autocomplete)
         finally:
             await bot.close()
 
