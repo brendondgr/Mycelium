@@ -4,6 +4,8 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
+import { OPEN_ITEM_EVENT, type OpenItemRequest } from "@/components/portal/mylo/events";
+
 /**
  * List + opened item, the layout every feed uses (chosen in `/labs`).
  *
@@ -75,6 +77,20 @@ export function useReader<T>(
   );
 
   const closeDrawer = React.useCallback(() => setDrawerId(null), []);
+
+  // Mylo's panel asks to open an item (a citation, a conversation's "About"
+  // line): open it here when this feed has it.
+  React.useEffect(() => {
+    const onOpenItem = (event: Event) => {
+      const request = (event as CustomEvent<OpenItemRequest>).detail;
+      const item = items.find((i) => getId(i) === request.id);
+      if (!item) return;
+      request.handled = true;
+      open(item);
+    };
+    window.addEventListener(OPEN_ITEM_EVENT, onOpenItem);
+    return () => window.removeEventListener(OPEN_ITEM_EVENT, onOpenItem);
+  }, [items, getId, open]);
 
   return {
     current,

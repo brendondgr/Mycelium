@@ -391,9 +391,14 @@ html:not([data-motion="none"])[data-surfaces="glass"] .ws-item:hover {
 }
 
 @media (hover: hover) {
-  .ws-item:not(:hover):not(:focus-within) .ws-actions {
+  /* Mylo's face stays at full strength: it is the way in (plan W). */
+  .ws-item:not(:hover):not(:focus-within) .ws-actions > :not(.ws-mylo-ask) {
     opacity: 0.35;
   }
+}
+
+.ws-actions > * {
+  transition: opacity 0.15s;
 }
 
 .ws-theme {
@@ -2883,4 +2888,941 @@ html[data-motion="none"] *::after {
 .ws-main :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* ================================================== Mylo chat (plan W) */
+/*
+ * The side panel, its launcher and the Mylo-face button. Drawn through the
+ * reader's Portal at the end of <body>, so the panel brings its own focus
+ * ring and its own reduced-motion rules (the .ws-main ones do not reach it).
+ * Mylo's art is the painted head only.
+ */
+
+.ws-mylo-head {
+  flex: none;
+  aspect-ratio: 1;
+  height: auto;
+  border-radius: 50%;
+  background: var(--raise);
+  object-fit: cover;
+  user-select: none;
+}
+
+.ws-mylo-launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 2px solid color-mix(in srgb, var(--primary) 70%, var(--border));
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--shadow), 0 10px 28px -10px rgb(0 0 0 / 50%);
+  cursor: pointer;
+  transition: transform 0.18s, border-color 0.18s;
+}
+
+.ws-mylo-launcher:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.ws-mylo-launcher:focus-visible,
+.ws-mylo-panel :focus-visible,
+.ws-mylo-ask:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+  .ws-mylo-launcher {
+    right: 14px;
+    bottom: 14px;
+    width: 50px;
+    height: 50px;
+  }
+}
+
+.ws-mylo-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.ws-mylo-layer[data-open]:not([data-wide]) {
+  pointer-events: auto;
+}
+
+/* Wide: no scrim; only the panel takes the pointer, the page stays usable. */
+.ws-mylo-layer[data-open][data-wide] .ws-mylo-panel {
+  pointer-events: auto;
+}
+
+.ws-mylo-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-left: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow), 0 30px 70px -20px rgb(0 0 0 / 55%);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 14px;
+  transform: translateX(105%);
+  visibility: hidden;
+  transition: transform 0.32s cubic-bezier(0.3, 0.7, 0.2, 1), visibility 0s 0.32s;
+}
+
+.ws-mylo-layer[data-wide] .ws-mylo-panel {
+  width: min(420px, 40vw);
+  min-width: 360px;
+}
+
+.ws-mylo-layer[data-open] .ws-mylo-panel {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.32s cubic-bezier(0.3, 0.7, 0.2, 1), visibility 0s;
+}
+
+.ws-mylo-panel:focus {
+  outline: none;
+}
+
+.ws-mylo-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 10px 12px 14px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.ws-mylo-titles {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.ws-mylo-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-mylo-title-btn {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+}
+
+.ws-mylo-title-input {
+  width: 100%;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ws-mylo-about {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-mylo-about-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ws-mylo-tools {
+  display: flex;
+  flex: none;
+}
+
+.ws-mylo-tools .ws-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ws-mylo-reconnect {
+  margin: 0;
+  padding: 3px 14px;
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.ws-mylo-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 16px 8px;
+  overscroll-behavior: contain;
+}
+
+.ws-mylo-turns {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-mylo-turn {
+  display: grid;
+  gap: 10px;
+}
+
+.ws-mylo-who {
+  margin: 0 0 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ws-mylo-you {
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--raise);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ws-mylo-pending {
+  color: var(--text-muted);
+}
+
+.ws-mylo-answer {
+  display: grid;
+  gap: 8px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.ws-mylo-answer p,
+.ws-mylo-answer ul,
+.ws-mylo-answer ol {
+  margin: 0;
+}
+
+.ws-mylo-answer ul,
+.ws-mylo-answer ol {
+  padding-left: 1.2em;
+}
+
+.ws-mylo-answer ul {
+  list-style: disc;
+}
+
+.ws-mylo-answer ol {
+  list-style: decimal;
+}
+
+.ws-mylo-cite {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin: 0 1px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--link);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: 1px;
+  cursor: pointer;
+}
+
+.ws-mylo-cite:hover {
+  background: color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.ws-mylo-aside {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.ws-mylo-pad {
+  padding: 16px;
+}
+
+.ws-mylo-fold-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ws-mylo-fold-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-mylo-fold-head > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-mylo-fold-static {
+  cursor: default;
+}
+
+.ws-mylo-chev {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.ws-mylo-fold-head[aria-expanded="true"] .ws-mylo-chev {
+  transform: rotate(90deg);
+}
+
+.ws-mylo-steps {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0 30px;
+  padding: 0 0 0 10px;
+  border-left: 1px solid var(--divider);
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+}
+
+.ws-mylo-steps li {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.ws-mylo-steps svg {
+  flex: none;
+  transform: translateY(2px);
+}
+
+.ws-mylo-steps li[data-state="ok"] svg {
+  color: var(--success);
+}
+
+.ws-mylo-steps li[data-state="failed"] svg {
+  color: var(--destructive);
+}
+
+.ws-mylo-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 999px;
+  transform: translateY(-1px);
+}
+
+.ws-mylo-error {
+  display: flex;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--destructive) 45%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--destructive) 9%, transparent);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.ws-mylo-error p {
+  margin: 0;
+}
+
+.ws-mylo-error svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--destructive);
+}
+
+.ws-mylo-send-error {
+  margin: 0 14px 8px;
+}
+
+.ws-mylo-fix {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+}
+
+.ws-mylo-link-btn {
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ws-mylo-queued {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.ws-mylo-queued-tag {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ws-mylo-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px 8px 8px;
+  text-align: center;
+}
+
+.ws-mylo-greet {
+  max-width: 30ch;
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.ws-mylo-starters {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+}
+
+.ws-mylo-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ws-mylo-starters .ws-mylo-chip {
+  width: 100%;
+  border-radius: 10px;
+}
+
+.ws-mylo-chip:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.ws-mylo-chip:disabled {
+  opacity: 0.5;
+}
+
+.ws-mylo-skeleton {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.ws-mylo-skeleton .ws-skel {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--raise);
+}
+
+.ws-mylo-dock {
+  margin: 0 14px 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary) 7%, var(--card));
+}
+
+.ws-mylo-dock-q {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ws-mylo-dock-q p {
+  margin: 0;
+  font-weight: 500;
+}
+
+.ws-mylo-dock-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ws-mylo-dock-hint {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.ws-mylo-composer {
+  position: relative;
+  padding: 8px 14px 12px;
+  border-top: 1px solid var(--divider);
+}
+
+.ws-mylo-input {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.ws-mylo-input:focus-within {
+  border-color: var(--primary);
+}
+
+.ws-mylo-input textarea {
+  flex: 1;
+  min-height: 24px;
+  max-height: 160px;
+  padding: 3px 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1.45;
+}
+
+.ws-mylo-input textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* The textarea's border is its wrapper's; the wrapper shows focus instead. */
+.ws-mylo-panel .ws-mylo-input textarea:focus-visible {
+  outline: none;
+}
+
+.ws-mylo-send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  cursor: pointer;
+}
+
+.ws-mylo-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ws-mylo-send[data-stop] {
+  background: var(--text-primary);
+  color: var(--card);
+}
+
+.ws-mylo-foot {
+  margin: 6px 2px 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.ws-mylo-picker {
+  position: absolute;
+  right: 14px;
+  bottom: calc(100% - 4px);
+  left: 14px;
+  z-index: 2;
+  max-height: 240px;
+  margin: 0;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  list-style: none;
+}
+
+.ws-mylo-picker li {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.ws-mylo-picker li[aria-selected="true"] {
+  background: var(--raise);
+}
+
+.ws-mylo-picker-kind {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-top: 2px;
+}
+
+.ws-mylo-picker-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-mylo-mentions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-mylo-mentions li {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px 4px 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.ws-mylo-mentions span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-mylo-mentions button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ws-mylo-history-view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ws-mylo-history-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 14px 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.ws-mylo-history-search:focus-within {
+  border-color: var(--primary);
+}
+
+.ws-mylo-history-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.ws-mylo-panel .ws-mylo-history-search input:focus-visible {
+  outline: none;
+}
+
+.ws-mylo-history-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 14px 4px;
+}
+
+.ws-mylo-history-tabs button {
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.ws-mylo-history-tabs button[aria-pressed="true"] {
+  background: var(--raise);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.ws-mylo-history {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  padding: 4px 8px 12px;
+  list-style: none;
+}
+
+.ws-mylo-history-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 8px;
+}
+
+.ws-mylo-history-item[data-confirm] {
+  display: block;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--destructive) 8%, transparent);
+}
+
+.ws-mylo-history-confirm {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.ws-mylo-history-confirm-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ws-mylo-chip[data-danger] {
+  border-color: color-mix(in srgb, var(--destructive) 60%, var(--border));
+  color: var(--destructive);
+}
+
+.ws-mylo-history-item .ws-mylo-title-input {
+  flex: 1;
+  margin: 4px 0;
+}
+
+.ws-mylo-history-actions {
+  display: flex;
+  flex: none;
+}
+
+.ws-mylo-history-actions .ws-icon-btn {
+  width: 28px;
+  height: 28px;
+}
+
+@media (hover: hover) {
+  .ws-mylo-history-item:not(:hover):not(:focus-within) .ws-mylo-history-actions {
+    opacity: 0;
+  }
+}
+
+.ws-mylo-history-pin {
+  flex: none;
+  color: var(--link);
+}
+
+.ws-mylo-history-when {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.ws-mylo-history-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-mylo-history-row:hover,
+.ws-mylo-history-row[aria-current] {
+  background: var(--raise);
+}
+
+.ws-mylo-history-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion="none"]) .ws-mylo-shimmer {
+    background: linear-gradient(
+        90deg,
+        var(--text-secondary) 0%,
+        var(--text-secondary) 38%,
+        var(--text-primary) 50%,
+        var(--text-secondary) 62%,
+        var(--text-secondary) 100%
+      )
+      0 0 / 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: ws-mylo-shimmer 2.4s linear infinite;
+  }
+
+  html[data-motion="full"] .ws-mylo-head[data-working] {
+    animation: ws-float 3s ease-in-out infinite;
+  }
+}
+
+@keyframes ws-mylo-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-mylo-panel,
+  .ws-mylo-launcher,
+  .ws-mylo-chev {
+    transition: none;
+  }
+}
+
+/* The Mylo-face button: a real button, distinct from the decorative mark. */
+.ws-mylo-ask {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ws-mylo-ask img {
+  border: 2px solid color-mix(in srgb, var(--primary) 75%, var(--border));
+  border-radius: 999px;
+  background: var(--raise);
+  object-fit: cover;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.ws-mylo-ask:hover img {
+  border-color: var(--link);
+  transform: scale(1.06);
+}
+
+.ws-mylo-ask[data-size="head"] {
+  width: 36px;
+  height: 36px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-mylo-ask img {
+    transition: none;
+  }
 }

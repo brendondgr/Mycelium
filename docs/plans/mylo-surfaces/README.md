@@ -10,10 +10,10 @@ no prompt logic (`docs/plans/mylo-agent/permissions.md`, "Surfaces").
 | --- | --- | --- |
 | P. Model servers | Shipped 2026-11-09; plan deleted. How to configure: `docs/skills/configure.md` ("Model servers"); code: `apps/core/llm_servers.py`, `llm_bridge.py`, `llmkit/` | Done |
 | D. Mylo in Discord | [discord.md](discord.md) | Full |
-| W. Mylo chat in the web app | [web-chat.md](web-chat.md) | Entry points and placement fixed against the reworked workspace; visual detail is settled while building |
+| W. Mylo chat in the web app | Shipped 2026-11-09; plan deleted. The side panel, launcher, Mylo-face button, history and settings; code: `web/app/src/components/portal/mylo/`, `web/app/src/lib/portal/agent/`; patterns: `docs/styles.md` ("Mylo's chat panel") | Done |
 
-Track S (the shared contract below) and plan P (model servers) have shipped;
-D and W are not built.
+Track S (the shared contract below), plan P (model servers) and plan W (web
+chat) have shipped; D is not built.
 The agent backend these plans stand on is on `main` (`dc2c76f`); its own plan
 is `docs/plans/mylo-agent/`.
 

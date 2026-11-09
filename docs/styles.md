@@ -99,6 +99,37 @@ Preferred Mylo direction:
 
 > A small mushroom scout with a soft spore-like body, mushroom-cap hood, curious eyes, a research satchel, and subtle glowing mycelium threads that connect papers, people, projects, grants, and ideas.
 
+### Mylo's chat panel
+
+Talking to Mylo happens in one side panel, opened from anywhere: the launcher
+(Mylo's painted head, fixed at the bottom right of every signed-in page,
+hidden while the panel is open) or a Mylo-face button on a thing. At 980 px
+and wider the panel lies over the reading pane and the page stays usable;
+below that it is a full-screen sheet. Its header holds the title (renamable),
+an "About" line for a conversation about one thing, and three icons — history,
+new chat, pin — plus close.
+
+**Mylo shows what he is doing, never what he is thinking.** Each turn has one
+fold under the question: while Mylo works its header names the current step
+with a quiet shimmer ("Searching the corpus for …"), opened it lists the steps
+with a tick or a cross, and when the answer arrives it reads "Looked at 3
+things". The words are the server's labels; the panel has none of its own.
+Citations in an answer are small numbered pills that open the item. One line
+under the composer names the model and whether it runs on this machine. Mylo's
+head beside the fold floats gently while he works (Motion: Full only) and
+stays still under reduced motion.
+
+**"Ask Mylo" is a small button with Mylo's face** on each thing: first among a
+feed card's tools and the opened item's, and beside the title of a project, a
+lab overview and a department's overview. It is a real button and must never be
+mistaken for the decorative portrait beside "Mylo's reason": the painted head
+sits in a primary-green ring, it has the same 30 px target as its neighbours, a
+visible focus ring, "Ask Mylo about <title>" as its name and "Ask Mylo" as its
+tooltip, and it stays at full strength while the card's other tools fade. It
+opens the panel on the conversation about that thing (one per thing) without
+changing the reader's selection, and it is not drawn for someone who may not
+chat — the launcher says why, once.
+
 ## Layout And Components
 
 Use spacious, structured layouts with clear hierarchy. The public site should be persuasive, warm, and content-forward. The authenticated app should be denser, calmer, and built for repeated research workflows.

@@ -20,6 +20,7 @@ import {
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
 import { daysUntil } from "@/components/portal/feed/parts";
+import { AskMyloButton } from "@/components/portal/mylo/ask-button";
 import { useInfiniteReveal } from "@/lib/portal/use-infinite-reveal";
 import type { OpportunityBase, RecommendedMember } from "@/lib/portal/types";
 
@@ -277,6 +278,7 @@ export function OpportunityFeed<T extends OpportunityBase>({
             profile={labName ? `${labName}'s research` : undefined}
             actions={
               <>
+                <AskMyloButton anchor={{ kind: "item", key: i.content_id }} title={i.title} />
                 <RemindButton contentId={i.content_id} title={i.title} deadlines={i.addressable_deadlines} />
                 <SaveButton contentId={i.content_id} saved={i.saved} savedLabs={i.saved_labs} variant="icon" />
                 <IgnoreButton contentId={i.content_id} title={i.title} onIgnored={onIgnored} />
@@ -320,6 +322,7 @@ export function OpportunityFeed<T extends OpportunityBase>({
       profile={labName ? `${labName}'s research` : undefined}
       tools={
         <>
+          <AskMyloButton anchor={{ kind: "item", key: i.content_id }} title={i.title} />
           <RemindButton contentId={i.content_id} title={i.title} deadlines={i.addressable_deadlines} />
           <SaveButton contentId={i.content_id} saved={i.saved} savedLabs={i.saved_labs} variant="icon" />
         </>

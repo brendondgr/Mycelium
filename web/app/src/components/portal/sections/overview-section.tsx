@@ -17,6 +17,7 @@ import { MyloReportCard } from "@/components/portal/sections/mylo-report-card";
 import { MyloFoundCard } from "@/components/portal/sections/mylo-found-card";
 import { DeadlinesPanel } from "@/components/portal/sections/overview-panels";
 import { LabOverviewSection } from "@/components/portal/sections/lab-overview-section";
+import { AskMyloButton } from "@/components/portal/mylo/ask-button";
 import {
   ClosingSoon,
   FoldedReport,
@@ -35,7 +36,7 @@ import {
  * pulse, what Mylo found, and the reader's saved deadlines.
  */
 export function OverviewSection() {
-  const { scopeLabel, currentLab } = usePortal();
+  const { scopeLabel, currentLab, currentDepartment } = usePortal();
   const briefingQuery = useDailyBriefing();
   const windowCountsQuery = useWindowCounts();
   const dailyReportQuery = useDailyReport();
@@ -64,7 +65,19 @@ export function OverviewSection() {
 
   return (
     <div className="ws-overview" data-layout="split">
-      <OverviewHead subject="your" />
+      <OverviewHead
+        subject="your"
+        action={
+          // A department's workspace opens on this overview: ask about the department.
+          currentDepartment ? (
+            <AskMyloButton
+              anchor={{ kind: "department", key: currentDepartment.id }}
+              title={currentDepartment.name}
+              size="head"
+            />
+          ) : null
+        }
+      />
       <p className="ws-meta-text ws-overview-scope">You&apos;re viewing {scopeLabel}.</p>
       <div className="ws-split">
         <div className="ws-split-main">

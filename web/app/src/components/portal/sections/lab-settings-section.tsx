@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { AnnouncementsCard } from "@/components/portal/sections/announcements-card";
+import { AgentPolicyCard } from "@/components/portal/mylo/settings-cards";
 import { DiscordHealthCard } from "@/components/portal/sections/discord-health-card";
 import { CloseIcon, EditIcon, TargetIcon } from "@/components/portal/icons";
 import { Card } from "@/components/portal/primitives/card";
@@ -102,6 +103,7 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
           />
           <DiscordSyncCard lab={lab} />
           <AnnouncementsCard target={{ lab: lab.slug }} name={lab.name} />
+          <AgentPolicyCard kind="lab" orgRef={lab.slug} name={lab.name} />
           <SlackLabCard slug={lab.slug} />
           <TeamsLabCard slug={lab.slug} />
           <DiscordHealthCard lab={lab} />

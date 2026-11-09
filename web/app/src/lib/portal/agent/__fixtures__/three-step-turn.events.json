@@ -1,0 +1,130 @@
+{
+ "events": [
+  {
+   "seq": 1,
+   "type": "user",
+   "ts": "2026-11-09T21:36:36.507527+00:00",
+   "payload": {
+    "text": "what's new?",
+    "cards": [],
+    "mentions": []
+   }
+  },
+  {
+   "seq": 2,
+   "type": "state",
+   "ts": "2026-11-09T21:36:36.513257+00:00",
+   "payload": {
+    "state": "running",
+    "detail": ""
+   }
+  },
+  {
+   "seq": 5,
+   "type": "activity",
+   "ts": "2026-11-09T21:36:36.578679+00:00",
+   "payload": {
+    "state": "thinking"
+   }
+  },
+  {
+   "seq": 7,
+   "type": "activity",
+   "ts": "2026-11-09T21:36:36.582127+00:00",
+   "payload": {
+    "state": "running",
+    "label": "Looking at your profile",
+    "call_id": "a",
+    "name": "me_profile"
+   }
+  },
+  {
+   "seq": 8,
+   "type": "activity",
+   "ts": "2026-11-09T21:36:36.583287+00:00",
+   "payload": {
+    "state": "running",
+    "label": "Searching the corpus for \u201ccell segmentation\u201d",
+    "call_id": "b",
+    "name": "corpus_search"
+   }
+  },
+  {
+   "seq": 9,
+   "type": "activity",
+   "ts": "2026-11-09T21:36:36.584507+00:00",
+   "payload": {
+    "state": "running",
+    "label": "Looking at saved items",
+    "call_id": "c",
+    "name": "feeds_saved"
+   }
+  },
+  {
+   "seq": 10,
+   "type": "activity",
+   "ts": "2026-11-09T21:36:36.634002+00:00",
+   "payload": {
+    "state": "ok",
+    "label": "Looking at your profile",
+    "call_id": "a",
+    "name": "me_profile"
+   }
+  },
+  {
+   "seq": 11,
+   "type": "activity",
+   "ts": "2026-11-09T21:36:36.635554+00:00",
+   "payload": {
+    "state": "ok",
+    "label": "Searching the corpus for \u201ccell segmentation\u201d",
+    "call_id": "b",
+    "name": "corpus_search"
+   }
+  },
+  {
+   "seq": 12,
+   "type": "activity",
+   "ts": "2026-11-09T21:36:36.636962+00:00",
+   "payload": {
+    "state": "ok",
+    "label": "Looking at saved items",
+    "call_id": "c",
+    "name": "feeds_saved"
+   }
+  },
+  {
+   "seq": 14,
+   "type": "assistant",
+   "ts": "2026-11-09T21:36:36.664080+00:00",
+   "payload": {
+    "text": "Here is what I found.",
+    "final": true,
+    "model": {
+     "name": "test-model",
+     "label": "test-model",
+     "location": "local"
+    }
+   }
+  },
+  {
+   "seq": 16,
+   "type": "state",
+   "ts": "2026-11-09T21:36:36.667859+00:00",
+   "payload": {
+    "state": "idle",
+    "detail": ""
+   }
+  },
+  {
+   "seq": 17,
+   "type": "note",
+   "ts": "2026-11-09T21:36:37.000205+00:00",
+   "payload": {
+    "kind": "learning_notice",
+    "text": "Mylo learns from your chats to keep your profile and recommendations current: it may notice things you say and ask you before anything changes. You can turn this off in your account settings (Mylo & you)."
+   }
+  }
+ ],
+ "state": "idle"
+}

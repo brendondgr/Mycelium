@@ -1,0 +1,48 @@
+id: 1
+event: user
+data: {"id": 1, "type": "user", "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "payload": {"text": "what's new?", "cards": [], "mentions": []}, "ts": "2026-11-09T21:36:36.507527+00:00"}
+
+id: 2
+event: state
+data: {"id": 2, "type": "state", "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "payload": {"state": "running", "detail": ""}, "ts": "2026-11-09T21:36:36.513257+00:00"}
+
+id: 5
+event: activity
+data: {"type": "activity", "payload": {"state": "thinking"}, "id": 5, "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "ts": "2026-11-09T21:36:36.578679+00:00"}
+
+id: 7
+event: activity
+data: {"type": "activity", "payload": {"state": "running", "label": "Looking at your profile", "call_id": "a", "name": "me_profile"}, "id": 7, "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "ts": "2026-11-09T21:36:36.582127+00:00"}
+
+id: 8
+event: activity
+data: {"type": "activity", "payload": {"state": "running", "label": "Searching the corpus for \u201ccell segmentation\u201d", "call_id": "b", "name": "corpus_search"}, "id": 8, "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "ts": "2026-11-09T21:36:36.583287+00:00"}
+
+id: 9
+event: activity
+data: {"type": "activity", "payload": {"state": "running", "label": "Looking at saved items", "call_id": "c", "name": "feeds_saved"}, "id": 9, "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "ts": "2026-11-09T21:36:36.584507+00:00"}
+
+id: 10
+event: activity
+data: {"type": "activity", "payload": {"state": "ok", "label": "Looking at your profile", "call_id": "a", "name": "me_profile"}, "id": 10, "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "ts": "2026-11-09T21:36:36.634002+00:00"}
+
+id: 11
+event: activity
+data: {"type": "activity", "payload": {"state": "ok", "label": "Searching the corpus for \u201ccell segmentation\u201d", "call_id": "b", "name": "corpus_search"}, "id": 11, "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "ts": "2026-11-09T21:36:36.635554+00:00"}
+
+id: 12
+event: activity
+data: {"type": "activity", "payload": {"state": "ok", "label": "Looking at saved items", "call_id": "c", "name": "feeds_saved"}, "id": 12, "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "ts": "2026-11-09T21:36:36.636962+00:00"}
+
+id: 14
+event: assistant
+data: {"id": 14, "type": "assistant", "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "payload": {"text": "Here is what I found.", "final": true, "model": {"name": "test-model", "label": "test-model", "location": "local"}}, "ts": "2026-11-09T21:36:36.664080+00:00"}
+
+id: 16
+event: state
+data: {"id": 16, "type": "state", "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "payload": {"state": "idle", "detail": ""}, "ts": "2026-11-09T21:36:36.667859+00:00"}
+
+id: 17
+event: note
+data: {"id": 17, "type": "note", "thread": "e0e80f9b-f3ae-4005-96ae-3fdb5376c9a0", "payload": {"kind": "learning_notice", "text": "Mylo learns from your chats to keep your profile and recommendations current: it may notice things you say and ask you before anything changes. You can turn this off in your account settings (Mylo & you)."}, "ts": "2026-11-09T21:36:37.000205+00:00"}
+
