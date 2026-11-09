@@ -100,8 +100,8 @@ describe("the recorded three-step turn", () => {
       "Looking at saved items",
       "Looking at saved items",
       "Looking at saved items",
-      "Putting it together",
-      "Putting it together",
+      "Looking at saved items",
+      "Looking at saved items",
     ]);
   });
 });

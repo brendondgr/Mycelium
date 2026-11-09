@@ -281,13 +281,17 @@ export function foldSummary(steps: Step[]): string {
   return failed ? `${head} · ${failed} didn’t work` : head;
 }
 
-/** The fold's header while Mylo works: the step running now, or thinking. */
+/**
+ * The fold's header while Mylo works: the step running now, or thinking.
+ * Between two steps the last step's label stays: Mylo thinks for a moment
+ * after every step, and swapping the words each time reads as flicker.
+ */
 export function currentActivity(turn: Turn): string {
   const running = [...turn.steps].reverse().find((s) => s.state === "running");
   if (running) return running.label;
   if (turn.draft) return "Writing";
-  if (turn.thinking || !turn.steps.length) return "Thinking";
-  return "Putting it together";
+  const last = turn.steps[turn.steps.length - 1];
+  return last ? last.label : "Thinking";
 }
 
 /** Split answer text into plain runs and `#n` citations. */

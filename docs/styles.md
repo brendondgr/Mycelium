@@ -115,7 +115,11 @@ new chat, pin — plus close.
 fold under the question: while Mylo works its header names the current step
 with a quiet shimmer ("Searching the corpus for …"), opened it lists the steps
 with a tick or a cross, and when the answer arrives it reads "Looked at 3
-things". The words are the server's labels; the panel has none of its own.
+things". Between two steps the header keeps the last step's words rather than
+swapping to a filler. The words are the server's labels; the panel has none of
+its own. The person's own messages sit on the right, Mylo's on the left. In
+the history list the time sits at the row's right edge, and with a pointer the
+row's actions take its place on hover or focus.
 Citations in an answer are small numbered pills that open the item. A line
 under the composer names the model only when it does not run on this machine. Mylo's
 head beside the fold floats gently while he works (Motion: Full only) and

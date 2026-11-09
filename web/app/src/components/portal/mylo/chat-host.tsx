@@ -176,14 +176,16 @@ export function ChatHost() {
     return () => window.clearTimeout(t);
   }, [open, session?.key]);
 
+  const hasSession = session !== null;
+
   // On a wide screen the open panel is a column of the page, not a cover: the
   // shell gives up the panel's width (`.ws-shell` in workspace.css).
   React.useEffect(() => {
-    if (!open || !wide || !session) return;
+    if (!open || !wide || !hasSession) return;
     const root = document.documentElement;
     root.setAttribute("data-mylo-open", "");
     return () => root.removeAttribute("data-mylo-open");
-  }, [open, wide, session]);
+  }, [open, wide, hasSession]);
 
   // The launcher reopens whatever was open last.
   React.useEffect(() => {

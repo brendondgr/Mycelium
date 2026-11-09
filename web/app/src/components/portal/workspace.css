@@ -3113,7 +3113,14 @@ html[data-motion="none"] *::after {
   text-transform: uppercase;
 }
 
+/* The person's own messages sit on the right, Mylo's on the left. */
+.ws-mylo-msg[data-from="you"] {
+  display: grid;
+  justify-items: end;
+}
+
 .ws-mylo-you {
+  max-width: 88%;
   margin: 0;
   padding: 8px 11px;
   border-radius: 10px;
@@ -3706,9 +3713,33 @@ html[data-motion="none"] *::after {
   height: 28px;
 }
 
+/* With a pointer the row is full width with the time at its right edge; the
+   actions take the time's place while the row is hovered or focused. Touch
+   keeps them beside the row, always visible. */
 @media (hover: hover) {
+  .ws-mylo-history-item:not([data-confirm]) {
+    position: relative;
+  }
+
+  .ws-mylo-history-item .ws-mylo-history-actions {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    transform: translateY(-50%);
+  }
+
   .ws-mylo-history-item:not(:hover):not(:focus-within) .ws-mylo-history-actions {
     opacity: 0;
+    pointer-events: none;
+  }
+
+  /* room for the four actions, so the title never runs under them */
+  .ws-mylo-history-item:is(:hover, :focus-within) .ws-mylo-history-row {
+    padding-right: 122px;
+  }
+
+  .ws-mylo-history-item:is(:hover, :focus-within) .ws-mylo-history-when {
+    display: none;
   }
 }
 
@@ -3762,7 +3793,7 @@ html[data-motion="none"] *::after {
         var(--text-secondary) 62%,
         var(--text-secondary) 100%
       )
-      0 0 / 250% 100%;
+      0 0 / 360px 100%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -3774,12 +3805,14 @@ html[data-motion="none"] *::after {
   }
 }
 
+/* One fixed-width tile moved by exactly its own width: the highlight's place
+   does not depend on how long the label is, so a new label never makes it jump. */
 @keyframes ws-mylo-shimmer {
   from {
-    background-position: 100% 0;
+    background-position: 360px 0;
   }
   to {
-    background-position: -150% 0;
+    background-position: 0 0;
   }
 }
 
