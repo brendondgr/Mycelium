@@ -10,9 +10,9 @@ no prompt logic (`docs/plans/mylo-agent/permissions.md`, "Surfaces").
 | --- | --- | --- |
 | P. Model servers | [model-providers.md](model-providers.md) | Full |
 | D. Mylo in Discord | [discord.md](discord.md) | Full |
-| W. Mylo chat in the web app | [web-chat.md](web-chat.md) | Entry points and placement fixed against the reworked workspace; visual detail is settled while building |
+| W. Mylo chat in the web app | shipped (plan deleted) | The side panel, launcher, Mylo-face button, history and settings; see `docs/repo-map.md` ("Mylo's chat panel") and `docs/styles.md` ("Mylo's chat panel") |
 
-Track S (the shared contract below) has shipped; P, D and W are not built.
+Track S (the shared contract below) and W (web chat) have shipped; P and D are not built.
 The agent backend these plans stand on is on `main` (`dc2c76f`); its own plan
 is `docs/plans/mylo-agent/`.
 

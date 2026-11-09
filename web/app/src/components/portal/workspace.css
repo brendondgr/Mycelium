@@ -3146,6 +3146,14 @@ html[data-motion="none"] *::after {
   padding-left: 1.2em;
 }
 
+.ws-mylo-answer ul {
+  list-style: disc;
+}
+
+.ws-mylo-answer ol {
+  list-style: decimal;
+}
+
 .ws-mylo-cite {
   display: inline-grid;
   place-items: center;
