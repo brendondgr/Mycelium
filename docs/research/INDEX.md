@@ -56,11 +56,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-004` | 2026-11-08 | Full-text coverage of the paper corpus from free sources | complete | full_text_rate 0.5400 (n=200) | — | [folder](experiments/EXP-2026-11-004-fulltext-coverage/RESULTS.md) |
 | `EXP-2026-11-005` | 2026-11-08 | Full-text coverage after the PubMed id repair (Q-057) | complete | full_text_rate 0.6500 (n=200) | — | [folder](experiments/EXP-2026-11-005-fulltext-coverage-own-ids/RESULTS.md) |
 | `EXP-2026-11-006` | 2026-11-08 | Conference location and continent coverage | complete | continent_rate 0.9035 (n=912) | — | [folder](experiments/EXP-2026-11-006-conference-location-coverage/RESULTS.md) |
+| `EXP-2026-11-007` | 2026-11-09 | Can a 0.85B decision model served on this host answer the TypeSafe rerank questions? | complete | discrimination_auc_worth 0.6899 | — | [folder](experiments/EXP-2026-11-007-d3-lite-local-decision-smoke/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 43 |
+| complete | 44 |
 | planned | 4 |
-| **total** | **47** |
+| **total** | **48** |
