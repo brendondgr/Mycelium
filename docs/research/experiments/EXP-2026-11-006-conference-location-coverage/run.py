@@ -1,4 +1,4 @@
-"""EXP-2026-11-005: conference location and continent coverage, before vs after.
+"""EXP-2026-11-006: conference location and continent coverage, before vs after.
 
 Read-only. Writes data/metrics.json, data/metrics.csv and data/sample.json.
 """

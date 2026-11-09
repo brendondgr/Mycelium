@@ -1,0 +1,70 @@
+{
+ "primary": "full_text_rate",
+ "values": {
+  "full_text_rate": {
+   "mean": 0.65,
+   "n": 200
+  },
+  "full_text_by_source.arxiv": {
+   "mean": 0.005,
+   "n": 200
+  },
+  "full_text_by_source.openalex": {
+   "mean": 0.305,
+   "n": 200
+  },
+  "full_text_by_source.pmc": {
+   "mean": 0.34,
+   "n": 200
+  },
+  "status.abstract_only": 63,
+  "status.full_text": 130,
+  "status.identifier_mismatch": 4,
+  "status.invalid_identifier": 3,
+  "ids_changed": 45,
+  "changed.full_text_rate.own": {
+   "mean": 0.9333,
+   "n": 45
+  },
+  "changed.full_text_rate.stored": {
+   "mean": 0.4222,
+   "n": 45
+  },
+  "changed.stored_status.full_text": 19,
+  "changed.stored_status.identifier_mismatch": 26,
+  "mismatch_resolved": {
+   "mean": 24,
+   "n": 26
+  },
+  "mismatch_now_full_text": {
+   "mean": 23,
+   "n": 26
+  },
+  "full_text_rate_with_pmcid": {
+   "mean": 0.9333,
+   "n": 75
+  },
+  "full_text_rate_without_pmcid": {
+   "mean": 0.48,
+   "n": 125
+  },
+  "median_chars": 39180,
+  "wall_clock_seconds": 1226.3
+ },
+ "sources_live": [
+  "pmc",
+  "europepmc",
+  "arxiv",
+  "crossref",
+  "core",
+  "openalex",
+  "semanticscholar"
+ ],
+ "sources_off": {
+  "elsevier": "missing ELSEVIER_API_KEY",
+  "springer": "missing SPRINGER_API_KEY",
+  "wiley": "missing WILEY_TDM_TOKEN",
+  "unpaywall": "missing CONTACT_EMAIL"
+ },
+ "sample": 200
+}

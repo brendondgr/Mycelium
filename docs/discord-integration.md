@@ -160,7 +160,7 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   carry none. A thread holds at most five tags, kept in the order label or kind,
   status, continent, department reasons. `manage.py retag_announcement_threads
   [--dry-run]` adds continents to open threads posted before the tags existed —
-  tags only, no rename or reply. Coverage: EXP-2026-11-005.
+  tags only, no rename or reply. Coverage: EXP-2026-11-006.
 * **Buttons** (`mylo/bot/cogs/announcements.py`, persistent ids
   `ann:<post>:<action>` handled by an `on_interaction` listener) →
   `tools/delivery/announcement_actions.py`, each through the gate's `ann_follow` /

@@ -6,7 +6,7 @@
 # honest fields is worth more than one with ten plausible ones — write `unknown`
 # and say what could not be recovered in ISSUES.md.
 
-id: EXP-2026-11-005
+id: EXP-2026-11-006
 slug: conference-location-coverage
 title: Conference location and continent coverage
 status: complete # planned | running | complete | failed | superseded
@@ -28,7 +28,7 @@ hypothesis: >
 code:
   commit: 1c4fb5f
   branch: discord-forum-upgrades
-  entrypoint: "DATABASE_URL=postgres://mycelium:<pw>@localhost:11450/mycelium uv run --no-sync --directory web/backend python ../../docs/research/experiments/EXP-2026-11-005-conference-location-coverage/run.py --out ../../docs/research/experiments/EXP-2026-11-005-conference-location-coverage/data"
+  entrypoint: "DATABASE_URL=postgres://mycelium:<pw>@localhost:11450/mycelium uv run --no-sync --directory web/backend python ../../docs/research/experiments/EXP-2026-11-006-conference-location-coverage/run.py --out ../../docs/research/experiments/EXP-2026-11-006-conference-location-coverage/data"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
   path: tools/retrieval/geography.py

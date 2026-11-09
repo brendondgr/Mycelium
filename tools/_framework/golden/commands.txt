@@ -60,6 +60,7 @@ reconcile_seats
 refresh_dblp_registry
 remove_stale_contenttypes
 render_sample_report
+repair_pubmed_ids
 repost_lab_report
 rerank_device
 resend_user_report

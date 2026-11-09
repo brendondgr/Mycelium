@@ -371,6 +371,7 @@ A task index across the three tools; each tool also has its own section below.
 | pgvector index, BM25, the ranking protocols | `tools/retrieval/index.py`, `lexical.py`, `protocols.py` |
 | Corpus search, cached query embedding | `tools/retrieval/search.py`, `query_embedding.py` |
 | Deadline projection, liveness, duplicate merge | `tools/retrieval/deadlines_projection.py`, `liveness.py`, `dedupe.py` |
+| Repair of PubMed papers' stored DOI/PMCID (Q-057) | `tools/retrieval/pubmed_repair.py`, command `repair_pubmed_ids` |
 | Paper source scrapers | `tools/retrieval/sources/`, `ingest.py`, `window.py` |
 | Open-source grants/conferences collector (vendored) | `tools/retrieval/collect/` — `runner.py` stages, `grants/`, `conferences/`, `core/` |
 | Collector adapters (5 live grant, 6 conference) | `tools/retrieval/collect/{grants,conferences}/adapters/` |
@@ -471,7 +472,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `reset_opportunities` | ORM-level wipe of grant / conference items before a re-populate (`--types`); leaves fellowships, papers, users, and saves alone |
 | `annotate_member_fit` | Backfill the "who is this for?" layer |
 | `recompute_project_profiles` | Rebuild project team vectors |
-| `rebuild_content_deadlines`, `backfill_project_seen`, `backfill_slate_size`, `dedupe_content_papers` | Backfills |
+| `rebuild_content_deadlines`, `backfill_project_seen`, `backfill_slate_size`, `dedupe_content_papers`, `repair_pubmed_ids` | Backfills |
 | `run_billing_tick`, `reconcile_seats` | Billing period roll / seat reconciliation |
 | `embedding_device` | Report and benchmark the embedding device |
 | `llm_check` | LLM reachability pre-flight |

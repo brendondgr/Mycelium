@@ -27,9 +27,9 @@ a person, lab or department is the recommendation layer's job.
 | Embedder (CPU/CUDA) and its wrapper | `embedding.py`, `embeddings.py` |
 | pgvector index, BM25, the `Retrievable`/`VectorIndex` protocols | `index.py`, `lexical.py`, `protocols.py` |
 | Corpus search and the cached query embedding | `search.py`, `query_embedding.py` |
-| Deadline projection, liveness, duplicate merge | `deadlines_projection.py`, `liveness.py`, `dedupe.py` |
+| Deadline projection, liveness, duplicate merge; PubMed id repair | `deadlines_projection.py`, `liveness.py`, `dedupe.py`, `pubmed_repair.py` |
 | External DOI / arXiv / URL resolver | `resolver.py` |
-| Commands | `collect_opportunities`, `refresh_dblp_registry`, `scan_literature`, `embedding_device`, `apply_extraction_checkpoint`, `dedupe_content_papers`, `rebuild_content_deadlines`, `prune_opportunities`, `reset_opportunities` |
+| Commands | `collect_opportunities`, `refresh_dblp_registry`, `scan_literature`, `embedding_device`, `apply_extraction_checkpoint`, `dedupe_content_papers`, `repair_pubmed_ids`, `rebuild_content_deadlines`, `prune_opportunities`, `reset_opportunities` |
 
 `models.py` holds the corpus only: `ContentItem`, `ContentDeadline` and the
 `DeadlineKind` vocabulary. The rest of the old `content` app's models moved to

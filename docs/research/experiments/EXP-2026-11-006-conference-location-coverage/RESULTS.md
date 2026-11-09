@@ -1,4 +1,4 @@
-# EXP-2026-11-005 — Results
+# EXP-2026-11-006 — Results
 
 ## 1. Headline
 
@@ -57,8 +57,8 @@ conferences, which have a continent (*Online*) but no country.
 ```bash
 DATABASE_URL=postgres://mycelium:<pw>@localhost:11450/mycelium \
   uv run --no-sync --directory web/backend python \
-  ../../docs/research/experiments/EXP-2026-11-005-conference-location-coverage/run.py \
-  --out ../../docs/research/experiments/EXP-2026-11-005-conference-location-coverage/data
+  ../../docs/research/experiments/EXP-2026-11-006-conference-location-coverage/run.py \
+  --out ../../docs/research/experiments/EXP-2026-11-006-conference-location-coverage/data
 ```
 
 ## AMENDMENTS

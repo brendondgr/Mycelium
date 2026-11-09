@@ -1,0 +1,90 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-005
+slug: fulltext-coverage-own-ids
+title: Full-text coverage after the PubMed id repair (Q-057)
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-11-08
+date_completed: 2026-11-08
+authors: [Brendon (with Claude, Opus 5.5)]
+
+purpose: >
+  Answers Q-057: re-runs EXP-2026-11-004's frozen 200-paper sample after the
+  PubMed scraper stopped storing cited papers' identifiers, with the ids the
+  repair command (repair_pubmed_ids) writes, against a same-day control on the
+  stored ids. Supports no paper claim; it sizes the corpus bug and the
+  full-text tool on a clean corpus.
+
+hypothesis: >
+  identifier_mismatch falls from 28 to at most 3, and full_text_rate rises
+  from 0.54 to at least 0.60 (stated in PROTOCOL.md before the run).
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 323a054
+  branch: claude/nostalgic-shannon-75579b
+  entrypoint: "DATABASE_URL=postgres://mycelium:mycelium@localhost:11450/mycelium uv run --no-sync --directory web/backend python ../../docs/research/experiments/EXP-2026-11-005-fulltext-coverage-own-ids/run.py"
+  dirty: false  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  path: tools/fulltext/config.py
+  hash: null
+data:
+  name: EXP-2026-11-004 frozen sample of the live paper corpus (content_contentitem, type paper)
+  version: "data/sample.json, sha256 22b22d46fc000e09bfd75c7eed6c5277a46f3b858b0811957345b63461c86835"
+  split: dev
+  n_examples: 200
+  qrels: null
+  hash: 22b22d46fc000e09bfd75c7eed6c5277a46f3b858b0811957345b63461c86835
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: null
+compute:
+  hardware: "AMD RYZEN AI MAX+ 395, 32 threads, 121 GB RAM, no GPU used; network-bound"
+  wall_clock_hours: 0.34
+  estimated_cost_usd: 0
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: full_text_rate
+  values:
+    full_text_rate: {mean: 0.65, n: 200}
+    full_text_by_source.pmc: {mean: 0.34, n: 200}
+    full_text_by_source.openalex: {mean: 0.305, n: 200}
+    full_text_by_source.arxiv: {mean: 0.005, n: 200}
+    status.full_text: 130
+    status.abstract_only: 63
+    status.identifier_mismatch: 4
+    status.invalid_identifier: 3
+    ids_changed: 45
+    changed.full_text_rate.own: {mean: 0.9333, n: 45}
+    changed.full_text_rate.stored: {mean: 0.4222, n: 45}
+    changed.stored_status.full_text: 19
+    changed.stored_status.identifier_mismatch: 26
+    mismatch_resolved: {mean: 24, n: 26}
+    mismatch_now_full_text: {mean: 23, n: 26}
+    full_text_rate_with_pmcid: {mean: 0.9333, n: 75}
+    full_text_rate_without_pmcid: {mean: 0.48, n: 125}
+    median_chars: 39180
+    wall_clock_seconds: 1226.3
+baselines_compared: [EXP-2026-11-004]
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-004]

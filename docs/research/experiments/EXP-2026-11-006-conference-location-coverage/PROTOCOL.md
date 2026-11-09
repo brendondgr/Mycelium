@@ -1,4 +1,4 @@
-# EXP-2026-11-005 — Protocol
+# EXP-2026-11-006 — Protocol
 
 ## Question
 
@@ -47,8 +47,8 @@ The shipped logic (before arm), as above.
 ```bash
 DATABASE_URL=postgres://mycelium:<pw>@localhost:11450/mycelium \
   uv run --no-sync --directory web/backend python \
-  ../../docs/research/experiments/EXP-2026-11-005-conference-location-coverage/run.py \
-  --out ../../docs/research/experiments/EXP-2026-11-005-conference-location-coverage/data
+  ../../docs/research/experiments/EXP-2026-11-006-conference-location-coverage/run.py \
+  --out ../../docs/research/experiments/EXP-2026-11-006-conference-location-coverage/data
 ```
 
 ## What would falsify this
