@@ -392,6 +392,8 @@ A task index across the three tools; each tool also has its own section below.
 | Why a source is skipped or a paper could not be fetched (plain words) | `tools/fulltext/engine/routing.py` (`plan`, `explain`) |
 | Quota stops, entitlement strike-outs, throttles, remembered answers | `tools/fulltext/engine/fetcher.py`, `tools/fulltext/engine/state.py` |
 | PDF / JATS / Elsevier XML / HTML → markdown | `tools/fulltext/engine/convert.py` |
+| The instance's publisher keys → the engine's credentials; health check | `tools/fulltext/config.py`, `tools/fulltext/health.py` |
+| Which sources are on, and the live key check (`manage.py fulltext_sources [--check]`) | `tools/fulltext/management/commands/fulltext_sources.py`, `tools/fulltext/engine/probe.py` |
 
 ## Host runners & operations
 

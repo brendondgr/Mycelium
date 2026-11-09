@@ -30,7 +30,12 @@ change a limit or a policy — that is exactly what this layer exists to prevent
 - **Every limit is off until given a number.** `"unlimited"` or an integer;
   setting one key turns on that one limit and nothing else.
 - **Secrets never go in the file**: `RESEND_API_KEY`, `EMAIL_HOST_PASSWORD`,
-  `SIGNUP_ACCESS_CODE`, `LLM_API_KEY` live in `.env`.
+  `SIGNUP_ACCESS_CODE`, `LLM_API_KEY` live in `.env`. So do the full-text
+  tool's publisher keys (`ELSEVIER_API_KEY`, `ELSEVIER_INST_TOKEN`,
+  `SPRINGER_API_KEY`, `WILEY_TDM_TOKEN`, `CORE_API_KEY`): one set for the
+  whole instance, never per person. Without them only the publisher APIs are
+  off; `manage.py fulltext_sources --check` tells a rejected key from a valid
+  one this server's network is not entitled to use.
 - **Tools have their own sections.** `[tools]` holds the policy for all of
   them (`strict`, `disabled`); each installed tool adds `[tools.<name>]` with
   `enabled` and the keys its `tool.py` declares (`config explain tools.<name>`

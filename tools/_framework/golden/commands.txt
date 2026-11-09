@@ -32,6 +32,7 @@ extract_requirement_slots
 facet_author_works
 findstatic
 flush
+fulltext_sources
 generate_daily_briefing
 generate_weekly_briefing
 generateschema

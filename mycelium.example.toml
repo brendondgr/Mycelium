@@ -209,6 +209,16 @@ enabled = true
 # and Wiley, and keeps the original plus a markdown rendering.
 [tools.fulltext]
 enabled = true
+# sources = ["pmc", "europepmc", "elsevier", "springer", "wiley", "arxiv", "unpaywall", "openalex", "crossref", "core", "semanticscholar"] # env FULLTEXT_SOURCES
+# contact_email = ""                     # env FULLTEXT_CONTACT_EMAIL
+# min_chars = 500                        # env FULLTEXT_MIN_CHARS
+# concurrency = 4                        # env FULLTEXT_CONCURRENCY
+# disable_ttl_hours = 6.0                # env FULLTEXT_DISABLE_TTL_HOURS
+# elsevier_api_key: secret, set $ELSEVIER_API_KEY in .env
+# elsevier_inst_token: secret, set $ELSEVIER_INST_TOKEN in .env
+# springer_api_key: secret, set $SPRINGER_API_KEY in .env
+# wiley_tdm_token: secret, set $WILEY_TDM_TOKEN in .env
+# core_api_key: secret, set $CORE_API_KEY in .env
 
 # recommendation: Ranks the whole corpus for every person, lab, department and
 # project against their profiles and interest clusters, takes each target's

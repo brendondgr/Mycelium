@@ -35,6 +35,7 @@ paper), and explains every failure in words, with whether retrying can help.
 | `engine/state.py` | switch-offs, throttles and remembered answers, shareable between workers |
 | `engine/cache.py` | the on-disk response cache, one file per key, atomic writes |
 | `engine/pipeline.py` | `Engine`: `resolve()`, `fetch()`, `sources()` |
+| `engine/probe.py` | the live key check behind `fulltext_sources --check` |
 
 ### Sources
 
@@ -54,6 +55,28 @@ full-text Article Retrieval API for the key (or an institutional token).
 PDFs convert with `pypdf`, not `pymupdf4llm` (AGPL-3.0, incompatible with
 Mycelium's Apache-2.0 licence): plain paragraphs without layout headings. The
 original PDF is always kept.
+
+## Configuration
+
+`[tools.fulltext]` in `mycelium.toml` (`make config ARGS="explain tools.fulltext"`):
+`sources` (which, in what order), `contact_email` (empty uses
+`SCRAPER_CONTACT_EMAIL`), `min_chars`, `concurrency`, `disable_ttl_hours`.
+
+The publisher keys are secrets, set in `.env` only: `ELSEVIER_API_KEY`,
+`ELSEVIER_INST_TOKEN`, `SPRINGER_API_KEY`, `WILEY_TDM_TOKEN`, `CORE_API_KEY`.
+The PubMed, OpenAlex and Semantic Scholar keys the literature scan already uses
+are reused (`config.py` maps settings onto the engine's credential names).
+
+```bash
+manage.py fulltext_sources            # what is on, from the configuration alone
+manage.py fulltext_sources --check    # ask each keyed provider, live
+```
+
+`--check` reports each source as `on`, `off` (no key), `key rejected`,
+`key fine, not entitled from this network` (Elsevier: the Search API accepts
+the key, the Article Retrieval API does not), `refused: token or network`
+(Wiley answers a made-up token and a real token from the wrong network with
+the same 403), `quota exhausted`, or `unreachable`.
 
 ## Doors
 
