@@ -456,7 +456,6 @@ const FELLOWSHIPS_CONFIG: OpportunityFeedConfig<FellowshipOpportunity> = {
       {f.amount ? (
         <span className="ws-money ws-dotsep">
           <BankIcon size={13} aria-hidden="true" /> {f.amount}
-          {f.amount_note ? <span className="ws-meta-text"> {f.amount_note}</span> : null}
         </span>
       ) : null}
     </>

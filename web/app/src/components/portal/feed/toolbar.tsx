@@ -262,13 +262,22 @@ function usePinnedControls() {
     resize.observe(el);
 
     const scroller = scrollParent(el);
-    const onScroll = () => {
+    const measure = () => {
       const top = scroller ? scroller.getBoundingClientRect().top : 0;
       setStuck(el.getBoundingClientRect().top <= top + 1);
+    };
+    // Measured again on the next frame: a long jump (a restored scroll
+    // position, a keyboard End) fires before sticky layout has settled.
+    let frame = 0;
+    const onScroll = () => {
+      measure();
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
     };
     onScroll();
     (scroller ?? window).addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      cancelAnimationFrame(frame);
       resize.disconnect();
       (scroller ?? window).removeEventListener("scroll", onScroll);
       page?.style.removeProperty("--ws-tools-h");
@@ -338,21 +347,20 @@ export function FeedToolbar<T>({
           <span className="ws-results-count" aria-live="polite">
             <strong>{visible.length}</strong> of {items.length} {noun}
           </span>
-          <div className="ws-feed-tools">
-            {facets.length ? (
-              <div className="ws-facetbar" role="group" aria-label="Filters">
-                {facets.map((f) => (
-                  <FacetMenu
-                    key={f.id}
-                    facet={f}
-                    items={items}
-                    picked={filters[f.id] ?? []}
-                    toggle={toggle}
-                    idPrefix={idPrefix}
-                  />
-                ))}
-              </div>
-            ) : null}
+          {/* Menus, the phone Filters button and the sort share one wrapping
+              row, so the sort flows after the last menu instead of being
+              pushed onto a line of its own. */}
+          <div className="ws-feed-tools" role="group" aria-label="Filters and sort">
+            {facets.map((f) => (
+              <FacetMenu
+                key={f.id}
+                facet={f}
+                items={items}
+                picked={filters[f.id] ?? []}
+                toggle={toggle}
+                idPrefix={idPrefix}
+              />
+            ))}
             {facets.length ? (
               <button
                 type="button"

@@ -607,7 +607,12 @@ const CONFERENCES_CONFIG: OpportunityFeedConfig<ConferenceOpportunity> = {
   icon: <ConferenceIcon size={26} className="text-accent" />,
   source: (c) => {
     const name = [c.acronym, c.year_label].filter(Boolean).join(" ");
-    const where = c.location && c.country && !c.location.includes(c.country) ? `${c.location}, ${c.country}` : c.location || c.country;
+    const place = c.location && c.country && !c.location.includes(c.country) ? `${c.location}, ${c.country}` : c.location || c.country;
+    // "Berlin, Germany, Germany" — a source that repeats a part.
+    const where = place
+      .split(/,\s*/)
+      .filter((part, i, all) => part && part !== all[i - 1])
+      .join(", ");
     return (
       <>
         {name ? <span className="ws-src">{name}</span> : null}

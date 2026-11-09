@@ -462,8 +462,15 @@ html:not([data-motion="none"])[data-surfaces="glass"] .ws-item:hover {
   flex: none;
 }
 
-/* A card's title runs two lines at most; the opened item shows it whole. */
-.ws-item .ws-item-title {
+/* A card's title runs two lines at most; the opened item shows it whole.
+   The clamp sits on a span inside the button: a button is laid out as one
+   atomic box, so a clamp on the heading around it never cuts a line. */
+.ws-item .ws-item-title button {
+  display: block;
+  width: 100%;
+}
+
+.ws-title-clamp {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -534,7 +541,19 @@ html:not([data-motion="none"])[data-surfaces="glass"] .ws-item:hover {
 .ws-detail-lines .ws-card-source,
 .ws-detail-lines .ws-card-meta {
   flex-wrap: wrap;
+  gap: 2px 14px;
   white-space: normal;
+}
+
+/* An opened item's lines wrap, so a "·" could open the second line; the gap
+   separates the parts instead. */
+.ws-detail-lines .ws-dotsep::before {
+  content: none;
+}
+
+/* In the drawer the close button sits top-right; the tools step aside for it. */
+.ws-detail:has(.ws-detail-close) .ws-detail-body > .ws-card-top {
+  padding-right: 40px;
 }
 
 .ws-why-line {
@@ -1849,7 +1868,7 @@ html[data-density="comfortable"] .ws-compact-why .ws-clamp {
 
 .ws-feed-controls[data-stuck] {
   border-bottom-color: var(--divider);
-  background: color-mix(in srgb, var(--background) 86%, transparent);
+  background: color-mix(in srgb, var(--background) 96%, transparent);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   box-shadow: 0 10px 22px -18px rgb(0 0 0 / 0.45);
@@ -1890,12 +1909,7 @@ html[data-density="comfortable"] .ws-compact-why .ws-clamp {
   margin-top: 8px;
 }
 
-.ws-facetbar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-}
+
 
 .ws-facet {
   position: relative;
@@ -1952,11 +1966,16 @@ html[data-density="comfortable"] .ws-compact-why .ws-clamp {
   font-variant-numeric: tabular-nums;
 }
 
+/* The count holds the first row's left edge however many rows the tools wrap to. */
 .ws-results-line {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  min-height: 30px;
+  min-height: 32px;
+}
+
+.ws-results-line .ws-results-count {
+  line-height: 32px;
 }
 
 .ws-feed-tools .ws-sort select,
@@ -2852,7 +2871,7 @@ html[data-motion="none"] *::after {
 
 /* Phones: one Filters button and a sheet, instead of a wrapping row of menus. */
 @media (max-width: 639px) {
-  .ws-facetbar {
+  .ws-feed-tools .ws-facet {
     display: none;
   }
 

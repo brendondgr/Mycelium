@@ -21,6 +21,17 @@ import type { RecommendedMember } from "@/lib/portal/types";
  * verdict chip — the match is a measured similarity, never a model's guess.
  */
 
+/**
+ * A stored reason, minus the position it used to quote. Rows written before the
+ * template dropped it open "Ranked 1st in your X work on the strength of …";
+ * the feed shows no position, so the sentence is read as "Matches your X work
+ * on the strength of …" until the nightly run rewrites those rows.
+ */
+export function plainReason(text: string | undefined): string {
+  if (!text) return "";
+  return text.replace(/^Ranked \d+(?:st|nd|rd|th)\s+in (your|the)\b/, "Matches $1");
+}
+
 /** Mylo's painted portrait at text size — never the SVG rig. */
 export function MyloMark({ size = 18 }: { size?: number }) {
   return (
@@ -374,7 +385,7 @@ export function FeedCard({
           onClick={onOpen}
           aria-current={selected || undefined}
         >
-          {title}
+          <span className="ws-title-clamp">{title}</span>
         </button>
       </h3>
       {source || meta ? (
@@ -390,7 +401,7 @@ export function FeedCard({
             <span className="ws-sr">
               {byMylo ? "Mylo's reason: " : "Why it matched: "}
             </span>
-            {reason}
+            {plainReason(reason)}
           </span>
         </p>
       ) : null}
@@ -478,11 +489,9 @@ export function ItemDetail({
   footer?: React.ReactNode;
   children?: React.ReactNode;
 }) {
-  const take = beats.filter(Boolean).length
-    ? beats.filter(Boolean)
-    : reason
-      ? [reason]
-      : [];
+  const take = (beats.filter(Boolean).length ? beats.filter(Boolean) : reason ? [reason] : []).map(
+    plainReason,
+  );
   return (
     <div className="ws-detail-body">
       <div className="ws-card-top">
