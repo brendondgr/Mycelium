@@ -188,7 +188,13 @@ export function ChatPanel({
         ) : availability.state === "loading" ? (
           <Skeleton />
         ) : view === "history" ? (
-          <HistoryList currentId={session.threadId} onPick={onPick} />
+          <HistoryList
+            currentId={session.threadId}
+            onPick={onPick}
+            onDeleted={(id) => {
+              if (id === session.threadId) onNewChat();
+            }}
+          />
         ) : (
           <Conversation
             key={session.key}
