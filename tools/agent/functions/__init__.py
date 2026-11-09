@@ -34,6 +34,7 @@ def _f(
     min_role=None,
     feature=None,
     audit=False,
+    guest=None,
 ):
     return AgentFunction(
         name=name,
@@ -50,6 +51,7 @@ def _f(
         feature=feature,
         audit=audit,
         group=group,
+        guest=guest,
     )
 
 
@@ -106,6 +108,7 @@ AGENT = (
         output="instance",
         params={"query": {"type": "string"}},
         required=("query",),
+        guest="public",
     ),
     _f(
         "load_functions",
@@ -119,6 +122,7 @@ AGENT = (
         output="instance",
         params={"names": {"type": "array", "items": {"type": "string"}}},
         required=("names",),
+        guest="public",
     ),
     _f(
         "read_skill",
@@ -132,6 +136,7 @@ AGENT = (
         output="instance",
         params={"name": {"type": "string"}},
         required=("name",),
+        guest="public",
     ),
     _f(
         "read_result",
@@ -207,6 +212,7 @@ PROJECTS = (
         "(in a project thread: that project).",
         f"{H}.projects:projects_list",
         output="lab",
+        guest="no_people",
     ),
     _f(
         "projects_get",
@@ -218,6 +224,7 @@ PROJECTS = (
         f"{H}.projects:projects_get",
         output="lab",
         params={"project": ref_param("project", "#n or project:<uuid>")},
+        guest="no_people",
     ),
     _f(
         "projects_feed",
@@ -238,6 +245,7 @@ PROJECTS = (
             },
             "limit": {"type": "integer"},
         },
+        guest="no_people",
     ),
 )
 
@@ -263,6 +271,7 @@ CORPUS = (
             "limit": {"type": "integer"},
         },
         required=("query",),
+        guest="public",
     ),
     _f(
         "corpus_item",
@@ -276,6 +285,7 @@ CORPUS = (
         output="instance",
         params={"item": ref_param("item", "#n or item:<uuid>")},
         required=("item",),
+        guest="public",
     ),
 )
 
@@ -308,6 +318,7 @@ ORG = (
         f"{H}.org:org_lab",
         output="lab",
         params={"lab": LAB},
+        guest="no_people",
     ),
     _f(
         "org_lab_members",
@@ -320,6 +331,7 @@ ORG = (
         params={"lab": LAB},
         min_role={"lab": "member"},
         audit=True,
+        guest="full",
     ),
     _f(
         "org_department",
@@ -330,6 +342,7 @@ ORG = (
         f"{H}.org:org_department",
         output="department",
         params={"department": ref_param("department", "#n or department:<uuid>")},
+        guest="no_people",
     ),
     _f(
         "org_person",
@@ -343,6 +356,7 @@ ORG = (
         params={"person": PERSON},
         required=("person",),
         audit=True,
+        guest="full",
     ),
 )
 
@@ -362,6 +376,7 @@ FEEDS = (
             "types": KINDS,
             "limit": {"type": "integer", "description": "per category, at most 25"},
         },
+        guest="no_people",
     ),
     _f(
         "feeds_briefing",
@@ -372,6 +387,7 @@ FEEDS = (
         f"{H}.feeds:feeds_briefing",
         output="lab",
         params={"kind": {"type": "string", "enum": ["daily", "weekly"]}, "lab": LAB},
+        guest="no_people",
     ),
     _f(
         "feeds_saved",
@@ -392,6 +408,7 @@ FEEDS = (
         f"{H}.feeds:feeds_deadlines",
         output="lab",
         params={"days": {"type": "integer"}, "limit": {"type": "integer"}},
+        guest="no_people",
     ),
 )
 
@@ -452,6 +469,7 @@ KNOWLEDGE = (
         audit=True,
         params={"call": ITEM, "lab": LAB},
         required=("call",),
+        guest="full",
     ),
     _f(
         "knowledge_people_beyond_lab",

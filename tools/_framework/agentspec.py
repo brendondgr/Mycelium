@@ -30,6 +30,15 @@ ROLES = {
     "project": ("viewer", "editor"),
 }
 SURFACES = ("web", "discord", "cli", "token")
+#: What a Discord guest (someone in a bound server with no Mycelium account)
+#: may be told, lowest first. ``off``: nothing. ``public``: the thread's post
+#: and the public corpus. ``no_people``: also the lab's or department's own
+#: material. ``full``: also its people (S-16).
+GUEST_LEVELS = ("off", "public", "no_people", "full")
+
+
+def guest_rank(level: str | None) -> int:
+    return GUEST_LEVELS.index(level) if level in GUEST_LEVELS else 0
 
 
 def width_rank(width: str) -> int:
@@ -73,6 +82,12 @@ class AgentFunction:
     #: ``x-ref`` argument shows the object's title, never its id. Use slots
     #: only for required arguments. A framework test fails an empty label.
     activity: str = ""
+    #: The lowest guest level at which a Discord guest is offered this
+    #: function (``"public"``, ``"no_people"``, ``"full"``), or ``None``:
+    #: never. Guests are refused by default; a function opts in only when
+    #: its handler takes the lab or department from the place, never from
+    #: the asker's own account.
+    guest: str | None = None
 
     def __post_init__(self) -> None:
         if not self.group:

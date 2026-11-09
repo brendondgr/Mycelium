@@ -214,7 +214,7 @@ def knowledge_people_for_call(caller, call, lab=None):
 
     target_lab = lab_arg(caller, lab)
     audience_lab_ok(caller, target_lab)
-    if permissions.lab_role(caller.user, target_lab) not in (
+    if permissions.role_of(caller, "lab", target_lab) not in (
         "member",
         "admin",
         "owner",
@@ -255,8 +255,13 @@ def knowledge_people_for_call(caller, call, lab=None):
         )
     else:
         fit = coverage.for_call(target_lab, item)
-        mine = _own_tiers(caller.user, slots_row, declared_only=shared(caller))
-        me = caller.user.username
+        # A guest has no profile of their own: nobody is "you".
+        mine = (
+            _own_tiers(caller.user, slots_row, declared_only=shared(caller))
+            if caller.user is not None
+            else {}
+        )
+        me = caller.user.username if caller.user is not None else None
         for slot in fit.slots if fit else []:
             if slot.is_role:
                 continue

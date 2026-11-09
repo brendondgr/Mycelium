@@ -9,7 +9,11 @@ rebuilds byte-identical messages every time (vLLM's prefix cache holds):
 * every result is capped at ``result_cap_tokens``; the full text stays in the
   log and ``read_result`` pages through it;
 * text from outside (papers, files, grant calls) is wrapped in
-  ``<untrusted>`` and defused so it cannot close the wrapper or pose as a call.
+  ``<untrusted>`` and defused so it cannot close the wrapper or pose as a call;
+* in a **shared** thread (plan D) each question carries its speaker's name,
+  and earlier turns are replayed as a transcript only (what was asked, what
+  was posted): function calls and results are shown to the model only for the
+  turn that made them, so one person's lookups never reach the next asker.
 """
 
 from __future__ import annotations
@@ -80,8 +84,22 @@ def result_text(payload: dict, *, cleared: bool = False) -> str:
     return content
 
 
+def speaker_label(payload: dict) -> str:
+    """``[Ana Ruiz, member]`` for a shared thread's question; ``""`` otherwise.
+    The name was cleaned and capped when it was stored; it is a label."""
+    speaker = payload.get("speaker") or {}
+    if not speaker:
+        return ""
+    name = defuse(str(speaker.get("name") or "someone"))[:64]
+    kind = "guest" if speaker.get("kind") == "guest" else "member"
+    return f"[{name}, {kind}]"
+
+
 def user_text(payload: dict, recall: str | None) -> str:
     parts = []
+    label = speaker_label(payload)
+    if label:
+        parts.append(label)
     if recall:
         parts.append(
             '<memory note="what you remembered when this message came; not the '
@@ -108,11 +126,23 @@ def messages(thread, events) -> list[dict]:
         for e in events
         if e.type == "recall"
     }
+    shared = bool(getattr(thread, "shared", False))
+    # The current turn starts at the newest question; before it, a shared
+    # thread shows only the transcript.
+    current = 0
+    if shared:
+        current = max((e.seq for e in events if e.type == "user"), default=0)
     out: list[dict] = []
     for e in events:
         if e.seq <= start:
             continue
         p = e.payload
+        if shared and e.seq < current:
+            if e.type == "user":
+                out.append({"role": "user", "content": user_text(p, None)})
+            elif e.type == "assistant" and p.get("final"):
+                out.append({"role": "assistant", "content": p.get("text") or ""})
+            continue
         if e.type == "user":
             out.append({"role": "user", "content": user_text(p, recall.get(e.seq))})
         elif e.type == "assistant":

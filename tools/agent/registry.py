@@ -19,6 +19,7 @@ from pathlib import Path
 
 from tools._framework import services
 from tools._framework.agentspec import (
+    GUEST_LEVELS,
     RISKS,
     ROLES,
     SCOPES,
@@ -76,6 +77,8 @@ def declaration_problems(fn: AgentFunction) -> list[str]:
         out.append(f"surfaces {fn.surfaces!r} must be among {SURFACES}")
     if ":" not in (fn.handler or ""):
         out.append("handler must be 'module:function'")
+    if fn.guest is not None and fn.guest not in GUEST_LEVELS[1:]:
+        out.append(f"guest {fn.guest!r} must be None or one of {GUEST_LEVELS[1:]}")
     params = fn.parameters or {}
     if params.get("type") != "object":
         out.append("parameters must be a JSON Schema object")

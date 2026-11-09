@@ -143,5 +143,13 @@ def _audit(caller, fn, args) -> None:
         action=f"agent.{fn.name}",
         target_type="agent_call",
         target_id=str(caller.thread_id or ""),
-        metadata={"args": args, "surface": caller.surface},
+        metadata={
+            "args": args,
+            "surface": caller.surface,
+            **(
+                {"guest_discord_user_id": caller.guest.discord_user_id}
+                if caller.is_guest
+                else {}
+            ),
+        },
     )

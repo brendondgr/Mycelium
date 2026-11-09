@@ -74,19 +74,46 @@ def department_info(dept) -> RefInfo:
     )
 
 
+def place_lab_ids(caller) -> set:
+    """The labs a guest stands in: the place's lab, or a department place's
+    labs. Empty for anyone with an account (they stand in their own)."""
+    from apps.accounts.models import Lab
+
+    if not getattr(caller, "is_guest", False):
+        return set()
+    scope = caller.scope
+    if scope.kind == "lab" and scope.obj is not None:
+        return {scope.obj.pk}
+    if scope.kind == "department" and scope.obj is not None:
+        return set(
+            Lab.objects.filter(department=scope.obj).values_list("pk", flat=True)
+        )
+    return set()
+
+
+def member_lab_ids(caller):
+    """The labs the caller counts as a member of (a guest: the place's)."""
+    from apps.accounts.models import LabMembership
+
+    if caller.user is None:
+        return place_lab_ids(caller)
+    return set(
+        LabMembership.objects.filter(user=caller.user).values_list("lab_id", flat=True)
+    )
+
+
 def person_info(user, *, caller) -> RefInfo:
     """Another person is shown to a lab audience only if they share a lab
     with the caller; someone seen through a department or a project only is
-    shown to the caller alone."""
+    shown to the caller alone. A guest shares the place's lab."""
     from apps.accounts.models import LabMembership
 
     name = user.get_full_name() or user.username
-    own = user.pk == caller.user.pk
+    own = caller.user is not None and user.pk == caller.user.pk
     shares_lab = (
         not own
         and LabMembership.objects.filter(
-            user=user,
-            lab_id__in=LabMembership.objects.filter(user=caller.user).values("lab_id"),
+            user=user, lab_id__in=member_lab_ids(caller)
         ).exists()
     )
     return RefInfo(

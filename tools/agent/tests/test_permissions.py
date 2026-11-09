@@ -332,7 +332,58 @@ def _matrix(world) -> str:
                     allowed(c) if gate.allowed else [f"DENY:{gate.layer}:{gate.code}"]
                 )
                 lines.append(f"{pname:<12} {sname:<16} {scname:<9} {' '.join(names)}")
+    lines += _discord_places(world)
     return "\n".join(lines) + "\n"
+
+
+def _discord_places(world) -> list[str]:
+    """Plan D: who asks in which Discord place, and what each is offered."""
+    from tools.agent.caller import Guest
+
+    guest = Guest("4242", "Visitor")
+    lab_room = {"channel_id": "10", "thread_id": "11"}
+    rows = (
+        # persona, place, scope, user, guest, scope obj, width, audience obj, level
+        ("member", "discord_thread", "lab", world.member, None, world.lab, "lab"),
+        ("guest", "discord_thread", "lab", None, guest, world.lab, "lab"),
+        ("guest_nopeople", "discord_thread", "lab", None, guest, world.lab, "lab"),
+        ("guest_public", "discord_thread", "lab", None, guest, world.lab, "lab"),
+        ("guest_off", "discord_thread", "lab", None, guest, world.lab, "lab"),
+        ("member", "discord_channel", "lab", world.member, None, world.lab, "lab"),
+        (
+            "member",
+            "discord_ambiguous",
+            "personal",
+            world.member,
+            None,
+            None,
+            "instance",
+        ),
+        ("guest", "discord_ambiguous", "personal", None, guest, None, "instance"),
+    )
+    levels = {
+        "guest_nopeople": "no_people",
+        "guest_public": "public",
+        "guest_off": "off",
+    }
+    out = []
+    for pname, place, scname, user, g, obj, width in rows:
+        AgentOrgPolicy.objects.filter(lab=world.lab).delete()
+        if pname in levels:
+            AgentOrgPolicy.objects.create(lab=world.lab, discord_guests=levels[pname])
+        c = Caller(
+            user=user,
+            guest=g,
+            surface="discord",
+            scope=Scope(scname, obj),
+            audience=Audience(width, obj),
+            via=lab_room if place != "discord_ambiguous" else {"channel_id": "12"},
+        )
+        gate = permissions.may_chat(c)
+        names = allowed(c) if gate.allowed else [f"DENY:{gate.layer}:{gate.code}"]
+        out.append(f"{pname:<12} {place:<16} {scname:<9} {' '.join(names)}")
+    AgentOrgPolicy.objects.filter(lab=world.lab).delete()
+    return out
 
 
 def test_permission_matrix_matches_the_golden(world):

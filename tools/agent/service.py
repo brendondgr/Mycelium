@@ -87,13 +87,24 @@ def _anchor(value) -> dict:
 
 
 def create_thread(
-    user, *, scope: Scope, surface: str = "web", title: str = "", anchor=None
+    user,
+    *,
+    scope: Scope,
+    surface: str = "web",
+    title: str = "",
+    anchor=None,
+    caller: Caller | None = None,
+    shared: bool = False,
 ) -> AgentThread:
     """A new thread. With ``anchor`` (``{"kind", "key"}`` or ``"kind:key"``)
     the conversation is about that object for good: it is reference ``#1``
     and every turn resolves it again for whoever is asking (S2). The creator
-    must be able to see it."""
-    caller = Caller(user=user, surface=surface, scope=scope)
+    must be able to see it.
+
+    A surface that has already built the asker's ``caller`` (Discord: maybe
+    a guest, with the place's audience) passes it; ``shared`` makes a thread
+    with no owner that belongs to its place (plan D)."""
+    caller = caller or Caller(user=user, surface=surface, scope=scope)
     _gate(caller)
     info = None
     if anchor:
@@ -115,7 +126,8 @@ def create_thread(
     kwargs = {fields[scope.kind]: scope.obj} if scope.kind in fields else {}
     with transaction.atomic():
         thread = AgentThread.objects.create(
-            user=user,
+            user=None if shared else user,
+            shared=bool(shared),
             scope_kind=scope.kind,
             surface=surface,
             title=title[:200],
@@ -132,7 +144,7 @@ def get_thread(user, thread_id) -> AgentThread:
     try:
         return AgentThread.objects.select_related(
             "user", "scope_lab", "scope_department", "scope_project"
-        ).get(pk=thread_id, user=user)
+        ).get(pk=thread_id, user=user, shared=False)
     except Exception:  # missing, someone else's, or a malformed id: all the same
         raise ServiceError("not_found", "No such conversation.", status=404) from None
 
@@ -144,7 +156,7 @@ def list_threads(
     a dict) keeps only the threads about that object."""
     from django.db.models import Q
 
-    rows = AgentThread.objects.filter(user=user, archived=archived)
+    rows = AgentThread.objects.filter(user=user, shared=False, archived=archived)
     if anchor:
         a = _anchor(anchor)
         rows = rows.filter(
@@ -203,13 +215,19 @@ def fork_thread(user, thread_id, seq: int) -> AgentThread:
 
 
 def _today_turns(user) -> int:
+    from django.db.models import Q
+
     start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
     return AgentEvent.objects.filter(
-        thread__user=user, type="user", ts__gte=start
+        Q(thread__user=user) | Q(payload__speaker__user_id=user.pk),
+        type="user",
+        ts__gte=start,
     ).count()
 
 
 def _check_budget(user) -> None:
+    if user is None:  # a guest: the Discord adapter holds the guest limits
+        return
     cap = int(config.get("daily_turns") or 0)
     if cap and _today_turns(user) >= cap:
         raise ServiceError(
@@ -245,6 +263,14 @@ def resolve_mentions(caller: Caller, thread: AgentThread, mentions) -> list[str]
     return cards
 
 
+def _speaks(caller: Caller | None, thread) -> bool:
+    """Whether a message records who spoke and from where (plan D): every
+    Discord message and every shared thread; web and CLI threads as before."""
+    return caller is not None and (
+        bool(getattr(thread, "shared", False)) or caller.surface == "discord"
+    )
+
+
 def record_user_message(
     thread,
     text: str,
@@ -253,10 +279,15 @@ def record_user_message(
     caller: Caller | None = None,
     inline=None,
     cards=None,
+    speaker: dict | None = None,
+    turn: dict | None = None,
+    queued_id: int | None = None,
 ) -> AgentEvent:
-    caller = caller or for_thread(thread)
     if cards is None:
-        cards = resolve_mentions(caller, thread, mentions)
+        cards = resolve_mentions(caller or for_thread(thread), thread, mentions)
+    if _speaks(caller, thread):
+        speaker = speaker or caller.speaker()
+        turn = turn or caller.turn()
     return store.append(
         thread,
         "user",
@@ -265,8 +296,15 @@ def record_user_message(
             "mentions": list(mentions or []),
             "cards": cards,
             **({"inline": inline} if inline else {}),
+            **({"speaker": speaker} if speaker else {}),
+            **({"turn": turn} if turn else {}),
+            **({"queued_id": queued_id} if queued_id else {}),
         },
     )
+
+
+#: Questions that may wait in a shared thread while a turn runs (plan D).
+SHARED_QUEUE_MAX = 5
 
 
 def send(
@@ -303,10 +341,26 @@ def send(
         more_cards, inline = att.attach(caller, thread, attachments)
         cards += more_cards
     if thread.state == AgentThread.State.RUNNING and not steer:
-        AgentQueuedMessage.objects.create(
-            thread=thread, text=text, mentions=list(mentions or [])
+        speaks = _speaks(caller, thread)
+        if (
+            thread.shared
+            and AgentQueuedMessage.objects.filter(thread=thread).count()
+            >= SHARED_QUEUE_MAX
+        ):
+            raise ServiceError(
+                "queue_full",
+                "One at a time, please.",
+                "Ask again once Mylo has answered.",
+                status=429,
+            )
+        row = AgentQueuedMessage.objects.create(
+            thread=thread,
+            text=text,
+            mentions=list(mentions or []),
+            speaker=caller.speaker() if speaks else {},
+            turn=caller.turn() if speaks else {},
         )
-        return {"status": "queued"}
+        return {"status": "queued", "queued_id": row.pk}
     event = record_user_message(
         thread, text, mentions=mentions, caller=caller, inline=inline, cards=cards
     )
@@ -362,7 +416,10 @@ def cancel(caller: Caller, thread: AgentThread) -> dict:
             app.control.revoke(task_id)
         except Exception:  # the cancel flag already stops the loop
             pass
-    AgentQueuedMessage.objects.filter(thread=thread).delete()
+    if not thread.shared:
+        # A shared thread's queue is other people's questions: Stop ends
+        # only the running turn, and the next question gets its own.
+        AgentQueuedMessage.objects.filter(thread=thread).delete()
     return {"status": "cancelling"}
 
 
@@ -400,6 +457,17 @@ def check_view(caller: Caller, view: str) -> str:
     return view
 
 
+def _own(caller: Caller, thread: AgentThread) -> None:
+    """Only the owner reads a thread here. A shared thread has none: it is
+    read only where it lives (the Discord adapter), never through the web."""
+    if (
+        thread.shared
+        or caller.user is None
+        or thread.user_id != getattr(caller.user, "pk", None)
+    ):
+        raise ServiceError("not_found", "No such conversation.", status=404)
+
+
 def subscribe(
     caller: Caller,
     thread: AgentThread,
@@ -408,8 +476,7 @@ def subscribe(
     view: str = "activity",
     **kw,
 ):
-    if thread.user_id != caller.user.pk:
-        raise ServiceError("not_found", "No such conversation.", status=404)
+    _own(caller, thread)
     return stream.follow(thread, after=after, view=check_view(caller, view), **kw)
 
 
@@ -420,8 +487,7 @@ def thread_events(
     ``{seq, type, ts, payload}``."""
     from .activity import Projector
 
-    if thread.user_id != caller.user.pk:
-        raise ServiceError("not_found", "No such conversation.", status=404)
+    _own(caller, thread)
     view = check_view(caller, view)
     projector = Projector(thread) if view == "activity" else None
     out = []
@@ -450,6 +516,7 @@ def thread_events(
 def export(caller: Caller, thread: AgentThread, *, fmt: str = "json"):
     """The log as JSON, or a readable transcript. References are re-checked:
     anything the caller can no longer see is shown as unavailable."""
+    _own(caller, thread)
     events = store.events(thread)
     visible: dict[int, str | None] = {}
     for entry in refs.thread_refs(thread):
@@ -611,6 +678,17 @@ def set_org_policy(user, kind: str, org, **changes) -> AgentOrgPolicy:
         policy.max_risk = risk
     if "members_inform_org" in changes:
         policy.members_inform_org = bool(changes["members_inform_org"])
+    if "discord_guests" in changes:
+        from tools._framework.agentspec import GUEST_LEVELS
+
+        level = str(changes["discord_guests"]).replace("-", "_")
+        if level not in GUEST_LEVELS:
+            raise ServiceError(
+                "bad_guest_level",
+                f"Unknown guest level {level!r}.",
+                f"Use one of {', '.join(GUEST_LEVELS)}.",
+            )
+        policy.discord_guests = level
     policy.updated_by = user
     policy.save()
     record_audit_event(
@@ -629,7 +707,26 @@ def _policy_dict(policy: AgentOrgPolicy) -> dict:
         "discord_channels_off": policy.discord_channels_off,
         "max_risk": policy.max_risk,
         "members_inform_org": policy.members_inform_org,
+        "discord_guests": policy.discord_guests,
     }
+
+
+def guest_ceiling() -> str:
+    """The host's most a guest may be told (``[tools.agent]
+    discord_guest_level``); ``off`` unless guests may ask at all."""
+    if config.get("discord_access") != "public":
+        return "off"
+    return str(config.get("discord_guest_level") or "full")
+
+
+def guest_level_in_force(kind: str, org) -> str:
+    """The lower of the host's ceiling and the org's own setting."""
+    from tools._framework.agentspec import guest_rank
+
+    ceiling = guest_ceiling()
+    row = AgentOrgPolicy.objects.filter(**{kind: org}).first()
+    own = row.discord_guests if row else "full"
+    return own if guest_rank(own) < guest_rank(ceiling) else ceiling
 
 
 def catalog_view(caller: Caller) -> list[dict]:

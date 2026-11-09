@@ -225,6 +225,9 @@ def ensure(caller, thread) -> None:
     """Store a recall event for every user message that has none yet."""
     from . import memory
 
+    if getattr(thread, "shared", False) or caller.user is None:
+        # A shared place recalls nothing from anyone's other conversations.
+        return
     events = store.events(thread)
     done = {e.payload.get("for_seq") for e in events if e.type == "recall"}
     pending = [e for e in events if e.type == "user" and e.seq not in done]

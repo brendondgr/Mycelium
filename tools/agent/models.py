@@ -16,11 +16,16 @@ SCOPE_KINDS = ("personal", "lab", "department", "project")
 
 
 class AgentThread(models.Model):
-    """One conversation, owned by the person who started it.
+    """One conversation, owned by the person who started it, or shared.
 
     The scope says where it was opened: personal, or a lab, department or
     project. A thread opened in an org's scope is still that person's
     conversation; nobody else can read it.
+
+    A **shared** thread (Discord: a forum or Discord thread, plan D) has no
+    owner and belongs to its place: everyone who asks there takes turns in
+    one conversation, each turn under its own asker (the ``speaker`` and
+    ``turn`` of its ``user`` event). No web route returns a shared thread.
     """
 
     class State(models.TextChoices):
@@ -31,8 +36,14 @@ class AgentThread(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agent_threads"
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="agent_threads",
     )
+    #: No owner: the thread belongs to its place (exactly when ``user`` is null).
+    shared = models.BooleanField(default=False)
     scope_kind = models.CharField(
         max_length=12, choices=[(k, k) for k in SCOPE_KINDS], default="personal"
     )
@@ -85,6 +96,11 @@ class AgentThread(models.Model):
         ordering = ["-last_activity_at"]
         constraints = [
             models.CheckConstraint(
+                name="agent_thread_shared_has_no_owner",
+                condition=Q(shared=True, user__isnull=True)
+                | Q(shared=False, user__isnull=False),
+            ),
+            models.CheckConstraint(
                 name="agent_thread_scope_matches_kind",
                 condition=(
                     Q(
@@ -109,7 +125,7 @@ class AgentThread(models.Model):
                         & Q(scope_project__isnull=False)
                     )
                 ),
-            )
+            ),
         ]
 
     @property
@@ -117,7 +133,8 @@ class AgentThread(models.Model):
         return self.scope_lab or self.scope_department or self.scope_project
 
     def __str__(self) -> str:
-        return f"{self.title or 'thread'} ({self.user_id}, {self.scope_kind})"
+        owner = "shared" if self.shared else self.user_id
+        return f"{self.title or 'thread'} ({owner}, {self.scope_kind})"
 
 
 class AgentEvent(models.Model):
@@ -170,6 +187,10 @@ class AgentQueuedMessage(models.Model):
     )
     text = models.TextField()
     mentions = models.JSONField(default=list, blank=True)
+    #: Who asked and from where (shared threads): copied into the ``user``
+    #: event when the message gets its own turn.
+    speaker = models.JSONField(default=dict, blank=True)
+    turn = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -196,6 +217,10 @@ class AgentOrgPolicy(models.Model):
     )
     groups_off = models.JSONField(default=list, blank=True)
     discord_channels_off = models.JSONField(default=list, blank=True)
+    #: What a guest (someone in the org's Discord server with no account) is
+    #: told: ``full``, ``no_people``, ``public`` or ``off``. The host's
+    #: ``discord_guest_level`` caps it; the lower of the two wins (S-16).
+    discord_guests = models.CharField(max_length=12, default="full")
     max_risk = models.CharField(max_length=12, default="read")
     #: Whether members' chats may inform the lab's shared understanding.
     members_inform_org = models.BooleanField(default=True)
@@ -250,3 +275,71 @@ class AgentThreadDigest(models.Model):
     embedding = VectorField(null=True, blank=True)
     upto_seq = models.PositiveIntegerField(default=0)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class AgentThreadLink(models.Model):
+    """Which Discord place a thread answers in (plan D).
+
+    A forum or Discord thread has one shared link (``discord_user_id`` empty);
+    an open channel and a DM have one link per person. ``binding_id`` is the
+    owning integrations binding, kept as a plain id (no foreign key from a
+    tool into a platform app that does not need one)."""
+
+    thread = models.ForeignKey(
+        AgentThread, on_delete=models.CASCADE, related_name="discord_links"
+    )
+    guild_id = models.CharField(max_length=32, blank=True, default="")
+    place_id = models.CharField(max_length=32)
+    discord_user_id = models.CharField(max_length=32, blank=True, default="")
+    binding_id = models.BigIntegerField(null=True, blank=True)
+    #: ``{kind, key}`` of what the place is about, or ``{}``.
+    anchor = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["guild_id", "place_id", "discord_user_id"],
+                condition=Q(closed_at__isnull=True),
+                name="agent_thread_link_one_open",
+            )
+        ]
+        indexes = [models.Index(fields=["place_id"], name="agent_link_place")]
+
+    def __str__(self) -> str:
+        who = self.discord_user_id or "shared"
+        return f"AgentThreadLink({self.guild_id or 'dm'}/{self.place_id}, {who})"
+
+
+class AgentDiscordTurn(models.Model):
+    """One question asked in Discord and where its answer goes. What makes
+    delivery survive a bot restart: pending rows are looked for on start."""
+
+    class State(models.TextChoices):
+        PENDING = "pending"
+        ANSWERED = "answered"
+        FAILED = "failed"
+        CANCELLED = "cancelled"
+
+    link = models.ForeignKey(
+        AgentThreadLink, on_delete=models.CASCADE, related_name="turns"
+    )
+    #: The ``user`` event, or 0 while the question waits in the queue.
+    user_event_seq = models.PositiveIntegerField(default=0)
+    #: The ``AgentQueuedMessage`` while it waits; its ``user`` event carries
+    #: the same id as ``queued_id`` once it gets its turn.
+    queued_id = models.BigIntegerField(null=True, blank=True)
+    trigger_message_id = models.CharField(max_length=32, db_index=True)
+    channel_id = models.CharField(max_length=32, blank=True, default="")
+    status_message_id = models.CharField(max_length=32, blank=True, default="")
+    discord_user_id = models.CharField(max_length=32)
+    state = models.CharField(
+        max_length=10, choices=State.choices, default=State.PENDING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["state"], name="agent_dturn_state")]

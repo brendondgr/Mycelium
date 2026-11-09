@@ -172,6 +172,20 @@ def resolve_anchor(caller, thread) -> tuple[int, RefInfo] | None:
     return number(thread, info), info
 
 
+def visible_here(caller, ref: str) -> bool:
+    """Whether ``kind:key`` resolves for this caller and fits the audience."""
+    from tools._framework.agentspec import width_rank
+
+    from .permissions import within_audience
+
+    info = resolve(caller, ref)
+    return (
+        info is not None
+        and width_rank(info.output) >= width_rank(caller.audience.width)
+        and within_audience(info, caller.audience)
+    )
+
+
 def card(n: int, info: RefInfo) -> str:
     """The short card the model sees for a tagged or surfaced object."""
     lines = [f"#{n} {info.kind}: {info.title}"]
