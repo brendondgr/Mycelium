@@ -164,7 +164,7 @@ figure. Hovering or focusing it opens a breakdown by theme. Each theme pill
 under the card carries that theme's share: `per_cluster` is a fusion score that
 runs past 1, so a theme's figure is the overall similarity scaled by how
 strongly that theme pulled the item relative to the theme that pulled it most.
-The breakdown says this in words. An item with no measured similarity shows no
+The breakdown shows the figures and the themes, nothing more. An item with no measured similarity shows no
 figure at all — never a substitute.
 
 **Every feed card has one skeleton**, whatever its kind: match and New on the
@@ -273,6 +273,12 @@ Avoid copy like:
 - "Revolutionize everything instantly."
 
 The voice should be confident, concise, source-aware, and useful. When uncertainty exists, name it clearly.
+
+Do not narrate the machinery. The interface never tells a reader how an item was
+matched or scored ("embedding similarity", "measured, not guessed", "matched by
+similarity", "each theme scales the overall figure"), nor that Mylo has or has
+not written a judgement for something. Show the match, the themes and Mylo's
+reason; how they were computed belongs in `docs/`, not on the page.
 
 ## Motion
 

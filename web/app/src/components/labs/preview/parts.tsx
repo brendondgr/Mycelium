@@ -460,9 +460,6 @@ export function ItemDetail({ item, embedded = false }: { item: FeedItem; embedde
           <span className="lx-take-label">Why it might not</span>
           {item.caveat}
         </p>
-        {item.byMylo ? null : (
-          <p className="lx-meta-text">Matched by similarity to the theme; Mylo has not written a judgement for it.</p>
-        )}
       </div>
 
       {item.suggested.length ? (

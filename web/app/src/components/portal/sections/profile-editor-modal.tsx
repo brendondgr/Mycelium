@@ -400,7 +400,7 @@ function ProfileEditorForm({
   const panelFocus = (
     <EditorSection
       title="Research focus"
-      description="What Mylo matches against — a statement, the areas you work in, and your semantic fingerprint."
+      description="What Mylo matches against — a statement, the areas you work in, and your keywords."
     >
       <EditorField label="Research statement">
         <textarea

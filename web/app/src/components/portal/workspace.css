@@ -710,14 +710,9 @@ html:not([data-motion="none"])[data-surfaces="glass"] .ws-item:hover {
 }
 
 .ws-match-tip-head {
+  margin-bottom: 6px;
   color: var(--text-primary);
   font-weight: 650;
-}
-
-.ws-match-tip-note {
-  margin-bottom: 6px;
-  color: var(--text-muted);
-  line-height: 1.4;
 }
 
 .ws-match-tip-label {
@@ -770,17 +765,6 @@ html:not([data-motion="none"])[data-surfaces="glass"] .ws-item:hover {
   font-weight: 650;
   text-align: right;
   font-variant-numeric: tabular-nums;
-}
-
-.ws-match-tip-foot {
-  margin-top: 8px;
-  padding-top: 7px;
-  border-top: 1px dashed var(--divider);
-  color: var(--text-muted);
-}
-
-.ws-match-tip-note.ws-match-tip-foot {
-  margin-bottom: 0;
 }
 
 /* The opened item's tools never dim. */

@@ -1196,7 +1196,7 @@ export function OnboardingFlow({
           placeholder="Add a keyword and press Enter"
         />
         <p className="text-xs text-[var(--text-muted)]">
-          Your semantic fingerprint — Mylo uses these to find and rank papers.
+          Mylo uses these to find papers for you.
         </p>
 
         <TokenField

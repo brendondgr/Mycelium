@@ -186,12 +186,10 @@ export function TopicPills({ themes, max = 3 }: { themes: ThemeMatch[]; max?: nu
  */
 export function MatchBadge({
   match,
-  byMylo = false,
   profile = "your research",
 }: {
   match: MatchInfo;
-  byMylo?: boolean;
-  /** Whose profile the similarity is measured against. */
+  /** Whose profile the match is against. */
   profile?: string;
 }) {
   const tipId = React.useId();
@@ -210,10 +208,7 @@ export function MatchBadge({
       </button>
       <span className="ws-match-tip" role="tooltip" id={tipId}>
         <span className="ws-match-tip-head">
-          {match.overall}% similar to {profile}
-        </span>
-        <span className="ws-match-tip-note">
-          Embedding similarity between this item and {profile} — measured, not guessed.
+          {match.overall}% match to {profile}
         </span>
         {rows.length ? (
           <>
@@ -230,18 +225,8 @@ export function MatchBadge({
                 <span className="ws-match-row-pct">{t.pct}%</span>
               </span>
             ))}
-            {rows.length > 1 ? (
-              <span className="ws-match-tip-note ws-match-tip-foot">
-                Each theme scales the overall figure by how strongly it pulled this item.
-              </span>
-            ) : null}
           </>
         ) : null}
-        <span className="ws-match-tip-foot">
-          {byMylo
-            ? "Mylo also read it and wrote a take."
-            : "Matched by similarity; Mylo has not written a take."}
-        </span>
       </span>
     </span>
   );
@@ -374,7 +359,7 @@ export function FeedCard({
       data-new={isNew || undefined}
     >
       <div className="ws-card-top">
-        <MatchBadge match={match} byMylo={byMylo} profile={profile} />
+        <MatchBadge match={match} profile={profile} />
         {isNew ? <span className="ws-new">New</span> : null}
         {flag}
         {actions ? <div className="ws-actions">{actions}</div> : null}
@@ -495,7 +480,7 @@ export function ItemDetail({
   return (
     <div className="ws-detail-body">
       <div className="ws-card-top">
-        <MatchBadge match={match} byMylo={byMylo} profile={profile} />
+        <MatchBadge match={match} profile={profile} />
         {isNew ? <span className="ws-new">New</span> : null}
         {tools ? <div className="ws-actions ws-actions-on">{tools}</div> : null}
       </div>
@@ -532,12 +517,6 @@ export function ItemDetail({
               {caveat}
             </p>
           ) : null}
-          {byMylo ? null : (
-            <p className="ws-meta-text">
-              Matched by similarity to the theme; Mylo has not written a
-              judgement for it.
-            </p>
-          )}
         </div>
       ) : null}
 
