@@ -240,20 +240,38 @@ slash.
 
 | Route | Methods | Purpose |
 |---|---|---|
-| `status/` | GET | `{model}`, or `{model: null, code: "no_model", detail, fix}` when no model is configured |
+| `status/` | GET | `{model: {name, label, location}}` — `location` is `local`, `remote` or `cloud` (always `local` until model servers land; `label` is then the model name) — or `{model: null, code: "no_model", detail, fix}` when no model is configured. Every `assistant` event's payload carries the same `model` object |
 | `catalog/?scope=&ref=` | GET | Every function with `allowed` and, if not, `layer`, `code`, `detail`, `fix` — the gate's own answer for this caller |
-| `threads/` | GET, POST | List the caller's threads (`?q=` searches title, purpose and their own words; `?archived=1`); create one in `{scope: personal\|lab\|department\|project, ref}` (lab slug, department or project id). 404 for a scope the caller cannot see |
-| `threads/<id>/` | GET, PATCH, DELETE | One thread (state, todos, `references`); rename or archive (`{title, archived}`); delete it and its events |
+| `threads/` | GET, POST | List the caller's threads, pinned first, then most recent (`?q=` searches title, purpose and their own words; `?archived=1`; `?anchor=<kind>:<key>` keeps the threads about that object); create one in `{scope: personal\|lab\|department\|project, ref, anchor}` (lab slug, department or project id). 404 for a scope the caller cannot see. `anchor` — `{kind, key}` or `"kind:key"`, any reference kind (`item`, `project`, `lab`, `department`, …) — makes the thread about that object for good: it is reference `#1`, and every turn resolves it again for the caller (left out of the turn if they can no longer see it). 404 `anchor_not_visible` if the creator cannot see it, 400 `bad_anchor` for an unknown kind |
+| `threads/<id>/` | GET, PATCH, DELETE | One thread (state, `anchor` or null, `pinned`, todos, `references`); rename, archive or pin (`{title, archived, pinned}`); delete it and its events |
 | `threads/<id>/messages/` | POST | `{text, mentions: ["paper:<id>", "project:<uuid>", "file:<uuid>", …], attachments: [file ids], steer}` or multipart with `files`. 202 `{status: started\|queued\|steered}`. A mention the caller cannot see is refused (404) before the turn; 429 past `daily_turns`; 409 while Mylo waits for an answer |
 | `threads/<id>/answer/` | POST | `{text}` answers Mylo's pending question and resumes; 409 when nothing is pending |
 | `threads/<id>/cancel/` | POST | Stops the running turn before its next step; queued messages are dropped |
 | `threads/<id>/fork/` | POST | `{seq}` → a new thread with events `1..seq` (a trailing unfinished step dropped) |
-| `threads/<id>/events/?after=` | GET | Stored events after a seq, and the thread's state |
-| `threads/<id>/stream/` | GET | Server-sent events: stored events after `Last-Event-ID` (or `?after=`), each with its seq as `id:`, then live events and transient deltas (no `id:`); a heartbeat comment every 15 s. `?once=1` replays and closes; `?until_idle=1` closes when the turn ends |
+| `threads/<id>/events/?after=&view=` | GET | Stored events after a seq as `{seq, type, ts, payload}`, and the thread's state. `view=activity` (default) or `raw` (staff only, else 403 `raw_view_staff_only`) — see the activity view below |
+| `threads/<id>/stream/?view=` | GET | Server-sent events: stored events after `Last-Event-ID` (or `?after=`), each with its seq as `id:`, then live events and transient deltas (no `id:`); a heartbeat comment every 15 s. `?once=1` replays and closes; `?until_idle=1` closes when the turn ends. `view` as for `events/` |
 | `threads/<id>/export/?as=json\|md` | GET | The log as JSON, or a Markdown transcript with citations resolved; anything the caller can no longer see shows as unavailable |
 | `refs/search/?q=&kinds=&thread=` | GET | Candidates for the `@` picker, each already visible to the caller |
 | `preferences/` | GET, PATCH | `{chat_enabled, learning, discord_allowed, groups_off}`; `learning` is ambient's Mylo-chat consent (on unless turned off) |
 | `policy/<lab\|department>/<slug or id>/` | GET, PATCH | The org's narrowing policy `{groups_off, discord_channels_off, max_risk, members_inform_org, set}`; members read it, owners and admins change it (audited); it can never widen the instance or switch the agent on or off |
+
+**The activity view** (`tools/agent/activity.py`) is what a person may see of
+a turn; Mylo's thinking never reaches a surface (S-9). Each message keeps the
+stream envelope (`id`, `type`, `thread`, `ts`, `payload`):
+
+- `thinking` events and thinking deltas → one `{type: "activity", payload:
+  {state: "thinking"}}` per run of thinking, with no text.
+- `tool_call` → `{type: "activity", payload: {state: "running", label,
+  call_id, name}}`; its `tool_result` → the same with `state: "ok"` or
+  `"failed"`. `label` is the function's `activity` text ("Searching the
+  corpus for “cell segmentation”", "Reading “<title>”"); arguments and
+  results are never sent.
+- `assistant` keeps `text`, `final`, `partial`, `removed`, `model`; a step
+  with no text is dropped. `user` loses inlined file text. `note`s meant for
+  the model are dropped.
+- `usage`, `recall`, `verdict`, `compact` and transient `progress` are
+  dropped; `user`, `answer`, `question`, `todos`, `error`, `state`, `note`,
+  text deltas, `meter` and heartbeats pass through.
 
 ### Stored files — `/api/tools/files/` (tool `files`)
 

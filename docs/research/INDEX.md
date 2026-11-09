@@ -61,12 +61,13 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-009` | 2026-11-09 | Does a stock 4B instruct model on llama.cpp make usable rerank decisions through the port path? | complete | worth_auc 0.4889 | — | [folder](experiments/EXP-2026-11-009-qwen3-4b-llamacpp-decisions/RESULTS.md) |
 | `EXP-2026-11-010` | 2026-11-09 | Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop | failed | — | — | [folder](experiments/EXP-2026-11-010-agent-loop-cost/RESULTS.md) |
 | `EXP-2026-11-011` | 2026-11-09 | Mylo agent baseline: tasks, permission probes, memory, equal-budget comparison | failed | — | — | [folder](experiments/EXP-2026-11-011-mylo-agent-baseline/RESULTS.md) |
+| `EXP-2026-11-012` | 2026-11-09 | d3-lite throughput when pairs share a forward pass | complete | d3_over_qwen_best_real 1.3890 | — | [folder](experiments/EXP-2026-11-012-d3-lite-batched-throughput/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 46 |
+| complete | 47 |
 | failed | 2 |
 | planned | 4 |
-| **total** | **52** |
+| **total** | **53** |

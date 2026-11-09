@@ -1,5 +1,6 @@
 """The system prompt, rebuilt for every call. Rarely changing parts first, so
-vLLM's prefix cache holds: rules, who the person is, the scope, skills, the
+vLLM's prefix cache holds: rules, who the person is, the scope, what the
+conversation is about (its anchor, resolved for this caller), skills, the
 deferred index, the environment, references, and the summary of earlier turns.
 """
 
@@ -73,8 +74,21 @@ def _environment_block(caller, unavailable: list[str]) -> str:
     return "Environment:\n" + "\n".join(f"- {line}" for line in lines)
 
 
-def _refs_block(thread) -> str:
-    entries = refs.thread_refs(thread)[-refs.PROMPT_REFS :]
+def _anchor_block(anchored) -> str:
+    if anchored is None:
+        return ""
+    n, info = anchored
+    return f"This conversation is about #{n}.\n{refs.card(n, info)}"
+
+
+def _refs_block(thread, anchored=None) -> str:
+    entries = refs.thread_refs(thread)
+    anchor = refs.anchor_of(thread)
+    if anchor and anchored is None:
+        # The caller may not see what the thread is about: not even its title.
+        hidden = f"{anchor['kind']}:{anchor['key']}"
+        entries = [e for e in entries if e.get("ref") != hidden]
+    entries = entries[-refs.PROMPT_REFS :]
     if not entries:
         return ""
     lines = ["References in this conversation:"]
@@ -87,14 +101,16 @@ def build(
 ) -> str:
     from . import memory
 
+    anchored = refs.resolve_anchor(caller, thread)
     sections = [
         BASE_RULES,
         memory.profile_block(caller),
         memory.scope_block(caller),
+        _anchor_block(anchored),
         _skills_block(skill_list),
         _deferred_block(deferred),
         _environment_block(caller, unavailable),
-        _refs_block(thread),
+        _refs_block(thread, anchored),
         f"Earlier in this conversation (summary):\n{summary}" if summary else "",
     ]
     return "\n\n".join(s for s in sections if s)

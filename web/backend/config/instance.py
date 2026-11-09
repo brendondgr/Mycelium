@@ -558,6 +558,12 @@ def read_file(path: Path | None) -> dict[str, Any]:
         raise ConfigError(f"{path.name} is not valid TOML: {exc}") from exc
 
 
+# Old names that give way to an explicit mycelium.toml value. .env.example
+# shipped RERANK_METHOD=typesafe to every deployment, so its presence says
+# nothing about what the operator chose; a [decision] backend in the file does.
+_LEGACY_BELOW_FILE = frozenset({"decision.backend"})
+
+
 def _legacy_env(environ: Mapping[str, str]) -> dict[str, tuple[str, str]]:
     """Old env names that still mean something, as {key: (raw, env_name)}.
 
@@ -640,7 +646,7 @@ def resolve(
         if setting.env and raw_env.strip() != "":
             value = _coerce(setting, raw_env, setting.env)
             source = f"env:{setting.env}"
-        elif key in legacy:
+        elif key in legacy and not (key in _LEGACY_BELOW_FILE and key in raw_file):
             raw, name = legacy[key]
             value, source = _coerce(setting, raw, name), f"env:{name}"
         values[key] = value

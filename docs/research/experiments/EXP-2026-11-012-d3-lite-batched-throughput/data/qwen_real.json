@@ -1,0 +1,34 @@
+{
+ "levels": {
+  "1": {
+   "failures": 0,
+   "latency_ms_p50": 583.2,
+   "latency_ms_p95": 786.7,
+   "pairs": 165,
+   "pairs_per_s": 1.799,
+   "wall_s": 91.718
+  },
+  "4": {
+   "failures": 0,
+   "latency_ms_p50": 2709.7,
+   "latency_ms_p95": 3643.7,
+   "pairs": 165,
+   "pairs_per_s": 1.495,
+   "wall_s": 110.386
+  },
+  "8": {
+   "failures": 0,
+   "latency_ms_p50": 4959.9,
+   "latency_ms_p95": 7954.0,
+   "pairs": 165,
+   "pairs_per_s": 1.594,
+   "wall_s": 103.488
+  }
+ },
+ "meta": {
+  "model": "openai:qwen3-4b-q4_k_m",
+  "pairs": 165,
+  "protocol": "openai",
+  "url": "http://127.0.0.1:5180"
+ }
+}

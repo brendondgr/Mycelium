@@ -216,9 +216,10 @@ def _ref(description):
     return {"type": "string", "description": description, "x-ref": "file"}
 
 
-def _fn(name, summary, description, params=None, required=()):
+def _fn(name, activity, summary, description, params=None, required=()):
     return AgentFunction(
         name=name,
+        activity=activity,
         summary=summary,
         description=description,
         parameters={
@@ -238,12 +239,14 @@ def _fn(name, summary, description, params=None, required=()):
 FUNCTIONS = (
     _fn(
         "files_list",
+        "Looking at the stored files",
         "Files stored in this conversation's space.",
         "List the files stored for this conversation's scope (a project's files in a "
         "project thread; your own uploads in a personal one).",
     ),
     _fn(
         "files_info",
+        "Looking at {file}",
         "One stored file: type, pages, status.",
         "Name, type, size, pages and extraction status of one stored file.",
         {"file": _ref("#n or file:<uuid>")},
@@ -251,6 +254,7 @@ FUNCTIONS = (
     ),
     _fn(
         "files_read",
+        "Reading {file}",
         "Read a stored file by page or line range, line-numbered.",
         "Read part of a stored file's text, line-numbered so you can cite #n:line or "
         "#n p.N. Pass page for a PDF page, or offset/limit for lines.",
@@ -264,6 +268,7 @@ FUNCTIONS = (
     ),
     _fn(
         "files_search",
+        "Searching {file} for “{query}”",
         "Find passages in a stored file.",
         "Keyword search inside one stored file. Returns the best passages with page "
         "and line numbers to cite.",

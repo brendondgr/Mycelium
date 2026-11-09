@@ -30,7 +30,7 @@ from . import (
     verify,
 )
 from .caller import Caller
-from .llmcall import NoModel, call, default_port
+from .llmcall import NoModel, call, default_port, model_info
 from .models import AgentQueuedMessage, AgentThread
 
 logger = logging.getLogger(__name__)
@@ -198,6 +198,9 @@ def _after_turn(caller, thread, port) -> None:
 def _turn(caller: Caller, thread: AgentThread, port) -> str:
     from . import recall
 
+    #: Which model answered, on every assistant event (S3).
+    info = model_info()
+    model = {"model": info} if info else {}
     max_steps = int(config.get("max_steps"))
     window = compaction.window()
     steps = 0
@@ -294,7 +297,9 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             store.append(thread, "thinking", {"text": reply.thinking})
         if reply.finish == "cancelled":
             if reply.text:
-                store.append(thread, "assistant", {"text": reply.text, "partial": True})
+                store.append(
+                    thread, "assistant", {"text": reply.text, "partial": True, **model}
+                )
             store.append(thread, "note", {"text": "Stopped."})
             return AgentThread.State.IDLE
 
@@ -322,7 +327,9 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             missing = verify.unmatched(thread, reply.text)
             if missing and not repaired:
                 ev = store.append(
-                    thread, "assistant", {"text": reply.text, "repairs": reply.repairs}
+                    thread,
+                    "assistant",
+                    {"text": reply.text, "repairs": reply.repairs, **model},
                 )
                 store.append(
                     thread,
@@ -351,6 +358,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                     "repairs": reply.repairs,
                     "final": True,
                     **({"removed": missing} if missing else {}),
+                    **model,
                 },
             )
             store.append(
@@ -388,6 +396,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                     {"id": c["call_id"], "name": c["name"], "arguments": c["arguments"]}
                     for c in calls
                 ],
+                **model,
             },
         )
         for c in calls:

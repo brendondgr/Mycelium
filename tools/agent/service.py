@@ -75,20 +75,56 @@ def scope_from(user, kind: str | None, ref: str | None) -> Scope:
     return Scope(kind, obj)
 
 
+def _anchor(value) -> dict:
+    anchor = refs.parse_anchor(value)
+    if anchor is None:
+        raise ServiceError(
+            "bad_anchor",
+            "That is not something a conversation can be about.",
+            'Send {"kind": "item", "key": "<id>"} or "item:<id>".',
+        )
+    return anchor
+
+
 def create_thread(
-    user, *, scope: Scope, surface: str = "web", title: str = ""
+    user, *, scope: Scope, surface: str = "web", title: str = "", anchor=None
 ) -> AgentThread:
+    """A new thread. With ``anchor`` (``{"kind", "key"}`` or ``"kind:key"``)
+    the conversation is about that object for good: it is reference ``#1``
+    and every turn resolves it again for whoever is asking (S2). The creator
+    must be able to see it."""
     caller = Caller(user=user, surface=surface, scope=scope)
     _gate(caller)
+    info = None
+    if anchor:
+        anchor = _anchor(anchor)
+        info = refs.resolve(caller, f"{anchor['kind']}:{anchor['key']}")
+        if info is None:
+            raise ServiceError(
+                "anchor_not_visible",
+                "You can't open a conversation about that.",
+                status=404,
+            )
+        # Stored as the resolver names it, so #1 and the list filter agree.
+        anchor = {"kind": info.kind, "key": info.key}
     fields = {
         "lab": "scope_lab",
         "department": "scope_department",
         "project": "scope_project",
     }
     kwargs = {fields[scope.kind]: scope.obj} if scope.kind in fields else {}
-    return AgentThread.objects.create(
-        user=user, scope_kind=scope.kind, surface=surface, title=title[:200], **kwargs
-    )
+    with transaction.atomic():
+        thread = AgentThread.objects.create(
+            user=user,
+            scope_kind=scope.kind,
+            surface=surface,
+            title=title[:200],
+            settings={"anchor": anchor} if info is not None else {},
+            **kwargs,
+        )
+        if info is not None:
+            refs.number(thread, info)  # the first reference: #1
+    return thread
 
 
 def get_thread(user, thread_id) -> AgentThread:
@@ -101,22 +137,36 @@ def get_thread(user, thread_id) -> AgentThread:
         raise ServiceError("not_found", "No such conversation.", status=404) from None
 
 
-def list_threads(user, *, q: str = "", archived: bool = False, limit: int = 50):
+def list_threads(
+    user, *, q: str = "", archived: bool = False, anchor=None, limit: int = 50
+):
+    """The person's threads, most recent first. ``anchor`` (``"kind:key"`` or
+    a dict) keeps only the threads about that object."""
     from django.db.models import Q
 
     rows = AgentThread.objects.filter(user=user, archived=archived)
+    if anchor:
+        a = _anchor(anchor)
+        rows = rows.filter(
+            settings__anchor__kind=a["kind"], settings__anchor__key=a["key"]
+        )
     if q:
         rows = rows.filter(
             Q(title__icontains=q)
             | Q(purpose__icontains=q)
             | Q(digest__text__icontains=q)
         ).distinct()
-    return list(rows.order_by("-last_activity_at")[:limit])
+    return list(rows.order_by("-pinned", "-last_activity_at")[:limit])
 
 
-def update_thread(user, thread_id, *, title=None, archived=None) -> AgentThread:
+def update_thread(
+    user, thread_id, *, title=None, archived=None, pinned=None
+) -> AgentThread:
     thread = get_thread(user, thread_id)
     fields = []
+    if pinned is not None:
+        thread.pinned = _truthy(pinned)
+        fields.append("pinned")
     if title is not None:
         thread.title = str(title)[:200]
         fields.append("title")
@@ -126,6 +176,12 @@ def update_thread(user, thread_id, *, title=None, archived=None) -> AgentThread:
     if fields:
         thread.save(update_fields=[*fields, "updated_at"])
     return thread
+
+
+def _truthy(value) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
 
 
 def delete_thread(user, thread_id) -> None:
@@ -323,10 +379,67 @@ def start_turn(thread: AgentThread) -> None:
     AgentThread.objects.filter(pk=thread.pk).update(settings=data)
 
 
-def subscribe(caller: Caller, thread: AgentThread, *, after: int = 0, **kw):
+def check_view(caller: Caller, view: str) -> str:
+    """``activity`` (default) for everyone; ``raw`` — thinking, arguments,
+    results — only for the CLI and staff."""
+    from .activity import VIEWS
+
+    if view not in VIEWS:
+        raise ServiceError(
+            "bad_view", f"Unknown view {view!r}.", f"Use one of {', '.join(VIEWS)}."
+        )
+    if view == "raw" and not (
+        caller.surface == "cli" or getattr(caller.user, "is_staff", False)
+    ):
+        raise ServiceError(
+            "raw_view_staff_only",
+            "The raw view is for staff.",
+            "Leave out view, or use view=activity.",
+            status=403,
+        )
+    return view
+
+
+def subscribe(
+    caller: Caller,
+    thread: AgentThread,
+    *,
+    after: int = 0,
+    view: str = "activity",
+    **kw,
+):
     if thread.user_id != caller.user.pk:
         raise ServiceError("not_found", "No such conversation.", status=404)
-    return stream.follow(thread, after=after, **kw)
+    return stream.follow(thread, after=after, view=check_view(caller, view), **kw)
+
+
+def thread_events(
+    caller: Caller, thread: AgentThread, *, after: int = 0, view: str = "activity"
+) -> list[dict]:
+    """Stored events after ``after`` in the requested view, each as
+    ``{seq, type, ts, payload}``."""
+    from .activity import Projector
+
+    if thread.user_id != caller.user.pk:
+        raise ServiceError("not_found", "No such conversation.", status=404)
+    view = check_view(caller, view)
+    projector = Projector(thread) if view == "activity" else None
+    out = []
+    for event in store.events(thread, after=after):
+        message = stream.event_message(event)
+        if projector is not None:
+            message = projector.project(message)
+            if message is None:
+                continue
+        out.append(
+            {
+                "seq": message["id"],
+                "type": message["type"],
+                "ts": message["ts"],
+                "payload": message.get("payload", {}),
+            }
+        )
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -551,11 +664,12 @@ def catalog_view(caller: Caller) -> list[dict]:
 
 
 def status() -> dict:
-    from .llmcall import model_name
+    """``{"model": {name, label, location}}``, or ``model: None`` with why."""
+    from .llmcall import model_info
 
-    name = model_name()
-    if name:
-        return {"model": name}
+    info = model_info()
+    if info:
+        return {"model": info}
     return {
         "model": None,
         "code": "no_model",
@@ -572,6 +686,7 @@ __all__ = [
     "answer",
     "cancel",
     "catalog_view",
+    "check_view",
     "create_thread",
     "delete_thread",
     "export",
@@ -586,5 +701,6 @@ __all__ = [
     "set_preferences",
     "status",
     "subscribe",
+    "thread_events",
     "update_thread",
 ]

@@ -136,6 +136,42 @@ def search(caller, q: str, *, kinds=None, limit: int = 10) -> list[RefInfo]:
     return out[:limit]
 
 
+def parse_anchor(value) -> dict | None:
+    """``{"kind", "key"}`` from ``{"kind": .., "key": ..}`` or ``"kind:key"``,
+    with the kind made canonical; ``None`` when it is not a registered kind."""
+    if isinstance(value, dict):
+        kind, key = str(value.get("kind") or ""), str(value.get("key") or "")
+    else:
+        parts = split(str(value or ""))
+        if parts is None:
+            return None
+        kind, key = parts
+    kind, key = canonical_kind(kind.strip()), key.strip()
+    if not key or kind not in registry().refs:
+        return None
+    return {"kind": kind, "key": key}
+
+
+def anchor_of(thread) -> dict | None:
+    """What the thread is about (S2), set when it was created; or ``None``."""
+    return (thread.settings or {}).get("anchor") or None
+
+
+def resolve_anchor(caller, thread) -> tuple[int, RefInfo] | None:
+    """The anchor, resolved for this caller and audience, with its thread
+    number (``#1`` for a thread created with it). ``None`` when there is no
+    anchor or this caller may not see it here: the turn runs without it."""
+    from tools._framework.agentspec import width_rank
+
+    anchor = anchor_of(thread)
+    if not anchor:
+        return None
+    info = resolve(caller, f"{anchor['kind']}:{anchor['key']}")
+    if info is None or width_rank(info.output) < width_rank(caller.audience.width):
+        return None
+    return number(thread, info), info
+
+
 def card(n: int, info: RefInfo) -> str:
     """The short card the model sees for a tagged or surfaced object."""
     lines = [f"#{n} {info.kind}: {info.title}"]
