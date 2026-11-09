@@ -105,6 +105,8 @@ def create_thread(
                 "You can't open a conversation about that.",
                 status=404,
             )
+        # Stored as the resolver names it, so #1 and the list filter agree.
+        anchor = {"kind": info.kind, "key": info.key}
     fields = {
         "lab": "scope_lab",
         "department": "scope_department",
