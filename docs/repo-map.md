@@ -398,6 +398,9 @@ A task index across the three tools; each tool also has its own section below.
 | The paper files on disk (`data/fulltext/files/`) | `tools/fulltext/store.py` |
 | Running requests (store-first, fetch, store, audit, event); the Celery task | `tools/fulltext/jobs.py`, `tools/fulltext/tasks.py` |
 | Worker-shared switch-offs and throttles (Redis db 7) | `tools/fulltext/state.py` |
+| Asking for papers, checking whether they are within reach (write door) | `tools/fulltext/service.py` (`check`, `request`, `retry`, `sources`) |
+| Reading a stored paper (read door) | `tools/fulltext/read.py` (`document`, `full_text`, `availability`, `request_state`) |
+| Getting papers from the shell | `manage.py fulltext_get` — `tools/fulltext/management/commands/fulltext_get.py` |
 
 ## Host runners & operations
 

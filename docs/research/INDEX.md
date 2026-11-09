@@ -53,11 +53,12 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-001` | 2026-11-05 | Precision of the department-level call detector | complete | precision_overall_v1 0.8333 | C-028 | [folder](experiments/EXP-2026-11-001-dept-level-precision/RESULTS.md) |
 | `EXP-2026-11-002` | 2026-11-05 | Announcement measures baseline and department lab-fit floor | complete | lab_fit_precision_at_floor 0.6667 | C-029 | [folder](experiments/EXP-2026-11-002-announcement-baseline/RESULTS.md) |
 | `EXP-2026-11-003` | 2026-11-08 | Tools refactor: ranking parity before and after the code moves | complete | run_files_identical 1.0000 | — | [folder](experiments/EXP-2026-11-003-tools-refactor-parity/RESULTS.md) |
+| `EXP-2026-11-004` | 2026-11-08 | Full-text coverage of the paper corpus from free sources | complete | full_text_rate 0.5400 (n=200) | — | [folder](experiments/EXP-2026-11-004-fulltext-coverage/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 40 |
+| complete | 41 |
 | planned | 4 |
-| **total** | **44** |
+| **total** | **45** |

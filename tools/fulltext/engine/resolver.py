@@ -644,12 +644,27 @@ def parse_pubmed_xml(xml_text: str) -> list[dict]:
     root = ET.fromstring(xml_text)
     records = []
     for article in root.iter("PubmedArticle"):
-        pmid = article.findtext(".//PMID", default="")
-        doi = ""
-        for aid in article.findall(".//ArticleId"):
-            if aid.get("IdType") == "doi":
-                doi = aid.text or ""
-                break
+        pmid = article.findtext("MedlineCitation/PMID", default="")
+        # Only the article's own ids. PubMedData also carries a ReferenceList
+        # whose citations have ArticleIds of their own; a ".//ArticleId" search
+        # would hand an article without a DOI the DOI of a paper it cites.
+        doi = next(
+            (
+                aid.text or ""
+                for aid in article.findall("PubmedData/ArticleIdList/ArticleId")
+                if aid.get("IdType") == "doi"
+            ),
+            "",
+        )
+        if not doi:
+            doi = next(
+                (
+                    el.text or ""
+                    for el in article.findall("MedlineCitation/Article/ELocationID")
+                    if el.get("EIdType") == "doi"
+                ),
+                "",
+            )
         authors = []
         for author in article.findall(".//AuthorList/Author"):
             last, fore = author.findtext("LastName"), author.findtext("ForeName")

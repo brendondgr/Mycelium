@@ -121,3 +121,45 @@ def test_unpaywall_needs_a_real_contact_address(tmp_path):
     }
     assert not live["unpaywall"]["available"]
     assert live["unpaywall"]["reason"] == "missing CONTACT_EMAIL"
+
+
+PUBMED_XML = """<PubmedArticleSet><PubmedArticle>
+  <MedlineCitation><PMID>42389617</PMID><Article>
+    <ArticleTitle>Telerehabilitation and reading fluency</ArticleTitle>
+    {elocation}
+  </Article></MedlineCitation>
+  <PubmedData>
+    <ArticleIdList>
+      <ArticleId IdType="pubmed">42389617</ArticleId>
+      <ArticleId IdType="pmc">PMC13321850</ArticleId>
+      {own_doi}
+    </ArticleIdList>
+    <ReferenceList><Reference><Citation>A cited paper.</Citation>
+      <ArticleIdList>
+        <ArticleId IdType="doi">10.1016/j.bandl.2004.10.010</ArticleId>
+        <ArticleId IdType="pubmed">15555555</ArticleId>
+      </ArticleIdList></Reference></ReferenceList>
+  </PubmedData>
+</PubmedArticle></PubmedArticleSet>"""
+
+
+def test_pubmed_parsing_never_takes_a_cited_papers_doi():
+    from tools.fulltext.engine.resolver import parse_pubmed_xml
+
+    own = PUBMED_XML.format(
+        elocation="",
+        own_doi='<ArticleId IdType="doi">10.63144/ijt.2026.6735</ArticleId>',
+    )
+    [rec] = parse_pubmed_xml(own)
+    assert (rec["pmid"], rec["doi"]) == ("42389617", "10.63144/ijt.2026.6735")
+    # No DOI of its own: none, not the reference's.
+    [rec] = parse_pubmed_xml(PUBMED_XML.format(elocation="", own_doi=""))
+    assert rec["doi"] == ""
+    # ...unless the article carries it as an ELocationID.
+    [rec] = parse_pubmed_xml(
+        PUBMED_XML.format(
+            elocation='<ELocationID EIdType="doi">10.63144/x.1</ELocationID>',
+            own_doi="",
+        )
+    )
+    assert rec["doi"] == "10.63144/x.1"

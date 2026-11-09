@@ -99,8 +99,34 @@ stored paper (`events.py`).
 
 ## Doors
 
-- `read.py` — nothing yet.
-- `service.py` — nothing yet.
+The tool's whole interface in this pass (no HTTP API yet; one comes later,
+inside this folder, calling these).
+
+`service.py` — make it do something:
+
+| Call | Does |
+|---|---|
+| `check(identifiers)` | per identifier: `stored`, `open` (PMC deposit, arXiv, or Unpaywall knows an open copy), `subscription` (the owning publisher's key is live), `unavailable`, `unknown`, or the resolver's stop status (`not_found`, …); plus the sources a request would try. Fetches no full text |
+| `request(identifiers, requester=None, content_item=None, background=False)` | fetch and store; inline, or queued on a Celery worker |
+| `retry(requests, only_retryable=True, background=False)` | run transient failures (quota, 5xx) again |
+| `sources()` | each source, whether it is on here, and why not |
+
+`read.py` — read what is stored (plain dataclasses, never querysets; takes a
+`ContentItem` or an `ids` dict):
+
+| Call | Returns |
+|---|---|
+| `document(item)` / `document_by_id(id)` | `Document`: ids, source, `licensed`, paths to the markdown and the original |
+| `full_text(item)` | the stored markdown (metadata, abstract, full text), or `None` |
+| `has_full_text(item)` | `bool` |
+| `availability(item)` | `stored`, else what `service.check` says |
+| `request_state(id)` | where one request stands |
+
+```bash
+manage.py fulltext_get 10.1371/journal.pone.0185809 arXiv:1706.03762
+manage.py fulltext_get --check-only 10.1016/j.watres.2020.116073
+manage.py fulltext_get --background 32723588   # needs a running Celery worker
+```
 
 ## Tests
 

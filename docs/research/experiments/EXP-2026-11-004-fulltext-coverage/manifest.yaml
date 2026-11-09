@@ -1,0 +1,99 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-004
+slug: fulltext-coverage
+title: Full-text coverage of the paper corpus from free sources
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-11-08
+date_completed: 2026-11-08
+authors: [Brendon (with Claude, Opus 5.5)]
+
+purpose: >
+  First measurement of the new full-text tool (tools/fulltext): what fraction of
+  the live corpus's papers it retrieves as full text on this instance as
+  configured (no publisher keys, no contact email), and from which sources.
+  Supports no paper claim; it sizes the tool for the stance and hypothesis
+  engines that will read full papers.
+
+hypothesis: >
+  Between 25% and 45% of sampled papers come back as full text, with PubMed
+  Central the largest single source (stated in PROTOCOL.md before the run).
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 19e5355
+  branch: main
+  entrypoint: "DATABASE_URL=postgres://mycelium:mycelium@localhost:11450/mycelium uv run --no-sync --directory web/backend python ../../docs/research/experiments/EXP-2026-11-004-fulltext-coverage/run.py --sample 200 --out ../../docs/research/experiments/EXP-2026-11-004-fulltext-coverage/data; python3 docs/research/experiments/EXP-2026-11-004-fulltext-coverage/check_ids.py"
+  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  path: tools/fulltext/config.py
+  hash: null
+data:
+  name: Mycelium live paper corpus (content_contentitem, type paper; 35,209 papers)
+  version: live dev database on 2026-11-08 (not snapshotted)
+  split: dev
+  n_examples: 200
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: null
+compute:
+  hardware: "AMD RYZEN AI MAX+ 395, 32 threads, 121 GB RAM, no GPU used; network-bound"
+  wall_clock_hours: 0.31
+  estimated_cost_usd: 0
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+# llm:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: full_text_rate
+  values:
+    full_text_rate: {mean: 0.54, n: 200}
+    full_text_rate_resolvable: {mean: 0.639, n: 169}
+    full_text_by_source.openalex: {mean: 0.3, n: 200}
+    full_text_by_source.pmc: {mean: 0.235, n: 200}
+    full_text_by_source.arxiv: {mean: 0.005, n: 200}
+    status.full_text: 108
+    status.abstract_only: 61
+    status.identifier_mismatch: 28
+    status.invalid_identifier: 3
+    full_text_rate_with_pmcid: {mean: 0.64, n: 75}
+    full_text_rate_without_pmcid: {mean: 0.48, n: 125}
+    median_chars: 38905
+    wall_clock_seconds: 1119.7
+    corpus_stored_doi_not_own: {mean: 0.1848, n: 92}
+    corpus_stored_pmcid_not_own: {mean: 0.2826, n: 92}
+baselines_compared: []
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: []

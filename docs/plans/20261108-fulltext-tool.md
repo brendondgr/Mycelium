@@ -1,6 +1,6 @@
 # Full-text retrieval tool (`tools/fulltext`)
 
-Revised 2026-11-08. Phases 1–3 shipped; Phases 4–5 to go.
+Revised 2026-11-08. Phases 1–4 shipped; Phase 5 to go.
 
 ## Objective
 
