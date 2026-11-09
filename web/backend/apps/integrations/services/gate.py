@@ -127,6 +127,10 @@ _ACTIONS: dict[str, _Action] = {
     # Stopping someone else's answer, and the channel and guest switches, speak
     # for the team: the same right as `/setup`.
     "chat_manage": _Action(lab_permission="manage", lab_feature="bot_server"),
+    # The person's own switch, and blanking their own questions: personal, a
+    # linked account is enough (a guest forgets through authorize_guest).
+    "chat_self": _Action(bucket="chat"),
+    "chat_forget": _Action(bucket="chat"),
 }
 
 _DEFAULT_ACTION = _Action()

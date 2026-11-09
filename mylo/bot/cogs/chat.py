@@ -142,6 +142,47 @@ class ChatCog(commands.Cog, name="Chat"):
         handle = await self.bridge.set_status(handle, status.id) or handle
         await self.deliver(handle, status, message.channel, live=True)
 
+    async def ask_slash(self, interaction, question: str, *, private: bool) -> None:
+        """``/mylo ask``: the same as a mention. ``private`` asks in the
+        person's own DM conversation and answers only them (ephemeral)."""
+        try:
+            await interaction.response.defer(ephemeral=private, thinking=True)
+            if private and interaction.guild_id is not None:
+                dm = interaction.user.dm_channel or await interaction.user.create_dm()
+                ids = {
+                    "guild_id": "",
+                    "channel_id": str(dm.id),
+                    "thread_id": "",
+                    "parent_id": "",
+                }
+            else:
+                ids = chat.interaction_ids(interaction)
+            out = await self.bridge.ask(
+                discord_user_id=str(interaction.user.id),
+                name=getattr(interaction.user, "display_name", "")
+                or interaction.user.name,
+                message_id=str(interaction.id),
+                text=question,
+                **ids,
+            )
+            if "refusal" in out:
+                await interaction.followup.send(
+                    out["refusal"], ephemeral=True, allowed_mentions=_none()
+                )
+                return
+            handle = out["handle"]
+            status = await interaction.followup.send(
+                render.QUEUED if handle.queued else render.STARTING,
+                ephemeral=private,
+                wait=True,
+                allowed_mentions=_none(),
+                view=stop_view(handle.turn_id),
+            )
+            handle = await self.bridge.set_status(handle, status.id) or handle
+            await self.deliver(handle, status, interaction.channel, live=True)
+        except Exception:  # noqa: BLE001
+            log.exception("could not answer /mylo ask")
+
     async def _reply(self, message, content: str, *, view=None):
         """Reply to the question without pinging anyone; ``None`` when Mylo
         cannot post here (nothing is sent, and it is logged)."""

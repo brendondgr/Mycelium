@@ -384,9 +384,20 @@ class EditAndDeleteTests(unittest.TestCase):
         fake = FakeListening()
         cog = _cog(fake)
         payload = SimpleNamespace(guild_id=900, channel_id=1, message_id=555)
-        with mock.patch.object(listen_module, "listening", fake):
+        deleted = []
+
+        async def question_deleted(message_id):
+            deleted.append(message_id)
+            return True
+
+        fake_chat = SimpleNamespace(question_deleted=question_deleted)
+        with mock.patch.object(listen_module, "listening", fake), mock.patch.object(
+            listen_module, "chat", fake_chat
+        ):
             _run(cog.on_raw_message_delete(payload))
         self.assertEqual(fake.deletes, [("900", "555", False)])
+        # a question to Mylo leaves the chat queue and is blanked too
+        self.assertEqual(deleted, ["555"])
 
     def test_clearing_a_channel_deletes_every_message_in_it(self) -> None:
         fake = FakeListening()

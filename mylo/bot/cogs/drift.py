@@ -24,7 +24,7 @@ import logging
 import discord
 from discord.ext import commands
 
-from ... import linking
+from ... import chat, linking
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +40,10 @@ class DriftCog(commands.Cog, name="Drift"):
             await linking.guild_removed(str(guild.id))
         except Exception:  # noqa: BLE001 — a listener must never kill the gateway
             log.exception("could not record guild removal for %s", guild.id)
+        try:
+            await chat.guild_left(str(guild.id))  # close Mylo chat's links there
+        except Exception:  # noqa: BLE001
+            log.exception("could not close chat links for %s", guild.id)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(
@@ -70,6 +74,11 @@ class DriftCog(commands.Cog, name="Drift"):
             await linking.thread_deleted(str(payload.thread_id))
         except Exception:  # noqa: BLE001
             log.exception("could not record thread deletion for %s", payload.thread_id)
+        try:
+            # A deleted Discord thread takes its Mylo conversation with it.
+            await chat.place_deleted(str(payload.thread_id))
+        except Exception:  # noqa: BLE001
+            log.exception("could not delete the chat for %s", payload.thread_id)
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -273,7 +273,8 @@ class ListenCog(commands.Cog, name="Listening"):
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
-        """A deletion removes the evidence. Not hidden — removed."""
+        """A deletion removes the evidence. Not hidden — removed. A deleted
+        question to Mylo also leaves the chat queue and is blanked (plan D)."""
         try:
             await listening.message_deleted(
                 str(payload.guild_id or payload.channel_id),
@@ -282,6 +283,10 @@ class ListenCog(commands.Cog, name="Listening"):
             )
         except Exception:  # noqa: BLE001
             log.exception("could not forward a deletion")
+        try:
+            await chat.question_deleted(str(payload.message_id))
+        except Exception:  # noqa: BLE001
+            log.exception("could not forget a deleted question")
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(

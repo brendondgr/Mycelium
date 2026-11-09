@@ -246,6 +246,69 @@ async def forget(discord_user_id: str, guild_id: str, place_id: str) -> int:
     )
 
 
+async def forget_command(discord_user_id: str, guild_id: str, place_id: str) -> str:
+    return (
+        await mycelium.db(
+            _call,
+            "forget_command",
+            discord_user_id=str(discord_user_id),
+            guild_id=str(guild_id),
+            place_id=str(place_id),
+        )
+        or AGENT_OFF
+    )
+
+
+async def set_chat(discord_user_id: str, *, on: bool) -> str:
+    return (
+        await mycelium.db(_call, "set_chat", discord_user_id=str(discord_user_id), on=on)
+        or AGENT_OFF
+    )
+
+
+async def set_channel(discord_user_id: str, ids: dict, *, on: bool) -> str:
+    return (
+        await mycelium.db(
+            _call, "set_channel", discord_user_id=str(discord_user_id), on=on, **ids
+        )
+        or AGENT_OFF
+    )
+
+
+async def set_guests(discord_user_id: str, ids: dict, *, level: str) -> str:
+    return (
+        await mycelium.db(
+            _call,
+            "set_guests",
+            discord_user_id=str(discord_user_id),
+            level=level,
+            **ids,
+        )
+        or AGENT_OFF
+    )
+
+
+def interaction_ids(interaction) -> dict:
+    """``guild_id, channel_id, thread_id, parent_id`` of a slash command."""
+    import discord
+
+    channel = interaction.channel
+    guild_id = str(interaction.guild_id or "")
+    if isinstance(channel, discord.Thread):
+        return {
+            "guild_id": guild_id,
+            "channel_id": str(channel.id),
+            "thread_id": str(channel.id),
+            "parent_id": str(channel.parent_id or ""),
+        }
+    return {
+        "guild_id": guild_id,
+        "channel_id": str(interaction.channel_id or ""),
+        "thread_id": "",
+        "parent_id": "",
+    }
+
+
 async def question_deleted(message_id: str) -> bool:
     return bool(await mycelium.db(_call, "question_deleted", str(message_id)))
 

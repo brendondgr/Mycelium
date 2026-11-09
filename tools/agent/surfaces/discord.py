@@ -648,6 +648,36 @@ def _blank(event: AgentEvent) -> None:
     AgentEvent.objects.filter(pk=event.pk).update(payload=payload)
 
 
+def forget_command(*, discord_user_id, guild_id, place_id) -> str:
+    """``/mylo forget``, through the gate (audited), as a sentence."""
+    from apps.integrations.services import gate, resolve
+
+    discord_user_id = str(discord_user_id)
+    if guild_id and resolve.resolve_user(discord_user_id) is None:
+        place = resolve.place_for(str(guild_id), str(place_id))
+        binding = place.binding or place.any_binding
+        result = gate.authorize_guest(
+            discord_user_id=discord_user_id,
+            action="chat_forget",
+            guild_id=str(guild_id),
+            binding_id=getattr(binding, "pk", None),
+        )
+    else:
+        result = gate.authorize(discord_user_id=discord_user_id, action="chat_forget")
+    if not result:
+        return result.message
+    n = forget(discord_user_id=discord_user_id, guild_id=guild_id, place_id=place_id)
+    if not guild_id:
+        return (
+            "Done: our conversation here is deleted."
+            if n
+            else "There was nothing to forget here."
+        )
+    if not n:
+        return "You haven't asked me anything here that I still hold."
+    return f"Done: I've blanked {n} of your questions here. Others' stay."
+
+
 def forget(*, discord_user_id, guild_id, place_id) -> int:
     """``/mylo forget``: in a DM the conversation is deleted; elsewhere the
     caller's own questions in this place are blanked (others' stay)."""
@@ -674,6 +704,110 @@ def forget(*, discord_user_id, guild_id, place_id) -> int:
                 _blank(event)
                 count += 1
     return count
+
+
+# --------------------------------------------------------------------------- #
+# Switches (/mylo chat …): the gate first, then the agent's own policy door
+# --------------------------------------------------------------------------- #
+
+GUEST_WORDS = {
+    "full": "everything a lab member would be told here, people included",
+    "no_people": "the same without looking up people",
+    "public": "the thread's opening post and the public corpus only",
+    "off": "nothing: only linked accounts may ask",
+}
+
+
+def set_chat(*, discord_user_id, on: bool) -> str:
+    """``/mylo chat on|off``: the person's own switch (``discord_allowed``)."""
+    from apps.integrations.services import gate
+
+    result = gate.authorize(discord_user_id=str(discord_user_id), action="chat_self")
+    if not result:
+        return result.message
+    service.set_preferences(result.user, discord_allowed=bool(on))
+    return (
+        "Mylo chat in Discord is **on** for you."
+        if on
+        else "Mylo chat in Discord is **off** for you. I won't answer your "
+        "questions here until you turn it back on."
+    )
+
+
+def _manage(discord_user_id, guild_id, channel_id, thread_id, parent_id):
+    """``(user, kind, org, place)`` for a manager of this place, or a
+    sentence."""
+    from apps.integrations.services import gate, resolve
+
+    if not guild_id:
+        return "Run this in a server channel, not in a DM."
+    place = resolve.place_for(str(guild_id), str(channel_id), thread_id, parent_id)
+    if place.binding is None:
+        if place.kind == resolve.PLACE_UNBOUND:
+            return UNBOUND
+        return (
+            "I can't tell which lab or department this channel belongs to. "
+            "Choose it as one of the binding's channels in `/setup` first."
+        )
+    result = gate.authorize(
+        discord_user_id=str(discord_user_id),
+        action="chat_manage",
+        guild_id=str(guild_id),
+        binding_id=place.binding.pk,
+    )
+    if not result:
+        return result.message
+    if place.binding.lab_id:
+        return result.user, "lab", place.binding.lab, place
+    return result.user, "department", place.binding.department, place
+
+
+def set_channel(
+    *, discord_user_id, guild_id, channel_id, thread_id="", parent_id="", on: bool
+) -> str:
+    """``/mylo chat here on|off``: a manager turns chat on or off for this
+    channel (in a thread: its parent channel or forum)."""
+    got = _manage(discord_user_id, guild_id, channel_id, thread_id, parent_id)
+    if isinstance(got, str):
+        return got
+    user, kind, org, _place = got
+    target = str(parent_id or channel_id) if thread_id else str(channel_id)
+    policy = service.get_org_policy(user, kind, org)
+    off = set(policy.discord_channels_off if policy else [])
+    if on:
+        off.discard(target)
+    else:
+        off.add(target)
+    service.set_org_policy(user, kind, org, discord_channels_off=sorted(off))
+    where = f"<#{int(target)}>" if target.isdigit() else "this channel"
+    return (
+        f"Mylo chat is **on** in {where}."
+        if on
+        else f"Mylo chat is **off** in {where}. People can still ask me in a DM."
+    )
+
+
+def set_guests(
+    *, discord_user_id, guild_id, channel_id, thread_id="", parent_id="", level: str
+) -> str:
+    """``/mylo chat guests …``: what people without an account are told here."""
+    got = _manage(discord_user_id, guild_id, channel_id, thread_id, parent_id)
+    if isinstance(got, str):
+        return got
+    user, kind, org, _place = got
+    level = str(level).replace("-", "_")
+    try:
+        service.set_org_policy(user, kind, org, discord_guests=level)
+    except service.ServiceError as err:
+        return err.detail
+    in_force = service.guest_level_in_force(kind, org)
+    line = f"Guests here now get {GUEST_WORDS.get(level, level)}."
+    if in_force != level:
+        line += (
+            f" This Mycelium allows at most **{in_force.replace('_', '-')}**, so "
+            f"that is what applies: {GUEST_WORDS.get(in_force, in_force)}."
+        )
+    return line
 
 
 def question_deleted(trigger_message_id) -> bool:
@@ -762,6 +896,10 @@ __all__ = [
     "finish",
     "follow",
     "forget",
+    "forget_command",
+    "set_channel",
+    "set_chat",
+    "set_guests",
     "ping_due",
     "place_deleted",
     "question_deleted",

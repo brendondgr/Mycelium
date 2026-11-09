@@ -416,3 +416,110 @@ def test_a_deleted_discord_thread_deletes_its_conversation(server):
     h = ask(server.member_id, thread="th-9", parent="general")
     assert surface.place_deleted("th-9") == 1
     assert not AgentThread.objects.filter(pk=h.thread_id).exists()
+
+
+# --------------------------------------------------------------------------- #
+# D4: commands and switches
+# --------------------------------------------------------------------------- #
+
+
+def _audited(action, outcome):
+    from apps.accounts.models import AuditEvent
+
+    return AuditEvent.objects.filter(
+        action=f"discord.command.{action}", metadata__outcome=outcome
+    ).count()
+
+
+def test_switch_commands_are_refused_by_the_gate_for_the_wrong_person(server):
+    ids = {"guild_id": GUILD, "channel_id": "general"}
+    # a member is not a manager
+    line = surface.set_channel(discord_user_id=server.member_id, on=False, **ids)
+    assert line == "You don't have access to that."
+    assert _audited("chat_manage", "forbidden") == 1
+    line = surface.set_guests(discord_user_id=server.member_id, level="off", **ids)
+    assert line == "You don't have access to that."
+    # nobody linked: the personal switch and forget need an account
+    assert "Connect Discord" in surface.set_chat(discord_user_id="5555", on=False)
+    assert _audited("chat_self", "not_linked") == 1
+    assert "Connect Discord" in surface.forget_command(
+        discord_user_id="5555", guild_id="", place_id="dm-5555"
+    )
+    assert _audited("chat_forget", "not_linked") == 1
+    # a manager is allowed, and that is audited too
+    assert "off" in surface.set_channel(
+        discord_user_id=server.admin_id, on=False, **ids
+    )
+    assert _audited("chat_manage", "allowed") == 1
+
+
+def test_a_channel_turned_off_refuses_with_the_dm_line(server):
+    surface.set_channel(
+        discord_user_id=server.admin_id, guild_id=GUILD, channel_id="general", on=False
+    )
+    r = ask(server.member_id, channel="general")
+    assert r.code == "channel_off" and "Ask in a DM instead." in r.message
+    assert ask(server.member_id, guild="", channel="dm-100")  # a DM still works
+    surface.set_channel(
+        discord_user_id=server.admin_id, guild_id=GUILD, channel_id="general", on=True
+    )
+    assert ask(server.member_id, channel="general")
+
+
+def test_a_channel_switch_in_a_thread_turns_off_its_parent(server):
+    surface.set_channel(
+        discord_user_id=server.admin_id,
+        guild_id=GUILD,
+        channel_id="th-3",
+        thread_id="th-3",
+        parent_id="forum-1",
+        on=False,
+    )
+    assert AgentOrgPolicy.objects.get(lab=server.lab).discord_channels_off == [
+        "forum-1"
+    ]
+    assert ask(server.member_id, thread="th-4", parent="forum-1").code == "channel_off"
+
+
+def test_chat_off_is_respected_on_the_next_question(server):
+    assert ask(server.member_id, channel="general")
+    assert "off" in surface.set_chat(discord_user_id=server.member_id, on=False)
+    assert ask(server.member_id, channel="general").code == "discord_off"
+    surface.set_chat(discord_user_id=server.member_id, on=True)
+    assert ask(server.member_id, channel="general")
+
+
+def test_the_guest_level_command_states_the_level_in_force(server, settings):
+    settings.AGENT_DISCORD_GUEST_LEVEL = "no_people"
+    line = surface.set_guests(
+        discord_user_id=server.admin_id,
+        guild_id=GUILD,
+        channel_id="general",
+        level="full",
+    )
+    assert "at most **no-people**" in line
+    assert AgentOrgPolicy.objects.get(lab=server.lab).discord_guests == "full"
+    surface.set_guests(
+        discord_user_id=server.admin_id,
+        guild_id=GUILD,
+        channel_id="general",
+        level="off",
+    )
+    assert ask("4242", channel="general").code == "guests_off"
+
+
+def test_forget_in_a_dm_deletes_the_conversation(server):
+    h = ask(server.member_id, guild="", channel="dm-100")
+    line = surface.forget_command(
+        discord_user_id=server.member_id, guild_id="", place_id="dm-100"
+    )
+    assert "deleted" in line
+    assert not AgentThread.objects.filter(pk=h.thread_id).exists()
+
+
+def test_a_guest_may_forget_their_own_questions(server):
+    ask("4242", thread="th-9", parent="general", text="guest question")
+    line = surface.forget_command(
+        discord_user_id="4242", guild_id=GUILD, place_id="th-9"
+    )
+    assert "blanked 1" in line
