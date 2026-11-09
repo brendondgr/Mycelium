@@ -450,27 +450,24 @@ const FELLOWSHIPS_CONFIG: OpportunityFeedConfig<FellowshipOpportunity> = {
   idPrefix: "fellowships",
   placeholder: "Search fellowships by title, field, or description…",
   icon: <SparkleIcon size={26} className="text-accent" />,
-  label: (f) =>
-    [AWARD_CLASS_LABELS[f.award_class] ?? "", f.deadline_type === "rolling" ? "Rolling" : ""]
-      .filter(Boolean)
-      .join(" · "),
-  facts: (f) =>
-    f.amount || f.stages.length ? (
-      <span className="ws-facts">
-        {f.amount ? (
-          <span className="ws-fact">
-            <BankIcon size={13} aria-hidden="true" /> {f.amount}
-          </span>
-        ) : null}
-        {f.stages.length ? <span className="ws-meta-text">{f.stages.slice(0, 3).join(" / ")}</span> : null}
-      </span>
-    ) : null,
-  cardExtra: (f) =>
-    f.tier ? (
-      <div className="flex">
-        <EligibilityBadge item={f} />
-      </div>
-    ) : null,
+  source: (f) => (
+    <>
+      <span className="ws-src">{AWARD_CLASS_LABELS[f.award_class] ?? "Fellowship"}</span>
+      {f.amount ? (
+        <span className="ws-money ws-dotsep">
+          <BankIcon size={13} aria-hidden="true" /> {f.amount}
+          {f.amount_note ? <span className="ws-meta-text"> {f.amount_note}</span> : null}
+        </span>
+      ) : null}
+    </>
+  ),
+  meta: (f) => {
+    const parts = [f.deadline_type === "rolling" ? "Rolling" : "", f.stages.slice(0, 3).join(" / ")].filter(Boolean);
+    return parts.length ? <span>{parts.join(" · ")}</span> : null;
+  },
+  flag: (f) => (f.tier ? <EligibilityBadge item={f} /> : null),
+  about: (f) => f.description,
+  aboutTitle: "About this award",
   text: (f) => [f.title, f.description, f.reason, f.fields.join(" "), f.stages.join(" "), f.eligibility.join(" ")].join(" "),
   facets: (items) => {
     const facets: Facet<FellowshipOpportunity>[] = [];
@@ -531,11 +528,6 @@ const FELLOWSHIPS_CONFIG: OpportunityFeedConfig<FellowshipOpportunity> = {
       {f.fields.length ? (
         <DetailSection title="Fields">
           <p>{f.fields.join(", ")}</p>
-        </DetailSection>
-      ) : null}
-      {f.description ? (
-        <DetailSection title="About this award">
-          <p>{f.description}</p>
         </DetailSection>
       ) : null}
       {f.contact_email ? (

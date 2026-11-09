@@ -283,18 +283,19 @@ const GRANTS_CONFIG: OpportunityFeedConfig<GrantOpportunity> = {
   idPrefix: "grants",
   placeholder: "Search grants by title, sponsor, or description…",
   icon: <BankIcon size={26} className="text-accent" />,
-  label: (g) => g.sponsor,
-  facts: (g) =>
-    g.amount || g.posted ? (
-      <span className="ws-facts">
-        {g.amount ? (
-          <span className="ws-fact">
-            <BankIcon size={13} aria-hidden="true" /> {g.amount}
-          </span>
-        ) : null}
-        {g.posted ? <span className="ws-meta-text">{postedLabel(g.posted)}</span> : null}
-      </span>
-    ) : null,
+  source: (g) => (
+    <>
+      {g.sponsor ? <span className="ws-src">{g.sponsor}</span> : null}
+      {g.amount ? (
+        <span className={`ws-money${g.sponsor ? " ws-dotsep" : ""}`}>
+          <BankIcon size={13} aria-hidden="true" /> {g.amount}
+        </span>
+      ) : null}
+    </>
+  ),
+  meta: (g) => (g.posted ? <span>{postedLabel(g.posted)}</span> : null),
+  about: (g) => g.description,
+  aboutTitle: "About this call",
   text: (g) => [g.title, g.description, g.reason, g.sponsor, g.matched_topics, g.opportunity_number].join(" "),
   facets: (grants) => {
     const sponsors = new Map<string, number>();
@@ -327,11 +328,6 @@ const GRANTS_CONFIG: OpportunityFeedConfig<GrantOpportunity> = {
       <DetailSection title="Team fit">
         <TeamFitLine contentId={g.content_id} fit={g.team_fit} title={g.title} forLab={forLab} />
       </DetailSection>
-      {g.description ? (
-        <DetailSection title="About this call">
-          <p>{g.description}</p>
-        </DetailSection>
-      ) : null}
       {g.loi_date || (g.original_deadline && g.original_deadline !== g.deadline_date) ? (
         <DetailSection title="Key dates">
           <div className="ws-meta-text">{grantDeadlineFootnote(g)}</div>
@@ -342,7 +338,7 @@ const GRANTS_CONFIG: OpportunityFeedConfig<GrantOpportunity> = {
   actionBar: (g) => {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    return { extraDeadlines: grantExtraRounds(g, today), deadlineFootnote: grantDeadlineFootnote(g) };
+    return { extraDeadlines: grantExtraRounds(g, today), footnote: grantDeadlineFootnote(g) };
   },
   primaryLink: "View call",
   emptyTitle: "Your grant matches are on their way",

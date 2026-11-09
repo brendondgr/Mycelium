@@ -12,10 +12,11 @@ import { DeadlinePill, FeedCard, ItemDetail, PageHead, matchInfo } from "@/compo
 import { ReaderLayout, groupByTheme, useReader } from "@/components/portal/feed/reader";
 import { FeedToolbar, useFeedControls, type Facet, type SortOption } from "@/components/portal/feed/toolbar";
 import { PageSkeleton } from "@/components/portal/skeleton";
+import { DeadlineMenu } from "@/components/portal/primitives/deadline-list";
 import {
-  CardActionBar,
   IgnorableCard,
   IgnoreButton,
+  RemindButton,
   SaveButton,
 } from "@/components/portal/sections/opportunity-bits";
 import { daysUntil } from "@/components/portal/feed/parts";
@@ -45,22 +46,33 @@ export type OpportunityFeedConfig<T extends OpportunityBase> = {
   idPrefix: string;
   placeholder: string;
   icon: React.ReactNode;
-  /** The card's top-left after the deadline: sponsor, acronym. */
-  label: (item: T) => string;
-  /** A line of key facts on the card (amount, where and when). */
-  facts?: (item: T) => React.ReactNode;
-  /** A feed's own mark on the card, before the checks (an eligibility badge). */
+  /** The source line under the title — the funder or venue in bold, then the
+   * money or the place. One line; it is cut, never wrapped. */
+  source: (item: T) => React.ReactNode;
+  /** What follows the deadline on the second line (posted, event dates, stage). */
+  meta?: (item: T) => React.ReactNode;
+  /** A mark in the top row beside New (an eligibility badge). */
+  flag?: (item: T) => React.ReactNode;
+  /** Only what needs a second look on the card (a quality warning). */
   cardExtra?: (item: T) => React.ReactNode;
+  /** Level with the primary link in the opened item (a venue's rankings). */
+  primaryExtra?: (item: T) => React.ReactNode;
+  /** The item's own description, shown straight after Mylo's take. */
+  about?: (item: T) => string;
+  aboutTitle?: string;
   /** Prefix for the deadline pill, e.g. "Submit by ". */
   deadlinePrefix?: (item: T) => string;
   /** What the search box looks through. */
   text: (item: T) => string;
   facets?: (items: T[]) => Facet<T>[];
   sorts?: SortOption<T>[];
-  /** Sections of the opened item between "best suited to" and the themes. */
+  /** The opened item's own sections, after About and "best suited to". */
   detail?: (item: T, ctx: { forLab: boolean }) => React.ReactNode;
   /** The deadline rows and footnote behind the opened item's Deadlines menu. */
-  actionBar?: (item: T) => Partial<React.ComponentProps<typeof CardActionBar>>;
+  actionBar?: (item: T) => Pick<
+    React.ComponentProps<typeof DeadlineMenu>,
+    "extraDeadlines" | "footnote"
+  >;
   primaryLink: string;
   /** The heading for rows with no theme (default "Other matches"). */
   otherLabel?: string;
@@ -256,28 +268,34 @@ export function OpportunityFeed<T extends OpportunityBase>({
             title={i.title}
             match={matchInfo(i)}
             isNew={i.is_new}
-            flag={i.is_updated ? <span className="ws-pill">Changed</span> : null}
+            flag={
+              <>
+                {i.is_updated ? <span className="ws-pill">Changed</span> : null}
+                {config.flag?.(i)}
+              </>
+            }
             profile={labName ? `${labName}'s research` : undefined}
             actions={
               <>
+                <RemindButton contentId={i.content_id} title={i.title} deadlines={i.addressable_deadlines} />
                 <SaveButton contentId={i.content_id} saved={i.saved} savedLabs={i.saved_labs} variant="icon" />
                 <IgnoreButton contentId={i.content_id} title={i.title} onIgnored={onIgnored} />
               </>
             }
-            source={
+            source={config.source(i)}
+            meta={
               <>
-                {config.label(i) ? <span className="ws-src">{config.label(i)}</span> : null}
-                {config.facts?.(i)}
+                <DeadlinePill date={i.deadline_date} prefix={config.deadlinePrefix?.(i)} />
+                {config.meta?.(i)}
               </>
             }
-            meta={<DeadlinePill date={i.deadline_date} prefix={config.deadlinePrefix?.(i)} />}
             reason={i.beats[0] || i.reason}
             byMylo={i.origin === "llm"}
             extra={
               <>
                 {config.cardExtra?.(i)}
                 {checks.length ? (
-                  <ul className="flex flex-wrap gap-1.5" aria-label="Can we use this?">
+                  <ul className="ws-checks" aria-label="Can we use this?">
                     {checks.map((c) => (
                       <CheckPill key={c.key} check={c} />
                     ))}
@@ -300,13 +318,14 @@ export function OpportunityFeed<T extends OpportunityBase>({
       match={matchInfo(i)}
       isNew={i.is_new}
       profile={labName ? `${labName}'s research` : undefined}
-      source={
+      tools={
         <>
-          {config.label(i) ? <span className="ws-src">{config.label(i)}</span> : null}
-          {config.facts?.(i)}
+          <RemindButton contentId={i.content_id} title={i.title} deadlines={i.addressable_deadlines} />
+          <SaveButton contentId={i.content_id} saved={i.saved} savedLabs={i.saved_labs} variant="icon" />
         </>
       }
-      meta={<DeadlinePill date={i.deadline_date} prefix={config.deadlinePrefix?.(i)} />}
+      source={config.source(i)}
+      meta={config.meta?.(i)}
       primary={
         <>
           {i.url ? (
@@ -314,20 +333,24 @@ export function OpportunityFeed<T extends OpportunityBase>({
               {config.primaryLink} <ExternalLink size={13} aria-hidden="true" />
             </a>
           ) : null}
-          <CardActionBar
-            contentId={i.content_id}
-            title={i.title}
-            deadlines={i.addressable_deadlines}
-            saved={i.saved}
-            savedLabs={i.saved_labs}
-            {...config.actionBar?.(i)}
-          />
+          {config.primaryExtra?.(i)}
         </>
+      }
+      deadline={
+        <DeadlineMenu
+          inline
+          contentId={i.content_id}
+          title={i.title}
+          deadlines={i.addressable_deadlines}
+          {...config.actionBar?.(i)}
+        />
       }
       byMylo={i.origin === "llm"}
       beats={i.beats}
       reason={i.reason}
       caveat={i.caveat}
+      about={config.about?.(i)}
+      aboutTitle={config.aboutTitle}
       members={recommendedFor?.[i.content_id]}
       showMembers={forLab}
       footer={

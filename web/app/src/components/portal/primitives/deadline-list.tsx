@@ -69,9 +69,13 @@ export function DeadlineMenu({
   extraDeadlines = [],
   footnote,
   lockedLabSlug,
+  inline = false,
 }: {
   contentId: string;
   title: string;
+  /** Label beside the button on one row (the opened item's primary row),
+   * instead of stacked above it under a card's tools. */
+  inline?: boolean;
   /** The addressable (future, dated) deadlines — one per round. */
   deadlines: DeadlineOption[];
   /** Display-only rows: passed rounds, and future ones that carry no alert. */
@@ -113,8 +117,16 @@ export function DeadlineMenu({
   const rowCount = dated.length + extraDeadlines.length;
 
   return (
-    <div ref={ref} className="relative w-full">
-      <p className="text-right text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+    <div
+      ref={ref}
+      className={cn("relative", inline ? "inline-flex items-center gap-2" : "w-full")}
+    >
+      <p
+        className={cn(
+          "font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]",
+          inline ? "text-[10.5px]" : "text-right text-[9.5px]",
+        )}
+      >
         {rowCount > 1 ? "Deadlines" : "Deadline"}
       </p>
       <button
@@ -125,7 +137,10 @@ export function DeadlineMenu({
         aria-label={`Deadlines for ${title} — next, ${triggerDescription}`}
         title={triggerDescription}
         className={cn(
-          "mt-1 inline-flex w-full items-center justify-between gap-1 rounded-2xl border px-2 py-1 text-[11px] font-semibold tabular-nums transition-colors",
+          "inline-flex items-center justify-between gap-1 rounded-2xl border font-semibold tabular-nums transition-colors",
+          inline
+            ? "h-8 gap-2 rounded-full px-3 text-[12.5px]"
+            : "mt-1 w-full px-2 py-1 text-[11px]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           open
             ? "border-[color-mix(in_srgb,var(--accent)_55%,transparent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--text-primary)]"

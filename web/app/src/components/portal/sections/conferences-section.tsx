@@ -605,30 +605,35 @@ const CONFERENCES_CONFIG: OpportunityFeedConfig<ConferenceOpportunity> = {
   idPrefix: "conferences",
   placeholder: "Search conferences by name, place, or topic…",
   icon: <ConferenceIcon size={26} className="text-accent" />,
-  label: (c) => [c.acronym, c.year_label].filter(Boolean).join(" "),
-  deadlinePrefix: () => "Submit by ",
-  facts: (c) => {
-    const where = c.location || c.country;
-    return where || c.event_dates ? (
-      <span className="ws-facts">
-        {c.event_dates ? <span className="ws-fact">{c.event_dates}</span> : null}
-        {where ? <span className="ws-meta-text">{where}</span> : null}
-      </span>
-    ) : null;
+  source: (c) => {
+    const name = [c.acronym, c.year_label].filter(Boolean).join(" ");
+    const where = c.location && c.country && !c.location.includes(c.country) ? `${c.location}, ${c.country}` : c.location || c.country;
+    return (
+      <>
+        {name ? <span className="ws-src">{name}</span> : null}
+        {where ? <span className={name ? "ws-dotsep" : undefined}>{where}</span> : null}
+      </>
+    );
   },
-  cardExtra: (c) => (
-    <>
-      <QualityWarningNote warnings={c.quality_warnings} />
-      {c.rank_badges.length || c.red_flags.length || c.abstract_open || c.manuscript_open ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {c.abstract_open ? <OpenChip label="Abstract open" /> : null}
-          {c.manuscript_open ? <OpenChip label="Full paper open" /> : null}
-          <RankBadgeRow badges={c.rank_badges} />
-          <RedFlagsBadge flags={c.red_flags} />
-        </div>
-      ) : null}
-    </>
-  ),
+  deadlinePrefix: () => "Submit by ",
+  meta: (c) => (c.event_dates ? <span>{c.event_dates}</span> : null),
+  // The card keeps only what needs a second look; rankings sit beside the
+  // site link in the opened item.
+  cardExtra: (c) =>
+    c.quality_warnings.length || c.red_flags.length ? (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <QualityWarningNote warnings={c.quality_warnings} />
+        <RedFlagsBadge flags={c.red_flags} />
+      </div>
+    ) : null,
+  primaryExtra: (c) =>
+    c.rank_badges.length || c.red_flags.length ? (
+      <>
+        <RankBadgeRow badges={c.rank_badges} />
+        <RedFlagsBadge flags={c.red_flags} />
+      </>
+    ) : null,
+  about: (c) => c.description || c.scope,
   text: (c) =>
     [c.title, c.acronym, c.description, c.reason, c.location, c.country, c.keywords, c.matched_subjects, c.scope].join(" "),
   facets: (items) => {
@@ -702,19 +707,6 @@ const CONFERENCES_CONFIG: OpportunityFeedConfig<ConferenceOpportunity> = {
         </dl>
         <QualityWarningNote warnings={c.quality_warnings} />
       </DetailSection>
-      {c.rank_badges.length || c.red_flags.length ? (
-        <DetailSection title="The venue">
-          <div className="flex flex-wrap items-center gap-2">
-            <RankBadgeRow badges={c.rank_badges} />
-            <RedFlagsBadge flags={c.red_flags} />
-          </div>
-        </DetailSection>
-      ) : null}
-      {c.description || c.scope ? (
-        <DetailSection title="About">
-          <p>{c.description || c.scope}</p>
-        </DetailSection>
-      ) : null}
       {c.keywords ? (
         <DetailSection title="Topics">
           <p className="ws-meta-text">{c.keywords}</p>
