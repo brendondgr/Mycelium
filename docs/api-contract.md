@@ -232,12 +232,18 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 |---|---|---|
 | `tools/` | GET | Signed in. `{"tools": [{name, summary, state, core, depends_on}]}`, one per installed tool in dependency order; `state` is `LOADED`, `DISABLED`, `MISSING`, `BLOCKED` or `FAILED`. Staff also get `reason`. Served by `tools/_framework/views.py` |
 
-### Mylo agent — `/api/tools/agent/` (tool `agent`, backend only)
+### Mylo agent — `/api/tools/agent/` (tool `agent`; drawn by the web app's chat panel, `web/app/src/lib/portal/agent/`)
 
 Session auth + CSRF; every route needs a verified email. A thread is readable
 only by the person who started it — an org admin gets 404 like anyone else.
 Errors are `{code, detail, fix}`. POST routes also answer without the trailing
-slash.
+slash; `stream/` and `events/` answer only with it, which is fine behind nginx
+or the dev gateway (both send `/api` straight to Django) — through the bare
+Next rewrite every slashed GET loops between Next's and Django's slash
+redirects, agent routes included. The web app follows `stream/` only while a
+turn runs (`until_idle=1`) and decides whether chat is available from
+`catalog/` (the gate's `*` refusal row, or the web surface's 403 for an
+unverified email) plus `status/`.
 
 | Route | Methods | Purpose |
 |---|---|---|

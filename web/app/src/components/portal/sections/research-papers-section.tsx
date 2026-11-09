@@ -13,6 +13,7 @@ import { shortVenue } from "@/components/portal/feed/venue";
 import { ReaderLayout, groupByTheme, useReader } from "@/components/portal/feed/reader";
 import { FeedToolbar, useFeedControls, type Facet, type SortOption } from "@/components/portal/feed/toolbar";
 import { IgnorableCard, IgnoreButton, SaveButton } from "@/components/portal/sections/opportunity-bits";
+import { AskMyloButton } from "@/components/portal/mylo/ask-button";
 import { useDailyReport, useLabRecommendations } from "@/lib/portal/hooks";
 import { useInfiniteReveal } from "@/lib/portal/use-infinite-reveal";
 import type { MyLab, RecommendedMember, Suggestion } from "@/lib/portal/types";
@@ -297,6 +298,7 @@ function PapersFeed({
                     profile={labName ? `${labName}'s research` : undefined}
                     actions={
                       <>
+                        <AskMyloButton anchor={{ kind: "item", key: s.content_id }} title={s.title} />
                         <SaveButton contentId={s.content_id} saved={s.saved} savedLabs={s.saved_labs} variant="icon" />
                         <IgnoreButton contentId={s.content_id} title={s.title} onIgnored={onIgnored} />
                       </>
@@ -319,7 +321,10 @@ function PapersFeed({
                 isNew={s.is_new}
                 profile={labName ? `${labName}'s research` : undefined}
                 tools={
-                  <SaveButton contentId={s.content_id} saved={s.saved} savedLabs={s.saved_labs} variant="icon" />
+                  <>
+                    <AskMyloButton anchor={{ kind: "item", key: s.content_id }} title={s.title} />
+                    <SaveButton contentId={s.content_id} saved={s.saved} savedLabs={s.saved_labs} variant="icon" />
+                  </>
                 }
                 source={venueLine(s)}
                 meta={

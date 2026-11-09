@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { AskMyloButton } from "@/components/portal/mylo/ask-button";
 import { Avatar } from "@/components/portal/primitives/avatar";
 import { Card } from "@/components/portal/primitives/card";
 import { Pill } from "@/components/portal/primitives/pill";
@@ -121,6 +122,7 @@ export function ProjectPageHeader({
           <h1 className="min-w-0 font-serif text-[24px] font-semibold leading-tight tracking-[-0.015em] text-[var(--text-primary)]">
             {project.name}
           </h1>
+          <AskMyloButton anchor={{ kind: "project", key: project.id }} title={project.name} size="head" />
           {project.is_archived ? <Pill tone="neutral">Archived</Pill> : null}
           {project.is_over_cap ? <Pill tone="clay">Over plan limit</Pill> : null}
         </div>

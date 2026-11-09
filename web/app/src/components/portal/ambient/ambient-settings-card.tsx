@@ -199,7 +199,7 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
   );
 }
 
-function Toggle({
+export function Toggle({
   id,
   label,
   help,

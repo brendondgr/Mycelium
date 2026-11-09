@@ -23,6 +23,7 @@ import {
   overviewItems,
 } from "@/components/portal/sections/overview-layout";
 import { LabEditor } from "@/components/portal/sections/lab-onboarding";
+import { AskMyloButton } from "@/components/portal/mylo/ask-button";
 import {
   useAnnouncements,
   useLabDailyBriefing,
@@ -98,12 +99,15 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
       <OverviewHead
         subject="the lab's"
         action={
-          manage ? (
-            <button type="button" onClick={() => setEditing(true)} className="ws-btn ws-btn-line">
-              <EditIcon size={14} />
-              Edit lab profile
-            </button>
-          ) : null
+          <>
+            <AskMyloButton anchor={{ kind: "lab", key: lab.slug }} title={lab.name} size="head" />
+            {manage ? (
+              <button type="button" onClick={() => setEditing(true)} className="ws-btn ws-btn-line">
+                <EditIcon size={14} />
+                Edit lab profile
+              </button>
+            ) : null}
+          </>
         }
       />
       <p className="ws-meta-text ws-overview-scope">You&apos;re viewing {scopeLabel}.</p>

@@ -9,6 +9,29 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  AgentError,
+  deleteThread,
+  fetchAgentCatalog,
+  fetchAgentPolicy,
+  fetchAgentPreferences,
+  fetchAgentStatus,
+  fetchThread,
+  fetchThreads,
+  saveAgentPolicy,
+  saveAgentPreferences,
+  updateThread,
+  type ThreadQuery,
+} from "@/lib/portal/agent/client";
+import {
+  availabilityFrom,
+  type CatalogOutcome,
+} from "@/lib/portal/agent/availability";
+import type {
+  AgentPolicy,
+  AgentPreferences,
+  ChatAvailability,
+} from "@/lib/portal/agent/types";
+import {
   fetchAnnouncements,
   fetchDeptOpportunities,
   fetchAdminLab,
@@ -1634,5 +1657,130 @@ export function useCreateAnnouncementChannels() {
     mutationFn: (bindingId: number) => createAnnouncementChannels(bindingId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["portal", "announcements"] }),
+  });
+}
+
+// -- Mylo chat (api/tools/agent/) ---------------------------------------------
+
+/** Where Mylo's model runs (S-3), or why there is none. */
+export function useAgentStatus(enabled = true) {
+  return useQuery({
+    queryKey: ["agent", "status"],
+    queryFn: fetchAgentStatus,
+    staleTime: 5 * 60_000,
+    enabled,
+  });
+}
+
+/**
+ * The gate's answer for this person, as a value rather than a thrown error:
+ * a refusal is an answer the panel shows, not a failure to retry.
+ */
+export function useAgentCatalog() {
+  return useQuery<CatalogOutcome>({
+    queryKey: ["agent", "catalog"],
+    queryFn: async () => {
+      try {
+        return { ok: true, functions: await fetchAgentCatalog() };
+      } catch (error) {
+        if (error instanceof AgentError) {
+          return { ok: false, status: error.status, refusal: error.refusal };
+        }
+        throw error;
+      }
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** May this person chat with Mylo? Read from the gate, never decided here. */
+export function useChatAvailability(): ChatAvailability {
+  const catalog = useAgentCatalog();
+  const allowedSoFar = catalog.data?.ok === true;
+  const status = useAgentStatus(allowedSoFar);
+  return availabilityFrom(catalog.data, status.data);
+}
+
+export function useAgentThreads(query: ThreadQuery = {}, enabled = true) {
+  return useQuery({
+    queryKey: ["agent", "threads", query.q ?? "", Boolean(query.archived), query.anchor ?? null],
+    queryFn: () => fetchThreads(query),
+    enabled,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useAgentThread(id: string | null) {
+  return useQuery({
+    queryKey: ["agent", "thread", id],
+    queryFn: () => fetchThread(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useUpdateAgentThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...changes
+    }: {
+      id: string;
+      title?: string;
+      archived?: boolean;
+      pinned?: boolean;
+    }) => updateThread(id, changes),
+    onSuccess: (thread) => {
+      queryClient.setQueryData(["agent", "thread", thread.id], thread);
+      void queryClient.invalidateQueries({ queryKey: ["agent", "threads"] });
+    },
+  });
+}
+
+export function useDeleteAgentThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteThread(id),
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: ["agent", "thread", id] });
+      void queryClient.invalidateQueries({ queryKey: ["agent", "threads"] });
+    },
+  });
+}
+
+export function useAgentPreferences() {
+  return useQuery({
+    queryKey: ["agent", "preferences"],
+    queryFn: fetchAgentPreferences,
+  });
+}
+
+export function useSaveAgentPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (changes: Partial<AgentPreferences>) => saveAgentPreferences(changes),
+    onSuccess: (prefs) => {
+      queryClient.setQueryData(["agent", "preferences"], prefs);
+      // turning chat on or off changes the gate's answer
+      void queryClient.invalidateQueries({ queryKey: ["agent", "catalog"] });
+    },
+  });
+}
+
+export function useAgentPolicy(kind: "lab" | "department", ref?: string | null) {
+  return useQuery({
+    queryKey: ["agent", "policy", kind, ref],
+    queryFn: () => fetchAgentPolicy(kind, ref as string),
+    enabled: Boolean(ref),
+  });
+}
+
+export function useSaveAgentPolicy(kind: "lab" | "department", ref: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (changes: Partial<AgentPolicy>) => saveAgentPolicy(kind, ref, changes),
+    onSuccess: (policy) => {
+      queryClient.setQueryData(["agent", "policy", kind, ref], policy);
+    },
   });
 }
