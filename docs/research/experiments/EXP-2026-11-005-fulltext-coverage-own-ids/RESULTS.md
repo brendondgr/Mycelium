@@ -98,4 +98,14 @@ DATABASE_URL=postgres://mycelium:mycelium@localhost:11450/mycelium \
 
 ## AMENDMENTS
 
-None.
+- **2026-11-08 — the repair was applied.** With the owner's approval,
+  `repair_pubmed_ids --apply` (commit 4d27303) wrote 7,906 rows on the live
+  database, with the same counts as the dry run in §4 (3,743 DOIs replaced,
+  3,748 `external_id`s, PMCIDs 3,780 replaced / 3,159 set / 627 cleared, 205
+  other-source PMCIDs; 0 collisions). A second dry run right after it found 0
+  rows left to change. A dry run of `dedupe_content_papers` then reported 278
+  groups (292 redundant rows): the 205 groups containing a PubMed row are the
+  duplicates the repair exposed (203 with identical `external_id`s, 2 with a
+  third row), and 73 are older, unrelated OpenAlex groups joined only on the
+  fuzzy title/author/year key, mostly several Zenodo version DOIs of one
+  deposit. Nothing has been merged.
