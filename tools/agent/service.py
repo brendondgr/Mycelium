@@ -75,20 +75,54 @@ def scope_from(user, kind: str | None, ref: str | None) -> Scope:
     return Scope(kind, obj)
 
 
+def _anchor(value) -> dict:
+    anchor = refs.parse_anchor(value)
+    if anchor is None:
+        raise ServiceError(
+            "bad_anchor",
+            "That is not something a conversation can be about.",
+            'Send {"kind": "item", "key": "<id>"} or "item:<id>".',
+        )
+    return anchor
+
+
 def create_thread(
-    user, *, scope: Scope, surface: str = "web", title: str = ""
+    user, *, scope: Scope, surface: str = "web", title: str = "", anchor=None
 ) -> AgentThread:
+    """A new thread. With ``anchor`` (``{"kind", "key"}`` or ``"kind:key"``)
+    the conversation is about that object for good: it is reference ``#1``
+    and every turn resolves it again for whoever is asking (S2). The creator
+    must be able to see it."""
     caller = Caller(user=user, surface=surface, scope=scope)
     _gate(caller)
+    info = None
+    if anchor:
+        anchor = _anchor(anchor)
+        info = refs.resolve(caller, f"{anchor['kind']}:{anchor['key']}")
+        if info is None:
+            raise ServiceError(
+                "anchor_not_visible",
+                "You can't open a conversation about that.",
+                status=404,
+            )
     fields = {
         "lab": "scope_lab",
         "department": "scope_department",
         "project": "scope_project",
     }
     kwargs = {fields[scope.kind]: scope.obj} if scope.kind in fields else {}
-    return AgentThread.objects.create(
-        user=user, scope_kind=scope.kind, surface=surface, title=title[:200], **kwargs
-    )
+    with transaction.atomic():
+        thread = AgentThread.objects.create(
+            user=user,
+            scope_kind=scope.kind,
+            surface=surface,
+            title=title[:200],
+            settings={"anchor": anchor} if info is not None else {},
+            **kwargs,
+        )
+        if info is not None:
+            refs.number(thread, info)  # the first reference: #1
+    return thread
 
 
 def get_thread(user, thread_id) -> AgentThread:
@@ -101,10 +135,19 @@ def get_thread(user, thread_id) -> AgentThread:
         raise ServiceError("not_found", "No such conversation.", status=404) from None
 
 
-def list_threads(user, *, q: str = "", archived: bool = False, limit: int = 50):
+def list_threads(
+    user, *, q: str = "", archived: bool = False, anchor=None, limit: int = 50
+):
+    """The person's threads, most recent first. ``anchor`` (``"kind:key"`` or
+    a dict) keeps only the threads about that object."""
     from django.db.models import Q
 
     rows = AgentThread.objects.filter(user=user, archived=archived)
+    if anchor:
+        a = _anchor(anchor)
+        rows = rows.filter(
+            settings__anchor__kind=a["kind"], settings__anchor__key=a["key"]
+        )
     if q:
         rows = rows.filter(
             Q(title__icontains=q)

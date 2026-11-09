@@ -242,8 +242,8 @@ slash.
 |---|---|---|
 | `status/` | GET | `{model}`, or `{model: null, code: "no_model", detail, fix}` when no model is configured |
 | `catalog/?scope=&ref=` | GET | Every function with `allowed` and, if not, `layer`, `code`, `detail`, `fix` — the gate's own answer for this caller |
-| `threads/` | GET, POST | List the caller's threads (`?q=` searches title, purpose and their own words; `?archived=1`); create one in `{scope: personal\|lab\|department\|project, ref}` (lab slug, department or project id). 404 for a scope the caller cannot see |
-| `threads/<id>/` | GET, PATCH, DELETE | One thread (state, todos, `references`); rename or archive (`{title, archived}`); delete it and its events |
+| `threads/` | GET, POST | List the caller's threads (`?q=` searches title, purpose and their own words; `?archived=1`; `?anchor=<kind>:<key>` keeps the threads about that object); create one in `{scope: personal\|lab\|department\|project, ref, anchor}` (lab slug, department or project id). 404 for a scope the caller cannot see. `anchor` — `{kind, key}` or `"kind:key"`, any reference kind (`item`, `project`, `lab`, `department`, …) — makes the thread about that object for good: it is reference `#1`, and every turn resolves it again for the caller (left out of the turn if they can no longer see it). 404 `anchor_not_visible` if the creator cannot see it, 400 `bad_anchor` for an unknown kind |
+| `threads/<id>/` | GET, PATCH, DELETE | One thread (state, `anchor` or null, todos, `references`); rename or archive (`{title, archived}`); delete it and its events |
 | `threads/<id>/messages/` | POST | `{text, mentions: ["paper:<id>", "project:<uuid>", "file:<uuid>", …], attachments: [file ids], steer}` or multipart with `files`. 202 `{status: started\|queued\|steered}`. A mention the caller cannot see is refused (404) before the turn; 429 past `daily_turns`; 409 while Mylo waits for an answer |
 | `threads/<id>/answer/` | POST | `{text}` answers Mylo's pending question and resumes; 409 when nothing is pending |
 | `threads/<id>/cancel/` | POST | Stops the running turn before its next step; queued messages are dropped |

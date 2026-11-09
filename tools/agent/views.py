@@ -36,6 +36,7 @@ def _thread_json(t) -> dict:
         "fork_seq": t.fork_seq,
         "created_at": t.created_at.isoformat(),
         "last_activity_at": t.last_activity_at.isoformat(),
+        "anchor": (t.settings or {}).get("anchor"),
         "todos": (t.settings or {}).get("todos", []),
         "references": (t.settings or {}).get("refs", []),
     }
@@ -74,6 +75,7 @@ class ThreadsView(_Base):
             request.user,
             q=request.query_params.get("q", ""),
             archived=request.query_params.get("archived") in ("1", "true"),
+            anchor=request.query_params.get("anchor") or None,
         )
         return Response({"threads": [_thread_json(t) for t in rows]})
 
@@ -87,6 +89,7 @@ class ThreadsView(_Base):
             scope=scope,
             surface="web",
             title=str(request.data.get("title", "")),
+            anchor=request.data.get("anchor") or None,
         )
         return Response(_thread_json(thread), status=201)
 

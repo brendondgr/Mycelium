@@ -41,6 +41,11 @@ the API and a developer CLI; the web chat UI and Discord come next.
   does not), no arguments or results. `stream.follow(view=...)` applies it;
   the HTTP routes default to it, and the raw view is for the CLI, export and
   staff.
+- **A conversation about one thing.** A thread created with an `anchor`
+  (`settings["anchor"] = {kind, key}`, never changed) holds it as reference
+  `#1`; `prompt.py` resolves it for the current caller every turn
+  (`refs.resolve_anchor`) and says "This conversation is about #1", or leaves
+  it out, title included, for a caller who cannot see it.
 - **Memory.** The profile block and scope block (`memory.py`), per-message
   recall stored as a `recall` event (`recall.py`), titles, purposes and
   digests after a turn (`memory_after.py`), and the learning pass
