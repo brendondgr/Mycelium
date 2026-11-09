@@ -130,3 +130,11 @@ python3 $E/code/analyse.py
 
 A completed experiment is immutable. Corrections are appended here, dated, never
 edited into the sections above.
+
+**2026-11-09: uncontrolled host load.** After the run the operator said they
+had other work running on the host at the time. §5 already listed the shared
+GPU as uncontrolled; this confirms it was not idle. Arms A and B ran minutes
+apart, so the load may have differed between them, and every absolute number
+here may be low. The decision the run supported stands: use d3-lite as the
+local decision model, at 1–2 in flight. On real states d3-lite led at every
+level, and the operator chose it, deferring pplx-decider.

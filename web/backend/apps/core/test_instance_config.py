@@ -121,6 +121,21 @@ def test_legacy_rerank_method_maps_to_decision_backend(old, new):
     assert cfg["decision.backend"] == "port"
 
 
+def test_file_decision_backend_beats_the_shipped_rerank_method():
+    # Every .env copied from the old example carries RERANK_METHOD=typesafe; an
+    # explicit [decision] backend in mycelium.toml must still take effect.
+    cfg = resolve(
+        file={"decision.backend": "port"}, env={"RERANK_METHOD": "typesafe"}
+    )
+    assert cfg["decision.backend"] == "port"
+    assert cfg.sources["decision.backend"] == "mycelium.toml"
+    # DECISION_BACKEND is a real override and still beats the file.
+    cfg = resolve(
+        file={"decision.backend": "port"}, env={"DECISION_BACKEND": "off"}
+    )
+    assert cfg["decision.backend"] == "off"
+
+
 def test_decision_backend_defaults_to_auto():
     assert resolve()["decision.backend"] == "auto"
 
