@@ -66,7 +66,7 @@ def item_host(item: ContentItem) -> str:
     location (:func:`tools.retrieval.geography.place_for`), never a bare venue."""
     meta = item.metadata or {}
     if item.type == ContentItem.Type.CONFERENCE:
-        from tools.retrieval.geography import place_for
+        from tools.retrieval.read import place_for
 
         return place_for(meta).display
     return str(meta.get("funder") or meta.get("sponsor") or "")

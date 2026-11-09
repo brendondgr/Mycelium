@@ -455,14 +455,24 @@ def test_a_legacy_ranked_kind_counts_only_within_its_slate_depth() -> None:
 
 
 def test_member_fit_reasons_never_carry_a_percentage() -> None:
-    assert announce._reason(
-        {"reason": "Closest match to Ana's profile (49% profile match).",
-         "source": "similarity"}
-    ) == "Closest match to their research profile"
-    assert announce._reason(
-        {"reason": "Builds the assimilation code (61% match) the call asks for",
-         "source": "llm"}
-    ) == "Builds the assimilation code the call asks for"
+    assert (
+        announce._reason(
+            {
+                "reason": "Closest match to Ana's profile (49% profile match).",
+                "source": "similarity",
+            }
+        )
+        == "Closest match to their research profile"
+    )
+    assert (
+        announce._reason(
+            {
+                "reason": "Builds the assimilation code (61% match) the call asks for",
+                "source": "llm",
+            }
+        )
+        == "Builds the assimilation code the call asks for"
+    )
 
 
 @pytest.mark.django_db
@@ -507,7 +517,10 @@ def test_a_saved_item_that_was_pruned_does_not_break_the_list() -> None:
     _slate(target, item, 1)
     gone = _item(title="Pruned")
     SavedOpportunity.objects.create(
-        target_lab=target.obj, content=gone, area="grant", title="Pruned",
+        target_lab=target.obj,
+        content=gone,
+        area="grant",
+        title="Pruned",
         user=User.objects.create_user("saver"),
     )
     gone.delete()
@@ -525,6 +538,177 @@ def test_conference_titles_use_the_name_and_a_new_acronym_only() -> None:
 
     trust = conf(name="Trustworthy Models (TrustFMI)", acronym="TrustFMI2026")
     assert item_title(trust) == "Trustworthy Models (TrustFMI)"
-    assert item_title(conf(name="Architectural Support for PL", acronym="ASPLOS")) \
+    assert (
+        item_title(conf(name="Architectural Support for PL", acronym="ASPLOS"))
         == "ASPLOS: Architectural Support for PL"
+    )
     assert item_title(conf(acronym="IGARSS")) == "IGARSS"
+
+
+# --------------------------------------------------------------------------- #
+# Who should look: project teams first, in plain words
+# --------------------------------------------------------------------------- #
+def _team_packet() -> editor.Packet:
+    packet = _packet()
+    packet.people = [
+        {
+            "id": "p1",
+            "name": "Ana R.",
+            "why": "data assimilation",
+            "projects": ["Reef Twin"],
+            "interests": "ocean forecasting",
+        },
+        {
+            "id": "p2",
+            "name": "Ben K.",
+            "why": "sensor arrays",
+            "projects": [],
+            "interests": "acoustic sensing",
+        },
+    ]
+    packet.project_teams = [
+        {
+            "id": "j1",
+            "name": "Reef Twin",
+            "focus": "A digital twin of the reef for forecasting bleaching.",
+            "members": ["Ana R.", "Cy L."],
+        },
+    ]
+    return packet
+
+
+def test_the_prompt_offers_project_teams_and_peoples_interests() -> None:
+    prompt = _team_packet().prompt()
+    assert "j1: Reef Twin — focus: A digital twin" in prompt
+    assert "Team: Ana R., Cy L." in prompt
+    assert "p2: Ben K. — interests: acoustic sensing" in prompt
+    assert "Never write \"X's research" in editor.SYSTEM_PROMPT
+
+
+def test_a_project_entry_names_its_team() -> None:
+    reply = _reply(
+        who_should_look=[
+            {
+                "id": "j1",
+                "why": "It would pay for the bleaching forecasts' next stage.",
+            },
+            {"id": "p2", "why": "Its sensor strand fits the arrays Ben builds."},
+            {"id": "j1", "why": "said twice"},
+        ]
+    )
+    write_up, note = editor.edit(_team_packet(), complete=lambda _p: reply)
+
+    assert note == ""
+    project, person = write_up.who_should_look
+    assert project == {
+        "id": "j1",
+        "kind": "project",
+        "name": "Reef Twin",
+        "members": ["Ana R.", "Cy L."],
+        "why": "It would pay for the bleaching forecasts' next stage.",
+    }
+    assert person["name"] == "Ben K." and "kind" not in person
+    assert editor.looker_label(project) == "**Reef Twin** project (Ana R., Cy L.)"
+    assert editor.looker_label(person, bold=False) == "Ben K."
+
+
+def test_an_unknown_project_id_is_rejected() -> None:
+    reply = _reply(who_should_look=[{"id": "j9", "why": "x"}])
+    _w, note = editor.edit(_team_packet(), complete=lambda _p: reply)
+    assert "not in the packet" in note
+
+
+def test_the_fallback_lists_projects_first_and_skips_their_members() -> None:
+    write_up = editor.template(_team_packet())
+    names = [p["name"] for p in write_up.who_should_look]
+    assert names == ["Reef Twin", "Ben K."]  # Ana is reached through Reef Twin
+    assert (
+        write_up.who_should_look[0]["why"] == "Mylo matched it to this project's work."
+    )
+    assert write_up.why_it_matters.startswith("Fits your **Ocean forecasting** theme")
+
+
+def test_who_should_look_is_capped() -> None:
+    packet = _team_packet()
+    packet.people += [{"id": f"p{n}", "name": f"P{n}", "why": "x"} for n in range(3, 8)]
+    reply = _reply(
+        who_should_look=[{"id": f"p{n}", "why": "fits"} for n in range(2, 8)]
+    )
+    write_up, _ = editor.edit(packet, complete=lambda _p: reply)
+    assert len(write_up.who_should_look) == editor.MAX_LOOKERS
+
+
+@pytest.mark.django_db
+def test_only_shared_live_projects_reach_the_editor() -> None:
+    from apps.research.models import Project, ProjectMember
+
+    target = _lab()
+    ana = User.objects.create_user("ana", first_name="Ana", last_name="R")
+    LabMembership.objects.create(user=ana, lab=target.obj)
+    item = _item()
+    _slate(
+        target,
+        item,
+        1,
+        member_fit=[{"username": "ana", "reason": "assimilation", "fit": 0.7}],
+    )
+    for name, shared, archived in [
+        ("Reef Twin", True, False),
+        ("Secret Grant Bid", False, False),
+        ("Old Survey", True, True),
+    ]:
+        project = Project.objects.create(
+            scope_lab=target.obj,
+            name=name,
+            share_in_lab_reports=shared,
+            is_archived=archived,
+            goals={"description": f"{name} focus."},
+        )
+        ProjectMember.objects.create(project=project, user=ana)
+        RelevanceScore.objects.create(
+            content=item, target_project=project, score=0.8, signals={"suggested": True}
+        )
+    seen = {}
+
+    def capture(prompt):
+        seen["prompt"] = prompt
+        return _reply(who_should_look=[{"id": "j1", "why": "It serves the twin."}])
+
+    _outcome, posted = _run(target, complete=capture)
+
+    assert "Reef Twin focus." in seen["prompt"]
+    assert "Secret Grant Bid" not in seen["prompt"]
+    assert "Old Survey" not in seen["prompt"]
+    assert "on projects: Reef Twin" in seen["prompt"]
+    alignment = posted[0].alignment
+    assert alignment["projects"] == ["Reef Twin"]
+    entry = posted[0].write_up["who_should_look"][0]
+    assert (entry["kind"], entry["members"]) == ("project", ["Ana R"])
+
+
+def test_a_headline_may_repeat_digits_from_the_title_but_nothing_else() -> None:
+    packet = _team_packet()
+    packet.title = "AACL-IJCNLP 2026 Workshop NORA"
+    ok, note = editor.edit(
+        packet, complete=lambda _p: _reply(headline="NORA at AACL-IJCNLP 2026 fits")
+    )
+    assert note == "" and ok.headline == "NORA at AACL-IJCNLP 2026 fits"
+
+    for over in (
+        {"headline": "NORA closes on the 15th"},
+        {"why_it_matters": "The 2026 workshop suits the twin."},
+    ):
+        _w, note = editor.edit(packet, complete=lambda _p, o=over: _reply(**o))
+        assert "contains a digit" in note
+
+
+def test_a_person_on_a_named_project_is_not_listed_again() -> None:
+    reply = _reply(
+        who_should_look=[
+            {"id": "j1", "why": "A venue for the twin's forecasts."},
+            {"id": "p1", "why": "Ana's interests fit too."},  # Ana is on Reef Twin
+            {"id": "p2", "why": "Its sensor strand fits Ben's arrays."},
+        ]
+    )
+    write_up, _ = editor.edit(_team_packet(), complete=lambda _p: reply)
+    assert [p["name"] for p in write_up.who_should_look] == ["Reef Twin", "Ben K."]

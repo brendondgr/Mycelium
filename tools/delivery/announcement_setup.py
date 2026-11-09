@@ -344,6 +344,14 @@ def activate_now(binding, *, complete="default") -> dict:
     return {"posted": len(outcome.posted), "held": len(outcome.held)}
 
 
+def populate(binding, count: int, *, actor=None) -> tuple[str, dict]:
+    """``/mylo populate`` for one binding (see :mod:`.announce_populate`); the
+    caller has already run the gate."""
+    from tools.delivery import announce_populate
+
+    return announce_populate.populate(binding, count, actor=actor)
+
+
 def activate_target(kind: str, target_id: str) -> dict:
     """``activate_now`` for a lab or department named by id, from any binding of it
     (the seed posts to all of them)."""

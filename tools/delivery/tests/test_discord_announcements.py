@@ -703,3 +703,21 @@ def test_retagging_adds_the_continent_to_old_threads_without_a_reply(fake):
     fake.calls.clear()
     discord_announcements.retag_conference_threads()
     assert not [p for m, p, _b in fake.calls if m == "PATCH"]
+
+
+def test_the_post_names_a_project_team_and_its_people() -> None:
+    ann = Announcement(
+        category=ContentItem.Type.GRANT,
+        snapshot={"title": "Ocean Tech"},
+        write_up={"who_should_look": [
+            {"id": "j1", "kind": "project", "name": "Reef Twin",
+             "members": ["Ana R.", "Cy L."], "why": "It funds the twin's next stage."},
+            {"id": "p2", "name": "Ben K.", "why": "Fits his sensing work."},
+        ]},
+    )
+    fields = {f["name"]: f["value"] for f in discord_announcements.build_embed(ann)[
+        "fields"]}
+    assert fields["Who should look"] == (
+        "**Reef Twin** project (Ana R., Cy L.) · It funds the twin's next stage.\n"
+        "**Ben K.** · Fits his sensing work."
+    )

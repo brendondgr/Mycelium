@@ -28,6 +28,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from tools.delivery import announce_facts, usability
+from tools.delivery.announce_editor import looker_label
 from tools.delivery.models import (
     Announcement,
     AnnouncementNudge,
@@ -36,8 +37,8 @@ from tools.delivery.models import (
     AnnouncementSettings,
     ClosingSoonPost,
 )
-from tools.retrieval import geography
 from tools.retrieval.models import ContentItem
+from tools.retrieval.read import ONLINE, item_continent
 
 GOLD, SAGE, MOSS, BARK, ALERT = 0xC9A35A, 0x8DA66F, 0x5E7A3E, 0x8A6E4B, 0xB5523B
 
@@ -58,7 +59,7 @@ CONTINENT_TAGS = [
     ("Africa", "🌍"),
     ("Asia", "🌏"),
     ("Oceania", "🌏"),
-    (geography.ONLINE, "💻"),
+    (ONLINE, "💻"),
 ]
 CONTINENT_EMOJI = dict(CONTINENT_TAGS)
 
@@ -204,7 +205,7 @@ def build_embed(
                 if announcement.target_department_id
                 else "Who should look",
                 "\n".join(
-                    f"**{p['name']}**" + (f" · {p['why']}" if p.get("why") else "")
+                    looker_label(p) + (f" · {p['why']}" if p.get("why") else "")
                     for p in people
                 ),
             )
@@ -436,7 +437,7 @@ def continent_of(announcement: Announcement) -> str:
     if "continent" in snap:
         return snap["continent"] or ""
     content = announcement.content
-    return geography.item_continent(content.metadata) if content is not None else ""
+    return item_continent(content.metadata) if content is not None else ""
 
 
 def _label_tag(announcement: Announcement) -> str:

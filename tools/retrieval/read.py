@@ -10,6 +10,7 @@ code reads through this module.
 """
 
 from tools.retrieval.embeddings import embed_text, embed_texts
+from tools.retrieval.geography import ONLINE, Place, item_continent, place_for
 from tools.retrieval.index import PgVectorIndex, latest_gather_date, retrieve_for_vector
 from tools.retrieval.liveness import is_expired, is_live, is_stale
 from tools.retrieval.models import ContentDeadline, ContentItem
@@ -20,6 +21,8 @@ from tools.retrieval.search import SearchFilters, SearchResult, run_search
 __all__ = [
     "ContentDeadline",
     "ContentItem",
+    "ONLINE",
+    "Place",
     "PgVectorIndex",
     "Retrievable",
     "VectorIndex",
@@ -29,7 +32,9 @@ __all__ = [
     "is_expired",
     "is_live",
     "is_stale",
+    "item_continent",
     "latest_gather_date",
+    "place_for",
     "retrieve_for_vector",
     "run_search",
     "SearchFilters",

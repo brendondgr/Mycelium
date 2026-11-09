@@ -754,7 +754,7 @@ async def populate_forums(
 def _populate_forums_sync(discord_user_id, guild_id, binding_id, count):
     from apps.integrations.services import gate, resolve
 
-    from tools.delivery import announce_populate
+    from tools.delivery import announcement_setup as setup
 
     binding, refusal = _pick_binding(resolve, guild_id, binding_id)
     if refusal is not None:
@@ -767,7 +767,7 @@ def _populate_forums_sync(discord_user_id, guild_id, binding_id, count):
     )
     if not verdict.ok:
         return (str(verdict.denial), {"message": verdict.message})
-    return announce_populate.populate(binding, count, actor=verdict.user)
+    return setup.populate(binding, count, actor=verdict.user)
 
 
 async def guild_bindings(guild_id: str) -> list[dict]:

@@ -22,6 +22,7 @@ from django.utils import timezone
 
 from tools.delivery import announce
 from tools.delivery import announce_editor as editor
+from tools.delivery.announce_editor import looker_label
 from tools.delivery.models import AnnouncementSettings
 
 
@@ -109,7 +110,8 @@ class Command(BaseCommand):
                 self.stdout.write(f"    {c.status:7} {c.label}")
             if w.who_should_look:
                 people = "; ".join(
-                    f"{x['name']} · {x['why']}" for x in w.who_should_look
+                    f"{looker_label(x, bold=False)} · {x['why']}"
+                    for x in w.who_should_look
                 )
                 self.stdout.write(f"    Who should look: {people}")
             self.stdout.write(f"    Next step: {w.next_step}")

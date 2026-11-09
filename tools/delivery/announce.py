@@ -52,6 +52,10 @@ KIND_ORDER = (
 NEW_CALL_DAYS = 14
 #: How many people a post names under *Who should look*.
 PEOPLE_SHOWN = 3
+#: How many matched projects the editor is offered.
+PROJECTS_SHOWN = 3
+#: How much of a project's focus, or a person's interests, the editor sees.
+_CONTEXT_CHARS = 200
 
 
 def enabled() -> bool:
@@ -302,18 +306,10 @@ def align(
         if isinstance(beat, str) and beat.strip():
             notes.append(beat.strip())
 
-    projects: list[str] = []
+    teams: list[dict] = []
     if target.kind == "lab":
-        project_rows = RelevanceScore.objects.filter(
-            target_project__scope_lab=target.obj, content_id=row.content_id
-        ).select_related("target_project")
-        projects = sorted(
-            {
-                pr.target_project.name
-                for pr in project_rows
-                if (pr.signals or {}).get("suggested") and pr.target_project
-            }
-        )[:3]
+        teams = _project_teams(target.obj, row.content_id)
+    projects = [t["name"] for t in teams]
 
     if target.kind == "department":
         from tools.delivery import lab_fit
@@ -327,8 +323,13 @@ def align(
             "theme_notes": notes,
             "projects": [],
             "people": [
-                {"id": f"l{i}", "lab_id": lab["lab_id"], "name": lab["name"],
-                 "why": lab["why"], "fit": lab["fit"]}
+                {
+                    "id": f"l{i}",
+                    "lab_id": lab["lab_id"],
+                    "name": lab["name"],
+                    "why": lab["why"],
+                    "fit": lab["fit"],
+                }
                 for i, lab in enumerate(fit, start=1)
             ],
             "dept_reasons": [
@@ -337,6 +338,8 @@ def align(
         }
 
     by_username = {m.get_username(): m for m in members}
+    from tools.recommendation.member_fit import _profile_text
+
     people = []
     for entry in (row.signals or {}).get("member_fit") or []:
         user = by_username.get(entry.get("username"))
@@ -350,6 +353,10 @@ def align(
                 "name": display_name(user),
                 "why": _reason(entry),
                 "fit": entry.get("fit"),
+                "projects": [t["name"] for t in teams if user.id in t["member_ids"]],
+                "interests": _profile_text(
+                    getattr(getattr(user, "profile", None), "interests", None) or {}
+                )[:_CONTEXT_CHARS],
             }
         )
         if len(people) >= PEOPLE_SHOWN:
@@ -359,8 +366,57 @@ def align(
         "theme": theme,
         "theme_notes": notes,
         "projects": projects,
+        "project_teams": teams,
         "people": people,
     }
+
+
+def _project_teams(lab, content_id) -> list[dict]:
+    """The lab's projects whose own score suggested this item — only those the lab
+    shares in its reports and has not archived, since a post is read by everyone in
+    the channel (the same rule as the lab report)."""
+    from apps.core.people import display_name
+
+    from tools.recommendation.targets import project_interests
+
+    rows = (
+        RelevanceScore.objects.filter(
+            target_project__scope_lab=lab,
+            target_project__share_in_lab_reports=True,
+            target_project__is_archived=False,
+            content_id=content_id,
+        )
+        .select_related("target_project")
+        .order_by("target_project__name")
+    )
+    projects = [
+        r.target_project
+        for r in rows
+        if (r.signals or {}).get("suggested") and r.target_project
+    ][:PROJECTS_SHOWN]
+    teams = []
+    for index, project in enumerate(projects, start=1):
+        goals = project.goals if isinstance(project.goals, dict) else {}
+        focus = next(
+            (
+                str(v).strip()
+                for v in (goals.get("description"), goals.get("goal"))
+                if isinstance(v, str) and v.strip()
+            ),
+            project_interests(project)["statement"],
+        )
+        members = sorted(project.members.all(), key=lambda u: display_name(u))
+        teams.append(
+            {
+                "id": f"j{index}",
+                "project_id": str(project.id),
+                "name": project.name,
+                "focus": " ".join(str(focus or "").split())[:_CONTEXT_CHARS],
+                "members": [display_name(u) for u in members],
+                "member_ids": [u.id for u in members],
+            }
+        )
+    return teams
 
 
 _PERCENT = re.compile(r"\s*\([^)]*\d\s*%[^)]*\)|\s*\d+(?:\.\d+)?\s*%[^.,;]*")
@@ -436,8 +492,18 @@ def prepare(
         theme_notes=alignment["theme_notes"],
         projects=alignment["projects"],
         people=[
-            {"id": p["id"], "name": p["name"], "why": p["why"]}
+            {
+                "id": p["id"],
+                "name": p["name"],
+                "why": p["why"],
+                "projects": p.get("projects") or [],
+                "interests": p.get("interests") or "",
+            }
             for p in alignment["people"]
+        ],
+        project_teams=[
+            {k: t[k] for k in ("id", "name", "focus", "members")}
+            for t in alignment.get("project_teams") or []
         ],
         checks=[c.as_dict() for c in checks],
         next_step_hint=_next_step_hint(checks, facts["deadline"], reader.buffer_days),
@@ -495,7 +561,7 @@ class Outcome:
 
 
 def snapshot(item: ContentItem) -> dict:
-    from tools.retrieval.geography import item_continent
+    from tools.retrieval.read import item_continent
 
     snap = {
         "title": announce_facts.item_title(item),

@@ -43,6 +43,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tools.delivery import announce, announce_facts
+from tools.delivery.announce_editor import looker_label
 from tools.delivery.discord_announcements import followers
 from tools.delivery.models import Announcement, AnnouncementSettings
 
@@ -193,7 +194,7 @@ def _announced_row(ann: Announcement, names: dict[str, str]) -> dict:
             "headline": write_up.get("headline", ""),
             "why_it_matters": write_up.get("why_it_matters", ""),
             "who_should_look": [
-                {"name": p.get("name", ""), "why": p.get("why", "")}
+                {"name": looker_label(p, bold=False), "why": p.get("why", "")}
                 for p in write_up.get("who_should_look") or []
             ],
             "next_step": write_up.get("next_step", ""),
@@ -529,7 +530,10 @@ class AnnouncementTestView(APIView):
                 if purpose in ("grants", "fellowships", "conferences"):
                     forums.setdefault(route.channel_id, []).append((purpose, route))
             for channel_id, entries in forums.items():
-                purposes = [purpose for purpose, _route in entries]
+                order = ("grants", "fellowships", "conferences")
+                purposes = sorted(
+                    (purpose for purpose, _route in entries), key=order.index
+                )
                 route = entries[0][1]
                 what = (
                     purposes[0]

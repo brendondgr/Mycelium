@@ -128,7 +128,16 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
 * **Engine** (`tools/delivery/announce*.py`): slate entrants only, never twice; the
   first run seeds the six best open items (kinds interleaved) and passes over the
   rest for good; a bounded editor writes each post behind a verifier (no digits,
-  only offered people) with a template fallback.
+  bar words the headline copies from the item's own title; only offered projects
+  and people) with a template fallback.
+* **Who should look** (rubric `ann-2`) names project teams first: the lab's
+  projects whose own score suggested the item, **only those shared in lab
+  reports and not archived**, each offered to the editor with its focus and team.
+  The editor says in one plain sentence what the opportunity would do for that
+  project's work; a person is named only when no named project already reaches
+  them, grounded in their own stated interests rather than in member-fit's
+  matching note, which it is told not to copy. A post shows a project as
+  `**Name** project (Ana, Ben) · why`. At most four entries.
 * **Delivery** (`tools/delivery/discord_announcements.py`) produces outbox rows in
   two thread modes: `forum_thread` (start a thread; its id lands on
   `AnnouncementPost.thread_id`) and `thread_update` (one retry-safe unit: patch the
@@ -141,7 +150,7 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   a new thread each morning in `#grants` and `#fellowships`; yesterday's is
   deleted, and a day with nothing closing posts nothing and still takes it down.
 * **Where a conference is held.** Its post leads with the full location
-  (`tools/retrieval/geography.place_for`: the structured city and country, or the
+  (`place_for` in `tools/retrieval/geography.py`: the structured city and country, or the
   collector's place text with its country read off the end — "Ann Arbor, MI"
   becomes "Ann Arbor, Michigan, United States"; a venue name is never shown alone)
   and its continent. The conferences forum and the department forum carry seven

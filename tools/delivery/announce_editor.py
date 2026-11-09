@@ -2,15 +2,23 @@
 
 Code decides the facts — dates, amounts, eligibility, who suits it — and hands the
 editor a closed packet. The editor decides whether the item is worth a post and
-writes four things: a headline, *Why it matters*, *Who should look* (chosen from
-the people in the packet) and *Next step*. It sees nothing else: no web, no other
-target's data.
+writes four things: a headline, *Why it matters*, *Who should look* and *Next step*.
+It sees nothing else: no web, no other target's data.
+
+*Who should look* names project teams or people from the packet, and says in plain
+words what the opportunity would do for them: for a project team, what it serves in
+that project's work; for a person not reached through a project, why it fits their
+own stated interests. The packet carries only projects the lab shares in its
+reports, each with its focus and its team, and each person's interests and shared
+projects, so the sentence can be specific without the editor inventing anything.
 
 A verifier then holds it to that:
 
-* every person it names must be one the packet offered;
+* every project or person it names must be one the packet offered;
 * its prose may contain **no digit at all**, so a date or an amount can only ever
-  come from code, never from the model's memory;
+  come from code, never from the model's memory — with one exception: the headline
+  may repeat a word of the item's own title that holds a digit ("AACL 2026",
+  "13th"), since that came from the record, not the model;
 * every field must be present and short.
 
 Anything that fails, or a model that is unavailable, falls back to a template
@@ -26,9 +34,11 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-RUBRIC_VERSION = "ann-1"
+RUBRIC_VERSION = "ann-2"
 _DIGIT = re.compile(r"\d")
 _LIMITS = {"headline": 120, "why_it_matters": 420, "next_step": 220, "why": 200}
+#: How many entries *Who should look* holds (projects and people together).
+MAX_LOOKERS = 4
 
 SYSTEM_PROMPT = """You edit Mylo's opportunity announcements for a research lab or \
 department. You get one opportunity and facts about it that code has already checked.
@@ -36,16 +46,27 @@ department. You get one opportunity and facts about it that code has already che
 Decide whether it deserves its own post, then write it. Rules:
 - Write plain, specific sentences for researchers. No hype, no exclamation marks.
 - Never write a digit: no dates, amounts, counts or percentages. Code adds those.
-- Only name people (or, for a department, labs) from the list given, by their
-  id. Never invent anyone, and never name a person in a department post.
+- The headline is not the title: do not repeat the title, its year or its edition.
 - Say why it matters to this team's stated theme and projects, not in general.
+- "who_should_look" holds up to four entries, each naming one project (its "j" \
+id) or one person (their "p" id) from the lists given; for a department, labs \
+(their "l" id). Never invent anyone, and never name a person in a department post.
+  - When the opportunity fits a listed project, name the project and say in one \
+sentence what it would do for that project's work: a venue for its results, money \
+for its next stage, training or a fellowship for someone on it. Name the part of \
+the project's focus it serves.
+  - Name a person only when they are not already reached through a project you \
+named, and ground their sentence in their own stated interests.
+  - Write why they would want it, not that they match. Never write "X's research \
+on A matches the B focus of C", and do not copy Mylo's matching notes.
 - "next_step" is one concrete action the team could take this week.
 - If a check failed or the fit is weak, set "announce" to false and give a short \
 "skip_reason".
 
 Reply with JSON only:
 {"announce": true, "headline": "...", "why_it_matters": "...", \
-"who_should_look": [{"id": "p1", "why": "..."}], "next_step": "...", \
+"who_should_look": [{"id": "j1", "why": "..."}, {"id": "p2", "why": "..."}], \
+"next_step": "...", \
 "skip_reason": ""}"""
 
 
@@ -64,7 +85,11 @@ class Packet:
     theme: str
     theme_notes: list[str] = field(default_factory=list)
     projects: list[str] = field(default_factory=list)
-    people: list[dict] = field(default_factory=list)  # [{"id", "name", "why"}]
+    #: [{"id", "name", "why", "projects"?, "interests"?}] — "why" is Mylo's matching
+    #: note; "projects" are the shared projects they are on.
+    people: list[dict] = field(default_factory=list)
+    #: Shared lab projects this item touches: [{"id", "name", "focus", "members"}].
+    project_teams: list[dict] = field(default_factory=list)
     checks: list[dict] = field(default_factory=list)  # usability checks
     next_step_hint: str = ""
     #: Department posts: why only a department can take this on, with evidence.
@@ -77,7 +102,16 @@ class Packet:
         ]
         if self.theme_notes:
             lines.append("WHY MYLO MATCHED IT: " + " ".join(self.theme_notes))
-        if self.projects:
+        if self.project_teams:
+            lines.append("PROJECTS IT TOUCHES (name one by its id):")
+            for t in self.project_teams:
+                line = f"  - {t['id']}: {t['name']}"
+                if t.get("focus"):
+                    line += f" — focus: {t['focus']}"
+                if t.get("members"):
+                    line += f". Team: {', '.join(t['members'])}"
+                lines.append(line)
+        elif self.projects:
             lines.append("PROJECTS IT TOUCHES: " + "; ".join(self.projects))
         lines += [
             f"OPPORTUNITY ({self.kind}, {self.label}): {self.title}",
@@ -93,7 +127,13 @@ class Packet:
         dept = self.target_kind == "department"
         lines.append("LABS THAT COULD LEAD:" if dept else "PEOPLE:")
         if self.people:
-            lines += [f"  - {p['id']}: {p['name']} — {p['why']}" for p in self.people]
+            for p in self.people:
+                line = f"  - {p['id']}: {p['name']}"
+                if p.get("projects"):
+                    line += f" — on projects: {', '.join(p['projects'])}"
+                if p.get("interests"):
+                    line += f" — interests: {p['interests']}"
+                lines.append(line + f" — Mylo's matching note: {p['why']}")
         else:
             lines.append("  (none)")
         return "\n".join(lines)
@@ -104,7 +144,8 @@ class WriteUp:
     announce: bool
     headline: str
     why_it_matters: str
-    who_should_look: tuple[dict, ...]  # [{"id", "name", "why"}]
+    #: [{"id", "name", "why"}], plus "kind": "project" and "members" for a project.
+    who_should_look: tuple[dict, ...]
     next_step: str
     skip_reason: str = ""
     source: str = "template"  # "editor" | "template"
@@ -181,20 +222,33 @@ def verify(raw: str | None, packet: Packet) -> WriteUp:
             raise Rejected(f"{key} is missing")
         if len(value) > _LIMITS[key]:
             raise Rejected(f"{key} is too long")
-        _no_digits(key, value)
+        _no_digits(
+            key,
+            _without_title_words(value, packet.title) if key == "headline" else value,
+        )
         out[key] = value
 
     offered = {p["id"]: p for p in packet.people}
+    teams = {t["id"]: t for t in packet.project_teams}
     people = []
     for row in data.get("who_should_look") or []:
         if not isinstance(row, dict):
             raise Rejected("who_should_look rows must be objects")
         pid = str(row.get("id") or "")
-        if pid not in offered:
+        if pid not in offered and pid not in teams:
             raise Rejected(f"names someone not in the packet: {pid!r}")
         why = _shorten(_clean(row.get("why")), _LIMITS["why"])
         _no_digits("who_should_look", why)
-        people.append({"id": pid, "name": offered[pid]["name"], "why": why})
+        if any(p["id"] == pid for p in people):
+            continue  # named twice: once says it
+        people.append(_looker(pid, why, offered, teams))
+    # Someone already reached through a project named above is not listed again:
+    # the project's sentence says why they would want it.
+    reached = {m for p in people if p.get("kind") == "project" for m in p["members"]}
+    people = [
+        p for p in people if p.get("kind") == "project" or p["name"] not in reached
+    ]
+    people = people[:MAX_LOOKERS]
     return WriteUp(
         True,
         out["headline"],
@@ -203,6 +257,30 @@ def verify(raw: str | None, packet: Packet) -> WriteUp:
         out["next_step"],
         source="editor",
     )
+
+
+def _looker(pid: str, why: str, offered: dict, teams: dict) -> dict:
+    if pid in teams:
+        team = teams[pid]
+        return {
+            "id": pid,
+            "kind": "project",
+            "name": team["name"],
+            "members": list(team.get("members") or []),
+            "why": why,
+        }
+    return {"id": pid, "name": offered[pid]["name"], "why": why}
+
+
+def looker_label(entry: dict, *, bold: bool = True) -> str:
+    """How one *Who should look* entry is named on a surface: a project as
+    ``Name project (Ana, Ben)``, a person or a lab by name."""
+    name = entry.get("name") or ""
+    name = f"**{name}**" if bold and name else name
+    if entry.get("kind") == "project":
+        members = ", ".join(entry.get("members") or [])
+        return f"{name} project" + (f" ({members})" if members else "")
+    return name
 
 
 def _shorten(text: str, limit: int) -> str:
@@ -215,6 +293,18 @@ def _shorten(text: str, limit: int) -> str:
 
 def _clean(value) -> str:
     return " ".join(str(value or "").split())
+
+
+def _without_title_words(text: str, title: str) -> str:
+    """``text`` with every word that also appears in ``title`` removed, so a digit
+    the headline copied from the item's own title ("AACL 2026") is not held against
+    it; any other digit still is."""
+    words = {w.casefold() for w in re.findall(r"[\w'’-]+", title or "")}
+    return re.sub(
+        r"[\w'’-]+",
+        lambda m: "" if m.group(0).casefold() in words else m.group(0),
+        text,
+    )
 
 
 def _no_digits(key: str, value: str) -> None:
@@ -234,9 +324,23 @@ def template(packet: Packet) -> WriteUp:
     why += "."
     if packet.summary:
         why += " " + _first_sentence(packet.summary)
-    people = tuple(
-        {"id": p["id"], "name": p["name"], "why": p["why"]} for p in packet.people[:3]
-    )
+    lookers: list[dict] = []
+    reached: set[str] = set()
+    for team in packet.project_teams:
+        lookers.append(
+            {
+                "id": team["id"],
+                "kind": "project",
+                "name": team["name"],
+                "members": list(team.get("members") or []),
+                "why": "Mylo matched it to this project's work.",
+            }
+        )
+        reached.update(team.get("members") or [])
+    for p in packet.people:
+        if p["name"] not in reached:
+            lookers.append({"id": p["id"], "name": p["name"], "why": p["why"]})
+    people = tuple(lookers[:MAX_LOOKERS])
     return WriteUp(
         True,
         packet.title[: _LIMITS["headline"]],

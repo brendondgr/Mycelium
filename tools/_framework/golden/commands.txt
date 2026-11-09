@@ -64,6 +64,7 @@ repost_lab_report
 rerank_device
 resend_user_report
 reset_opportunities
+retag_announcement_threads
 run_analytics_report
 run_billing_tick
 run_daily_opportunities
