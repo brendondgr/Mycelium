@@ -1,106 +1,53 @@
 ---
-import ActionBar from "@/components/landing/feed/ActionBar.astro";
-import ClusterRow from "@/components/landing/feed/ClusterRow.astro";
+import Card from "@/components/landing/feed/Card.astro";
+import DeadlinePill from "@/components/landing/feed/DeadlinePill.astro";
 import Glyph from "@/components/landing/feed/Glyph.astro";
-import Reason from "@/components/landing/feed/Reason.astro";
-import SourceRow from "@/components/landing/feed/SourceRow.astro";
+import { eventRange } from "@/components/landing/feed/match";
 import type { ConferenceItem } from "@/data/feed-preview";
 
 /**
- * A row on Conferences — `ConferenceCard` in
- * `portal/sections/conferences-section.tsx`.
+ * A venue on Conferences — the shared skeleton with `CONFERENCES_CONFIG`'s
+ * lines from `conferences-section.tsx`: the acronym and where it is held, then
+ * "Submit by" the next deadline and when the event runs.
  *
- * Conferences carry venue-quality signals no other feed has: the published rank
- * badges (CORE, CCF), the dashed quality-flag pill, and Mylo's note when a
- * source has probably mislabelled what *kind* of deadline a date is. None of
- * those hide or reorder a venue — they are stated beside it and the reader
- * decides. A conference also has no amount, and its identity line is where and
- * when the event runs.
- *
- * The open-submission chips sit after the reason, not in the head: whether a
- * window is open is a fact about acting on the venue, and it belongs next to
- * the deadline rather than next to the title.
+ * The card keeps only what needs a second look: Mylo's note when a source has
+ * probably mislabelled what kind of deadline a date is, and the venue's quality
+ * flags. Neither hides or reorders a venue. Rankings sit beside the site link
+ * in the opened item, not on the card.
  */
 interface Props {
   item: ConferenceItem;
 }
 
 const { item } = Astro.props;
-
-const identity = `${item.location}; ${item.eventDates}`;
-const rankings = item.rankings ?? [];
 const flags = item.qualityFlags ?? [];
-const openWindows = item.openWindows ?? [];
 ---
 
-<li class="fc-card reveal">
-  <div class="fc-head">
-    <div class="fc-head-main">
-      <h4 class="fc-title">{item.title}</h4>
-      <p class="fc-identity">{identity}</p>
-
-      <ClusterRow
-        cluster={item.cluster}
-        clusterToken={item.clusterToken}
-        bridge={item.bridge}
-        isNew={item.isNew}
-        isUpdated={item.isUpdated}
-      />
-
-      {
-        (rankings.length > 0 || flags.length > 0) && (
-          <div class="fc-chip-row">
-            {rankings.map((badge) => (
-              <span class="fc-chip fc-rank">
-                <span class="fc-dot" aria-hidden="true" />
-                {badge.system} {badge.rank}
-              </span>
-            ))}
-            {flags.length > 0 && (
-              <span class="fc-chip fc-flags" title={flags.join(" · ")}>
-                Quality flags ({flags.length})
-              </span>
-            )}
-          </div>
-        )
-      }
-
-      {
-        item.dateWarning && (
-          <div class="fc-chip-row">
-            <span class="fc-chip fc-date-warning" title={item.dateWarning}>
-              <Glyph name="alert" class="fc-glyph fc-glyph-sm" />
-              Mylo flagged this date
-            </span>
-          </div>
-        )
-      }
-    </div>
-
-    <ActionBar deadlines={item.deadlines} />
-  </div>
-
-  {item.description && <p class="fc-description">{item.description}</p>}
-
-  <Reason
-    reason={item.reason}
-    caveat={item.caveat}
-    bridgeNote={item.bridgeNote}
-    origin={item.origin}
-  />
-
+<Card item={item} remindable>
+  {item.isUpdated && <span slot="flag" class="fc-pill">Changed</span>}
+  <Fragment slot="source">
+    <span class="fc-src">{item.acronym}</span>
+    <span class="fc-dotsep">{item.place}</span>
+  </Fragment>
+  <Fragment slot="meta">
+    <DeadlinePill inDays={item.deadlineInDays} prefix="Submit by " />
+    <span>{eventRange(item.eventInDays, item.eventLength)}</span>
+  </Fragment>
   {
-    openWindows.length > 0 && (
-      <div class="fc-chip-row" style="margin-top:0.75rem">
-        {openWindows.map((label) => (
-          <span class="fc-chip fc-open">
-            <Glyph name="check" class="fc-glyph fc-glyph-sm" />
-            {label}
+    (item.dateWarning || flags.length > 0) && (
+      <div slot="extra" class="fc-extra">
+        {item.dateWarning && (
+          <span class="fc-pill fc-date-warning" title={item.dateWarning}>
+            <Glyph name="alert" class="fc-glyph fc-glyph-sm" />
+            Mylo flagged this date
           </span>
-        ))}
+        )}
+        {flags.length > 0 && (
+          <span class="fc-pill fc-flags" title={flags.join(" · ")}>
+            Quality flags ({flags.length})
+          </span>
+        )}
       </div>
     )
   }
-
-  <SourceRow credit={item.sourceCredit} label="View conference" />
-</li>
+</Card>

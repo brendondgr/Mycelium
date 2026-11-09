@@ -1,0 +1,81 @@
+---
+import Glyph from "@/components/landing/feed/Glyph.astro";
+import MatchBadge from "@/components/landing/feed/MatchBadge.astro";
+import TopicPills from "@/components/landing/feed/TopicPills.astro";
+import { matchInfo, nextId } from "@/components/landing/feed/match";
+import type { FeedItem } from "@/data/feed-preview";
+
+/**
+ * The one card skeleton every feed shares — `FeedCard` in
+ * `web/app/src/components/portal/feed/parts.tsx`. Each kind's card supplies only
+ * its source line, its meta line and the odd flag; this decides the order:
+ *
+ *   match (hover: by theme) · New · flag ........................ tools
+ *   title, two lines at most
+ *   source line (venue / funder · money / acronym · place)
+ *   meta line (authors · year / deadline · posted / dates)
+ *   Mylo's reason, one line
+ *   [extra — only what needs a second look]
+ *   up to three theme pills, each with its share of the match
+ *
+ * No position and no verdict chip, and no caveat: the caveat lives in the
+ * opened item, which the preview does not have. See `docs/styles.md`, "How a
+ * recommendation states itself".
+ *
+ * The tools are inert spans hidden from assistive technology — without their
+ * behaviour they convey nothing. The match badge is the one live control.
+ */
+interface Props {
+  item: FeedItem;
+  /** Opportunities can be reminded about; papers have no date to remind. */
+  remindable?: boolean;
+}
+
+const { item, remindable = false } = Astro.props;
+const match = matchInfo(item);
+const byMylo = item.origin === "llm";
+const id = nextId();
+---
+
+<li class="fc-card reveal" data-new={item.isNew ? "" : undefined}>
+  <div class="fc-top">
+    <MatchBadge match={match} byMylo={byMylo} id={id} />
+    {item.isNew && <span class="fc-new">New</span>}
+    <slot name="flag" />
+    <span class="fc-tools" aria-hidden="true">
+      {remindable && <span class="fc-tool"><Glyph name="bell" class="fc-glyph fc-glyph-tool" /></span>}
+      <span class="fc-tool"><Glyph name="bookmark" class="fc-glyph fc-glyph-tool" /></span>
+      <span class="fc-tool"><Glyph name="eye-off" class="fc-glyph fc-glyph-tool" /></span>
+    </span>
+  </div>
+
+  <h4 class="fc-title"><span class="fc-title-clamp">{item.title}</span></h4>
+
+  <div class="fc-lines">
+    <p class="fc-source"><slot name="source" /></p>
+    <p class="fc-meta"><slot name="meta" /></p>
+  </div>
+
+  <p class="fc-why">
+    {
+      byMylo && (
+        <img
+          src="/images/mylo-headshot-256.webp"
+          alt=""
+          width="18"
+          height="18"
+          loading="lazy"
+          decoding="async"
+        />
+      )
+    }
+    <span class="fc-why-text">
+      <span class="sr-only">{byMylo ? "Mylo's reason: " : "Why it matched: "}</span>
+      {item.reason}
+    </span>
+  </p>
+
+  <slot name="extra" />
+
+  <TopicPills themes={match.themes} />
+</li>

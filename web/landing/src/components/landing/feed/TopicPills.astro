@@ -1,0 +1,36 @@
+---
+import type { ThemeMatch } from "@/components/landing/feed/match";
+
+/**
+ * The themes as colour-coded pills with their share of the match, one line at
+ * the foot of the card — `TopicPills` in `portal/feed/parts.tsx`. At most three;
+ * the rest are counted. Colour is never the only signal: every pill is named.
+ */
+interface Props {
+  themes: ThemeMatch[];
+  max?: number;
+}
+
+const { themes, max = 3 } = Astro.props;
+const shown = themes.slice(0, max);
+const rest = themes.slice(max);
+---
+
+{
+  themes.length > 0 && (
+    <ul class="fc-topics" aria-label="Themes it matched">
+      {shown.map((t) => (
+        <li class="fc-topic" style={`--tone: var(--cluster-${t.token});`} title={`${t.label} · ${t.pct}%`}>
+          <span class="fc-dot" aria-hidden="true" />
+          <span class="fc-topic-label">{t.label}</span>
+          <span class="fc-topic-pct">{t.pct}%</span>
+        </li>
+      ))}
+      {rest.length > 0 && (
+        <li class="fc-topic fc-topic-more" title={rest.map((t) => t.label).join(", ")}>
+          +{rest.length}
+        </li>
+      )}
+    </ul>
+  )
+}
