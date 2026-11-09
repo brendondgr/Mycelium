@@ -15,7 +15,9 @@ derived from a stored event, so ``Last-Event-ID`` keeps working):
   thinking, no text);
 * ``tool_call`` → ``{"type": "activity", "payload": {"state": "running",
   "label", "call_id", "name"}}``; its ``tool_result`` →
-  ``{"state": "ok" | "failed", "label", "call_id", "name"}``;
+  ``{"state": "ok" | "failed", "label", "call_id", "name"}``. Both carry
+  ``"ref": n`` when the label names one of the thread's references, so a
+  surface can open what Mylo looked at;
 * ``assistant`` keeps only ``text``, ``final``, ``partial``, ``removed`` and
   ``model`` (an intermediate step with no text is dropped);
 * ``user`` loses inlined file text; ``note`` meant for the model is dropped;
@@ -56,25 +58,41 @@ def _short(value, limit: int = _SLOT_CHARS) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
-def _ref_title(value: str, kind: str, refs: list[dict]) -> str:
+def _ref_entry(value, refs: list[dict]) -> dict | None:
     value = str(value or "").strip()
     num = _NUM.match(value)
     for entry in refs:
         if (num and entry.get("n") == int(num.group(1))) or entry.get("ref") == value:
-            return f"“{_short(entry.get('title') or '')}”"
+            return entry
+    return None
+
+
+def _ref_title(value: str, kind: str, refs: list[dict]) -> str:
+    entry = _ref_entry(value, refs)
+    if entry is not None:
+        return f"“{_short(entry.get('title') or '')}”"
     return GENERIC.get(kind, "something")
 
 
 def label(name: str, args, refs: list[dict] | None = None) -> str:
     """The display label for one call of ``name`` with ``args``."""
+    return describe(name, args, refs)[0]
+
+
+def describe(name: str, args, refs: list[dict] | None = None) -> tuple[str, int | None]:
+    """The label for one call, and the number of the thread reference the
+    label names (``None`` when it names none). The number is one the thread
+    already shows the person as a source; nothing else about the call's
+    arguments leaves here."""
     from .registry import registry
 
     fn = registry().get(name or "")
     if fn is None or not fn.activity:
-        return FALLBACK_LABEL
+        return FALLBACK_LABEL, None
     args = args if isinstance(args, dict) else {}
     ref_args = fn.ref_args()
     values = {}
+    target: int | None = None
     for _, slot, _, _ in string.Formatter().parse(fn.activity):
         if not slot:
             continue
@@ -83,14 +101,17 @@ def label(name: str, args, refs: list[dict] | None = None) -> str:
             if isinstance(raw, list):
                 raw = raw[0] if raw else ""
             values[slot] = _ref_title(raw, ref_args[slot], refs or [])
+            entry = _ref_entry(raw, refs or [])
+            if target is None and entry is not None and entry.get("n"):
+                target = int(entry["n"])
         elif raw in (None, "", [], {}):
             values[slot] = "…"
         else:
             values[slot] = _short(raw)
     try:
-        return fn.activity.format(**values)
+        return fn.activity.format(**values), target
     except (KeyError, IndexError, ValueError):
-        return FALLBACK_LABEL
+        return FALLBACK_LABEL, None
 
 
 class Projector:
@@ -100,7 +121,7 @@ class Projector:
 
     def __init__(self, thread=None) -> None:
         self.thread = thread
-        self.labels: dict[str, tuple[str, str]] = {}
+        self.labels: dict[str, tuple[str, str, int | None]] = {}
         self.thinking = False
 
     def _refs(self) -> list[dict]:
@@ -134,26 +155,23 @@ class Projector:
         if kind == "tool_call":
             call_id = payload.get("call_id", "")
             name = payload.get("name", "")
-            text = label(name, payload.get("args"), self._refs())
-            self.labels[call_id] = (name, text)
+            text, target = describe(name, payload.get("args"), self._refs())
+            self.labels[call_id] = (name, text, target)
             return _activity(
                 message,
-                {"state": "running", "label": text, "call_id": call_id, "name": name},
+                _step("running", text, call_id, name, target),
             )
         if kind == "tool_result":
             call_id = payload.get("call_id", "")
-            name, text = self.labels.get(call_id, (payload.get("name", ""), None))
+            name, text, target = self.labels.get(
+                call_id, (payload.get("name", ""), None, None)
+            )
             if text is None:
                 text = label(name, None)
             ok = payload.get("status", "ok") == "ok"
             return _activity(
                 message,
-                {
-                    "state": "ok" if ok else "failed",
-                    "label": text,
-                    "call_id": call_id,
-                    "name": name,
-                },
+                _step("ok" if ok else "failed", text, call_id, name, target),
             )
         if kind == "assistant":
             kept = {k: payload[k] for k in ASSISTANT_KEYS if k in payload}
@@ -168,6 +186,13 @@ class Projector:
         if kind == "note" and payload.get("to_model"):
             return None
         return message
+
+
+def _step(state: str, text: str, call_id: str, name: str, target: int | None) -> dict:
+    data = {"state": state, "label": text, "call_id": call_id, "name": name}
+    if target is not None:
+        data["ref"] = target
+    return data
 
 
 def _activity(message: dict, data: dict) -> dict:

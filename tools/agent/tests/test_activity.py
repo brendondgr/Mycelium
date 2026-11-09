@@ -104,6 +104,26 @@ def test_a_ref_slot_shows_the_title_not_the_id(ada):
         }
     )
     assert msg["payload"]["label"] == "Reading “Cells”"
+    # the step names the reference it read, so a surface can open it
+    assert msg["payload"]["ref"] == 3
+    done = p.project(
+        {"id": 10, "type": "tool_result", "payload": {"call_id": "x", "status": "ok"}}
+    )
+    assert done["payload"]["ref"] == 3
+    assert (
+        "ref"
+        not in activity.project(
+            {
+                "id": 11,
+                "type": "tool_call",
+                "payload": {
+                    "call_id": "y",
+                    "name": "corpus_item",
+                    "args": {"item": "item:zzz"},
+                },
+            }
+        )["payload"]
+    )
     unknown = activity.label("corpus_item", {"item": "item:zzz"})
     assert unknown == "Reading an item"
     assert activity.label("no_such_function", {}) == activity.FALLBACK_LABEL

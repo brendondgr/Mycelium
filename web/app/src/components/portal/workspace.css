@@ -3093,14 +3093,18 @@ html[data-motion="none"] *::after {
 
 .ws-mylo-turns {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* minmax(0, 1fr): a long line inside (a step label, a table) can never widen
+   the column past the panel. */
 .ws-mylo-turn {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -3135,6 +3139,7 @@ html[data-motion="none"] *::after {
 
 .ws-mylo-answer {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -3149,6 +3154,132 @@ html[data-motion="none"] *::after {
 .ws-mylo-answer ul,
 .ws-mylo-answer ol {
   padding-left: 1.2em;
+}
+
+.ws-mylo-answer li + li,
+.ws-mylo-answer li > ul,
+.ws-mylo-answer li > ol,
+.ws-mylo-answer li > p + * {
+  margin-top: 3px;
+}
+
+.ws-mylo-answer li[data-task] {
+  list-style: none;
+  margin-left: -1.2em;
+}
+
+.ws-mylo-answer li[data-task] input {
+  margin: 0 6px 0 0;
+  vertical-align: -1px;
+}
+
+.ws-mylo-answer h3,
+.ws-mylo-answer h4 {
+  margin: 4px 0 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.ws-mylo-answer h4 {
+  font-size: 13px;
+}
+
+.ws-mylo-answer a {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ws-mylo-answer blockquote {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--divider);
+  color: var(--text-secondary);
+}
+
+.ws-mylo-answer hr {
+  width: 100%;
+  margin: 2px 0;
+  border: 0;
+  border-top: 1px solid var(--divider);
+}
+
+.ws-mylo-code-inline,
+.ws-mylo-code {
+  border-radius: 6px;
+  background: var(--raise);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.88em;
+}
+
+.ws-mylo-code-inline {
+  padding: 1px 5px;
+}
+
+.ws-mylo-code {
+  margin: 0;
+  padding: 9px 11px;
+  overflow-x: auto;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+/* A wide table or formula scrolls inside its own box; the panel never does. */
+.ws-mylo-table,
+.ws-mylo-math {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ws-mylo-table {
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+}
+
+.ws-mylo-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  line-height: 1.45;
+  overflow-wrap: normal;
+}
+
+.ws-mylo-table th,
+.ws-mylo-table td {
+  min-width: 72px;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--divider);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ws-mylo-table th {
+  background: var(--raise);
+  color: var(--text-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ws-mylo-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ws-mylo-math {
+  padding: 2px 0;
+  overflow-y: hidden;
+}
+
+.ws-mylo-answer .katex {
+  font-size: 1.05em;
+}
+
+.ws-mylo-answer .katex-display {
+  margin: 0;
 }
 
 .ws-mylo-answer ul {
@@ -3195,10 +3326,17 @@ html[data-motion="none"] *::after {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.ws-mylo-fold-row .ws-mylo-who {
+  flex: none;
+  margin: 0;
 }
 
 .ws-mylo-fold-head {
   display: inline-flex;
+  flex: 0 1 auto;
   align-items: center;
   gap: 4px;
   min-width: 0;
@@ -3248,6 +3386,29 @@ html[data-motion="none"] *::after {
   display: flex;
   align-items: baseline;
   gap: 7px;
+}
+
+.ws-mylo-steps li > span:not(.ws-sr),
+.ws-mylo-step-link {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ws-mylo-step-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--link) 40%, transparent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ws-mylo-step-link:hover {
+  text-decoration-color: currentColor;
 }
 
 .ws-mylo-steps svg {

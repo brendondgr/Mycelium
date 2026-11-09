@@ -21,7 +21,14 @@ export const ASK_USER = "ask_user";
 
 export type StepState = "running" | "ok" | "failed";
 
-export type Step = { callId: string; label: string; name: string; state: StepState };
+export type Step = {
+  callId: string;
+  label: string;
+  name: string;
+  state: StepState;
+  /** The thread reference (`#n`) the step looked at, when its label names one. */
+  ref: number | null;
+};
 
 export type TurnQuestion = {
   callId: string;
@@ -148,6 +155,7 @@ export function apply(view: ThreadView, message: StreamMessage): ThreadView {
         callId,
         name,
         label: str(payload.label) || "Working",
+        ref: typeof payload.ref === "number" ? payload.ref : null,
         state: state === "ok" ? "ok" : state === "failed" ? "failed" : "running",
       };
       const at = turn.steps.findIndex((s) => s.callId === callId);

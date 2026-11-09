@@ -112,14 +112,21 @@ an "About" line for a conversation about one thing, and three icons — history,
 new chat, pin — plus close.
 
 **Mylo shows what he is doing, never what he is thinking.** Each turn has one
-fold under the question: while Mylo works its header names the current step
+row under the question — Mylo's face, his name, and the fold — and the row
+stays for every answer, steps or none. While Mylo works the fold's header names the current step
 with a quiet shimmer ("Searching the corpus for …"), opened it lists the steps
 with a tick or a cross, and when the answer arrives it reads "Looked at 3
 things". Between two steps the header keeps the last step's words rather than
 swapping to a filler. The words are the server's labels; the panel has none of
-its own. The person's own messages sit on the right, Mylo's on the left. In
+its own. A long label is cut with an ellipsis inside the panel; opened, a step
+that read one of the conversation's sources is a link that opens it. The person's own messages sit on the right, Mylo's on the left. In
 the history list the time sits at the row's right edge, and with a pointer the
 row's actions take its place on hover or focus.
+An answer is drawn as Markdown: headings, lists, tables, code, quotes, links
+and math (KaTeX; a single dollar sign stays money unless it wraps a formula).
+A wide table, code block or formula scrolls inside its own box, never the
+panel. HTML the model writes is shown as text, links open only web and mail
+addresses in a new tab, and pictures are never fetched.
 Citations in an answer are small numbered pills that open the item. A line
 under the composer names the model only when it does not run on this machine. Mylo's
 head beside the fold floats gently while he works (Motion: Full only) and

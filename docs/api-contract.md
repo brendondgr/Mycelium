@@ -275,7 +275,8 @@ stream envelope (`id`, `type`, `thread`, `ts`, `payload`):
   call_id, name}}`; its `tool_result` → the same with `state: "ok"` or
   `"failed"`. `label` is the function's `activity` text ("Searching the
   corpus for “cell segmentation”", "Reading “<title>”"); arguments and
-  results are never sent.
+  results are never sent. Both carry `ref: n` when the label names one of the
+  thread's references, so a surface can open what Mylo looked at.
 - `assistant` keeps `text`, `final`, `partial`, `removed`, `model`; a step
   with no text is dropped. `user` loses inlined file text. `note`s meant for
   the model are dropped.
