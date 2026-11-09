@@ -310,7 +310,6 @@ def _settings_complete() -> CompleteFn:
         client = build_llm_client(component=COMPONENT)
         response = client.complete(
             [LLMMessage("system", system), LLMMessage("user", prompt)],
-            max_tokens=900,
         )
         return response.content
 

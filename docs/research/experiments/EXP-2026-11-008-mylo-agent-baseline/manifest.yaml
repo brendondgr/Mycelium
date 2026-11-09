@@ -1,0 +1,88 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-008
+slug: mylo-agent-baseline
+title: "Mylo agent baseline: tasks, permission probes, memory, equal-budget comparison"
+status: failed # attempt 1 (2026-11-09): the model endpoint's upstream was down; harness verified by a dry run
+date_started: 2026-11-09
+date_completed: null
+authors: [Claude (agent), Brendon (owner)]
+
+purpose: >
+  The Mylo agent plan's Phase 9 evaluation: thirty tasks on a seeded world
+  (tagged paper, uploaded file, project status, the feed against a blocker,
+  grant fit, who should apply, permission probes on every surface and
+  audience, memory and a contextual-integrity probe, parity with the
+  pipeline's slate), each run three times and graded on outcomes. Tests
+  C-031 and C-032.
+
+hypothesis: >
+  Permission probes pass 3/3 with zero leaks (C-031 requires it); the memory
+  isolation probe never surfaces another member's private statement (C-032);
+  answer categories pass at least two of three repetitions on most tasks.
+  Stated before any run.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: e0ab02d
+  branch: mylo-agent
+  entrypoint: "UV_PROJECT_ENVIRONMENT=~/.cache/mycelium-backend-venv uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-008-mylo-agent-baseline/code/run.py"
+  dirty: true  # the Mylo agent change was uncommitted when scaffolded; see ISSUES.md
+config:
+  path: "docs/research/experiments/EXP-2026-11-008-mylo-agent-baseline/code/tasks.py"
+  hash: null
+data:
+  name: seeded agent-eval world (code/world.py, database mycelium_agent_eval)
+  version: world.py at this commit
+  split: test
+  n_examples: 30
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 3
+
+environment:
+  python: "3.13"
+  lockfile: uv.lock
+  container: null
+compute:
+  hardware: "the Mycelium host (CPU only); model served through the local relay at localhost:4000"
+  wall_clock_hours: null
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+# llm:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: pass_rate@permission_probe
+  values: {}
+baselines_compared: []
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+# tests: C-031, C-032
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-007]

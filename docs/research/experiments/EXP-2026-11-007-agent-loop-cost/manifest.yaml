@@ -1,0 +1,85 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-007
+slug: agent-loop-cost
+title: "Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop"
+status: failed # attempt 1 (2026-11-09): the model endpoint's upstream was down; rerun when it is up
+date_started: 2026-11-09
+date_completed: null
+authors: [Claude (agent), Brendon (owner)]
+
+purpose: >
+  The Mylo agent plan's Phase 0 gate: before the agent ships, measure the
+  latency and tokens per turn of a tool loop of 1, 5 and 15 model calls against
+  the instance's real endpoint on this host, so the step cap, context window
+  and model choice can be changed if a typical turn is too slow. Tests C-030.
+
+hypothesis: >
+  A 5-step turn completes in under 60 seconds and under 30k tokens on the
+  instance model; a 15-step turn stays under the default 32k context window
+  without compaction. Stated before any run.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: e0ab02d
+  branch: mylo-agent
+  entrypoint: "UV_PROJECT_ENVIRONMENT=~/.cache/mycelium-backend-venv uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-007-agent-loop-cost/code/run.py"
+  dirty: true  # the Mylo agent change was uncommitted when scaffolded; see ISSUES.md
+config:
+  path: "tools/agent/tool.py (defaults)"
+  hash: null
+data:
+  name: none (scripted function results; real model calls)
+  version: n/a
+  split: n/a
+  n_examples: 0
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 3
+
+environment:
+  python: "3.13"
+  lockfile: uv.lock
+  container: null
+compute:
+  hardware: "the Mycelium host (CPU only); model served through the local relay at localhost:4000"
+  wall_clock_hours: null
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+# llm:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: turn_latency_s_mean@5
+  values: {}
+baselines_compared: []
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+# tests: C-030
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-008]

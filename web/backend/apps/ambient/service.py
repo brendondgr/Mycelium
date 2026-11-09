@@ -957,3 +957,29 @@ def teams_answer(tenant_id: str, aad_object_id: str, suggestion_id, choice: str)
             "Something went wrong — nothing was changed. Try again, or answer on "
             "the web."
         )
+
+
+# -- Mylo chat (the agent tool) ---------------------------------------------------
+
+
+def set_agent_chat_listening(user, *, on: bool, now=None) -> bool:
+    """Turn learning from Mylo chats on or off for one person (agent plan D-3).
+
+    On by default: a person who never chose has no row and is listened to.
+    Turning it off stops recording at the next message, because eligibility is
+    checked on arrival. It is not refused on a free tier (turning off never
+    is; turning on only matters once the tier allows listening at all).
+    """
+    from .models import ListeningConsent, Platform
+
+    now = now or timezone.now()
+    row, _ = ListeningConsent.objects.get_or_create(
+        user=user, platform=Platform.AGENT_CHAT, defaults={"enabled": True}
+    )
+    row.enabled = bool(on)
+    if on:
+        row.enabled_at = now
+    else:
+        row.disabled_at = now
+    row.save(update_fields=["enabled", "enabled_at", "disabled_at", "updated_at"])
+    return row.enabled

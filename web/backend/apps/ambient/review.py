@@ -380,7 +380,12 @@ def reopen(user, concept_id: int, relation: str, *, now=None) -> AppliedChange |
 def settings_for(user) -> dict:
     from apps.integrations.models import DiscordIdentity, SlackIdentity, TeamsIdentity
 
-    from .eligibility import ambient_enabled, tier_is_paid
+    from .eligibility import (
+        agent_chat_enabled,
+        ambient_enabled,
+        person_opted_in,
+        tier_is_paid,
+    )
 
     consent = ListeningConsent.objects.filter(
         user=user, platform=Platform.DISCORD
@@ -411,7 +416,10 @@ def settings_for(user) -> dict:
             "teams": ListeningConsent.objects.filter(
                 user=user, platform=Platform.TEAMS, enabled=True
             ).exists(),
+            # Mylo chat in the app: on unless the person turned it off (D-3).
+            "mylo_chat": person_opted_in(user, Platform.AGENT_CHAT),
         },
+        "mylo_chat_available": agent_chat_enabled(),
         "questions_muted": bool(consent and consent.questions_muted),
         "quiet_until": consent.questions_quiet_until if consent else None,
         "statement": STORED_STATEMENT,
@@ -453,6 +461,10 @@ def update_settings(user, data: dict, *, now=None) -> dict:
         else:
             row.disabled_at = now
         row.save(update_fields=["enabled", "enabled_at", "disabled_at", "updated_at"])
+    if "listening_mylo_chat" in data:
+        from .service import set_agent_chat_listening
+
+        set_agent_chat_listening(user, on=bool(data["listening_mylo_chat"]), now=now)
     if "questions_muted" in data:
         set_questions(user, on=not bool(data["questions_muted"]), now=now)
     if "quiet_until" in data:

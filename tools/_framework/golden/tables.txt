@@ -13,6 +13,12 @@ accounts_orginvite	OrgInvite
 accounts_orginviteredemption	OrgInviteRedemption
 accounts_profile	Profile
 accounts_watchpreference	WatchPreference
+agent_agentevent	AgentEvent
+agent_agentorgpolicy	AgentOrgPolicy
+agent_agentpreference	AgentPreference
+agent_agentqueuedmessage	AgentQueuedMessage
+agent_agentthread	AgentThread
+agent_agentthreaddigest	AgentThreadDigest
 ambient_appliedchange	AppliedChange
 ambient_attributioncorrection	AttributionCorrection
 ambient_channelhint	ChannelHint
@@ -83,6 +89,7 @@ core_llmusagedaily	LLMUsageDaily
 django_admin_log	LogEntry
 django_content_type	ContentType
 django_session	Session
+files_storedfile	StoredFile
 fulltext_fulltextdocument	FulltextDocument
 fulltext_fulltextrequest	FulltextRequest
 fulltext_sourceverdict	SourceVerdict

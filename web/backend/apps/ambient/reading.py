@@ -35,7 +35,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import extract, windows
-from .eligibility import ambient_enabled
+from .eligibility import agent_chat_enabled, ambient_enabled
 from .extract import Extracted, Outcome
 from .models import (
     PERSONAL_KINDS,
@@ -307,7 +307,15 @@ def read_ready(
     """Read every conversation that is ready. Safe to run at any time."""
     run = ReadRun()
     if not ambient_enabled():
-        return run
+        # Mylo chats have their own switch (agent plan D-3): with ambient off,
+        # only their conversations are read.
+        if not agent_chat_enabled():
+            return run
+        from .models import Source
+
+        chat_sources = Source.objects.filter(kind=Source.Kind.AGENT_CHAT)
+        sources = (chat_sources if sources is None
+                   else [s for s in sources if s.kind == Source.Kind.AGENT_CHAT])
     now = now or timezone.now()
     specs = windows.ready(now=now, sources=sources)
     run.ready = len(specs)

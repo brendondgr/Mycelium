@@ -231,6 +231,39 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 |---|---|---|
 | `tools/` | GET | Signed in. `{"tools": [{name, summary, state, core, depends_on}]}`, one per installed tool in dependency order; `state` is `LOADED`, `DISABLED`, `MISSING`, `BLOCKED` or `FAILED`. Staff also get `reason`. Served by `tools/_framework/views.py` |
 
+### Mylo agent — `/api/tools/agent/` (tool `agent`, backend only)
+
+Session auth + CSRF; every route needs a verified email. A thread is readable
+only by the person who started it — an org admin gets 404 like anyone else.
+Errors are `{code, detail, fix}`. POST routes also answer without the trailing
+slash.
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `status/` | GET | `{model}`, or `{model: null, code: "no_model", detail, fix}` when no model is configured |
+| `catalog/?scope=&ref=` | GET | Every function with `allowed` and, if not, `layer`, `code`, `detail`, `fix` — the gate's own answer for this caller |
+| `threads/` | GET, POST | List the caller's threads (`?q=` searches title, purpose and their own words; `?archived=1`); create one in `{scope: personal\|lab\|department\|project, ref}` (lab slug, department or project id). 404 for a scope the caller cannot see |
+| `threads/<id>/` | GET, PATCH, DELETE | One thread (state, todos, `references`); rename or archive (`{title, archived}`); delete it and its events |
+| `threads/<id>/messages/` | POST | `{text, mentions: ["paper:<id>", "project:<uuid>", "file:<uuid>", …], attachments: [file ids], steer}` or multipart with `files`. 202 `{status: started\|queued\|steered}`. A mention the caller cannot see is refused (404) before the turn; 429 past `daily_turns`; 409 while Mylo waits for an answer |
+| `threads/<id>/answer/` | POST | `{text}` answers Mylo's pending question and resumes; 409 when nothing is pending |
+| `threads/<id>/cancel/` | POST | Stops the running turn before its next step; queued messages are dropped |
+| `threads/<id>/fork/` | POST | `{seq}` → a new thread with events `1..seq` (a trailing unfinished step dropped) |
+| `threads/<id>/events/?after=` | GET | Stored events after a seq, and the thread's state |
+| `threads/<id>/stream/` | GET | Server-sent events: stored events after `Last-Event-ID` (or `?after=`), each with its seq as `id:`, then live events and transient deltas (no `id:`); a heartbeat comment every 15 s. `?once=1` replays and closes; `?until_idle=1` closes when the turn ends |
+| `threads/<id>/export/?as=json\|md` | GET | The log as JSON, or a Markdown transcript with citations resolved; anything the caller can no longer see shows as unavailable |
+| `refs/search/?q=&kinds=&thread=` | GET | Candidates for the `@` picker, each already visible to the caller |
+| `preferences/` | GET, PATCH | `{chat_enabled, learning, discord_allowed, groups_off}`; `learning` is ambient's Mylo-chat consent (on unless turned off) |
+| `policy/<lab\|department>/<slug or id>/` | GET, PATCH | The org's narrowing policy `{groups_off, discord_channels_off, max_risk, members_inform_org, set}`; members read it, owners and admins change it (audited); it can never widen the instance or switch the agent on or off |
+
+### Stored files — `/api/tools/files/` (tool `files`)
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `files/` | GET, POST | List visible files (`?owner_kind=&owner_id=`); upload multipart `file`, `owner_kind` (`user`\|`lab`\|`department`\|`project`), `owner_id`. 403 where the caller may not add, 413 over the size or quota limit, 400 for a refused type |
+| `files/<id>/` | GET, DELETE | The row and its extraction status; soft delete (uploader, org owner/admin, project editor) — the bytes go at the next purge |
+| `files/<id>/text/?offset=&limit=` | GET | Extracted text as numbered lines plus page offsets; 409 while not ready |
+| `files/<id>/download/` | GET | The original, always as an attachment with `X-Content-Type-Options: nosniff` |
+
 ### Health — `/api/health/`
 
 Unauthenticated liveness check.

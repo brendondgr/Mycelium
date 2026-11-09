@@ -243,6 +243,12 @@ SETTINGS: tuple[Setting, ...] = (
             env="SLACK_ENABLED"),
     Setting("features.teams", "bool", False, "The Microsoft Teams integration.",
             env="TEAMS_ENABLED"),
+    # ---- llm ---------------------------------------------------------------
+    Setting("llm.max_tokens", "int", 0,
+            "Most tokens one model reply may use, thinking included. 0 sends no "
+            "cap, so a reasoning model is never starved before it answers; set "
+            "a number only if your endpoint needs one.",
+            env="LLM_MAX_TOKENS"),
     # ---- tools (universal policy; each tool adds its own [tools.<name>]) --
     Setting("tools.strict", "bool", False,
             "Stop startup when any tool fails to load, instead of setting the "
@@ -307,6 +313,8 @@ SECTION_HELP = {
     "features": "Optional features, all off unless switched on.",
     "nightly": "Cost controls for the nightly run: how many model calls and how "
                "much parallelism it may use.",
+    "llm": "The language model. The endpoint and model name live in .env "
+           "(LLM_BASE_URL, LLM_MODEL); this section holds policy.",
     "tools": "The modular tools under tools/. These keys govern all of them; each "
              "installed tool also reads its own [tools.<name>] section below.",
 }

@@ -38,8 +38,6 @@ CompleteFn = Callable[[str, str], str | None]
 #: for the eval harness rather than for invalidation.
 NARRATIVE_VERSION = "cd1"
 
-_THEME_MAX_TOKENS = 400
-_LEAD_MAX_TOKENS = 400
 
 _THEME_SYSTEM = (
     "You are Mylo, writing to a researcher you know well about ONE strand of "
@@ -84,7 +82,7 @@ def write_theme_read(
     """
     if not entrants:
         return "", ""
-    ask = complete if complete is not None else _settings_complete(_THEME_MAX_TOKENS)
+    ask = complete if complete is not None else _settings_complete()
     prompt = build_theme_prompt(
         portfolio_text, theme_label, theme_interests, entrants
     )
@@ -167,7 +165,7 @@ def write_lead(
     alerts = list(alerts)
     if not reads and not alerts:
         return "", ""
-    ask = complete if complete is not None else _settings_complete(_LEAD_MAX_TOKENS)
+    ask = complete if complete is not None else _settings_complete()
     prompt = build_lead_prompt(
         portfolio_text, reads, deadline_note=deadline_note, alerts=alerts
     )
@@ -263,14 +261,13 @@ def _clean_block(raw: str | None) -> str:
     return " ".join(lines).strip()
 
 
-def _settings_complete(max_tokens: int) -> CompleteFn:
+def _settings_complete() -> CompleteFn:
     def ask(system: str, prompt: str) -> str | None:
         from apps.core.llm import LLMMessage, build_llm_client
 
         client = build_llm_client(component="narrative")
         response = client.complete(
             [LLMMessage("system", system), LLMMessage("user", prompt)],
-            max_tokens=max_tokens,
         )
         return response.content
 

@@ -1,7 +1,11 @@
 # Mylo as an agent — plan
 
-**Status:** accepted 2026-11-09, not started. The owner settled D-1, D-5 and
-D-6 and accepted the overall design. The permission model is in
+**Status:** Phases 0–8 built 2026-11-09 (`tools/agent`, `tools/files`; see
+"Implementation notes" at the end). Open: the Phase 0 gate
+(`EXP-2026-11-007`) and the Phase 9 baseline (`EXP-2026-11-008`) are written
+and attempted but have no numbers, because the model endpoint was down; rerun
+both, then delete this plan. The owner settled D-1, D-5 and D-6 and accepted
+the overall design. The permission model is in
 [`permissions.md`](permissions.md); stored files, conversation logs and
 streaming are in [`files-and-streaming.md`](files-and-streaming.md).
 **Correlation ID:** `20261109-mylo-agent`
@@ -744,3 +748,28 @@ UI, with no change to the agent.
 - Vector search inside files.
 
 Each one can be added later without reshaping what is built here.
+
+## Implementation notes (2026-11-09)
+
+What the build settled that the plan above left open:
+
+- **One learning switch per person.** Learning from chats is ambient's
+  `ListeningConsent` for the new `agent_chat` platform (a missing row reads as
+  on), not a field on `AgentPreference`; the agent's preferences API and
+  "Mylo & you" read and write the same row.
+- **`features.ambient` does not gate Mylo chat.** Ambient ships off, which
+  would have made D-3 a no-op. `agent_chat` sources answer to
+  `tools.agent.learning` instead (`eligibility.listening_available`), and the
+  hourly read pass reads only those sources while ambient is off. Deliberation
+  and the other downstream steps keep their own switches.
+- **No `ranking_edges` change.** The "told" weight already comes from every
+  chat message being `explicit` (deliberation's `EXPLICIT_WEIGHT`), and
+  `ranking_edges` weighs by tier and status, never by origin, so the
+  `agent_chat` origin (the observation's source kind) changes no ranking and
+  needed no evaluation re-run.
+- **Discord files.** The default surface rule is `discord_channel:files`: files
+  are off where others read the reply and still on in a DM, as the surfaces
+  section asks.
+- **Experiments.** Both runs stopped on `502 upstream error` from the relay
+  (`logs/attempt.json` in each). The baseline's harness passed a dry run.
+

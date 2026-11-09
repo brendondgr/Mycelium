@@ -97,6 +97,15 @@ Springer's subscription endpoint) writes an audit event,
 `fulltext.licensed_fetch`. The `fulltext.retrieved` event fires once per newly
 stored paper (`events.py`).
 
+## What Mylo can read
+
+`agent.py` gives the Mylo agent `fulltext_availability`, `fulltext_read_paper`
+and `fulltext_search_paper` (line-numbered, with sections, always treated as
+untrusted text) and the `doc:` reference kind, through `Tool.agent`. A paper
+stored under the instance's publisher licence is shown to a lab at most; an
+open one to anyone. This tool never imports the agent. Fetching a paper not
+yet stored (`request`) spends publisher quota and is not offered to Mylo.
+
 ## Doors
 
 The tool's whole interface in this pass (no HTTP API yet; one comes later,

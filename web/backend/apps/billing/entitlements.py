@@ -69,6 +69,9 @@ class Feature:
     # application/abstract/event date. Discord-delivered, so it is paid-only; the
     # matching Discord-sync half of the gate lives in ``content.reminder_access``.
     DEADLINE_REMINDERS = "deadline_reminders"
+    # Mylo as a chat agent (tools/agent), and asking it about stored files.
+    AGENT = "agent"
+    AGENT_FILES = "agent_files"
 
     # The team line — Lab and up.
     TEAM_WORKSPACE = "team_workspace"
@@ -111,6 +114,8 @@ _SPORE = _FREE | {
     Feature.CONFERENCE_ALERTS,
     Feature.BOT_DM,
     Feature.DEADLINE_REMINDERS,
+    Feature.AGENT,
+    Feature.AGENT_FILES,
 }
 # Lab adds the shared/team line. It does **not** add BOT_SERVER — that is an add-on.
 _LAB = _SPORE | {

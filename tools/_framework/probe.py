@@ -73,6 +73,10 @@ def main() -> int:
                 for p in sorted(commands_dir.glob("*.py"))
                 if p.stem != "__init__"
             ]
+        # The module that gives the Mylo agent this tool's functions: a broken
+        # one fails the tool here rather than silently emptying the catalog.
+        if getattr(cls, "agent", None) and cls.agent.startswith(item.package + "."):
+            modules.append(cls.agent[len(item.package) + 1:])
         try:
             for module in dict.fromkeys(modules):
                 dotted = f"{item.package}.{module}"

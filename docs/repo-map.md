@@ -386,6 +386,38 @@ A task index across the three tools; each tool also has its own section below.
 | External DOI / arXiv / URL resolver | `tools/retrieval/resolver.py` |
 | Host-side fellowship scrape (Playwright) and the dormant Grants.gov/NIH/NSF clients | `tools/retrieval/host/scrape_fellowships.py`, `tools/retrieval/host/grants/` |
 
+## Agent tool (`tools/agent/`)
+
+| Task | Path |
+|---|---|
+| The tool's declaration and guide; its settings (`[tools.agent]`) | `tools/agent/tool.py`; `tools/agent/README.md` |
+| Declaring a function or reference kind another tool gives Mylo (`Tool.agent`) | `tools/_framework/agentspec.py`; reaching a loaded tool's door without importing it: `tools/_framework/services.py` |
+| Threads, the event log, queued messages, org policy, personal switches, digests | `tools/agent/models.py`, append and fork in `tools/agent/store.py` |
+| The one permission gate (nine layers) and the caller | `tools/agent/permissions.py`, `tools/agent/caller.py`; web/CLI adapters in `tools/agent/surfaces/` |
+| Which functions exist (from every loaded tool) and the refusal of non-read ones | `tools/agent/registry.py` |
+| The turn, its guards, one model call and the local-model repairs | `tools/agent/loop.py`, `tools/agent/llmcall.py`, `tools/agent/dispatch.py` |
+| The system prompt, rebuild of the log into messages, compaction, the citation check | `tools/agent/prompt.py`, `tools/agent/rebuild.py`, `tools/agent/compaction.py`, `tools/agent/verify.py` |
+| `@` references and `#n` numbers | `tools/agent/refs.py`; the agent's own kinds in `tools/agent/functions/kinds.py` |
+| Mylo's own functions (agent, me, projects, corpus, org, feeds, knowledge) and skills | `tools/agent/functions/`, `tools/agent/skills/` |
+| Memory: profile and scope blocks, recall, titles and digests, the learning pass | `tools/agent/memory.py`, `tools/agent/recall.py`, `tools/agent/memory_after.py`, `tools/agent/learning.py`; ambient's side in `web/backend/apps/ambient/adapters/agent_chat.py` |
+| Live streaming (Redis pub/sub, SSE) and cancel | `tools/agent/stream.py` |
+| The API (`api/tools/agent/`) and the terminal chat | `tools/agent/views.py`, `tools/agent/urls.py`, `tools/agent/management/commands/agent.py` |
+| Turns in the worker; resume, retention and learning sweeps | `tools/agent/tasks.py` |
+
+## Files tool (`tools/files/`)
+
+| Task | Path |
+|---|---|
+| The tool's declaration and guide | `tools/files/tool.py`; `tools/files/README.md` |
+| Stored files (owner, sniffed type, status) | `tools/files/models.py` |
+| Bytes on disk (`data/files/`), type sniffing, the docx guard | `tools/files/storage.py` |
+| Reading text out of PDF, docx and text files | `tools/files/extract.py`, the task in `tools/files/tasks.py` |
+| Who may add, see and delete a file | `tools/files/access.py` |
+| Upload, extract, delete, purge (write door) | `tools/files/service.py` |
+| The API (`api/tools/files/`) | `tools/files/views.py`, `tools/files/urls.py` |
+| Mylo's file functions and the `file:` reference kind | `tools/files/agent.py` |
+| The store against the database | `manage.py files_check` — `tools/files/management/commands/files_check.py` |
+
 ## Fulltext tool (`tools/fulltext/`)
 
 | Task | Path |

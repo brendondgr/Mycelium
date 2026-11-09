@@ -26,6 +26,9 @@ class Platform(models.TextChoices):
     SLACK = "slack", "Slack"
     TEAMS = "teams", "Microsoft Teams"
     TRANSCRIPT = "transcript", "Meeting transcript"
+    #: Conversations with Mylo in the app (the agent tool). The one platform
+    #: where listening is on unless the person turned it off (agent plan D-3).
+    AGENT_CHAT = "agent_chat", "Mylo chat"
 
 
 class Source(models.Model):
@@ -48,6 +51,7 @@ class Source(models.Model):
         # One person's personal chat with Mylo in Teams (Plan 11).
         TEAMS_CHAT = "teams_chat", "Teams personal chat"
         TRANSCRIPT = "transcript", "Meeting transcript"
+        AGENT_CHAT = "agent_chat", "Mylo chat"
 
     class Consent(models.TextChoices):
         PENDING = "pending", "Pending"  # known, never turned on
@@ -65,6 +69,7 @@ class Source(models.Model):
         Kind.TEAMS_CHAT: Platform.TEAMS,
         Kind.TEAMS_TEAM: Platform.TEAMS,
         Kind.TRANSCRIPT: Platform.TRANSCRIPT,
+        Kind.AGENT_CHAT: Platform.AGENT_CHAT,
     }
 
     kind = models.CharField(max_length=24, choices=Kind.choices)

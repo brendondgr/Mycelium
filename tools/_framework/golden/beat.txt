@@ -1,7 +1,11 @@
+agent-learn-quiet-threads	tools.agent.tasks.learn_from_quiet_threads	<crontab: */10 * * * * (m/h/dM/MY/d)>
+agent-resume-stuck-turns	tools.agent.tasks.resume_stuck_turns	<crontab: */5 * * * * (m/h/dM/MY/d)>
+agent-retention-sweep	tools.agent.tasks.retention_sweep	<crontab: 17 4 * * * (m/h/dM/MY/d)>
 collab-daily	apps.collab.daily	<crontab: 30 4 * * * (m/h/dM/MY/d)>
 drain-discord-outbox	apps.integrations.drain_outbox	<crontab: * * * * * (m/h/dM/MY/d)>
 drain-slack-outbox	apps.integrations.drain_slack_outbox	<crontab: * * * * * (m/h/dM/MY/d)>
 drain-teams-outbox	apps.integrations.drain_teams_outbox	<crontab: * * * * * (m/h/dM/MY/d)>
+files-purge-deleted	tools.files.tasks.purge_deleted	<crontab: 37 4 * * * (m/h/dM/MY/d)>
 purge-discord-outbox	apps.integrations.purge_outbox	<crontab: 30 5 * * 0 (m/h/dM/MY/d)>
 read-ambient-conversations	apps.ambient.read_conversations	<crontab: 20 * * * * (m/h/dM/MY/d)>
 recompute-ambient-attention	apps.ambient.recompute_attention	<crontab: 45 4 * * * (m/h/dM/MY/d)>

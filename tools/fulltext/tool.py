@@ -127,5 +127,6 @@ class FulltextTool(Tool):
         ),
     )
     health = "tools.fulltext.health:check"
+    agent = "tools.fulltext.agent"
     stages = ()
     mounts = ()  # no API yet; one comes later, inside this folder

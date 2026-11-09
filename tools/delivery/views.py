@@ -1959,7 +1959,7 @@ class ReflectionProposalActionView(APIView):
 
     def post(self, request, pk):
         from apps.research.models import ProjectState
-        from apps.research.views import _user_can_edit
+        from apps.research.permissions import user_can_edit_project as _user_can_edit
 
         from tools.delivery.models import ReflectionProposal
 

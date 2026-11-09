@@ -6,6 +6,14 @@ Three promises meet in one function. A person is only ever observed when
 2. the **person** opted in on that platform, default off, and
 3. their **effective tier is paid** and their platform identity is linked.
 
+One platform is different by the owner's decision (Mylo agent plan, D-3):
+**Mylo chat** (``agent_chat``), conversations a person has with Mylo in the
+app. There the person chose to talk to Mylo, so learning is on unless they
+turned it off: a missing ``ListeningConsent`` row reads as *on*. Its master
+switch is the agent tool's own ``tools.agent.learning``, not
+``features.ambient``, and it is off whenever the agent tool is not loaded.
+Discord, Slack, Teams and transcripts keep "off by construction".
+
 Point 3 is resolved exactly the way the profile caps are — through
 :func:`apps.billing.entitlements.effective_tier`, so a member of a paid lab is
 paid even on a free personal plan. A server member without a Mycelium account
@@ -65,11 +73,31 @@ def tier_is_paid(user: User) -> bool:
     return tier_has_ambient(effective_tier(user))
 
 
+#: Platforms where listening is on unless the person turned it off.
+DEFAULT_ON_PLATFORMS = frozenset({"agent_chat"})
+
+
 def person_opted_in(user: User, platform: str) -> bool:
-    """Whether ``user`` turned listening on for ``platform``. Absent row = off."""
-    return ListeningConsent.objects.filter(
-        user=user, platform=platform, enabled=True
-    ).exists()
+    """Whether ``user`` has listening on for ``platform``. Absent row = off,
+    except on a :data:`DEFAULT_ON_PLATFORMS` platform, where it is on."""
+    row = ListeningConsent.objects.filter(user=user, platform=platform).first()
+    if row is None:
+        return platform in DEFAULT_ON_PLATFORMS
+    return row.enabled
+
+
+def agent_chat_enabled() -> bool:
+    """The master switch for learning from Mylo chats: the agent tool's
+    ``tools.agent.learning``, published as ``AGENT_LEARNING`` only while the
+    tool is loaded."""
+    return bool(getattr(settings, "AGENT_LEARNING", False))
+
+
+def listening_available(source: Source) -> bool:
+    """The deployment switch that governs ``source``."""
+    if source.kind == Source.Kind.AGENT_CHAT:
+        return agent_chat_enabled()
+    return ambient_enabled()
 
 
 def questions_muted(user: User, platform: str) -> bool:
@@ -85,7 +113,7 @@ def observable(user: User | None, source: Source) -> Verdict:
     Refusals are ordered cheapest-first and stop at the first one, so the reason
     names the outermost gate rather than every gate that would also have failed.
     """
-    if not ambient_enabled():
+    if not listening_available(source):
         return Verdict(False, "ambient_disabled")
     if user is None:
         # An unlinked member, a bot, or a webhook. Nothing is recorded about

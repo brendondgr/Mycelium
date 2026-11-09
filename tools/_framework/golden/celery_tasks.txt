@@ -22,4 +22,10 @@ apps.knowledge.facet_user_works
 apps.knowledge.project_subject
 apps.knowledge.sweep
 apps.scraper.scan_literature
+tools.agent.tasks.learn_from_quiet_threads
+tools.agent.tasks.resume_stuck_turns
+tools.agent.tasks.retention_sweep
+tools.agent.tasks.run_turn
+tools.files.tasks.extract
+tools.files.tasks.purge_deleted
 tools.fulltext.run_requests

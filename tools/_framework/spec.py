@@ -176,6 +176,11 @@ class Tool:
     health: ClassVar[str | None] = None
     #: ``{"tool.event": "package.module:handler"}``.
     subscribes: ClassVar[dict[str, str]] = {}
+    #: Dotted path of a module exporting ``FUNCTIONS`` (``AgentFunction``s)
+    #: and ``REFS`` (``RefKind``s) for the Mylo agent, declared with
+    #: ``tools._framework.agentspec``. Read only while this tool is loaded, so
+    #: a disabled tool's functions never reach the agent's catalog.
+    agent: ClassVar[str | None] = None
 
     # ------------------------------------------------------------------ #
 
@@ -220,6 +225,12 @@ class Tool:
                 )
         if len(commands) != len(set(commands)):
             problems.append(f"{cls.name}: a stage is declared twice.")
+        if cls.agent is not None and not re.match(
+            r"^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)+$", cls.agent
+        ):
+            problems.append(
+                f"{cls.name}: agent {cls.agent!r} must be a dotted module path."
+            )
         for ref in [cls.health, *cls.subscribes.values()]:
             if ref is not None and ":" not in ref:
                 problems.append(f"{cls.name}: {ref!r} must be 'module:function'.")

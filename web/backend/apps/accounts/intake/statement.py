@@ -85,7 +85,6 @@ def _settings_complete(prompt: str) -> str | None:
             LLMMessage("user", prompt),
         ],
         reasoning="low",
-        max_tokens=320,
     )
     return response.content
 

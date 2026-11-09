@@ -1,3 +1,4 @@
+agent
 annotate_member_fit
 annotate_team_fit
 announce_opportunities
@@ -30,6 +31,7 @@ evaluate_project_alerts
 export_ambient_dataset
 extract_requirement_slots
 facet_author_works
+files_check
 findstatic
 flush
 fulltext_get

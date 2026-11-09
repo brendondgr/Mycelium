@@ -47,6 +47,7 @@ from .limits import (
     personal_scope_cap,
 )
 from .models import Project, ProjectInvitation, ProjectMember
+from .permissions import user_can_edit_project
 from .serializers import (
     ProjectCreateSerializer,
     ProjectInvitationSerializer,
@@ -273,20 +274,9 @@ class LabProjectsView(ListAPIView):
         )
 
 
-def _user_can_edit(user, project: Project) -> bool:
-    """Who may edit a project's fundamentals, membership, and archive state.
-
-    The personal owner edits their own project; a lab's owner, admin, or lead PI
-    edits that lab's projects — the same authority that creates them
-    (:func:`user_can_edit_lab_profile`). It used to be owner/admin only here, which
-    left a PI holding edit controls the API then refused. Department-scoped
-    projects are not editable through this API yet.
-    """
-    if project.scope_user_id is not None:
-        return project.scope_user_id == user.id
-    if project.scope_lab_id is not None:
-        return user_can_edit_lab_profile(user, project.scope_lab)
-    return False
+#: Kept under its old name for the call sites below; the rule lives in
+#: apps.research.permissions so the Mylo agent's gate and these views share it.
+_user_can_edit = user_can_edit_project
 
 
 class ProjectDetailView(APIView):

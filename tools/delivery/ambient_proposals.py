@@ -30,7 +30,7 @@ COOLDOWN_DAYS = 28
 
 
 def _editors(project) -> list:
-    from apps.research.views import _user_can_edit
+    from apps.research.permissions import user_can_edit_project as _user_can_edit
 
     people = set(project.members.all())
     if project.scope_user_id:

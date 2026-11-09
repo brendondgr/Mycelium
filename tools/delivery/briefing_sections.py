@@ -509,7 +509,7 @@ def _section_fallback(category: str, items: list[dict]) -> str:
 # --------------------------------------------------------------------------- #
 
 
-def _settings_complete(max_tokens: int) -> CompleteFn:
+def _settings_complete() -> CompleteFn:
     """Default seam: route one (system, user) exchange through the LLM client."""
 
     def _complete(system: str, user: str) -> str | None:
@@ -518,7 +518,6 @@ def _settings_complete(max_tokens: int) -> CompleteFn:
         client = build_llm_client(component="briefing")
         response = client.complete(
             [LLMMessage("system", system), LLMMessage("user", user)],
-            max_tokens=max_tokens,
         )
         if response.finish_reason == "length" and not (response.content or "").strip():
             logger.warning(

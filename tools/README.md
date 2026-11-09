@@ -31,6 +31,8 @@ tools/
 | [`recommendation`](recommendation/README.md) | `retrieval` | yes | Ranks and filters the corpus for every person, lab, department and project |
 | [`delivery`](delivery/README.md) | `retrieval`, `recommendation` | yes | The feeds' API, saves, reports, reminders, alerts, Discord/Slack delivery, announcements |
 | [`fulltext`](fulltext/README.md) | `retrieval` | no | Gets the paper itself: checks for a legal copy, fetches it from open sources or the instance's publisher keys, keeps the original plus markdown |
+| [`agent`](agent/README.md) | `retrieval`, `recommendation` | no | Mylo as a read-only conversational agent: answers from everything a person may see, cites it, remembers, changes nothing |
+| [`files`](files/README.md) | — | no | Stores uploaded files in structured folders, reads their text, and lets Mylo read them |
 
 `make tools-check` prints the live list with each tool's state.
 
@@ -49,7 +51,14 @@ class ScreeningTool(Tool):
     stages = (Stage("run_screening", "rank", "Screening queued reviews…"),)
     mounts = (Mount("api/tools/screening/"),)
     health = "tools.screening.health:check"
+    agent = "tools.screening.agent"   # optional: functions Mylo may call
 ```
+
+A tool that gives the Mylo agent something to read declares `agent`: a module
+exporting `FUNCTIONS` (`AgentFunction`s) and `REFS` (`RefKind`s), written with
+`tools/_framework/agentspec.py` only. It is imported only while the tool is
+loaded, so a disabled tool's functions never reach Mylo, and the contributing
+tool never imports the agent (see `tools/files/agent.py`).
 
 The class only *declares*. Anything that needs Django is referenced by a
 dotted string and imported once the tool is allowed to load. That is why the

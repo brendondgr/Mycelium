@@ -23,7 +23,7 @@ Two design choices mirror the rest of the backend:
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Protocol
@@ -98,7 +98,9 @@ class LLMConfig:
     model: str = ""
     timeout: float = 60.0
     temperature: float = 0.2
-    max_tokens: int = 1024
+    #: Output cap per reply, thinking included. ``0`` sends no ``max_tokens``
+    #: at all (the instance default, ``llm.max_tokens``).
+    max_tokens: int = 0
     reasoning: ReasoningLevel = ReasoningLevel.MEDIUM
     reasoning_style: ReasoningStyle = ReasoningStyle.EFFORT
     # Reaching the server and waiting for a slow answer are different failures.
@@ -122,7 +124,7 @@ class LLMConfig:
             model=settings.LLM_MODEL,
             timeout=float(settings.LLM_TIMEOUT),
             temperature=float(settings.LLM_TEMPERATURE),
-            max_tokens=int(settings.LLM_MAX_TOKENS),
+            max_tokens=int(getattr(settings, "LLM_MAX_TOKENS", 0) or 0),
             reasoning=ReasoningLevel.coerce(settings.LLM_REASONING),
             reasoning_style=ReasoningStyle.coerce(settings.LLM_REASONING_STYLE),
             connect_timeout=float(getattr(settings, "LLM_CONNECT_TIMEOUT", 5.0)),
@@ -142,6 +144,23 @@ class LLMMessage:
 
 
 @dataclass(frozen=True)
+class ToolCall:
+    """One function call the model asked for. ``arguments`` is the raw JSON
+    text the server sent; parsing (and repairing) it is the caller's job."""
+
+    id: str
+    name: str
+    arguments: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "type": "function",
+            "function": {"name": self.name, "arguments": self.arguments},
+        }
+
+
+@dataclass(frozen=True)
 class LLMResponse:
     """A parsed chat completion.
 
@@ -156,6 +175,7 @@ class LLMResponse:
     finish_reason: str | None = None
     usage: Mapping[str, Any] | None = None
     raw: Any = field(default=None, repr=False)
+    tool_calls: tuple[ToolCall, ...] = ()
 
 
 class ChatCompletions(Protocol):
@@ -164,9 +184,27 @@ class ChatCompletions(Protocol):
     def create(self, **kwargs: Any) -> Any: ...
 
 
+#: Message keys passed through as they are, for tool-calling conversations:
+#: an assistant turn's ``tool_calls`` and a tool result's ``tool_call_id``.
+_PASSTHROUGH_KEYS = ("tool_calls", "tool_call_id", "name")
+
+
+def _mapping_message(item: Mapping[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {"role": str(item["role"])}
+    content = item.get("content")
+    # An assistant turn that only calls functions may carry no text.
+    out["content"] = None if content is None and item.get("tool_calls") else (
+        "" if content is None else str(content)
+    )
+    for key in _PASSTHROUGH_KEYS:
+        if item.get(key):
+            out[key] = item[key]
+    return out
+
+
 def _normalize_messages(
-    messages: str | LLMMessage | Mapping[str, str] | Iterable[Any],
-) -> list[dict[str, str]]:
+    messages: str | LLMMessage | Mapping[str, Any] | Iterable[Any],
+) -> list[dict[str, Any]]:
     """Accept a string, one message, or a sequence of messages/dicts."""
 
     if isinstance(messages, str):
@@ -174,16 +212,14 @@ def _normalize_messages(
     if isinstance(messages, LLMMessage):
         return [messages.as_dict()]
     if isinstance(messages, Mapping):
-        return [{"role": str(messages["role"]), "content": str(messages["content"])}]
+        return [_mapping_message(messages)]
 
-    normalized: list[dict[str, str]] = []
+    normalized: list[dict[str, Any]] = []
     for item in messages:
         if isinstance(item, LLMMessage):
             normalized.append(item.as_dict())
         elif isinstance(item, Mapping):
-            normalized.append(
-                {"role": str(item["role"]), "content": str(item["content"])}
-            )
+            normalized.append(_mapping_message(item))
         else:
             raise TypeError(f"unsupported message type: {type(item)!r}")
     if not normalized:
@@ -317,11 +353,107 @@ class LLMClient:
         temperature: float | None = None,
         max_tokens: int | None = None,
         tools: Sequence[Mapping[str, Any]] | None = None,
+        tool_choice: str | Mapping[str, Any] | None = None,
         extra_body: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> LLMResponse:
         """Send a chat completion and return the parsed answer + reasoning."""
 
+        payload = self._payload(
+            messages,
+            model=model,
+            reasoning=reasoning,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=tools,
+            tool_choice=tool_choice,
+            extra_body=extra_body,
+            **kwargs,
+        )
+
+        # The nightly run's budget (``nightly.model_calls``) refuses the call
+        # before it is made, so a refusal is neither billed nor counted; every
+        # caller already degrades on a failed call. Outside the nightly run this
+        # never refuses (see apps.core.llm_budget).
+        llm_budget.check()
+
+        # Count the call either way. A failure here is exactly the number the
+        # analytics report needs, so the ledger write brackets the request and
+        # re-raises untouched — accounting observes, it never intervenes.
+        try:
+            raw = self.completions.create(**payload)
+            response = self._parse(raw, fallback_model=payload["model"])
+        except Exception:
+            llm_usage.record(self.component, ok=False)
+            raise
+        llm_usage.record(self.component, ok=True, usage=response.usage)
+        return response
+
+    def complete_stream(
+        self,
+        messages: str | LLMMessage | Mapping[str, str] | Sequence[Any],
+        *,
+        on_delta: Callable[[str, str], None] | None = None,
+        should_stop: Callable[[], bool] | None = None,
+        model: str | None = None,
+        reasoning: ReasoningLevel | str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        tools: Sequence[Mapping[str, Any]] | None = None,
+        tool_choice: str | Mapping[str, Any] | None = None,
+        extra_body: Mapping[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> LLMResponse:
+        """Stream a chat completion, reporting deltas as they arrive.
+
+        ``on_delta(kind, text)`` is called with ``kind`` ``"text"`` or
+        ``"thinking"`` for each chunk. ``should_stop()`` is checked after every
+        chunk; when it returns true the stream is closed and what arrived so far
+        is returned with ``finish_reason="cancelled"``. Tool calls are
+        accumulated across chunks and returned whole, as :meth:`complete` does.
+        """
+
+        payload = self._payload(
+            messages,
+            model=model,
+            reasoning=reasoning,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=tools,
+            tool_choice=tool_choice,
+            extra_body=extra_body,
+            **kwargs,
+        )
+        payload["stream"] = True
+        payload.setdefault("stream_options", {"include_usage": True})
+        llm_budget.check()
+        try:
+            stream = self.completions.create(**payload)
+            response = _accumulate_stream(
+                stream,
+                fallback_model=payload["model"],
+                on_delta=on_delta,
+                should_stop=should_stop,
+            )
+        except Exception:
+            llm_usage.record(self.component, ok=False)
+            raise
+        llm_usage.record(self.component, ok=True, usage=response.usage)
+        return response
+
+    def _payload(
+        self,
+        messages: Any,
+        *,
+        model: str | None,
+        reasoning: ReasoningLevel | str | None,
+        temperature: float | None,
+        max_tokens: int | None,
+        tools: Sequence[Mapping[str, Any]] | None,
+        tool_choice: str | Mapping[str, Any] | None,
+        extra_body: Mapping[str, Any] | None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         resolved_model = model or self.config.model
         if not resolved_model:
             raise LLMConfigurationError(
@@ -343,31 +475,21 @@ class LLMClient:
             "temperature": (
                 self.config.temperature if temperature is None else temperature
             ),
-            "max_tokens": self.config.max_tokens if max_tokens is None else max_tokens,
         }
+        # No cap unless the operator set one or the caller asked: on a
+        # reasoning model the cap includes thinking, and a starved reply falls
+        # back silently (D-6 of the Mylo agent plan).
+        cap = self.config.max_tokens if max_tokens is None else max_tokens
+        if cap and cap > 0:
+            payload["max_tokens"] = int(cap)
         if tools:
             payload["tools"] = list(tools)
+            if tool_choice is not None:
+                payload["tool_choice"] = tool_choice
         if body:
             payload["extra_body"] = body
         payload.update(kwargs)
-
-        # The nightly run's budget (``nightly.model_calls``) refuses the call
-        # before it is made, so a refusal is neither billed nor counted; every
-        # caller already degrades on a failed call. Outside the nightly run this
-        # never refuses (see apps.core.llm_budget).
-        llm_budget.check()
-
-        # Count the call either way. A failure here is exactly the number the
-        # analytics report needs, so the ledger write brackets the request and
-        # re-raises untouched — accounting observes, it never intervenes.
-        try:
-            raw = self.completions.create(**payload)
-            response = self._parse(raw, fallback_model=resolved_model)
-        except Exception:
-            llm_usage.record(self.component, ok=False)
-            raise
-        llm_usage.record(self.component, ok=True, usage=response.usage)
-        return response
+        return payload
 
     @staticmethod
     def _parse(raw: Any, *, fallback_model: str) -> LLMResponse:
@@ -384,6 +506,21 @@ class LLMClient:
             reasoning = getattr(message, "reasoning_content", None) or getattr(
                 message, "reasoning", None
             )
+        calls = []
+        for index, call in enumerate(
+            (getattr(message, "tool_calls", None) or []) if message is not None else []
+        ):
+            fn = _get(call, "function")
+            name = _get(fn, "name") or ""
+            if not name:
+                continue
+            calls.append(
+                ToolCall(
+                    id=_get(call, "id") or f"call_{index}",
+                    name=name,
+                    arguments=_get(fn, "arguments") or "",
+                )
+            )
         return LLMResponse(
             content=content or "",
             reasoning=reasoning,
@@ -391,7 +528,89 @@ class LLMClient:
             finish_reason=getattr(choice, "finish_reason", None),
             usage=_as_mapping(getattr(raw, "usage", None)),
             raw=raw,
+            tool_calls=tuple(calls),
         )
+
+
+def _get(obj: Any, key: str) -> Any:
+    """Read ``key`` from an SDK object or a plain dict."""
+    if obj is None:
+        return None
+    if isinstance(obj, Mapping):
+        return obj.get(key)
+    return getattr(obj, key, None)
+
+
+def _accumulate_stream(
+    stream: Any,
+    *,
+    fallback_model: str,
+    on_delta: Callable[[str, str], None] | None,
+    should_stop: Callable[[], bool] | None,
+) -> LLMResponse:
+    """Fold a chat-completions stream into one :class:`LLMResponse`."""
+    text: list[str] = []
+    thinking: list[str] = []
+    calls: dict[int, dict[str, Any]] = {}
+    model = ""
+    finish = None
+    usage = None
+    try:
+        for chunk in stream:
+            model = _get(chunk, "model") or model
+            chunk_usage = _as_mapping(_get(chunk, "usage"))
+            if chunk_usage:
+                usage = chunk_usage
+            for choice in _get(chunk, "choices") or []:
+                delta = _get(choice, "delta")
+                finish = _get(choice, "finish_reason") or finish
+                if delta is None:
+                    continue
+                piece = _get(delta, "reasoning_content") or _get(delta, "reasoning")
+                if piece:
+                    thinking.append(piece)
+                    if on_delta:
+                        on_delta("thinking", piece)
+                piece = _get(delta, "content")
+                if piece:
+                    text.append(piece)
+                    if on_delta:
+                        on_delta("text", piece)
+                for part in _get(delta, "tool_calls") or []:
+                    index = _get(part, "index")
+                    index = len(calls) if index is None else int(index)
+                    slot = calls.setdefault(index, {"id": "", "name": "", "args": []})
+                    slot["id"] = _get(part, "id") or slot["id"]
+                    fn = _get(part, "function")
+                    if fn is not None:
+                        slot["name"] = slot["name"] or (_get(fn, "name") or "")
+                        if _get(fn, "arguments"):
+                            slot["args"].append(_get(fn, "arguments"))
+            if should_stop is not None and should_stop():
+                finish = "cancelled"
+                break
+    finally:
+        close = getattr(stream, "close", None)
+        if callable(close):
+            try:
+                close()
+            except Exception:  # noqa: BLE001 - closing a dead stream is best effort
+                pass
+    tool_calls = tuple(
+        ToolCall(id=slot["id"] or f"call_{index}", name=slot["name"],
+                 arguments="".join(slot["args"]))
+        for index, slot in sorted(calls.items())
+        if slot["name"]
+    )
+    return LLMResponse(
+        content="".join(text),
+        reasoning="".join(thinking) or None,
+        model=model or fallback_model,
+        finish_reason=finish,
+        usage=usage,
+        raw=None,
+        tool_calls=tool_calls,
+    )
 
 
 def build_llm_client(

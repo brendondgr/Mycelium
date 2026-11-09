@@ -172,7 +172,7 @@ def write_project_section(
         # Two lines, by design (plan A.2). A quiet project still appears — a
         # project that vanishes from the weekly reads as one that was dropped.
         return _fallback_section(project), "fallback"
-    ask = complete if complete is not None else _settings_complete(1400)
+    ask = complete if complete is not None else _settings_complete()
     try:
         raw = ask(_SYSTEM, _project_prompt(packet, project))
     except Exception as exc:  # noqa: BLE001 — degrade, never raise
@@ -191,7 +191,7 @@ def write_overview(
     """"Your week in five lines". Returns ``(markdown, origin)``."""
     if not sections:
         return "", ""
-    ask = complete if complete is not None else _settings_complete(700)
+    ask = complete if complete is not None else _settings_complete()
     body = "\n\n".join(f"## Project · {label}\n{text}" for label, text in sections)
     try:
         raw = ask(_OVERVIEW_SYSTEM, body)
@@ -339,14 +339,13 @@ def compose_weekly(
     return body, record, ("llm" if used_llm else "fallback")
 
 
-def _settings_complete(max_tokens: int) -> CompleteFn:
+def _settings_complete() -> CompleteFn:
     def ask(system: str, prompt: str) -> str | None:
         from apps.core.llm import LLMMessage, build_llm_client
 
         client = build_llm_client(component="weekly_report")
         response = client.complete(
             [LLMMessage("system", system), LLMMessage("user", prompt)],
-            max_tokens=max_tokens,
         )
         return response.content
 

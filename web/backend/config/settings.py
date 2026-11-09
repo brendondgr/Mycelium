@@ -501,7 +501,9 @@ LLM_CONNECT_TIMEOUT = env.float("LLM_CONNECT_TIMEOUT", default=5.0)
 # three timeouts).
 LLM_MAX_RETRIES = env.int("LLM_MAX_RETRIES", default=0)
 LLM_TEMPERATURE = env.float("LLM_TEMPERATURE", default=0.2)
-LLM_MAX_TOKENS = env.int("LLM_MAX_TOKENS", default=1024)
+# Output cap per model reply; 0 = none (instance key llm.max_tokens, D-6 of
+# the Mylo agent plan). Callers that need a cap pass max_tokens themselves.
+LLM_MAX_TOKENS = _cfg["llm.max_tokens"]
 # Default reasoning level: one of "none", "low", "medium", "high".
 LLM_REASONING = env("LLM_REASONING", default="medium")
 # How reasoning levels are sent to the server: "effort" maps to vLLM's

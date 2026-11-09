@@ -125,7 +125,8 @@ def test_complete_sends_reasoning_effort_and_defaults():
     assert call["model"] == "test-model"
     assert call["messages"] == [{"role": "user", "content": "hello"}]
     assert call["temperature"] == 0.2
-    assert call["max_tokens"] == 1024
+    # No cap is sent unless one is configured (D-6).
+    assert "max_tokens" not in call
     assert call["extra_body"] == {"reasoning_effort": "high"}
 
 
@@ -247,3 +248,110 @@ def test_parse_raises_when_no_choices():
 
     with pytest.raises(LLMConfigurationError):
         client.complete("hello")
+
+
+# -- output cap, tool calls, streaming (Mylo agent groundwork) -------------
+
+
+def test_configured_cap_is_sent_and_per_call_cap_overrides():
+    completions = RecordingCompletions()
+    client = LLMClient(_config(max_tokens=300), completions=completions)
+    client.complete("a")
+    client.complete("b", max_tokens=50)
+    client.complete("c", max_tokens=0)
+    assert completions.calls[0]["max_tokens"] == 300
+    assert completions.calls[1]["max_tokens"] == 50
+    assert "max_tokens" not in completions.calls[2]
+
+
+def test_config_from_settings_without_cap_means_no_cap():
+    class S(_Settings):
+        LLM_MAX_TOKENS = 0
+
+    assert LLMConfig.from_settings(S()).max_tokens == 0
+
+
+def test_tool_calls_are_parsed_and_tool_choice_sent():
+    call = SimpleNamespace(
+        id="c1",
+        function=SimpleNamespace(name="corpus_search", arguments='{"q": "x"}'),
+    )
+    message = SimpleNamespace(content=None, reasoning_content=None, tool_calls=[call])
+    raw = SimpleNamespace(
+        choices=[SimpleNamespace(message=message, finish_reason="tool_calls")],
+        model="m",
+        usage=None,
+    )
+    completions = RecordingCompletions(raw)
+    client = LLMClient(_config(), completions=completions)
+    tools = [{"type": "function", "function": {"name": "corpus_search"}}]
+    response = client.complete("q", tools=tools, tool_choice="auto")
+    assert completions.calls[0]["tool_choice"] == "auto"
+    assert response.content == ""
+    (parsed,) = response.tool_calls
+    assert (parsed.id, parsed.name) == ("c1", "corpus_search")
+    assert parsed.arguments == '{"q": "x"}'
+
+
+def test_tool_messages_pass_through():
+    completions = RecordingCompletions()
+    client = LLMClient(_config(), completions=completions)
+    calls = [{"id": "c1", "type": "function",
+              "function": {"name": "f", "arguments": "{}"}}]
+    client.complete([
+        {"role": "user", "content": "hi"},
+        {"role": "assistant", "content": None, "tool_calls": calls},
+        {"role": "tool", "tool_call_id": "c1", "content": "result"},
+    ])
+    sent = completions.calls[0]["messages"]
+    assert sent[1] == {"role": "assistant", "content": None, "tool_calls": calls}
+    assert sent[2] == {"role": "tool", "content": "result", "tool_call_id": "c1"}
+
+
+def _chunk(content=None, reasoning=None, tool_calls=None, finish=None, usage=None):
+    delta = SimpleNamespace(content=content, reasoning_content=reasoning,
+                            tool_calls=tool_calls)
+    return SimpleNamespace(
+        model="m",
+        choices=[SimpleNamespace(delta=delta, finish_reason=finish)],
+        usage=usage,
+    )
+
+
+def test_stream_accumulates_text_thinking_and_calls():
+    part = lambda **kw: SimpleNamespace(**kw)  # noqa: E731
+    chunks = [
+        _chunk(reasoning="hmm"),
+        _chunk(content="Hel"),
+        _chunk(content="lo"),
+        _chunk(tool_calls=[part(index=0, id="c1",
+                                function=part(name="f", arguments='{"a"'))]),
+        _chunk(tool_calls=[part(index=0, id=None,
+                                function=part(name=None, arguments=': 1}'))]),
+        _chunk(finish="tool_calls"),
+        SimpleNamespace(model="m", choices=[],
+                        usage={"prompt_tokens": 3, "completion_tokens": 4}),
+    ]
+    completions = RecordingCompletions(iter(chunks))
+    client = LLMClient(_config(), completions=completions)
+    seen = []
+    response = client.complete_stream("q", on_delta=lambda k, t: seen.append((k, t)))
+    assert completions.calls[0]["stream"] is True
+    assert seen == [("thinking", "hmm"), ("text", "Hel"), ("text", "lo")]
+    assert response.content == "Hello"
+    assert response.reasoning == "hmm"
+    assert response.finish_reason == "tool_calls"
+    assert response.usage == {"prompt_tokens": 3, "completion_tokens": 4}
+    (call,) = response.tool_calls
+    assert (call.name, call.arguments) == ("f", '{"a": 1}')
+
+
+def test_stream_stops_when_asked():
+    chunks = iter([_chunk(content="a"), _chunk(content="b"), _chunk(content="c")])
+    client = LLMClient(_config(), completions=RecordingCompletions(chunks))
+    seen = []
+    response = client.complete_stream(
+        "q", on_delta=lambda k, t: seen.append(t), should_stop=lambda: len(seen) >= 2
+    )
+    assert response.content == "ab"
+    assert response.finish_reason == "cancelled"

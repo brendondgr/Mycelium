@@ -144,6 +144,14 @@ slack = false                            # env SLACK_ENABLED
 # The Microsoft Teams integration.
 teams = false                            # env TEAMS_ENABLED
 
+# The language model. The endpoint and model name live in .env (LLM_BASE_URL,
+# LLM_MODEL); this section holds policy.
+[llm]
+# Most tokens one model reply may use, thinking included. 0 sends no cap, so a
+# reasoning model is never starved before it answers; set a number only if
+# your endpoint needs one.
+max_tokens = 0                           # env LLM_MAX_TOKENS
+
 # The modular tools under tools/. These keys govern all of them; each
 # installed tool also reads its own [tools.<name>] section below.
 [tools]
@@ -183,6 +191,27 @@ ambient_extract_concurrency = 8          # env AMBIENT_EXTRACT_CONCURRENCY
 # Profile-change explanations written per night.
 ambient_explain = 200                    # env AMBIENT_EXPLAIN_NIGHTLY_CAP
 
+# agent: Mylo as a conversational agent: answers questions about everything a
+# person may see in Mycelium (their profile, labs, projects, feeds, the
+# corpus, the knowledge graph, stored papers and files), cites what it read,
+# remembers, and changes nothing.
+[tools.agent]
+enabled = true
+# model = ""                             # env AGENT_MODEL
+# max_output_tokens = 0                  # env AGENT_MAX_OUTPUT_TOKENS
+# context_window = 32768                 # env AGENT_CONTEXT_WINDOW
+# max_steps = 25                         # env AGENT_MAX_STEPS
+# result_cap_tokens = 4000               # env AGENT_RESULT_CAP_TOKENS
+# daily_turns = 0                        # env AGENT_DAILY_TURNS
+# learning = true                        # env AGENT_LEARNING
+# learning_idle_minutes = 30             # env AGENT_LEARNING_IDLE_MINUTES
+# retention_days = 0                     # env AGENT_RETENTION_DAYS
+# groups_off = []                        # env AGENT_GROUPS_OFF
+# surface_groups_off = ["discord_channel:files"] # env AGENT_SURFACE_GROUPS_OFF
+# max_risk = "read"                      # env AGENT_MAX_RISK
+# redis_db = 8                           # env AGENT_REDIS_DB
+# parallel_calls = true                  # env AGENT_PARALLEL_CALLS
+
 # delivery: Puts what was ranked in front of people: the feeds' API, saves and
 # collections, project shares, the daily and weekly reports, reminders,
 # notifications, project alerts, Discord and Slack delivery, and opportunity
@@ -202,6 +231,18 @@ enabled = true
 # project_alert_slot_threshold = 0.55    # env PROJECT_ALERT_SLOT_THRESHOLD
 # project_alert_daily_cap = 3            # env PROJECT_ALERT_DAILY_CAP
 # run_analytics_retention_days = 90      # env RUN_ANALYTICS_RETENTION_DAYS
+
+# files: Stores files people upload to themselves, a lab, a department or a
+# project, in structured folders under data/files/, extracts their text, and
+# lets Mylo read them. Uploads are not virus-scanned.
+[tools.files]
+enabled = true
+# max_bytes = 26214400                   # env FILES_MAX_BYTES
+# types = ["pdf", "txt", "md", "csv", "docx"] # env FILES_TYPES
+# max_total_mb = 0                       # env FILES_MAX_TOTAL_MB
+# max_pages = 0                          # env FILES_MAX_PAGES
+# purge_after_days = 0                   # env FILES_PURGE_AFTER_DAYS
+# data_dir = ""                          # env FILES_DATA_DIR
 
 # fulltext: Gets the paper itself: checks whether a legal copy of a paper can
 # be reached, fetches it from PubMed Central, Europe PMC, arXiv, the
