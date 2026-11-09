@@ -20,6 +20,10 @@ else that asks typed questions) does not care where the answer came from.
     vLLM) running an instruct model. Each question is one chat completion with
     ``max_tokens=1`` and ``top_logprobs``; the answer is the softmax of the
     allowed answers' first-token log-probabilities, thinking switched off.
+    Meant for a model trained to decide (a fine-tuned student): a stock
+    instruct model answers with saturated, uncalibrated probabilities and gives
+    no ordering (Qwen3-4B: ``worth`` >= 0.999995 on every pair,
+    ``EXP-2026-11-009``).
 
 * ``off`` — no decision model. Callers keep their own deterministic order.
 * ``auto`` (the default) — ``jev`` when a TypeSafe key is set, else ``port``

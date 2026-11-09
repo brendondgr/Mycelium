@@ -63,6 +63,9 @@ model they serve (`backend = "port"`, `port_url = "http://host:port"`: a decide
 server, or llama.cpp / vLLM), or none (`off`). Leaving it at `auto` picks Jev
 with a key, a port with a URL, else none. After setting a port, run
 `manage.py decision_check` to confirm it answers from where the nightly runs.
+A port should serve a *decision* model (a decide server, or a model fine-tuned
+to decide); a stock chat model on llama.cpp answers "yes" to everything and
+gives no ordering (`EXP-2026-11-009`).
 
 Then get a structured recommendation instead of reasoning one out yourself:
 
