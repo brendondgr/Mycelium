@@ -448,6 +448,7 @@ html:not([data-motion="none"])[data-surfaces="glass"] .ws-item:hover {
   cursor: default;
 }
 
+
 .ws-why {
   display: flex;
   gap: 8px;
@@ -1482,11 +1483,71 @@ html[data-density="comfortable"] .ws-compact-why .ws-clamp {
   display: inline-flex;
 }
 
+/*
+ * A feed's controls — search, then the count with the filters and sort to its
+ * right — stay pinned to the top of the scroll area while the cards scroll
+ * under them. `top` cancels the scroll area's own top padding (sticky honours
+ * it), so the bar meets the header with no strip of cards showing above it.
+ */
+.ws-feed-controls {
+  position: sticky;
+  top: calc(var(--ws-main-pt) * -1);
+  z-index: 15;
+  margin: -10px -10px var(--d-gap);
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid transparent;
+  border-radius: 0 0 14px 14px;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.ws-feed-controls[data-stuck] {
+  border-bottom-color: var(--divider);
+  background: color-mix(in srgb, var(--background) 86%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 22px -18px rgb(0 0 0 / 0.45);
+}
+
+.ws-feed-controls .ws-toolbar {
+  margin-bottom: 8px;
+}
+
+.ws-feed-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.ws-results-count {
+  flex: none;
+  font-size: 0.86em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-results-count strong {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.ws-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .ws-facetbar {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
-  margin-bottom: 10px;
 }
 
 .ws-facet {
@@ -1546,11 +1607,15 @@ html[data-density="comfortable"] .ws-compact-why .ws-clamp {
 
 .ws-results-line {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  margin-bottom: var(--d-gap);
+  gap: 10px;
+  min-height: 30px;
+}
+
+.ws-feed-tools .ws-sort select,
+.ws-feed-tools .ws-filters-btn {
+  height: 32px;
+  font-size: 0.88em;
 }
 
 .ws-chip-active {
@@ -1627,11 +1692,11 @@ html[data-density="comfortable"] .ws-compact-why .ws-clamp {
 
   .ws-feedpage[data-layout="reader"] .ws-reading-pane {
     position: sticky;
-    top: 12px;
-    /* Sticky honours the scroll area's top padding, so the pane sits at
-       padding + 12px below the header; it ends 12px above the bottom of the
-       screen. */
-    height: calc(100dvh - var(--ws-chrome-h) - var(--ws-main-pt) - 24px);
+    top: calc(var(--ws-tools-h, 0px) - var(--ws-main-pt) + 12px);
+    /* The pane pins 12px below the feed's pinned controls (whose height the
+       toolbar publishes as --ws-tools-h) and ends 12px above the bottom of
+       the screen. */
+    height: calc(100dvh - var(--ws-chrome-h) - var(--ws-tools-h, 0px) - 24px);
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;

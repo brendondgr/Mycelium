@@ -4,12 +4,15 @@ import * as React from "react";
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { Portal } from "@/components/portal/feed/reader";
+import { scrollParent } from "@/lib/portal/scroll-parent";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 
 /**
- * The toolbar every feed shares (ported from `/labs`): a search box, a sort,
- * the filters as a row of menus — on a phone, one Filters button opening a
- * sheet — then a results line with each active filter as a removable chip.
+ * The toolbar every feed shares, pinned to the top of the scroll area while
+ * the cards scroll under it: the search box on its own line, then one line
+ * with the result count on the left and the filter menus and sort pushed to
+ * the right (on a phone, one Filters button opening a sheet), then — only
+ * while any are set — each active filter as a removable chip.
  *
  * A feed declares its facets as data (`Facet<T>`): each option carries the
  * test it applies, so counts, chips and filtering all come from one place.
@@ -240,6 +243,41 @@ export function useFeedControls<T>({
 
 export type FeedControls<T> = ReturnType<typeof useFeedControls<T>>;
 
+/**
+ * The pinned controls' height, published as `--ws-tools-h` on the feed page so
+ * the reading pane beside the cards pins *below* them instead of under them,
+ * and whether they are currently stuck (which is when they draw a backdrop).
+ */
+function usePinnedControls() {
+  const pinRef = React.useRef<HTMLDivElement | null>(null);
+  const [stuck, setStuck] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = pinRef.current;
+    if (!el) return;
+    const page = el.closest<HTMLElement>(".ws-feedpage");
+    const publish = () => page?.style.setProperty("--ws-tools-h", `${el.offsetHeight}px`);
+    publish();
+    const resize = new ResizeObserver(publish);
+    resize.observe(el);
+
+    const scroller = scrollParent(el);
+    const onScroll = () => {
+      const top = scroller ? scroller.getBoundingClientRect().top : 0;
+      setStuck(el.getBoundingClientRect().top <= top + 1);
+    };
+    onScroll();
+    (scroller ?? window).addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      resize.disconnect();
+      (scroller ?? window).removeEventListener("scroll", onScroll);
+      page?.style.removeProperty("--ws-tools-h");
+    };
+  }, []);
+
+  return { pinRef, stuck };
+}
+
 export function FeedToolbar<T>({
   controls,
   items,
@@ -270,6 +308,7 @@ export function FeedToolbar<T>({
     active,
   } = controls;
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  const { pinRef, stuck } = usePinnedControls();
 
   React.useEffect(() => {
     if (!sheetOpen) return;
@@ -281,84 +320,90 @@ export function FeedToolbar<T>({
 
   return (
     <>
-      <div className="ws-toolbar">
-        <label className="ws-feed-search">
-          <Search size={16} aria-hidden="true" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={placeholder}
-            aria-label={`Search ${noun}`}
-          />
-        </label>
-        {sorts.length > 1 ? (
-          <label className="ws-sort">
-            <span className="ws-sr">Sort by</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value)}>
-              {sorts.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={14} aria-hidden="true" />
-          </label>
-        ) : null}
-        {facets.length ? (
-          <button
-            type="button"
-            className="ws-btn ws-btn-line ws-filters-btn"
-            aria-expanded={sheetOpen}
-            onClick={() => setSheetOpen(true)}
-          >
-            <SlidersHorizontal size={14} aria-hidden="true" />
-            Filters{active.length ? ` · ${active.length}` : ""}
-          </button>
-        ) : null}
-      </div>
-
-      {facets.length ? (
-        <div className="ws-facetbar" role="group" aria-label="Filters">
-          {facets.map((f) => (
-            <FacetMenu
-              key={f.id}
-              facet={f}
-              items={items}
-              picked={filters[f.id] ?? []}
-              toggle={toggle}
-              idPrefix={idPrefix}
+      <div className="ws-feed-controls" ref={pinRef} data-stuck={stuck || undefined}>
+        <div className="ws-toolbar">
+          <label className="ws-feed-search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={placeholder}
+              aria-label={`Search ${noun}`}
             />
-          ))}
+          </label>
         </div>
-      ) : null}
 
-      <div className="ws-results-line">
-        <span className="ws-meta-text" aria-live="polite">
-          {visible.length} of {items.length} {noun}
-        </span>
-        {active.map((a) => (
-          <button
-            key={`${a.facet.id}-${a.value}`}
-            type="button"
-            className="ws-chip ws-chip-active"
-            onClick={() =>
-              toggle(a.facet, a.facet.mode === "single" ? "any" : a.value)
-            }
-            aria-label={`Remove filter ${a.facet.label}: ${a.label}`}
-          >
-            <span className="ws-meta-text">{a.facet.label}:</span> {a.label}
-            <X size={12} aria-hidden="true" />
-          </button>
-        ))}
+        <div className="ws-results-line">
+          <span className="ws-results-count" aria-live="polite">
+            <strong>{visible.length}</strong> of {items.length} {noun}
+          </span>
+          <div className="ws-feed-tools">
+            {facets.length ? (
+              <div className="ws-facetbar" role="group" aria-label="Filters">
+                {facets.map((f) => (
+                  <FacetMenu
+                    key={f.id}
+                    facet={f}
+                    items={items}
+                    picked={filters[f.id] ?? []}
+                    toggle={toggle}
+                    idPrefix={idPrefix}
+                  />
+                ))}
+              </div>
+            ) : null}
+            {facets.length ? (
+              <button
+                type="button"
+                className="ws-btn ws-btn-line ws-filters-btn"
+                aria-expanded={sheetOpen}
+                onClick={() => setSheetOpen(true)}
+              >
+                <SlidersHorizontal size={14} aria-hidden="true" />
+                Filters{active.length ? ` · ${active.length}` : ""}
+              </button>
+            ) : null}
+            {sorts.length > 1 ? (
+              <label className="ws-sort">
+                <span className="ws-sr">Sort by</span>
+                <select value={sort} onChange={(e) => setSort(e.target.value)}>
+                  {sorts.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} aria-hidden="true" />
+              </label>
+            ) : null}
+          </div>
+        </div>
+
         {active.length ? (
-          <button
-            type="button"
-            className="ws-link"
-            onClick={() => setFilters({})}
-          >
-            Clear all
-          </button>
+          <div className="ws-active-filters">
+            {active.map((a) => (
+              <button
+                key={`${a.facet.id}-${a.value}`}
+                type="button"
+                className="ws-chip ws-chip-active"
+                onClick={() =>
+                  toggle(a.facet, a.facet.mode === "single" ? "any" : a.value)
+                }
+                aria-label={`Remove filter ${a.facet.label}: ${a.label}`}
+              >
+                <span className="ws-meta-text">{a.facet.label}:</span> {a.label}
+                <X size={12} aria-hidden="true" />
+              </button>
+            ))}
+            <button
+              type="button"
+              className="ws-link"
+              onClick={() => setFilters({})}
+            >
+              Clear all
+            </button>
+          </div>
         ) : null}
       </div>
 
