@@ -8,7 +8,7 @@ import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import { HeldBack, heldReason } from "@/components/portal/primitives/held-back";
 import { SourceRow } from "@/components/portal/primitives/source-footer";
 import { CheckPill, UsabilityStrip } from "@/components/portal/primitives/usability-strip";
-import { DeadlinePill, FeedCard, ItemDetail, PageHead } from "@/components/portal/feed/parts";
+import { DeadlinePill, FeedCard, ItemDetail, PageHead, matchInfo } from "@/components/portal/feed/parts";
 import { ReaderLayout, groupByTheme, useReader } from "@/components/portal/feed/reader";
 import { FeedToolbar, useFeedControls, type Facet, type SortOption } from "@/components/portal/feed/toolbar";
 import { PageSkeleton } from "@/components/portal/skeleton";
@@ -254,24 +254,25 @@ export function OpportunityFeed<T extends OpportunityBase>({
         {({ onIgnored }) => (
           <FeedCard
             title={i.title}
-            signal={
-              <>
-                <DeadlinePill date={i.deadline_date} prefix={config.deadlinePrefix?.(i)} />
-                {config.label(i) ? <span className="ws-kind">{config.label(i)}</span> : null}
-                {i.is_updated ? <span className="ws-pill">Changed</span> : null}
-              </>
-            }
+            match={matchInfo(i)}
             isNew={i.is_new}
+            flag={i.is_updated ? <span className="ws-pill">Changed</span> : null}
+            profile={labName ? `${labName}'s research` : undefined}
             actions={
               <>
                 <SaveButton contentId={i.content_id} saved={i.saved} savedLabs={i.saved_labs} variant="icon" />
                 <IgnoreButton contentId={i.content_id} title={i.title} onIgnored={onIgnored} />
               </>
             }
-            facts={config.facts?.(i)}
+            source={
+              <>
+                {config.label(i) ? <span className="ws-src">{config.label(i)}</span> : null}
+                {config.facts?.(i)}
+              </>
+            }
+            meta={<DeadlinePill date={i.deadline_date} prefix={config.deadlinePrefix?.(i)} />}
             reason={i.beats[0] || i.reason}
             byMylo={i.origin === "llm"}
-            caveat={i.caveat}
             extra={
               <>
                 {config.cardExtra?.(i)}
@@ -285,8 +286,6 @@ export function OpportunityFeed<T extends OpportunityBase>({
               </>
             }
             members={recommendedFor?.[i.content_id]}
-            theme={i.cluster ?? null}
-            also={i.bridge_clusters}
             selected={state.selected}
             onOpen={state.onOpen}
           />
@@ -298,15 +297,17 @@ export function OpportunityFeed<T extends OpportunityBase>({
   const detail = (i: T) => (
     <ItemDetail
       title={i.title}
-      signal={
+      match={matchInfo(i)}
+      isNew={i.is_new}
+      profile={labName ? `${labName}'s research` : undefined}
+      source={
         <>
-          <DeadlinePill date={i.deadline_date} prefix={config.deadlinePrefix?.(i)} />
-          {config.label(i) ? <span className="ws-kind">{config.label(i)}</span> : null}
-          {i.is_new ? <span className="ws-new">New</span> : null}
+          {config.label(i) ? <span className="ws-src">{config.label(i)}</span> : null}
+          {config.facts?.(i)}
         </>
       }
-      facts={config.facts?.(i)}
-      actions={
+      meta={<DeadlinePill date={i.deadline_date} prefix={config.deadlinePrefix?.(i)} />}
+      primary={
         <>
           {i.url ? (
             <a className="ws-btn ws-btn-solid" href={i.url} target="_blank" rel="noopener noreferrer">
@@ -329,9 +330,7 @@ export function OpportunityFeed<T extends OpportunityBase>({
       caveat={i.caveat}
       members={recommendedFor?.[i.content_id]}
       showMembers={forLab}
-      theme={i.cluster ?? null}
-      also={i.bridge_clusters}
-      source={
+      footer={
         <SourceRow license={i.license} licenseUrl={i.license_url} sourceLinks={i.source_links} source={i.source} />
       }
     >

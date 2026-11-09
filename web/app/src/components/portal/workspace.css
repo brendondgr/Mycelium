@@ -448,6 +448,353 @@ html:not([data-motion="none"])[data-surfaces="glass"] .ws-item:hover {
   cursor: default;
 }
 
+/* ------------------------------------------- the one card skeleton */
+
+/* Top row: the match (and New) on the left, the tools on the right. */
+.ws-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+
+.ws-card-top .ws-actions {
+  flex: none;
+}
+
+/* A card's title runs two lines at most; the opened item shows it whole. */
+.ws-item .ws-item-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ws-card-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin-top: -2px;
+}
+
+/* Where it comes from — one line, cut with an ellipsis, never wrapped. */
+.ws-card-source,
+.ws-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0 8px;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.86em;
+  white-space: nowrap;
+}
+
+.ws-card-source {
+  color: var(--text-secondary);
+}
+
+.ws-card-meta {
+  color: var(--text-muted);
+}
+
+.ws-card-source > *,
+.ws-card-meta > * {
+  flex: none;
+}
+
+.ws-card-source > :last-child,
+.ws-card-meta > :last-child {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ws-card-source .ws-src {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.ws-card-source .ws-money {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.ws-dotsep::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--text-muted);
+}
+
+.ws-detail-lines .ws-card-source,
+.ws-detail-lines .ws-card-meta {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+.ws-why-line {
+  align-items: flex-start;
+  font-size: 0.94em;
+}
+
+.ws-line-clamp {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.ws-item[data-expanded] .ws-line-clamp {
+  display: block;
+}
+
+/* Themes as pills, each with its share of the match; one line on a card. */
+.ws-topics {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.ws-detail-body .ws-topics {
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.ws-topic {
+  --tone: var(--primary);
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 9px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--tone) 34%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+  color: var(--text-primary);
+  font-size: 0.8em;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ws-topic-label {
+  min-width: 2.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ws-topic-pct {
+  flex: none;
+  color: color-mix(in srgb, var(--tone) 70%, var(--text-primary));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-topic-more {
+  --tone: var(--text-muted);
+  flex: none;
+  color: var(--text-secondary);
+}
+
+/* The match: a ring and a figure; the breakdown opens on hover or focus. */
+.ws-match {
+  position: relative;
+  flex: none;
+}
+
+.ws-match-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px 0 4px;
+  border: 1px solid color-mix(in srgb, var(--primary) 34%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.84em;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+
+.ws-match-ring {
+  --p: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--primary) calc(var(--p) * 1%),
+    color-mix(in srgb, var(--primary) 20%, transparent) 0
+  );
+  -webkit-mask: radial-gradient(circle, transparent 5px, #000 5.5px);
+  mask: radial-gradient(circle, transparent 5px, #000 5.5px);
+}
+
+.ws-match-word {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.ws-match-tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(290px, 78vw);
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 14px 34px -14px rgb(0 0 0 / 0.4);
+  font-size: 0.82em;
+  font-weight: 400;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+  pointer-events: none;
+}
+
+.ws-match:hover .ws-match-tip,
+.ws-match:focus-within .ws-match-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+/* The open breakdown paints over the cards below this one. */
+.ws-item:has(.ws-match:hover),
+.ws-item:has(.ws-match:focus-within) {
+  z-index: 3;
+}
+
+.ws-match-tip-head {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.ws-match-tip-note {
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.ws-match-tip-label {
+  color: var(--text-muted);
+  font-size: 0.86em;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ws-match-row {
+  --tone: var(--primary);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 34px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--text-secondary);
+}
+
+.ws-match-row-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ws-match-row-name span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-match-bar {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--raise) 85%, transparent);
+}
+
+.ws-match-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tone);
+}
+
+.ws-match-row-pct {
+  color: var(--text-primary);
+  font-weight: 650;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-match-tip-foot {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--divider);
+  color: var(--text-muted);
+}
+
+.ws-match-tip-note.ws-match-tip-foot {
+  margin-bottom: 0;
+}
+
+/* The opened item's tools never dim. */
+.ws-actions-on {
+  opacity: 1 !important;
+}
+
+/* Primary link (and a venue's rankings) on the left, deadline on the right. */
+.ws-primary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 0;
+  border-block: 1px solid var(--divider);
+}
+
+.ws-primary-deadline {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+/* Narrow cards drop the third theme and the word "match" rather than crush. */
+.ws-item:has(> .ws-card-top) {
+  container-type: inline-size;
+}
+
+@container (max-width: 420px) {
+  .ws-match-word {
+    display: none;
+  }
+
+  .ws-topics .ws-topic:nth-child(n + 3):not(.ws-topic-more) {
+    display: none;
+  }
+}
 
 .ws-why {
   display: flex;

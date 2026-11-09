@@ -8,7 +8,8 @@ import { usePortal } from "@/components/portal/portal-context";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import { PageSkeleton } from "@/components/portal/skeleton";
-import { DetailSection, FeedCard, ItemDetail, PageHead } from "@/components/portal/feed/parts";
+import { FeedCard, ItemDetail, PageHead, matchInfo } from "@/components/portal/feed/parts";
+import { shortVenue } from "@/components/portal/feed/venue";
 import { ReaderLayout, groupByTheme, useReader } from "@/components/portal/feed/reader";
 import { FeedToolbar, useFeedControls, type Facet, type SortOption } from "@/components/portal/feed/toolbar";
 import { IgnorableCard, IgnoreButton, SaveButton } from "@/components/portal/sections/opportunity-bits";
@@ -29,6 +30,16 @@ function formatWhen(iso: string | null): string {
 function byline(s: Suggestion): string {
   const authors = s.authors.length > 1 ? `${s.authors[0]} et al.` : (s.authors[0] ?? "");
   return [authors, s.year ? String(s.year) : ""].filter(Boolean).join(" · ");
+}
+
+/** The card's source line: the venue's short name alone; the full masthead on hover. */
+function venueLine(s: Suggestion): React.ReactNode {
+  const short = shortVenue(s.venue);
+  return short ? (
+    <span className="ws-src" title={s.venue}>
+      {short}
+    </span>
+  ) : null;
 }
 
 /**
@@ -281,26 +292,20 @@ function PapersFeed({
                 {({ onIgnored }) => (
                   <FeedCard
                     title={s.headline || s.title}
-                    signal={
-                      <>
-                        {s.venue ? <span className="ws-kind">{s.venue}</span> : null}
-                        {s.year ? <span className="ws-meta-text">{s.year}</span> : null}
-                      </>
-                    }
+                    match={matchInfo(s)}
                     isNew={s.is_new}
+                    profile={labName ? `${labName}'s research` : undefined}
                     actions={
                       <>
                         <SaveButton contentId={s.content_id} saved={s.saved} savedLabs={s.saved_labs} variant="icon" />
                         <IgnoreButton contentId={s.content_id} title={s.title} onIgnored={onIgnored} />
                       </>
                     }
-                    facts={byline(s) ? <span className="ws-meta-text">{byline(s)}</span> : null}
+                    source={venueLine(s)}
+                    meta={byline(s) ? <span>{byline(s)}</span> : null}
                     reason={s.beats[0] || s.reason}
                     byMylo={s.origin === "llm"}
-                    caveat={s.caveat}
                     members={recommendedFor?.[s.content_id]}
-                    theme={s.cluster}
-                    also={s.bridge_clusters}
                     selected={selected}
                     onOpen={onOpen}
                   />
@@ -310,45 +315,42 @@ function PapersFeed({
             renderDetail={(s) => (
               <ItemDetail
                 title={s.title}
-                signal={
-                  <>
-                    {s.venue ? <span className="ws-kind">{s.venue}</span> : null}
-                    {s.year ? <span className="ws-meta-text">{s.year}</span> : null}
-                    {s.is_new ? <span className="ws-new">New</span> : null}
-                  </>
+                match={matchInfo(s)}
+                isNew={s.is_new}
+                profile={labName ? `${labName}'s research` : undefined}
+                tools={
+                  <SaveButton contentId={s.content_id} saved={s.saved} savedLabs={s.saved_labs} variant="icon" />
                 }
-                facts={
+                source={venueLine(s)}
+                meta={
                   s.authors.length ? (
-                    <p className="ws-meta-text">{s.authors.slice(0, 8).join(", ")}{s.authors.length > 8 ? ", et al." : ""}</p>
+                    <span>
+                      {s.authors.slice(0, 8).join(", ")}
+                      {s.authors.length > 8 ? ", et al." : ""}
+                      {s.year ? ` · ${s.year}` : ""}
+                    </span>
+                  ) : s.year ? (
+                    <span>{s.year}</span>
                   ) : null
                 }
-                actions={
-                  <>
-                    {s.url ? (
-                      <a className="ws-btn ws-btn-solid" href={s.url} target="_blank" rel="noopener noreferrer">
-                        Read paper <ExternalLink size={13} aria-hidden="true" />
-                      </a>
-                    ) : null}
-                    <SaveButton contentId={s.content_id} saved={s.saved} savedLabs={s.saved_labs} />
-                  </>
+                primary={
+                  s.url ? (
+                    <a className="ws-btn ws-btn-solid" href={s.url} target="_blank" rel="noopener noreferrer">
+                      Read paper <ExternalLink size={13} aria-hidden="true" />
+                    </a>
+                  ) : null
                 }
                 byMylo={s.origin === "llm"}
                 beats={s.beats}
                 reason={s.reason}
                 caveat={s.caveat}
                 bridgeNote={s.bridge_note}
+                about={s.abstract}
+                aboutTitle="Abstract"
                 members={recommendedFor?.[s.content_id]}
                 showMembers={Boolean(labName)}
-                theme={s.cluster}
-                also={s.bridge_clusters}
-                source={<span>Source · {[s.source, s.venue].filter(Boolean).join(" · ")}</span>}
-              >
-                {s.abstract ? (
-                  <DetailSection title="Abstract">
-                    <p>{s.abstract}</p>
-                  </DetailSection>
-                ) : null}
-              </ItemDetail>
+                footer={<span>Source · {[s.source, s.venue].filter(Boolean).join(" · ")}</span>}
+              />
             )}
             after={
               <FeedSentinel
