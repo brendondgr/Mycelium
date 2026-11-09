@@ -17,6 +17,8 @@ def _agent_env(settings):
 
     settings.AGENT_PARALLEL_CALLS = False
     settings.LLM_MODEL = "test-model"
+    # A stated window: 0 would ask the (absent) model server on every turn.
+    settings.AGENT_CONTEXT_WINDOW = 32768
     stream.use_memory_bus()
     registry.reset()
     yield

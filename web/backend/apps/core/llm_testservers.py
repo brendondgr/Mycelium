@@ -115,6 +115,7 @@ class MockServer:
             "context_window": 0, "reasoning": "", "model_allow": [],
             "model_deny": [], "synthesized": False,
         }
+        entry["label_stated"] = "label" in fields
         entry.update(fields)
         return entry
 

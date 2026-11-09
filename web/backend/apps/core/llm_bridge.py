@@ -195,6 +195,17 @@ class KitClient:
             params.temperature = None
         return params
 
+    def _call_id(self, call) -> str:
+        """The server's call id, or a fresh one where the server gives none
+        that is unique across a thread (Ollama numbers each reply's calls
+        from 0; Gemini may send none, and llmkit then uses the name)."""
+        cid = call.id or ""
+        if not cid or cid == call.name or self.kind == "ollama":
+            import uuid
+
+            cid = f"call_{uuid.uuid4().hex[:24]}"
+        return cid
+
     def _response(self, *, text, thinking, calls, finish, usage, model,
                   raw) -> LLMResponse:
         return LLMResponse(
@@ -205,9 +216,9 @@ class KitClient:
             usage=usage_mapping(usage),
             raw=None,
             tool_calls=tuple(
-                ToolCall(id=c.id or f"call_{i}", name=c.name,
+                ToolCall(id=self._call_id(c), name=c.name,
                          arguments=json.dumps(c.arguments or {}))
-                for i, c in enumerate(calls) if c.name),
+                for c in calls if c.name),
             opaque=opaque_state(self.kind, raw),
             server=self.server,
         )
