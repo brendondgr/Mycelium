@@ -28,6 +28,14 @@ Local changes, and nothing else:
   discovery of every Anthropic server failed. Found by
   `apps/core/test_llm_servers.py` against the mock Anthropic server.
 
+- `providers/gemini_provider.py`: (1) when an assistant turn's returned
+  parts already carry a function call (the part holding Gemini's thought
+  signature), the same call is not appended a second time, which would have
+  sent two calls against one response; (2) the stream keeps the parts that
+  carry thought signatures and returns them on the `done` chunk as
+  `raw={"thinking_raw": [...]}`, since upstream dropped them on a streamed
+  turn and the next function-calling turn would fail.
+
 The folder is excluded from ruff (`[tool.ruff] extend-exclude`) so a re-vendor
 is a plain diff against the skill. Mycelium code reaches it through
 `apps/core/llm_servers.py` and `apps/core/llm_bridge.py` only.

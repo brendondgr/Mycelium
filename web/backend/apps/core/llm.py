@@ -35,6 +35,63 @@ class LLMConfigurationError(RuntimeError):
     """Raised when the LLM client is asked to run without enough configuration."""
 
 
+class LLMServerError(RuntimeError):
+    """A model server refused or failed a call (raised by the ``llmkit``
+    bridge; the OpenAI-compatible client raises the SDK's own errors, which
+    :func:`is_unavailable_error` and :func:`is_context_length_error` read too).
+    """
+
+    def __init__(self, message: str, *, server: str = "") -> None:
+        super().__init__(message)
+        self.server = server
+
+
+class LLMUnavailableError(LLMServerError):
+    """The server could not answer now: unreachable, timed out, overloaded,
+    rate-limited or a 5xx. Another server might."""
+
+
+class LLMContextLengthError(LLMServerError):
+    """The prompt does not fit the model's context window."""
+
+
+class LLMRequestError(LLMServerError):
+    """The server rejected the request itself; another server would too."""
+
+
+_CONTEXT_PHRASES = (
+    "context length", "context_length", "maximum context", "context window",
+    "prompt is too long", "too many tokens", "input is too long",
+    "exceeds the context",
+)
+
+
+def is_context_length_error(exc: BaseException) -> bool:
+    """Whether ``exc`` says the prompt overflowed the model's window."""
+    if isinstance(exc, LLMContextLengthError):
+        return True
+    if isinstance(exc, LLMServerError):
+        return False
+    status = getattr(exc, "status_code", None)
+    text = str(exc).lower()
+    return status in (400, 413, 422) and any(p in text for p in _CONTEXT_PHRASES)
+
+
+def is_unavailable_error(exc: BaseException) -> bool:
+    """Whether another server might succeed where this call failed."""
+    if isinstance(exc, LLMUnavailableError):
+        return True
+    if isinstance(exc, (LLMServerError, LLMConfigurationError)):
+        return False
+    name = type(exc).__name__
+    if name in ("APIConnectionError", "APITimeoutError", "ConnectError",
+                "ConnectTimeout", "ReadTimeout", "TimeoutException",
+                "RemoteProtocolError"):
+        return True
+    status = getattr(exc, "status_code", None)
+    return isinstance(status, int) and (status == 429 or status >= 500)
+
+
 class ReasoningLevel(StrEnum):
     """How hard the server should think before answering.
 
@@ -176,6 +233,13 @@ class LLMResponse:
     usage: Mapping[str, Any] | None = None
     raw: Any = field(default=None, repr=False)
     tool_calls: tuple[ToolCall, ...] = ()
+    #: Reasoning state a server needs back verbatim on the next turn (Anthropic
+    #: thinking signatures, Gemini thought signatures): ``{"kind", "blocks"}``.
+    #: Never parsed; ``None`` for OpenAI-compatible servers.
+    opaque: Mapping[str, Any] | None = field(default=None, repr=False)
+    #: The server that answered (``[llm.providers.<name>]``; ``local`` is the
+    #: ``.env`` endpoint). Empty for a client built outside the registry.
+    server: str = ""
 
 
 class ChatCompletions(Protocol):
@@ -298,10 +362,13 @@ class LLMClient:
         *,
         completions: ChatCompletions | None = None,
         component: str = "",
+        server: str = "",
     ) -> None:
         self.config = config
         self._completions = completions
         self.component = component
+        #: Which ``[llm.providers.<name>]`` this client reaches (ledger + reply).
+        self.server = server
 
     @classmethod
     def from_settings(
@@ -310,11 +377,13 @@ class LLMClient:
         *,
         completions: ChatCompletions | None = None,
         component: str = "",
+        server: str = "",
     ) -> LLMClient:
         return cls(
             LLMConfig.from_settings(settings),
             completions=completions,
             component=component,
+            server=server,
         )
 
     @property
@@ -384,10 +453,11 @@ class LLMClient:
             raw = self.completions.create(**payload)
             response = self._parse(raw, fallback_model=payload["model"])
         except Exception:
-            llm_usage.record(self.component, ok=False)
+            llm_usage.record(self.component, ok=False, server=self._ledger_server)
             raise
-        llm_usage.record(self.component, ok=True, usage=response.usage)
-        return response
+        llm_usage.record(self.component, ok=True, usage=response.usage,
+                         server=self._ledger_server)
+        return self._served(response)
 
     def complete_stream(
         self,
@@ -436,10 +506,22 @@ class LLMClient:
                 should_stop=should_stop,
             )
         except Exception:
-            llm_usage.record(self.component, ok=False)
+            llm_usage.record(self.component, ok=False, server=self._ledger_server)
             raise
-        llm_usage.record(self.component, ok=True, usage=response.usage)
-        return response
+        llm_usage.record(self.component, ok=True, usage=response.usage,
+                         server=self._ledger_server)
+        return self._served(response)
+
+    @property
+    def _ledger_server(self) -> str:
+        return self.server or llm_usage.DEFAULT_SERVER
+
+    def _served(self, response: LLMResponse) -> LLMResponse:
+        if not self.server:
+            return response
+        from dataclasses import replace
+
+        return replace(response, server=self.server)
 
     def _payload(
         self,
@@ -618,17 +700,172 @@ def build_llm_client(
     *,
     completions: ChatCompletions | None = None,
     component: str = "",
-) -> LLMClient:
-    """Convenience factory. Defaults to Django settings when none are given.
+    server: str | None = None,
+) -> Any:
+    """The client for ``component``: routed to its server, with fallback.
 
     Pass ``component`` so the calls show up under a meaningful name in the daily
-    LLM ledger; unlabelled clients are counted as ``unlabelled``.
+    LLM ledger; unlabelled clients are counted as ``unlabelled``. Which server
+    answers comes from ``[llm.routes]`` (``apps.core.llm_servers.resolve``);
+    with nothing routed, that is ``local``, the ``.env`` endpoint, built exactly
+    as before servers existed. ``server`` names one server outright (the
+    probe and health checks); it must be one the host allows.
+
+    An explicit ``settings`` object or ``completions`` transport (tests, the
+    pre-registry call sites) builds the OpenAI-compatible client from those
+    settings directly, as this factory always did.
+
+    The return value has ``complete`` / ``complete_stream``; for an
+    OpenAI-compatible server it is an :class:`LLMClient`, for Anthropic, Gemini
+    and native Ollama an ``apps.core.llm_bridge.KitClient``, and when
+    ``llm.fallback`` lists servers, a :class:`FallbackClient` over them.
     """
 
-    if settings is None:
-        from django.conf import settings as django_settings
+    if settings is not None or completions is not None:
+        if settings is None:
+            from django.conf import settings as django_settings
 
-        settings = django_settings
-    return LLMClient.from_settings(
-        settings, completions=completions, component=component
+            settings = django_settings
+        return LLMClient.from_settings(
+            settings, completions=completions, component=component
+        )
+    from apps.core import llm_servers
+
+    route = (llm_servers.resolve(component) if server is None
+             else llm_servers.route_to(server, component))
+    primary = client_for_route(route, component)
+    if server is not None:
+        return primary
+    table = llm_servers.table()
+    chain = [
+        name for name in table.fallback
+        if name != route.server and table.callable(name)
+    ]
+    if not chain:
+        return primary
+    return FallbackClient(
+        component,
+        [primary, *(client_for_route(llm_servers.route_to(name, component),
+                                     component) for name in chain)],
     )
+
+
+def client_for_route(route: Any, component: str) -> Any:
+    """One server's client: the shared OpenAI-compatible client or the bridge."""
+    from django.conf import settings
+
+    from apps.core import llm_servers
+    from config.instance import LLM_OPENAI_KINDS
+
+    entry = llm_servers.server(route.server) or {}
+    if entry.get("synthesized"):
+        client = LLMClient.from_settings(settings, component=component,
+                                         server=route.server)
+        if route.model and route.model != client.config.model:
+            from dataclasses import replace
+
+            client.config = replace(client.config, model=route.model)
+        return client
+    if entry.get("kind") in LLM_OPENAI_KINDS:
+        base = LLMConfig.from_settings(settings)
+        from dataclasses import replace
+
+        provider = llm_servers.provider_config(entry)
+        config = replace(
+            base,
+            base_url=provider.resolved_base_url() or "",
+            api_key=llm_servers.api_key(entry) or "EMPTY",
+            model=route.model,
+            timeout=float(entry.get("timeout") or base.timeout),
+            connect_timeout=float(entry.get("connect_timeout")
+                                  or base.connect_timeout),
+            reasoning=ReasoningLevel.coerce(entry.get("reasoning")
+                                            or base.reasoning.value),
+        )
+        return LLMClient(config, component=component, server=route.server)
+    from apps.core.llm_bridge import KitClient
+
+    return KitClient(entry, model=route.model, component=component)
+
+
+class FallbackClient:
+    """Try the routed server, then each ``llm.fallback`` server in order.
+
+    A server whose circuit is open (three failures in a row, for 30 seconds) is
+    skipped without a call. Only a failure another server could avoid —
+    unreachable, timed out, overloaded, rate-limited, 5xx — moves on; a
+    rejected request is raised as it is. A streamed reply that has already
+    shown text is never replayed elsewhere. Only servers the host listed are
+    ever tried (S-14), and a cloud one only while ``llm.allow_cloud`` is true.
+    The caller's ``model=`` applies to the routed server only; each fallback
+    server uses its own model.
+    """
+
+    def __init__(self, component: str, clients: list[Any]) -> None:
+        self.component = component
+        self.clients = clients
+        self.server = clients[0].server
+
+    def complete(self, messages: Any, **kwargs: Any) -> LLMResponse:
+        return self._run(lambda client, kw: client.complete(messages, **kw),
+                         kwargs, None)
+
+    def complete_stream(self, messages: Any, *, on_delta=None,
+                        **kwargs: Any) -> LLMResponse:
+        shown = [False]
+
+        def delta(kind: str, text: str) -> None:
+            shown[0] = True
+            if on_delta is not None:
+                on_delta(kind, text)
+
+        return self._run(
+            lambda client, kw: client.complete_stream(messages, on_delta=delta,
+                                                      **kw),
+            kwargs, shown)
+
+    def _run(self, call, kwargs: dict[str, Any], shown) -> LLMResponse:
+        import logging
+
+        log = logging.getLogger(__name__)
+        last: BaseException | None = None
+        for index, client in enumerate(self.clients):
+            breaker = breaker_for(client.server)
+            if breaker.is_open:
+                last = last or LLMUnavailableError(
+                    f"server {client.server!r} is failing; skipped",
+                    server=client.server)
+                continue
+            kw = dict(kwargs)
+            if index:
+                kw.pop("model", None)
+            try:
+                response = call(client, kw)
+            except Exception as exc:
+                if not is_unavailable_error(exc):
+                    raise
+                breaker.record_failure()
+                last = exc
+                if shown is not None and shown[0]:
+                    raise
+                log.warning("llm server %r unavailable for %r (%s); trying the "
+                            "next fallback", client.server, self.component, exc)
+                continue
+            breaker.record_success()
+            return response
+        assert last is not None
+        raise last
+
+
+_breakers: dict[str, Any] = {}
+
+
+def breaker_for(server: str) -> Any:
+    """The process-wide circuit breaker for one server (3 failures, 30 s)."""
+    from apps.core.llmkit import CircuitBreaker
+
+    breaker = _breakers.get(server)
+    if breaker is None:
+        breaker = _breakers.setdefault(server, CircuitBreaker(threshold=3,
+                                                              reset_after=30.0))
+    return breaker

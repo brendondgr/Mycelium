@@ -188,9 +188,18 @@ class GeminiProvider(Provider):
 
             # Thought signatures must survive round-tripping or Gemini 3
             # function calling 400s on the next turn.
+            # Mycelium: a returned part that already carries a function call
+            # must not be followed by a second copy of that call (VENDORED.md).
+            carried: set[str] = set()
             if m.thinking_raw:
                 for p in m.thinking_raw:
                     parts.append(p)
+                    fc = (p.get("function_call") if isinstance(p, dict)
+                          else getattr(p, "function_call", None))
+                    if fc:
+                        fid = fc.get("id") if isinstance(fc, dict) else fc.id
+                        fname = fc.get("name") if isinstance(fc, dict) else fc.name
+                        carried.add(fid or fname or "")
 
             if isinstance(m.content, str):
                 if m.content:
@@ -199,6 +208,8 @@ class GeminiProvider(Provider):
                 parts.extend(self._part(p, types) for p in m.content)
 
             for tc in m.tool_calls:
+                if (tc.id or tc.name) in carried or tc.name in carried:
+                    continue
                 parts.append(
                     types.Part(
                         function_call=types.FunctionCall(
@@ -457,6 +468,9 @@ class GeminiProvider(Provider):
             usage = Usage()
             finish = "unknown"
             pending: list[ToolCall] = []
+            # Mycelium: the parts that carry thought signatures, returned on
+            # the `done` chunk so a streamed turn can round-trip them too.
+            carried_parts: list[Any] = []
             for chunk in self.client.models.generate_content_stream(
                 model=model,
                 contents=self._contents(msgs),
@@ -480,7 +494,10 @@ class GeminiProvider(Provider):
                                     arguments=dict(fc.args or {}),
                                 )
                             )
+                            if getattr(part, "thought_signature", None):
+                                carried_parts.append(part)
                         elif getattr(part, "thought", False):
+                            carried_parts.append(part)
                             yield StreamChunk(
                                 type="thinking",
                                 text=getattr(part, "text", "") or "",
@@ -491,7 +508,8 @@ class GeminiProvider(Provider):
             for tc in pending:
                 yield StreamChunk(type="tool_call", tool_call=tc, model=model)
             yield StreamChunk(
-                type="done", usage=usage, finish_reason=finish, model=model
+                type="done", usage=usage, finish_reason=finish, model=model,
+                raw={"thinking_raw": carried_parts},
             )
 
     def embed(

@@ -168,6 +168,26 @@ def resolve(component: str = "") -> Route:
     )
 
 
+def route_to(name: str, component: str = "") -> Route:
+    """A route to one named server (health checks, the probe, fallback).
+
+    Raises ``LLMConfigurationError`` when the host does not allow that server:
+    naming a server outright is a deliberate act, so it is not silently
+    redirected the way a component's route is.
+    """
+    from apps.core.llm import LLMConfigurationError
+
+    t = table()
+    if not t.callable(name):
+        raise LLMConfigurationError(f"server {name!r} may not be called: "
+                                    f"{_why_not(t, name)}")
+    entry = t.servers[name]
+    return Route(component=component, server=name, kind=entry["kind"],
+                 model=entry["model"], label=entry["label"],
+                 location=entry["location"], base_url=entry["base_url"],
+                 requested=name)
+
+
 def _why_not(t, name: str) -> str:
     entry = t.servers.get(name)
     if entry is None:

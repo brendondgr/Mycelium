@@ -65,6 +65,8 @@ class MockServer:
         self.paths: list[str] = []
         self.list_calls = 0
         self.fail_chat = 0  # answer this many chat calls with HTTP 500
+        #: Answer the next chat calls with these ``(status, json body)`` errors.
+        self.errors: list[tuple[int, dict]] = []
         self._server: ThreadingHTTPServer | None = None
 
     # -- lifecycle -----------------------------------------------------------
@@ -412,6 +414,9 @@ def _handler_for(srv: MockServer):
             if not is_chat:
                 return self._json({"error": f"no route {path}"}, 404)
             srv.requests.append(body)
+            if srv.errors:
+                status, payload = srv.errors.pop(0)
+                return self._json(payload, status)
             if srv.fail_chat > 0:
                 srv.fail_chat -= 1
                 return self._json({"error": {"message": "mock failure",

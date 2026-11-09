@@ -128,6 +128,19 @@ class Command(BaseCommand):
                 self.stderr.write(self.style.ERROR(f"  ✗ {problem}"))
             else:
                 self.stdout.write(self.style.WARNING(f"  ! {problem}"))
+        # The default server is pinged (and given a sample extraction) below;
+        # every other server that may be called answers one tiny reply here.
+        for name in table.servers:
+            if name == table.default or not table.callable(name):
+                continue
+            answered, detail = _ping_server(name)
+            if answered:
+                self.stdout.write(self.style.SUCCESS(f"  {name}: replied"))
+            elif name in routed:
+                failures.append(f"server {name!r} (routed) did not reply: {detail}")
+                self.stderr.write(self.style.ERROR(f"  {name}: {detail}"))
+            else:
+                self.stdout.write(self.style.WARNING(f"  {name}: {detail}"))
         self.stdout.write(self.style.MIGRATE_HEADING("\nRoutes"))
         for component, route in llm_servers.routes().items():
             label = "everything else" if component == "*" else component
@@ -199,3 +212,18 @@ class Command(BaseCommand):
 
 def _environ() -> dict[str, str]:
     return dict(os.environ)
+
+
+def _ping_server(name: str) -> tuple[bool, str]:
+    """One tiny reply from one server, counted as component ``preflight``."""
+    from apps.core.llm import build_llm_client
+
+    try:
+        response = build_llm_client(component="preflight", server=name).complete(
+            [{"role": "user", "content": "Reply with the two letters: ok"}],
+            reasoning="none")
+    except Exception as exc:  # noqa: BLE001 - surface the real reason
+        return False, f"{type(exc).__name__}: {exc}"
+    if not (response.content or "").strip():
+        return False, f"empty reply (finish {response.finish_reason})"
+    return True, ""
