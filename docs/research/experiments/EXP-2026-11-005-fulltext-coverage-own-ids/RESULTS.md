@@ -109,3 +109,6 @@ DATABASE_URL=postgres://mycelium:mycelium@localhost:11450/mycelium \
   third row), and 73 are older, unrelated OpenAlex groups joined only on the
   fuzzy title/author/year key, mostly several Zenodo version DOIs of one
   deposit. Nothing has been merged.
+- **2026-11-08 — the duplicates were merged.** With the owner's approval,
+  `dedupe_content_papers --apply` merged all 278 groups (292 rows removed,
+  relations repointed by the merge path); a dry run afterwards found 0 groups.
