@@ -120,8 +120,22 @@ store** — only to the public site and, through the Next.js proxy, the Django A
 | Backend orchestration | `web/backend/` (Django + DRF) | Auth, permissions, business logic, admin, audit, API contracts |
 | Background work | Celery worker + Beat | Reminder ticks, outbox drain, project-profile recompute, seeding |
 | Scheduled pipeline | Host `mylo-daily.timer` → `ops/nightly/manual_all.py` | The nightly research run (see below) |
-| Discord gateway | Host `mylo-bot.service` → `python -m mylo.bot` | Slash commands, drift events, run observability |
+| Discord gateway | Host `mylo-bot.service` → `python -m mylo.bot` | Slash commands, drift events, run observability, Mylo chat (enqueues turns and watches them; the turn itself runs in the Celery worker, so the bot needs the agent's Redis) |
 | Data storage | Postgres / Redis | Durable records, vectors, queue/cache |
+
+**Mylo chat in Discord.** The gateway's one `on_message` (`mylo/bot/cogs/listen.py`)
+hands a DM, an `@Mylo` or a reply to Mylo to the chat cog, which calls the agent's
+Discord surface (`tools/agent/surfaces/discord.py`, reached through
+`services.get("agent")`). The surface runs the Discord gate, decides the place
+(`resolve.place_for`: a DM is the person's own; a forum or Discord thread is one
+shared conversation that belongs to its lab or department; an open channel is one
+per person), and calls `service.send`. The turn runs in the Celery worker like a
+web turn; the bot follows the activity view (Redis pub/sub, or the event log once a
+second when the bus is down) and edits its status message into the answer.
+`AgentDiscordTurn` rows let a restarted bot deliver what it missed. Someone in a
+bound server without an account asks as a guest, at the level the host and the lab
+allow (`discord_guest_level`, `AgentOrgPolicy.discord_guests`). Everything is
+stored in this instance's Postgres.
 
 Single-origin routing through Nginx at `http://localhost:11050`:
 

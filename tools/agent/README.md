@@ -5,8 +5,8 @@ or opened in a lab, department or project); Mylo answers by calling read-only
 functions over everything that person may see — their profile and what Mylo
 understands about them, labs, projects and their state, feeds and slates, the
 corpus, the knowledge graph, stored papers and uploaded files — and cites what
-it read as `#n`. It changes nothing a person would call theirs. Backend only:
-the API and a developer CLI; the web chat UI and Discord come next.
+it read as `#n`. It changes nothing a person would call theirs. Surfaces:
+the API, a developer CLI, the web chat panel and Discord.
 
 | | |
 |---|---|
@@ -70,6 +70,27 @@ the API and a developer CLI; the web chat UI and Discord come next.
   the turn clears old results or summarizes once and retries.
 - **Pinned chats.** `AgentThread.pinned`; `list_threads` puts them first.
 
+- **Discord (plan D).** `surfaces/discord.py` is the adapter the bot
+  (`mylo/`) calls through `services.get("agent").discord_surface()`: `ask`
+  runs the Discord gate, resolves the place (`resolve.place_for`), finds or
+  opens the conversation (`AgentThreadLink`), builds the `Caller` and calls
+  `service.send`; `follow`, `result`, `stop`, `forget` and `reconcile` serve
+  delivery and recovery (`AgentDiscordTurn`). A DM is the person's own
+  thread. A forum or Discord thread is one **shared** thread (no owner;
+  `AgentThread.shared`) where each question is a turn under its own asker
+  (`speaker` and `turn` on the `user` event; `caller.for_turn`), queued
+  questions get one turn each (at most five wait), and earlier turns replay as
+  a transcript only. An open channel has one shared-type thread per person,
+  rolled over after `discord_channel_session_hours`. Shared threads are never
+  returned by the web API and are skipped by the learning pass, recall,
+  digests and titles.
+- **Guests.** Someone in a bound server without an account is a `Guest`
+  (`Caller.user is None`). They stand where a `member` of the place's lab or
+  department stands, but only for functions that declare a guest level
+  (`AgentFunction.guest`: `public`, `no_people`, `full`), capped by
+  `discord_guest_level` and the org's `AgentOrgPolicy.discord_guests`
+  (`permissions.guest_level`). A guest is never learned from.
+
 ## Doors
 
 - `service.py` — threads (create, list, update, delete, fork, export), send
@@ -80,6 +101,9 @@ the API and a developer CLI; the web chat UI and Discord come next.
 
 ## Operating it
 
+- `manage.py smoke_agent_discord [--scripted] [--keep]` — Mylo in Discord end
+  to end against a fake transport (member and guest in an announcement
+  thread, a DM, the refusals); the real model unless `--scripted`; rolled back.
 - `manage.py agent chat --user <name> [--scope lab:<slug>|project:<uuid>]` —
   chat from the terminal (audited as `surface=cli`); `manage.py agent catalog
   --user <name>` shows what that person may use and why not.

@@ -148,6 +148,30 @@ agent = "claude"         # Mylo's chat; the nightly components stay on local
 - Never put a key in `mycelium.toml` (the loader refuses an `api_key` field).
   Only the variable name goes there.
 
+## Mylo chat in Discord
+
+Who may ask Mylo in Discord is the host's choice, in `[tools.agent]`:
+
+- `discord_access`: `public` (default: anyone who can post in a server a lab
+  or department has connected may ask; someone without an account asks as a
+  guest), `linked` (linked accounts only) or `entitled` (linked accounts whose
+  plan includes the agent). A DM always needs a linked account with a
+  verified email, and the server's binding always needs the bot add-on.
+- `discord_guest_level`: the most any lab may let a guest see —
+  `full` (what a lab member would be told there, people included),
+  `no_people`, `public` (the thread's post and the corpus) or `off`. A lab or
+  department lowers it for its own server with `/mylo chat guests …` or in its
+  settings (`AgentOrgPolicy.discord_guests`); the lower of the two applies.
+  Say plainly that being in the server is treated as trust (S-16).
+- Limits: `discord_guest_daily_turns` (10 per guest) and
+  `discord_place_daily_turns` (200 guest questions per server).
+- `discord_channel_session_hours` (24), `discord_closed_thread_days` (30),
+  `discord_ping_after_minutes` (10, when a slow answer pings the asker) and
+  `discord_turn_timeout_minutes` (30).
+
+A manager turns chat off for one channel with `/mylo chat here off`; a person
+turns it off for themself with `/mylo chat off`.
+
 ## Answering "why am I limited?"
 
 1. `ops/mycelium config show --changed --json` — what differs from the defaults

@@ -25,7 +25,13 @@ from typing import Any
 from django.conf import settings
 
 from tools._framework import host
-from tools._framework.agentspec import ROLES, AgentFunction, width_rank
+from tools._framework.agentspec import (
+    GUEST_LEVELS,
+    ROLES,
+    AgentFunction,
+    guest_rank,
+    width_rank,
+)
 
 from . import config
 
@@ -131,6 +137,38 @@ def role_in(user, kind: str, obj) -> str | None:
     return None
 
 
+def role_of(caller, kind: str, obj) -> str | None:
+    """The caller's role on ``obj``. A guest stands where a ``member`` of the
+    place stands, and only there: the place is the thread's own lab or
+    department (its scope), never anything an argument names."""
+    if caller.user is not None:
+        return role_in(caller.user, kind, obj)
+    if not caller.is_guest or obj is None:
+        return None
+    place = caller.scope.obj
+    if caller.scope.kind == kind and place is not None and place.pk == obj.pk:
+        return "member"
+    return None
+
+
+def guest_level(caller) -> str:
+    """What a guest may be told here: the host's ceiling, then the place's
+    lab or department policy; the lower wins (S-16). ``off`` unless the host
+    lets guests ask at all (``discord_access = "public"``)."""
+    if config.get("discord_access") != "public":
+        return "off"
+    level = config.get("discord_guest_level") or "full"
+    if caller.scope.kind == "personal":
+        # A server where Mylo cannot tell whose room it is: public material
+        # only, for everyone (plan D, "Places").
+        return level if guest_rank(level) < guest_rank("public") else "public"
+    for policy in org_policies(caller.scope):
+        own = policy.discord_guests or "full"
+        if guest_rank(own) < guest_rank(level):
+            level = own
+    return level if level in GUEST_LEVELS else "off"
+
+
 def _at_least(kind: str, held: str | None, needed: str) -> bool:
     ladder = ROLES[kind]
     return held in ladder and ladder.index(held) >= ladder.index(needed)
@@ -226,6 +264,45 @@ def org_policies(scope):
 # --------------------------------------------------------------------------- #
 
 
+def _channel_off(caller) -> Decision | None:
+    here = {str(caller.via.get(k) or "") for k in ("channel_id", "parent_id")} - {""}
+    if caller.surface == "discord" and here:
+        for policy in org_policies(caller.scope):
+            if here & {str(c) for c in policy.discord_channels_off}:
+                return _deny(
+                    4,
+                    "channel_off",
+                    "Mylo chat is turned off in this channel by your lab.",
+                    "Ask in a DM instead.",
+                )
+    return None
+
+
+def _may_guest_chat(caller) -> Decision:
+    """A guest (S-11): only in Discord, only in a lab's or department's own
+    server, and only while the guest level there is above ``off``."""
+    scope = caller.scope
+    ambiguous = scope.kind == "personal" and caller.audience.width == "instance"
+    if caller.surface != "discord" or not (
+        ambiguous or (scope.kind in ("lab", "department") and scope.obj is not None)
+    ):
+        return _deny(
+            5,
+            "guest_place",
+            "Mylo answers people without an account only in a server a lab or "
+            "department has connected.",
+            "Connect your Discord to Mycelium from your profile.",
+        )
+    if guest_level(caller) == "off":
+        return _deny(
+            4,
+            "guests_off",
+            "Only people with a linked Mycelium account can ask Mylo here.",
+            "Connect your Discord to Mycelium from your profile.",
+        )
+    return _channel_off(caller) or ALLOW
+
+
 def may_chat(caller) -> Decision:
     """Layers that apply to the agent as a whole: the two switches (D-5),
     entitlement, the scope, and the person's surface setting."""
@@ -236,7 +313,17 @@ def may_chat(caller) -> Decision:
             "Mylo chat isn't enabled on this instance.",
             "Ask the person who runs this Mycelium to turn it on.",
         )
-    if not entitled(caller.user, "agent"):
+    if caller.user is None:
+        if caller.is_guest:
+            return _may_guest_chat(caller)
+        return _deny(5, "no_caller", "Mylo doesn't know who is asking.")
+    # In Discord the plan check is the host's choice (S-5): only ``entitled``
+    # asks for the person's plan; the server's own ``bot_server`` add-on is
+    # checked by the Discord gate either way.
+    plan_check = caller.surface != "discord" or (
+        config.get("discord_access") == "entitled"
+    )
+    if plan_check and not entitled(caller.user, "agent"):
         return _deny(
             3,
             "not_entitled",
@@ -267,18 +354,7 @@ def may_chat(caller) -> Decision:
             "You've turned off Mylo in Discord.",
             "Turn it back on in your account settings.",
         )
-    if caller.surface == "discord" and caller.via.get("channel_id"):
-        for policy in org_policies(scope):
-            if str(caller.via["channel_id"]) in {
-                str(c) for c in policy.discord_channels_off
-            }:
-                return _deny(
-                    4,
-                    "channel_off",
-                    "Mylo chat is turned off in this channel by your lab.",
-                    "Ask in a DM instead.",
-                )
-    return ALLOW
+    return _channel_off(caller) or ALLOW
 
 
 # --------------------------------------------------------------------------- #
@@ -333,7 +409,7 @@ def decide(
         if not part:
             continue
         if part.startswith("entitlement:"):
-            if not entitled(caller.user, part.split(":", 1)[1]):
+            if caller.user is None or not entitled(caller.user, part.split(":", 1)[1]):
                 return _deny(
                     3,
                     "not_entitled",
@@ -360,12 +436,20 @@ def decide(
         if _RISK_ORDER.index(fn.risk) > _RISK_ORDER.index(policy.max_risk or "read"):
             return _deny(4, "org_risk", "Your organization lets Mylo only read.")
 
-    # 5. scope and role
+    # 5. scope and role (a guest: the function's guest level first)
     scope = caller.scope
+    if caller.user is None:
+        if fn.guest is None or guest_rank(guest_level(caller)) < guest_rank(fn.guest):
+            return _deny(
+                5,
+                "guest",
+                f"{fn.name} isn't available to guests here.",
+                "Connect your Discord to Mycelium to ask about more.",
+            )
     if scope.kind not in fn.scopes:
         return _deny(5, "scope", f"{fn.name} isn't available in a {scope.kind} thread.")
     if scope.kind != "personal":
-        held = role_in(caller.user, scope.kind, scope.obj)
+        held = role_of(caller, scope.kind, scope.obj)
         if held is None:
             return _deny(5, "scope_not_visible", f"You can't see this {scope.kind}.")
         needed = fn.min_role.get(scope.kind)
@@ -380,7 +464,7 @@ def decide(
         needed = fn.min_role.get(kind)
         obj = getattr(scope, kind)
         if needed and scope.kind not in (kind, "personal") and obj is not None:
-            if not _at_least(kind, role_in(caller.user, kind, obj), needed):
+            if not _at_least(kind, role_of(caller, kind, obj), needed):
                 return _deny(
                     5, "role", f"{fn.name} needs the {needed} role in this {kind}."
                 )
@@ -414,8 +498,8 @@ def decide(
                         "Ask me in a DM.",
                     )
 
-    # 7. the person's own settings
-    pref = preference(caller.user)
+    # 7. the person's own settings (a guest has none)
+    pref = preference(caller.user) if caller.user is not None else None
     if pref is not None:
         if not pref.chat_enabled:
             return _deny(7, "chat_off", "You've turned Mylo chat off for yourself.")

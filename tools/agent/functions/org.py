@@ -149,7 +149,9 @@ def org_lab(caller, lab=None):
     row = lab_arg(caller, lab)
     audience_lab_ok(caller, row)
     info = common.lab_info(row)
-    role = permissions.lab_role(caller.user, row) or "not a member"
+    role = permissions.role_of(caller, "lab", row) or "not a member"
+    if caller.is_guest:
+        role = "a guest in its Discord server (no Mycelium account)"
     profile = LabProfile.objects.filter(lab=row).first()
     lines = [
         f"{{ref:{info.ref}}} {row.name} [{row.slug}]",
@@ -178,7 +180,7 @@ def org_lab_members(caller, lab=None):
 
     row = lab_arg(caller, lab)
     audience_lab_ok(caller, row)
-    held = permissions.lab_role(caller.user, row)
+    held = permissions.role_of(caller, "lab", row)
     if held not in ("member", "admin", "owner"):
         raise FunctionError(
             "role",
@@ -211,7 +213,7 @@ def org_lab_members(caller, lab=None):
 
 
 def org_department(caller, department=None):
-    from apps.accounts.models import Department, DeptProfile, LabMembership
+    from apps.accounts.models import Department, DeptProfile
     from apps.accounts.services import effective_member_ids
 
     from .. import permissions
@@ -230,10 +232,10 @@ def org_department(caller, department=None):
         )
     audience_department_ok(caller, dept)
     info = common.department_info(dept)
-    role = permissions.department_role(caller.user, dept) or "not a member"
-    mine = set(
-        LabMembership.objects.filter(user=caller.user).values_list("lab_id", flat=True)
-    )
+    role = permissions.role_of(caller, "department", dept) or "not a member"
+    if caller.is_guest:
+        role = "a guest in its Discord server (no Mycelium account)"
+    mine = common.member_lab_ids(caller)
     refs, lab_lines = [info], []
     for lab in dept.labs.order_by("name"):
         if lab.pk in mine:
@@ -260,20 +262,20 @@ def org_department(caller, department=None):
 
 
 def org_person(caller, person):
-    from apps.accounts.models import LabMembership
+    from apps.accounts.models import Lab, LabMembership
 
-    from .kinds import visible_people
+    from .kinds import visible_people_for
 
-    user = visible_people(caller.user).filter(username=common.ref_key(person)).first()
+    user = visible_people_for(caller).filter(username=common.ref_key(person)).first()
     if user is None:  # the gate cleared it; this is a race
         raise FunctionError("not_visible", "That person is not available.")
-    common_labs = (
-        LabMembership.objects.filter(user=caller.user, lab__memberships__user=user)
-        .select_related("lab")
-        .distinct()
+    labs = list(
+        Lab.objects.filter(
+            pk__in=common.member_lab_ids(caller), memberships__user=user
+        ).distinct()
     )
-    labs = [m.lab for m in common_labs]
-    if shared(caller) and user.pk != caller.user.pk:
+    own = caller.user is not None and user.pk == caller.user.pk
+    if shared(caller) and not own:
         here = audience_lab(caller)
         if (
             here is None

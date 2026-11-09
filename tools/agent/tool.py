@@ -93,6 +93,65 @@ class AgentTool(Tool):
             True,
             "Run the read-only calls of one step in parallel.",
         ),
+        # Discord (plan D)
+        _s(
+            "discord_access",
+            "choice",
+            "public",
+            "Who may ask Mylo in a bound Discord server: public (anyone who can "
+            "post there; people without an account ask as guests), linked "
+            "(linked accounts only) or entitled (linked accounts whose plan "
+            "includes the agent).",
+            choices=("public", "linked", "entitled"),
+        ),
+        _s(
+            "discord_guest_level",
+            "choice",
+            "full",
+            "The most any lab may let a guest see in its server: full, no_people "
+            "(no people functions), public (the thread's post and the corpus) or "
+            "off. A lab's own setting can only lower it.",
+            choices=("full", "no_people", "public", "off"),
+        ),
+        _s(
+            "discord_guest_daily_turns",
+            "int",
+            10,
+            "Questions per guest per day in Discord. 0 = no limit.",
+        ),
+        _s(
+            "discord_place_daily_turns",
+            "int",
+            200,
+            "Questions per Discord server per day. 0 = no limit.",
+        ),
+        _s(
+            "discord_channel_session_hours",
+            "int",
+            24,
+            "Hours a person's conversation in an open channel may be quiet "
+            "before the next question starts a new one.",
+        ),
+        _s(
+            "discord_closed_thread_days",
+            "int",
+            30,
+            "Days a closed announcement's conversation is kept before the "
+            "retention sweep deletes it.",
+        ),
+        _s(
+            "discord_ping_after_minutes",
+            "int",
+            10,
+            "An answer slower than this is posted as a new reply that pings the "
+            "asker; a quicker one silently replaces the status message.",
+        ),
+        _s(
+            "discord_turn_timeout_minutes",
+            "int",
+            30,
+            "A Discord question still unanswered after this long is given up on.",
+        ),
     )
     beat = (
         Beat(

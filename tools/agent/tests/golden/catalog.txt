@@ -109,12 +109,20 @@ free         web              project   DENY:3:not_entitled
 free         cli              personal  DENY:3:not_entitled
 free         cli              lab       DENY:3:not_entitled
 free         cli              project   DENY:3:not_entitled
-free         discord_dm       personal  DENY:3:not_entitled
-free         discord_dm       lab       DENY:3:not_entitled
-free         discord_dm       project   DENY:3:not_entitled
-free         discord_lab      personal  DENY:3:not_entitled
-free         discord_lab      lab       DENY:3:not_entitled
-free         discord_lab      project   DENY:3:not_entitled
-free         discord_unbound  personal  DENY:3:not_entitled
-free         discord_unbound  lab       DENY:3:not_entitled
-free         discord_unbound  project   DENY:3:not_entitled
+free         discord_dm       personal  ask_user corpus_item corpus_search feeds_briefing feeds_deadlines feeds_saved feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper knowledge_backing knowledge_introduction_paths knowledge_my_concepts knowledge_people_for_call knowledge_project_concepts load_functions me_interests me_profile me_understanding org_department org_lab org_lab_members org_labs org_person projects_feed projects_get projects_list read_result read_skill thread_search update_todos
+free         discord_dm       lab       ask_user corpus_item corpus_search feeds_briefing feeds_deadlines feeds_saved feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper knowledge_backing knowledge_introduction_paths knowledge_my_concepts knowledge_people_for_call knowledge_project_concepts load_functions me_interests me_profile me_understanding org_department org_lab org_lab_members org_labs org_person projects_feed projects_get projects_list read_result read_skill thread_search update_todos
+free         discord_dm       project   DENY:5:scope_not_visible
+free         discord_lab      personal  corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper knowledge_people_for_call knowledge_project_concepts load_functions org_department org_lab org_lab_members org_person projects_feed projects_get projects_list read_skill
+free         discord_lab      lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper knowledge_people_for_call knowledge_project_concepts load_functions org_department org_lab org_lab_members org_person projects_feed projects_get projects_list read_skill
+free         discord_lab      project   DENY:5:scope_not_visible
+free         discord_unbound  personal  corpus_item corpus_search find_functions fulltext_availability load_functions read_skill
+free         discord_unbound  lab       corpus_item corpus_search find_functions fulltext_availability load_functions read_skill
+free         discord_unbound  project   DENY:5:scope_not_visible
+member       discord_thread   lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper knowledge_people_for_call knowledge_project_concepts load_functions org_department org_lab org_lab_members org_person projects_feed projects_get projects_list read_skill
+guest        discord_thread   lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions knowledge_people_for_call load_functions org_department org_lab org_lab_members org_person projects_feed projects_get projects_list read_skill
+guest_nopeople discord_thread   lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions load_functions org_department org_lab projects_feed projects_get projects_list read_skill
+guest_public discord_thread   lab       corpus_item corpus_search find_functions load_functions read_skill
+guest_off    discord_thread   lab       DENY:4:guests_off
+member       discord_channel  lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper knowledge_people_for_call knowledge_project_concepts load_functions org_department org_lab org_lab_members org_person projects_feed projects_get projects_list read_skill
+member       discord_ambiguous personal  corpus_item corpus_search find_functions fulltext_availability load_functions read_skill
+guest        discord_ambiguous personal  corpus_item corpus_search find_functions load_functions read_skill

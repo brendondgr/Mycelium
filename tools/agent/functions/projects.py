@@ -14,9 +14,9 @@ from . import common
 
 
 def _visible_projects(caller):
-    from apps.research.models import Project
+    from .kinds import visible_projects
 
-    rows = Project.objects.visible_to(caller.user).filter(is_archived=False)
+    rows = visible_projects(caller).filter(is_archived=False)
     scope = caller.scope
     if scope.kind == "lab":
         rows = rows.filter(scope_lab=scope.obj)

@@ -20,6 +20,9 @@ class DeliveryTool(Tool):
         "opportunity announcements."
     )
     depends_on = ("retrieval", "recommendation")
+    #: The ``announcement`` reference kind: a forum thread's opening post,
+    #: which Mylo holds as ``#1`` when asked in that thread (plan D).
+    agent = "tools.delivery.agent"
     #: The platform (Mylo's Discord commands, project pages, the ambient
     #: ledger) still calls into this code; see platform_imports.txt.
     core = True

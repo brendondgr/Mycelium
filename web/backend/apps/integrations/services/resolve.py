@@ -556,6 +556,117 @@ def primary_server_for_lab(lab, purpose: str | None = None) -> LabServer | None:
     )
 
 
+# --------------------------------------------------------------------------- #
+# Places: whose room a message is in (Mylo chat, plan D)
+# --------------------------------------------------------------------------- #
+PLACE_DM = "dm"
+PLACE_ANNOUNCEMENT = "announcement"
+PLACE_CLOSING_SOON = "closing_soon"
+PLACE_THREAD = "thread"
+PLACE_CHANNEL = "channel"
+PLACE_AMBIGUOUS = "ambiguous"
+PLACE_UNBOUND = "unbound"
+
+
+@dataclass(frozen=True)
+class Place:
+    """Whose room a Discord message is in, decided from the gateway's ids alone.
+
+    ``binding`` is the owning live binding (``None`` in a DM, an unbound server,
+    or a server with several bindings none of which owns the channel). ``shared``
+    places hold one conversation for everyone (a thread); elsewhere each person
+    has their own. ``anchor`` is what the place is about (``{kind, key}``)."""
+
+    kind: str
+    binding: DiscordTargetBinding | None = None
+    shared: bool = False
+    anchor: dict | None = None
+    title: str = ""
+    closed: bool = False
+    #: Any live binding of the server, for the server's own entitlement check
+    #: where no binding owns the channel.
+    any_binding: DiscordTargetBinding | None = None
+
+    @property
+    def lab(self):
+        return self.binding.lab if self.binding is not None else None
+
+    @property
+    def department(self):
+        return self.binding.department if self.binding is not None else None
+
+    @property
+    def server_name(self) -> str:
+        b = self.binding or self.any_binding
+        return b.guild.guild_name_cache if b is not None else ""
+
+
+def _delivery_read():
+    from tools._framework import services
+
+    return services.get("delivery", "read")
+
+
+def place_for(
+    guild_id: str, channel_id: str, thread_id: str = "", parent_id: str = ""
+) -> Place:
+    """The one function that decides whose room a message is in.
+
+    A DM is the person's own. In a server: a thread with a live announcement
+    post belongs to that post's binding and is about the announcement; a
+    closing-soon thread to its binding; any other thread or channel to the
+    binding whose route names it (or its parent forum), else to the server's
+    only live binding. Several bindings and no owner: ``ambiguous`` (public
+    material only). No live binding: ``unbound``."""
+    if not guild_id:
+        return Place(kind=PLACE_DM)
+    live = list(_live_bindings().filter(guild__guild_id=str(guild_id)))
+    if not live:
+        return Place(kind=PLACE_UNBOUND)
+    by_id = {b.pk: b for b in live}
+    read = _delivery_read()
+    if thread_id and read is not None:
+        post = read.announcement_post_for_thread(str(thread_id))
+        if post and post["binding_id"] in by_id:
+            return Place(
+                kind=PLACE_ANNOUNCEMENT,
+                binding=by_id[post["binding_id"]],
+                shared=True,
+                anchor={"kind": "announcement", "key": post["announcement_id"]},
+                title=post["title"],
+                closed=post["closed"],
+                any_binding=live[0],
+            )
+        soon = read.closing_soon_for_thread(str(thread_id))
+        if soon and soon["binding_id"] in by_id:
+            return Place(
+                kind=PLACE_CLOSING_SOON,
+                binding=by_id[soon["binding_id"]],
+                shared=True,
+                title=f"Closing soon: {soon['category']}s, {soon['on_date']}",
+                any_binding=live[0],
+            )
+    kind = PLACE_THREAD if thread_id else PLACE_CHANNEL
+    rooms = {str(channel_id), str(parent_id or "")} - {""}
+    owners = list(
+        {
+            r.binding_id
+            for r in DiscordChannelRoute.objects.filter(
+                binding__in=live, channel_id__in=rooms
+            )
+        }
+    )
+    if len(owners) == 1:
+        binding = by_id[owners[0]]
+    elif len(live) == 1:
+        binding = live[0]
+    else:
+        return Place(kind=PLACE_AMBIGUOUS, shared=bool(thread_id), any_binding=live[0])
+    return Place(
+        kind=kind, binding=binding, shared=bool(thread_id), any_binding=live[0]
+    )
+
+
 def lab_guild_is_active(lab) -> bool:
     """Whether the lab has at least one live, claimed Discord binding.
 
@@ -689,6 +800,7 @@ def remove_binding(binding, *, actor=None) -> None:
     every other binding in the server, and the target's other servers, carry on."""
     binding.state = DiscordTargetBinding.State.REMOVED
     binding.save(update_fields=["state", "updated_at"])
+    _close_chat_links(binding_id=binding.pk)
     audit.discord_audit(
         action="discord.binding.removed",
         actor=actor,
@@ -697,10 +809,21 @@ def remove_binding(binding, *, actor=None) -> None:
     )
 
 
+def _close_chat_links(**where) -> None:
+    """Mylo chat's conversations in a removed binding or a left server are
+    closed (plan D); the agent's retention sweep deletes them later."""
+    from tools._framework import services
+
+    agent = services.get("agent")
+    if agent is not None:
+        agent.discord_surface().close_links(**where)
+
+
 def mark_guild_kicked(guild_id: str) -> None:
     link = get_guild_link(guild_id)
     if not link or link.state == DiscordGuildLink.State.KICKED:
         return
+    _close_chat_links(guild_id=str(guild_id))
     link.state = DiscordGuildLink.State.KICKED
     link.save(update_fields=["state", "updated_at"])
     audit.discord_audit(

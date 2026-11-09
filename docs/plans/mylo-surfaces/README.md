@@ -9,11 +9,11 @@ no prompt logic (`docs/plans/mylo-agent/permissions.md`, "Surfaces").
 | Plan | File | Detail |
 | --- | --- | --- |
 | P. Model servers | Shipped 2026-11-09; plan deleted. How to configure: `docs/skills/configure.md` ("Model servers"); code: `apps/core/llm_servers.py`, `llm_bridge.py`, `llmkit/` | Done |
-| D. Mylo in Discord | [discord.md](discord.md) | Full |
+| D. Mylo in Discord | Shipped 2026-11-09; plan deleted. How it works: `docs/skills/discord-bot.md` ("Mylo Chat"), `tools/agent/README.md` ("Discord", "Guests"); settings: `docs/skills/configure.md` ("Mylo chat in Discord"); code: `tools/agent/surfaces/discord.py`, `mylo/chat.py`, `mylo/bot/cogs/chat.py`, `mylo/bot/chat_render.py`, `resolve.place_for` | Done |
 | W. Mylo chat in the web app | Shipped 2026-11-09; plan deleted. The side panel, launcher, Mylo-face button, history and settings; code: `web/app/src/components/portal/mylo/`, `web/app/src/lib/portal/agent/`; patterns: `docs/styles.md` ("Mylo's chat panel") | Done |
 
-Track S (the shared contract below), plan P (model servers) and plan W (web
-chat) have shipped; D is not built.
+Track S (the shared contract below), plan P (model servers), plan W (web
+chat) and plan D (Discord) have shipped.
 The agent backend these plans stand on is on `main` (`dc2c76f`); its own plan
 is `docs/plans/mylo-agent/`.
 

@@ -47,8 +47,16 @@ class BotConstructionTests(unittest.TestCase):
                 "listening",
                 "note",
                 "populate",
+                # Mylo chat (plan D): /mylo ask, /mylo forget, /mylo chat …
+                "ask",
+                "forget",
+                "chat",
             },
         )
+
+    def test_the_chat_group_holds_the_switches(self) -> None:
+        names = {command.name for command in MyloCog.chat_group.commands}
+        self.assertEqual(names, {"on", "off", "here", "guests"})
 
 
 class BotExtensionLoadTests(unittest.IsolatedAsyncioTestCase):

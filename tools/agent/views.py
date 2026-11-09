@@ -307,13 +307,20 @@ class PolicyView(_Base):
             raise ServiceError("not_found", f"No such {kind}.", status=404)
         return obj
 
-    def _json(self, policy):
+    def _json(self, policy, kind, org):
+        # The host's ceiling is read-only here: a lab can only go below it.
+        guests = {
+            "discord_guests_ceiling": service.guest_ceiling(),
+            "discord_guests_in_force": service.guest_level_in_force(kind, org),
+        }
         if policy is None:
             return {
                 "groups_off": [],
                 "discord_channels_off": [],
                 "max_risk": "read",
                 "members_inform_org": True,
+                "discord_guests": "full",
+                **guests,
                 "set": False,
             }
         return {
@@ -321,12 +328,16 @@ class PolicyView(_Base):
             "discord_channels_off": policy.discord_channels_off,
             "max_risk": policy.max_risk,
             "members_inform_org": policy.members_inform_org,
+            "discord_guests": policy.discord_guests,
+            **guests,
             "set": True,
         }
 
     def get(self, request, kind, ref):
         org = self._org(kind, ref)
-        return Response(self._json(service.get_org_policy(request.user, kind, org)))
+        return Response(
+            self._json(service.get_org_policy(request.user, kind, org), kind, org)
+        )
 
     def patch(self, request, kind, ref):
         org = self._org(kind, ref)
@@ -343,7 +354,8 @@ class PolicyView(_Base):
                     "discord_channels_off",
                     "max_risk",
                     "members_inform_org",
+                    "discord_guests",
                 )
             },
         )
-        return Response(self._json(policy))
+        return Response(self._json(policy, kind, org))

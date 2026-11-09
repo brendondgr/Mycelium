@@ -30,7 +30,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ... import linking, listening
+from ... import chat, linking, listening
 from ...runstate import read_run_state
 
 BRAND = 0x3B7A57
@@ -118,7 +118,26 @@ class MyloCog(commands.Cog, name="Mylo"):
                 f"`{state.get('failed_stage', '?')}` ({state.get('finished_at', '?')})."
             )
         lines.extend(await self._listening_lines(interaction))
+        lines.append(await self._chat_line())
         await interaction.followup.send("\n".join(lines), ephemeral=True)
+
+    async def _chat_line(self) -> str:
+        """Mylo chat: is a model configured, and is the stream bus up?"""
+        try:
+            state = await chat.health()
+        except Exception:  # noqa: BLE001 — health must answer regardless
+            return "Chat: ❓ could not check."
+        if not state.get("enabled"):
+            return "Chat: off on this Mycelium."
+        model = state.get("model")
+        model_part = (
+            f"model **{model.get('label') or model.get('name')}** "
+            f"({model.get('location', 'local')})"
+            if model
+            else "**no model configured**"
+        )
+        bus = "stream bus up" if state.get("bus") else "**stream bus down** (answers poll)"
+        return f"Chat: {model_part}; {bus}."
 
     async def _listening_lines(self, interaction: discord.Interaction) -> list[str]:
         """Listening state for the server `/mylo health` was run in.
@@ -191,6 +210,92 @@ class MyloCog(commands.Cog, name="Mylo"):
         await interaction.response.defer(ephemeral=True)
         _, message = await linking.status(str(interaction.user.id))
         await interaction.followup.send(message, ephemeral=True)
+
+    # ------------------------------------------------------------ Mylo chat
+    chat_group = app_commands.Group(
+        name="chat", description="Mylo chat switches.", parent=mylo
+    )
+
+    @mylo.command(name="ask", description="Ask Mylo a question.")
+    @app_commands.describe(
+        question="What you want to know.",
+        private="Answer only me, in my own conversation with Mylo.",
+    )
+    async def ask(
+        self, interaction: discord.Interaction, question: str, private: bool = False
+    ) -> None:
+        cog = self.bot.get_cog("Chat")
+        if cog is None:
+            await interaction.response.send_message(chat.AGENT_OFF, ephemeral=True)
+            return
+        await cog.ask_slash(interaction, question, private=private)
+
+    @mylo.command(
+        name="forget",
+        description="Blank your questions to Mylo here (in a DM: delete the chat).",
+    )
+    async def forget(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+        ids = chat.interaction_ids(interaction)
+        line = await chat.forget_command(
+            str(interaction.user.id),
+            ids["guild_id"],
+            ids["thread_id"] or ids["channel_id"],
+        )
+        await interaction.followup.send(line, ephemeral=True)
+
+    @chat_group.command(name="on", description="Let Mylo answer you in Discord.")
+    async def chat_on(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+        line = await chat.set_chat(str(interaction.user.id), on=True)
+        await interaction.followup.send(line, ephemeral=True)
+
+    @chat_group.command(name="off", description="Stop Mylo answering you in Discord.")
+    async def chat_off(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+        line = await chat.set_chat(str(interaction.user.id), on=False)
+        await interaction.followup.send(line, ephemeral=True)
+
+    @chat_group.command(
+        name="here", description="Managers: turn Mylo chat on or off in this channel."
+    )
+    @app_commands.choices(
+        state=[
+            app_commands.Choice(name="on", value="on"),
+            app_commands.Choice(name="off", value="off"),
+        ]
+    )
+    async def chat_here(
+        self, interaction: discord.Interaction, state: app_commands.Choice[str]
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+        line = await chat.set_channel(
+            str(interaction.user.id),
+            chat.interaction_ids(interaction),
+            on=state.value == "on",
+        )
+        await interaction.followup.send(line, ephemeral=True)
+
+    @chat_group.command(
+        name="guests",
+        description="Managers: what people without an account may ask here.",
+    )
+    @app_commands.choices(
+        level=[
+            app_commands.Choice(name="full", value="full"),
+            app_commands.Choice(name="no-people", value="no_people"),
+            app_commands.Choice(name="public", value="public"),
+            app_commands.Choice(name="off", value="off"),
+        ]
+    )
+    async def chat_guests(
+        self, interaction: discord.Interaction, level: app_commands.Choice[str]
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+        line = await chat.set_guests(
+            str(interaction.user.id), chat.interaction_ids(interaction), level=level.value
+        )
+        await interaction.followup.send(line, ephemeral=True)
 
     # -------------------------------------------------------------- listening
     @mylo.command(

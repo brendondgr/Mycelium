@@ -88,6 +88,7 @@ send_weekly_reports
 sendtestemail
 shell
 showmigrations
+smoke_agent_discord
 smoke_reports
 sqlflush
 sqlmigrate

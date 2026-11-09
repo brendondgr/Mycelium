@@ -32,9 +32,12 @@ BACKOFF_MAX = timedelta(hours=6)
 def due_threads(now=None):
     now = now or timezone.now()
     idle = timedelta(minutes=int(config.get("learning_idle_minutes")))
-    rows = AgentThread.objects.filter(last_activity_at__lte=now - idle).exclude(
-        state="running"
-    )
+    # A shared thread (Discord, plan D) is never read here: a question in a
+    # shared place is learned from only under Discord listening consent, and a
+    # guest's never (S-7).
+    rows = AgentThread.objects.filter(
+        last_activity_at__lte=now - idle, shared=False
+    ).exclude(state="running")
     rows = rows.filter(learn_after__isnull=True) | rows.filter(learn_after__lte=now)
     return rows.select_related("user").order_by("last_activity_at")
 

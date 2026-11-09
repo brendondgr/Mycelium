@@ -117,6 +117,8 @@ def _resolve_pending(caller, thread) -> bool:
 
 
 def _drain_queue(thread: AgentThread) -> bool:
+    """A person's own thread: everything sent during the turn is answered
+    together, in the same turn."""
     rows = list(
         AgentQueuedMessage.objects.filter(thread=thread).order_by("created_at", "id")
     )
@@ -132,15 +134,55 @@ def _drain_queue(thread: AgentThread) -> bool:
     return True
 
 
+def next_shared_message(thread: AgentThread) -> bool:
+    """A shared thread: the oldest queued question becomes the next turn, under
+    its own asker. Never merged with the others (plan D)."""
+    from . import service
+
+    row = (
+        AgentQueuedMessage.objects.filter(thread=thread)
+        .order_by("created_at", "id")
+        .first()
+    )
+    if row is None:
+        return False
+    service.record_user_message(
+        thread,
+        row.text,
+        mentions=row.mentions or [],
+        cards=[],
+        speaker=row.speaker or None,
+        turn=row.turn or None,
+        queued_id=row.pk,
+    )
+    row.delete()
+    return True
+
+
 def run_turn(thread_id, *, port=None, caller: Caller | None = None) -> str:
+    """Run turns until the thread is settled. A shared thread answers its
+    queued questions one turn each, each under its own asker."""
+    while True:
+        state = _run_one(thread_id, port=port, caller=caller)
+        caller = None  # the next turn's caller comes from its own question
+        thread = AgentThread.objects.get(pk=thread_id)
+        if (
+            state != AgentThread.State.IDLE
+            or not thread.shared
+            or not next_shared_message(thread)
+        ):
+            return state
+
+
+def _run_one(thread_id, *, port=None, caller: Caller | None = None) -> str:
     """Run one turn to its end. Returns the thread's final state."""
     thread = AgentThread.objects.select_related(
         "user", "scope_lab", "scope_department", "scope_project"
     ).get(pk=thread_id)
     if caller is None:
-        from .caller import for_thread
+        from .caller import for_turn
 
-        caller = for_thread(thread)
+        caller = for_turn(thread)
     gate = permissions.may_chat(caller)
     if not gate.allowed:
         store.append(
@@ -400,7 +442,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                         "and were removed: " + ", ".join(f"#{n}" for n in missing)
                     },
                 )
-            if _drain_queue(thread):
+            if not thread.shared and _drain_queue(thread):
                 steps, failed_steps, repaired, force_final, seen = 0, 0, False, "", {}
                 continue
             return AgentThread.State.IDLE
