@@ -7,6 +7,7 @@ through ``service``; no view decides access itself.
 from __future__ import annotations
 
 from django.http import StreamingHttpResponse
+from rest_framework.renderers import BaseRenderer, JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -187,11 +188,26 @@ class EventsView(_Base):
         return Response({"events": events, "state": thread.state})
 
 
+class _EventStream(BaseRenderer):
+    """Lets a client that asks for ``text/event-stream`` (every browser
+    stream does) through content negotiation. The stream itself is a plain
+    ``StreamingHttpResponse``; this only ever renders an error body."""
+
+    media_type = "text/event-stream"
+    format = "sse"
+    charset = "utf-8"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return JSONRenderer().render(data)
+
+
 class StreamView(_Base):
     """Server-sent events: stored events after ``Last-Event-ID`` (or
     ``?after=``), then live ones. ``?once=1`` replays and closes;
     ``?until_idle=1`` closes once the turn has ended. ``?view=activity``
     (default) is what a person may see; ``?view=raw`` is staff-only."""
+
+    renderer_classes = [JSONRenderer, _EventStream]
 
     def get(self, request, thread_id):
         from . import stream

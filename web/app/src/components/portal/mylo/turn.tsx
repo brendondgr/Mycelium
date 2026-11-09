@@ -139,37 +139,48 @@ function Inline({
   references: AgentReference[];
   onCite: (ref: AgentReference) => void;
 }) {
+  // Bold first, citations inside it: "**#16 — a call**" is one bold run that
+  // holds a pill, not two stray pairs of asterisks around one.
+  const runs = text.split(/\*\*(.+?)\*\*/g);
   return (
     <>
-      {splitCitations(text).map((part, i) => {
-        if ("cite" in part) {
-          const ref = references.find((r) => r.n === part.cite);
-          if (!ref) return <React.Fragment key={i}>{`#${part.cite}`}</React.Fragment>;
-          const title = splitItemTitle(ref.title).title;
-          return (
-            <button
-              key={i}
-              type="button"
-              className="ws-mylo-cite"
-              title={title}
-              aria-label={`Source ${ref.n}: ${title}`}
-              onClick={() => onCite(ref)}
-            >
-              {ref.n}
-            </button>
-          );
-        }
-        return <Bold key={i} text={part.text} />;
+      {runs.map((run, i) => {
+        const inner = <Cited text={run} references={references} onCite={onCite} />;
+        return i % 2 ? <strong key={i}>{inner}</strong> : <React.Fragment key={i}>{inner}</React.Fragment>;
       })}
     </>
   );
 }
 
-function Bold({ text }: { text: string }) {
-  const parts = text.split(/\*\*(.+?)\*\*/g);
+function Cited({
+  text,
+  references,
+  onCite,
+}: {
+  text: string;
+  references: AgentReference[];
+  onCite: (ref: AgentReference) => void;
+}) {
   return (
     <>
-      {parts.map((p, i) => (i % 2 ? <strong key={i}>{p}</strong> : <React.Fragment key={i}>{p}</React.Fragment>))}
+      {splitCitations(text).map((part, i) => {
+        if (!("cite" in part)) return <React.Fragment key={i}>{part.text}</React.Fragment>;
+        const ref = references.find((r) => r.n === part.cite);
+        if (!ref) return <React.Fragment key={i}>{`#${part.cite}`}</React.Fragment>;
+        const title = splitItemTitle(ref.title).title;
+        return (
+          <button
+            key={i}
+            type="button"
+            className="ws-mylo-cite"
+            title={title}
+            aria-label={`Source ${ref.n}: ${title}`}
+            onClick={() => onCite(ref)}
+          >
+            {ref.n}
+          </button>
+        );
+      })}
     </>
   );
 }

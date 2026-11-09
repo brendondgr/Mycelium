@@ -110,7 +110,13 @@ def test_stream_replays_with_ids_and_last_event_id(world):
     for i in range(5):
         store.append(thread, "note", {"text": f"n{i}"})
     c = client_for(world.member)
-    r = c.get(f"{BASE}/threads/{thread.pk}/stream/?once=1", HTTP_LAST_EVENT_ID="3")
+    # a browser's stream request asks for exactly this type and nothing else
+    r = c.get(
+        f"{BASE}/threads/{thread.pk}/stream/?once=1",
+        HTTP_LAST_EVENT_ID="3",
+        HTTP_ACCEPT="text/event-stream",
+    )
+    assert r.status_code == 200
     assert r["Content-Type"] == "text/event-stream"
     assert r["Cache-Control"] == "no-cache" and r["X-Accel-Buffering"] == "no"
     body = b"".join(r.streaming_content).decode()
