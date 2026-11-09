@@ -312,7 +312,7 @@ A task index across the three tools; each tool also has its own section below.
 | Mock model servers for tests (vLLM, llama.cpp, Ollama, Anthropic, Gemini) | `web/backend/apps/core/llm_testservers.py` |
 | TypeSafe System One client (typed decisions with calibrated probabilities) | `web/backend/apps/core/systemone.py` — every call counted in the LLM ledger |
 | Decision backend switch: question specs, `jev` / `port` (decide or OpenAI-logprob protocol) / `off` resolution, the port client | `web/backend/apps/core/decisions.py`; config keys `[decision]` in `web/backend/config/instance.py` |
-| Decision relay: a decision server bound to the host's 127.0.0.1 (GAIFA's decide) made reachable from the containers at `host.docker.internal` (`[decision] port_relay`) | `web/backend/apps/core/decision_relay.py` (standard library only), the `decision-relay` service in `compose.yaml` (host network, idles when off) |
+| Decision relay: a decision server bound to the host's 127.0.0.1 (GAIFA's decide) or a model server bound the same way, made reachable from the containers at `host.docker.internal` (`[decision] port_relay`, `[llm] port_relay`) | `web/backend/apps/core/decision_relay.py` (standard library only), the `decision-relay` service in `compose.yaml` (host network, idles when off) |
 | Transactional email (send one) | `web/backend/apps/core/mail/messages.py` (`send_email`, `app_url`, the `TEMPLATES` registry) |
 | Email transport & Django backend | `web/backend/apps/core/mail/{client,backend}.py` — Resend over stdlib urllib; wired as `EMAIL_BACKEND` so `django.core.mail` routes through it |
 | Email templates (HTML + text pairs) | `web/backend/templates/email/` — `base.html`, `_button.html`, and one pair per entry in `TEMPLATES` |

@@ -261,6 +261,13 @@ SETTINGS: tuple[Setting, ...] = (
             "Servers tried, in order, when the routed one is down. Empty: no "
             "fallback. A cloud server listed here is still skipped while "
             "allow_cloud is false."),
+    Setting("llm.port_relay", "bool", False,
+            "Reach a model server that listens only on this host's 127.0.0.1 "
+            "(an ssh forward or a local relay): the decision-relay service "
+            "forwards LLM_BASE_URL's port on the Docker bridge to the same "
+            "port on the host's loopback. Needs LLM_BASE_URL at "
+            "host.docker.internal.",
+            env="LLM_PORT_RELAY"),
     # ---- decision model ---------------------------------------------------
     Setting(
         "decision.backend", "choice", "auto",
@@ -548,6 +555,16 @@ class Instance:
                     "decision.port_relay = true forwards host.docker.internal to "
                     "this host's loopback, so decision.port_url must be "
                     "http://host.docker.internal:<port>."
+                )
+        if self.values["llm.port_relay"]:
+            from urllib.parse import urlsplit
+
+            host = urlsplit(env.get("LLM_BASE_URL", "")).hostname or ""
+            if host != "host.docker.internal":
+                out.append(
+                    "llm.port_relay = true forwards host.docker.internal to "
+                    "this host's loopback, so LLM_BASE_URL in .env must be "
+                    "http://host.docker.internal:<port>/v1."
                 )
         if self.llm is not None:
             out.extend(self.llm.problems(env))

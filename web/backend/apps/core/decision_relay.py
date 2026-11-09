@@ -1,4 +1,5 @@
-"""Forward a decision server on the host's loopback to Mycelium's containers.
+"""Forward servers on the host's loopback to Mycelium's containers: the
+decision server, and (``[llm] port_relay``) the model server.
 
     python -m apps.core.decision_relay   # from web/backend; the decision-relay service
 
@@ -65,6 +66,35 @@ def target_port(values) -> int:
     return url.port or (443 if url.scheme == "https" else 80)
 
 
+def llm_port(values, environ) -> int:
+    """The model server's port to forward, from ``[llm] port_relay`` and
+    ``LLM_BASE_URL``; RelayOff when there is none."""
+    if not values["llm.port_relay"]:
+        raise RelayOff("[llm] port_relay is off")
+    base = str(environ.get("LLM_BASE_URL", ""))
+    url = urlsplit(base)
+    if url.hostname != BRIDGE_NAME:
+        raise RelayOff(
+            f"LLM_BASE_URL must be http://{BRIDGE_NAME}:<port>/v1 (it is {base!r})"
+        )
+    return url.port or (443 if url.scheme == "https" else 80)
+
+
+def target_ports(values, environ) -> tuple[list[int], list[str]]:
+    """Every port to forward (the decision server's, the model server's), and
+    why each of the others is not."""
+    ports, reasons = [], []
+    for find in (lambda: target_port(values), lambda: llm_port(values, environ)):
+        try:
+            port = find()
+        except RelayOff as exc:
+            reasons.append(str(exc))
+        else:
+            if port not in ports:
+                ports.append(port)
+    return ports, reasons
+
+
 async def _pipe(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     try:
         while data := await reader.read(CHUNK):
@@ -104,24 +134,33 @@ async def _idle(reason: str) -> None:
 
 async def main() -> None:
     values = I.resolve(BACKEND.parents[1], os.environ)
+    ports, reasons = target_ports(values, os.environ)
+    for reason in reasons:
+        print(f"decision-relay: {reason}", flush=True)
+    if not ports:
+        return await _idle("nothing to forward")
     try:
-        port = target_port(values)
         listen = socket.gethostbyname(BRIDGE_NAME)
-    except RelayOff as exc:
-        return await _idle(str(exc))
     except OSError as exc:
         return await _idle(f"cannot resolve {BRIDGE_NAME} ({exc})")
-    try:
-        server = await serve(listen, port)
-    except OSError as exc:
-        return await _idle(f"cannot listen on {listen}:{port} ({exc})")
-    print(
-        f"decision-relay: {listen}:{port} -> 127.0.0.1:{port} "
-        f"({BRIDGE_NAME}:{port} from the containers)",
-        flush=True,
-    )
-    async with server:
-        await server.serve_forever()
+    servers = []
+    for port in ports:
+        try:
+            servers.append(await serve(listen, port))
+        except OSError as exc:
+            print(
+                f"decision-relay: cannot listen on {listen}:{port} ({exc})",
+                flush=True,
+            )
+            continue
+        print(
+            f"decision-relay: {listen}:{port} -> 127.0.0.1:{port} "
+            f"({BRIDGE_NAME}:{port} from the containers)",
+            flush=True,
+        )
+    if not servers:
+        return await _idle("no port could be opened")
+    await asyncio.gather(*(server.serve_forever() for server in servers))
 
 
 if __name__ == "__main__":

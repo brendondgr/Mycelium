@@ -119,10 +119,10 @@ free         discord_unbound  personal  corpus_item corpus_search find_functions
 free         discord_unbound  lab       corpus_item corpus_search find_functions fulltext_availability load_functions read_skill
 free         discord_unbound  project   DENY:5:scope_not_visible
 member       discord_thread   lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper knowledge_people_for_call knowledge_project_concepts load_functions org_department org_lab org_lab_members org_person projects_feed projects_get projects_list read_skill
-guest        discord_thread   lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions knowledge_people_for_call load_functions org_department org_lab org_lab_members org_person projects_feed projects_get projects_list read_skill
-guest_nopeople discord_thread   lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions load_functions org_department org_lab projects_feed projects_get projects_list read_skill
-guest_public discord_thread   lab       corpus_item corpus_search find_functions load_functions read_skill
+guest        discord_thread   lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper knowledge_people_for_call load_functions org_department org_lab org_lab_members org_person projects_feed projects_get projects_list read_skill
+guest_nopeople discord_thread   lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper load_functions org_department org_lab projects_feed projects_get projects_list read_skill
+guest_public discord_thread   lab       corpus_item corpus_search find_functions fulltext_availability fulltext_read_paper fulltext_search_paper load_functions read_skill
 guest_off    discord_thread   lab       DENY:4:guests_off
 member       discord_channel  lab       corpus_item corpus_search feeds_briefing feeds_deadlines feeds_slate find_functions fulltext_availability fulltext_read_paper fulltext_search_paper knowledge_people_for_call knowledge_project_concepts load_functions org_department org_lab org_lab_members org_person projects_feed projects_get projects_list read_skill
 member       discord_ambiguous personal  corpus_item corpus_search find_functions fulltext_availability load_functions read_skill
-guest        discord_ambiguous personal  corpus_item corpus_search find_functions load_functions read_skill
+guest        discord_ambiguous personal  corpus_item corpus_search find_functions fulltext_availability load_functions read_skill

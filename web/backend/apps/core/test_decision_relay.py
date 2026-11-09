@@ -34,6 +34,24 @@ def test_a_url_elsewhere_is_refused_and_flagged():
     assert any("port_relay" in p for p in v.problems({}))
 
 
+def test_the_model_server_port_is_forwarded_when_asked():
+    env = {"LLM_BASE_URL": "http://host.docker.internal:9090/v1"}
+    assert R.target_ports(values(), env)[0] == []
+    v = values(**{"llm.port_relay": True})
+    assert R.target_ports(v, env)[0] == [9090]
+    both = values(**{"llm.port_relay": True, "decision.port_relay": True,
+                     "decision.port_url": "http://host.docker.internal:5107"})
+    assert R.target_ports(both, env)[0] == [5107, 9090]
+
+
+def test_a_model_url_elsewhere_is_not_forwarded_and_is_flagged():
+    v = values(**{"llm.port_relay": True})
+    env = {"LLM_BASE_URL": "http://10.0.0.5:9090/v1"}
+    ports, reasons = R.target_ports(v, env)
+    assert ports == [] and any("LLM_BASE_URL" in r for r in reasons)
+    assert any("llm.port_relay" in p for p in v.problems(env))
+
+
 def test_bytes_go_both_ways():
     async def run():
         async def echo(reader, writer):

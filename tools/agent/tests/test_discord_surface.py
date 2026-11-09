@@ -264,6 +264,9 @@ def test_a_public_level_guest_gets_the_card_and_the_corpus_only(server, scripted
         "corpus_item",
         "corpus_search",
         "find_functions",
+        "fulltext_availability",
+        "fulltext_read_paper",
+        "fulltext_search_paper",
         "load_functions",
         "read_skill",
     }

@@ -136,7 +136,7 @@ def test_two_members_and_a_guest_take_turns_each_with_their_own_functions(
     names = tool_names(model.requests[0])
     assert names == expected_tools(g, thread)
     assert "org_lab_members" in names  # guest level full: people included
-    assert "fulltext_availability" not in names  # never offered to a guest
+    assert "fulltext_availability" in names  # a guest reads papers too
 
     speakers = [
         e.payload["speaker"]["kind"] for e in store.events(thread) if e.type == "user"
@@ -220,6 +220,9 @@ def test_guest_levels_narrow_the_catalog_and_off_refuses(place):
         "corpus_item",
         "corpus_search",
         "find_functions",
+        "fulltext_availability",
+        "fulltext_read_paper",
+        "fulltext_search_paper",
         "load_functions",
         "read_skill",
     }

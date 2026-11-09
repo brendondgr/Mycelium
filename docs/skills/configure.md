@@ -75,6 +75,12 @@ from inside the backend container, so a server bound to the host's `127.0.0.1`
 service forwards that port to the host's loopback, and the server is left as
 it is. Then `make restart` and run `decision_check` inside the backend.
 
+The same holds for the model server itself. When `LLM_BASE_URL` names a
+server that listens only on the host's `127.0.0.1`, set it to
+`http://host.docker.internal:<port>/v1` and turn on `llm.port_relay`; the same
+`decision-relay` service forwards that port too. Then `make restart` and run
+`llm_check` inside the backend.
+
 Then get a structured recommendation instead of reasoning one out yourself:
 
 ```bash
