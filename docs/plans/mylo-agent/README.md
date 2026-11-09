@@ -44,7 +44,8 @@ grows with the system rather than reaching into it.
 **Designed for, not built:** the web app's chat UI (the first surface to come)
 and Mylo in Discord (the second). Everything here is shaped so that adding
 either one means adding a surface adapter, not changing the agent. See
-[`permissions.md`](permissions.md#surfaces).
+[`permissions.md`](permissions.md#surfaces). The plans for both surfaces and
+for the model servers are in [`../mylo-surfaces/`](../mylo-surfaces/README.md).
 
 **Out of scope:** any function that creates or changes a user-visible object
 (see "Read-only, defined" below). The permission layer is built so that adding
