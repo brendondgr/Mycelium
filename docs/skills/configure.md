@@ -65,7 +65,13 @@ with a key, a port with a URL, else none. After setting a port, run
 `manage.py decision_check` to confirm it answers from where the nightly runs.
 A port should serve a *decision* model (a decide server, or a model fine-tuned
 to decide); a stock chat model on llama.cpp answers "yes" to everything and
-gives no ordering (`EXP-2026-11-009`).
+gives no ordering (`EXP-2026-11-009`). The local model of choice is d3-lite on a
+decide server (`port_protocol = "decide"`, `port_model = "d3-lite"`): on real
+states it beats a 4B model on llama.cpp and gains nothing from concurrency, so
+set `nightly.rerank_concurrency` to 1–2 (`EXP-2026-11-012`). The nightly asks
+from inside the backend container, so a server bound to `127.0.0.1` on the
+host is unreachable at `host.docker.internal`. It must listen where the
+container can reach it, for example on the Docker bridge address.
 
 Then get a structured recommendation instead of reasoning one out yourself:
 
