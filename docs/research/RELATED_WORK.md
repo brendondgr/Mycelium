@@ -9,6 +9,12 @@ The full annotated bibliography (~50 entries, grouped by area) lives in
 This file carries the works that bear directly on a claim, and it is the one that
 gets maintained.
 
+The survey of agentic research systems, extraction and knowledge-graph tools,
+and agent memory, with repositories, licences, demo-track status and what each
+could lend Mycelium, is
+[`related-work/reports/Agentic research systems for Mycelium.md`](related-work/reports/Agentic%20research%20systems%20for%20Mycelium.md)
+(2026-11-08; its source notes sit beside it in `related-work/research_notes/`).
+
 ## Closest prior work
 
 | Ref | Work | How it differs from us | Bears on |
