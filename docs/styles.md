@@ -99,6 +99,26 @@ Preferred Mylo direction:
 
 > A small mushroom scout with a soft spore-like body, mushroom-cap hood, curious eyes, a research satchel, and subtle glowing mycelium threads that connect papers, people, projects, grants, and ideas.
 
+### Mylo's chat panel
+
+Talking to Mylo happens in one side panel, opened from anywhere: the launcher
+(Mylo's painted head, fixed at the bottom right of every signed-in page,
+hidden while the panel is open) or a Mylo-face button on a thing. At 980 px
+and wider the panel lies over the reading pane and the page stays usable;
+below that it is a full-screen sheet. Its header holds the title (renamable),
+an "About" line for a conversation about one thing, and three icons — history,
+new chat, pin — plus close.
+
+**Mylo shows what he is doing, never what he is thinking.** Each turn has one
+fold under the question: while Mylo works its header names the current step
+with a quiet shimmer ("Searching the corpus for …"), opened it lists the steps
+with a tick or a cross, and when the answer arrives it reads "Looked at 3
+things". The words are the server's labels; the panel has none of its own.
+Citations in an answer are small numbered pills that open the item. One line
+under the composer names the model and whether it runs on this machine. Mylo's
+head beside the fold floats gently while he works (Motion: Full only) and
+stays still under reduced motion.
+
 ## Layout And Components
 
 Use spacious, structured layouts with clear hierarchy. The public site should be persuasive, warm, and content-forward. The authenticated app should be denser, calmer, and built for repeated research workflows.
