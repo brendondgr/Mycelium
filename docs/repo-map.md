@@ -405,6 +405,7 @@ A task index across the three tools; each tool also has its own section below.
 | What a surface may show of a turn (the activity view: labels, no thinking) | `tools/agent/activity.py`; labels are `AgentFunction.activity`, checked by `tools/_framework/tests/test_agent_activity.py` |
 | The API (`api/tools/agent/`) and the terminal chat | `tools/agent/views.py`, `tools/agent/urls.py`, `tools/agent/management/commands/agent.py` |
 | Turns in the worker; resume, retention and learning sweeps | `tools/agent/tasks.py` |
+| The web app's side of Mylo chat: API client, stream client, turn reducer, availability | `web/app/src/lib/portal/agent/` (`client.ts`, `stream.ts` — a `fetch` SSE reader with `Last-Event-ID` resume, `turns.ts` — events → turns, `availability.ts` — the gate's answer, `use-thread.ts` — one live conversation); query hooks (`useChatAvailability`, `useAgentThreads`, …) in `lib/portal/hooks.ts`; unit tests `*.test.ts` run by `npm test` (vitest) in `web/app` against a recorded turn in `agent/__fixtures__/` |
 
 ## Files tool (`tools/files/`)
 
