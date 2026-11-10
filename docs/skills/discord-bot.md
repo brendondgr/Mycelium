@@ -475,7 +475,12 @@ the Celery worker. Rules that hold for any change here:
 - **Restarts lose nothing.** Each question has an `AgentDiscordTurn`; on
   `on_ready` and `on_resumed` the cog delivers pending answers once, or says
   "I lost track of this one. Ask again."
-- **Commands.** `/mylo ask`, `/mylo forget`, `/mylo chat on|off`,
+- **Replies continue a conversation.** The cog passes the replied-to
+  message id (`reply_to_id`) with each question, and reports every message an
+  answer was posted as to `finish`, so a reply to any part of an answer joins
+  that conversation.
+- **Commands.** `/mylo ask`, `/mylo new` (a fresh conversation here),
+  `/mylo forget`, `/mylo chat on|off`,
   `/mylo chat here on|off`, `/mylo chat guests …` live in
   `mylo/bot/cogs/mylo_commands.py` (one `/mylo` group, a `chat` subgroup).
   They reach production only after `@Mylo sync global`.

@@ -10,10 +10,11 @@ rebuilds byte-identical messages every time (vLLM's prefix cache holds):
   log and ``read_result`` pages through it;
 * text from outside (papers, files, grant calls) is wrapped in
   ``<untrusted>`` and defused so it cannot close the wrapper or pose as a call;
-* in a **shared** thread (plan D) each question carries its speaker's name,
-  and earlier turns are replayed as a transcript only (what was asked, what
-  was posted): function calls and results are shown to the model only for the
-  turn that made them, so one person's lookups never reach the next asker.
+* in a **shared** thread (plan D) each question carries its speaker's name.
+  An earlier turn is replayed in full when the person asking now asked it, or
+  when everything it read is visible to them; any other earlier turn is a
+  transcript only (what was asked, what was posted), so a private lookup never
+  reaches another asker (see :func:`_replayed`).
 """
 
 from __future__ import annotations
@@ -114,38 +115,136 @@ def user_text(payload: dict, recall: str | None) -> str:
     return "\n\n".join(p for p in parts if p)
 
 
-def messages(thread, events, *, kind: str | None = None) -> list[dict]:
+#: Only a function whose output is the same for anyone on the instance (the
+#: corpus, loading functions, skills) gives a result that may be replayed to
+#: another asker: anything narrower can be written for the person who called
+#: it ("Your role: member").
+_SHAREABLE_OUTPUT = "instance"
+
+
+def _shareable(name: str) -> bool:
+    from .registry import registry
+
+    fn = registry().get(name or "")
+    return fn is not None and fn.output == _SHAREABLE_OUTPUT
+
+
+def _who(payload: dict) -> str:
+    """Who asked a question, as a stable key (``""`` when nobody is named)."""
+    speaker = payload.get("speaker") or {}
+    if speaker.get("user_id"):
+        return f"user:{speaker['user_id']}"
+    if speaker.get("discord_user_id"):
+        return f"discord:{speaker['discord_user_id']}"
+    return ""
+
+
+def _results_visible(thread, results, caller, cache: dict) -> bool:
+    """Whether every lookup in another person's turn shows only what
+    ``caller`` may see here: each comes from a function whose output is the
+    same for anyone (:data:`_SHAREABLE_OUTPUT`), and each object it names
+    resolves for ``caller`` and fits the audience."""
+    if caller is None:
+        return False
+    from . import refs
+
+    by_n = {e["n"]: e["ref"] for e in refs.thread_refs(thread)}
+    for p in results:
+        if p.get("status", "ok") != "ok":
+            continue  # a refusal or error says nothing about anyone
+        if not _shareable(p.get("name", "")):
+            return False
+        for n in p.get("refs") or []:
+            ref = by_n.get(n)
+            if ref is None:
+                return False
+            if ref not in cache:
+                cache[ref] = refs.visible_here(caller, ref)
+            if not cache[ref]:
+                return False
+    return True
+
+
+def _replayed(thread, events, caller=None):
+    """``(event, full)`` for every event after the last compaction.
+
+    ``full`` is False for an event of an earlier turn that a shared thread
+    shows as transcript only. A turn is replayed in full — its lookups as well
+    as what was asked and posted — when the person asking now asked it too, or
+    when everything it read is visible to them. So a person keeps their own
+    conversation in a channel, and a reply that continues someone else's
+    conversation sees what it was built on, while a private lookup (someone's
+    own profile, a file only they may open) never reaches another asker."""
+    start = 0
+    for e in events:
+        if e.type == "compact":
+            start = max(start, int(e.payload.get("upto_seq", 0)))
+    shared = bool(getattr(thread, "shared", False))
+    turns: dict[int, dict] = {}
+    turn_of: dict[int, int] = {}
+    turn = 0
+    for e in events:
+        if e.type == "user":
+            turn = e.seq
+            turns[turn] = {"who": _who(e.payload), "results": []}
+        turn_of[e.seq] = turn
+        if e.type == "tool_result" and turn in turns:
+            turns[turn]["results"].append(e.payload)
+    current = max(turns, default=0) if shared else 0
+    asker = turns.get(current, {}).get("who", "")
+    cache: dict = {}
+    full_turns = {0}
+    for seq, info in turns.items():
+        if not shared or seq >= current:
+            full_turns.add(seq)
+        elif (asker and info["who"] == asker) or _results_visible(
+            thread, info["results"], caller, cache
+        ):
+            full_turns.add(seq)
+    for e in events:
+        if e.seq <= start:
+            continue
+        yield e, turn_of.get(e.seq, 0) in full_turns
+
+
+def visible_results(thread, events, caller=None) -> list[dict]:
+    """The function results the next call can read in full (not cleared), as
+    stored. The verifier checks an answer's claims against these."""
+    cleared = set((thread.settings or {}).get("cleared", []))
+    return [
+        e.payload
+        for e, full in _replayed(thread, events, caller)
+        if full
+        and e.type == "tool_result"
+        and e.payload.get("status", "ok") == "ok"
+        and e.payload.get("call_id") not in cleared
+    ]
+
+
+def messages(
+    thread, events, *, kind: str | None = None, caller=None
+) -> list[dict]:
     """``kind`` is the wire kind of the server the next call goes to (default:
     chat's current route). Opaque reasoning state recorded on a ``thinking``
-    event goes back on the assistant message after it only for that kind."""
+    event goes back on the assistant message after it only for that kind.
+    ``caller`` is the person asking now; without one, another person's earlier
+    turns in a shared thread are shown as transcript only."""
     if kind is None:
         from .llmcall import current_kind
 
         kind = current_kind()
     settings = thread.settings or {}
     cleared = set(settings.get("cleared", []))
-    start = 0
-    for e in events:
-        if e.type == "compact":
-            start = max(start, int(e.payload.get("upto_seq", 0)))
     recall = {
         e.payload.get("for_seq"): e.payload.get("text", "")
         for e in events
         if e.type == "recall"
     }
-    shared = bool(getattr(thread, "shared", False))
-    # The current turn starts at the newest question; before it, a shared
-    # thread shows only the transcript.
-    current = 0
-    if shared:
-        current = max((e.seq for e in events if e.type == "user"), default=0)
     out: list[dict] = []
     opaque = None
-    for e in events:
-        if e.seq <= start:
-            continue
+    for e, full in _replayed(thread, events, caller):
         p = e.payload
-        if shared and e.seq < current:
+        if not full:
             # Transcript only: no reasoning state or calls cross turns.
             opaque = None
             if e.type == "user":

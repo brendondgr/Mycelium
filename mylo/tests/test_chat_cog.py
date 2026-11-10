@@ -148,8 +148,9 @@ class FakeBridge:
     async def timed_out(self, h):
         return False
 
-    async def finish(self, h, state):
+    async def finish(self, h, state, message_ids=()):
         self.finished.append((h.turn_id, state))
+        self.message_ids = list(message_ids)
         self.pending = [p for p in self.pending if p.turn_id != h.turn_id]
 
     async def reconcile(self):
@@ -267,6 +268,16 @@ class DeliveryTests(unittest.TestCase):
                 msg.kwargs["allowed_mentions"].to_dict(),
                 discord.AllowedMentions.none().to_dict(),
             )
+        # Every chunk is recorded, so a reply to any of them finds the turn.
+        self.assertEqual(bridge.message_ids, [m.id for m in channel.sent])
+
+    def test_a_reply_carries_the_message_it_replies_to(self) -> None:
+        bridge = FakeBridge()
+        channel = Channel()
+        question = Question(channel)
+        question.reference = SimpleNamespace(message_id=9191)
+        self._ask(bridge, question)
+        self.assertEqual(bridge.asked[0]["reply_to_id"], "9191")
 
     def test_a_slow_answer_pings_the_asker_and_nobody_else(self) -> None:
         bridge = FakeBridge(slow=True)

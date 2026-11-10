@@ -145,8 +145,11 @@ async def ask(
     message_id: str,
     text: str,
     files=(),
+    reply_to_id: str = "",
 ) -> dict:
-    """``{"handle": Handle}`` or ``{"refusal": sentence}``."""
+    """``{"handle": Handle}`` or ``{"refusal": sentence}``. ``reply_to_id`` is
+    the message this one replies to: a reply to Mylo's answer continues that
+    conversation."""
     return await mycelium.db(
         _ask_sync,
         {
@@ -158,6 +161,7 @@ async def ask(
             "parent_id": str(parent_id),
             "message_id": str(message_id),
             "text": text,
+            "reply_to_id": str(reply_to_id or ""),
         },
         list(files),
     )
@@ -202,8 +206,10 @@ async def set_status(handle, message_id):
     return await mycelium.db(_call, "set_status_message", handle, str(message_id))
 
 
-async def finish(handle, state: str) -> None:
-    await mycelium.db(_call, "finish", handle, state)
+async def finish(handle, state: str, message_ids=()) -> None:
+    await mycelium.db(
+        _call, "finish", handle, state, [str(m) for m in message_ids or ()]
+    )
 
 
 async def ping_due(handle) -> bool:
@@ -243,6 +249,20 @@ async def forget(discord_user_id: str, guild_id: str, place_id: str) -> int:
             place_id=str(place_id),
         )
         or 0
+    )
+
+
+async def new_command(discord_user_id: str, guild_id: str, place_id: str) -> str:
+    """``/mylo new``: start a fresh conversation here."""
+    return (
+        await mycelium.db(
+            _call,
+            "new_command",
+            discord_user_id=str(discord_user_id),
+            guild_id=str(guild_id),
+            place_id=str(place_id),
+        )
+        or AGENT_OFF
     )
 
 

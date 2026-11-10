@@ -47,8 +47,10 @@ class BotConstructionTests(unittest.TestCase):
                 "listening",
                 "note",
                 "populate",
-                # Mylo chat (plan D): /mylo ask, /mylo forget, /mylo chat …
+                # Mylo chat (plan D): /mylo ask, /mylo new, /mylo forget,
+                # /mylo chat …
                 "ask",
+                "new",
                 "forget",
                 "chat",
             },

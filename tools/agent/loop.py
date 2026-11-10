@@ -1,7 +1,8 @@
 """The turn (GAIFA §3), with its guards (§8).
 
     resolve pending calls → step cap → compact → thrash guard → call the model
-    → no calls: citation check, done → calls: run them, repeat
+    → no calls: runaway retry, citation and grounding checks, done
+    → calls: run them, repeat
 
 Everything needed to resume lives in the log: a pause (``ask_user``) ends the
 turn ``waiting``; the answer is appended and a new turn picks up from there. A
@@ -42,6 +43,38 @@ ASK_USER = "ask_user"
 REPEAT_LIMIT = 3
 #: Wrap up after this many steps in a row whose calls all failed.
 THRASH_STEPS = 3
+#: Told to the model when its answer got stuck repeating itself.
+RUNAWAY_RETRY = (
+    "Your last answer got stuck repeating the same words, so it was thrown "
+    "away and nobody saw it. Answer again, briefly. If you need details about "
+    "an item, read it first. Never repeat a line."
+)
+#: Posted instead of a fragment when the retry loops too.
+RUNAWAY_GIVE_UP = (
+    "I got stuck writing that answer, so I've left it out rather than post "
+    "something broken. Ask me again, or ask about one item at a time."
+)
+#: Shown to the person when unbacked details were taken out of an answer.
+CLAIMS_REMOVED = (
+    "Mylo removed details from this answer that it could not find in what it "
+    "read."
+)
+
+
+def _grounding_extra(caller, thread, events) -> list[str]:
+    """Cards in view besides lookups: what was tagged, and the anchor."""
+    from . import refs
+
+    extra = [
+        card
+        for e in events
+        if e.type == "user"
+        for card in (e.payload.get("cards") or [])
+    ]
+    anchored = refs.resolve_anchor(caller, thread)
+    if anchored is not None:
+        extra.append(refs.card(*anchored))
+    return extra
 
 
 def _visible_functions(caller: Caller, thread: AgentThread):
@@ -251,6 +284,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
     failed_steps = 0
     overflowed = False
     repaired = False
+    runaway_retried = False
     force_final = ""
     while True:
         if stream.cancel_requested(thread.pk):
@@ -275,7 +309,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
 
         loaded, deferred, unavailable = _visible_functions(caller, thread)
         events = store.events(thread)
-        msgs = rebuild.messages(thread, events)
+        msgs = rebuild.messages(thread, events, caller=caller)
         system = prompt.build(
             caller,
             thread,
@@ -288,12 +322,12 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
         size = rebuild.estimate_tokens(system, msgs, tools)
         if size > window * compaction.CLEAR_AT:
             if compaction.clear_old_results(thread, events):
-                msgs = rebuild.messages(thread, events)
+                msgs = rebuild.messages(thread, events, caller=caller)
                 size = rebuild.estimate_tokens(system, msgs, tools)
         if size > window * compaction.SUMMARIZE_AT:
             if compaction.summarize(thread, events, port, rebuild.messages):
                 events = store.events(thread)
-                msgs = rebuild.messages(thread, events)
+                msgs = rebuild.messages(thread, events, caller=caller)
                 system = prompt.build(
                     caller,
                     thread,
@@ -385,12 +419,44 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             )
 
         if not calls:
-            missing = verify.unmatched(thread, reply.text)
-            if missing and not repaired:
+            gave_up = False
+            if "runaway_cut" in (reply.repairs or []):
+                if not runaway_retried:
+                    # The looped text is never posted, and never replayed.
+                    runaway_retried = True
+                    store.append(
+                        thread,
+                        "verdict",
+                        {
+                            "ok": False,
+                            "action": "runaway_retry",
+                            "cut": (reply.text or "")[-300:],
+                        },
+                    )
+                    store.append(
+                        thread, "note", {"text": RUNAWAY_RETRY, "to_model": True}
+                    )
+                    continue
+                gave_up = True
+            text = RUNAWAY_GIVE_UP if gave_up else reply.text
+            missing, unread_refs, claims = [], [], []
+            if not gave_up:
+                missing = verify.unmatched(thread, text)
+                results = rebuild.visible_results(thread, events, caller)
+                extra = _grounding_extra(caller, thread, events)
+                unread_refs = [
+                    n
+                    for n in verify.unread(
+                        thread, text, verify.seen_refs(results, extra)
+                    )
+                    if n not in missing
+                ]
+                claims = verify.unsupported(text, verify.source_text(results, extra))
+            if (missing or unread_refs or claims) and not repaired:
                 ev = store.append(
                     thread,
                     "assistant",
-                    {"text": reply.text, "repairs": reply.repairs, **model},
+                    {"text": text, "repairs": reply.repairs, **model},
                 )
                 store.append(
                     thread,
@@ -399,18 +465,26 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                         "seq": ev.seq,
                         "ok": False,
                         "unmatched": missing,
+                        "unread": unread_refs,
+                        "unsupported": claims,
                         "action": "repair",
                     },
                 )
+                parts = [verify.repair_message(missing)] if missing else []
+                if unread_refs or claims:
+                    parts.append(verify.grounding_message(unread_refs, claims))
                 store.append(
-                    thread,
-                    "note",
-                    {"text": verify.repair_message(missing), "to_model": True},
+                    thread, "note", {"text": "\n\n".join(parts), "to_model": True}
                 )
                 repaired = True
-                force_final = force_final or "Answer now."
+                if not (unread_refs or claims):
+                    # Only a citation to fix: no reading needed.
+                    force_final = force_final or "Answer now."
                 continue
-            text = verify.strip(reply.text, missing) if missing else reply.text
+            if missing:
+                text = verify.strip(text, missing)
+            if claims:
+                text = verify.strip_claims(text, claims)
             ev = store.append(
                 thread,
                 "assistant",
@@ -419,6 +493,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                     "repairs": reply.repairs,
                     "final": True,
                     **({"removed": missing} if missing else {}),
+                    **({"removed_claims": claims} if claims else {}),
                     **model,
                 },
             )
@@ -427,11 +502,21 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                 "verdict",
                 {
                     "seq": ev.seq,
-                    "ok": not missing,
+                    "ok": not (missing or claims or gave_up),
                     "unmatched": missing,
-                    "action": "stripped" if missing else "none",
+                    "unread": unread_refs,
+                    "unsupported": claims,
+                    "action": (
+                        "runaway_gave_up"
+                        if gave_up
+                        else "stripped"
+                        if (missing or claims)
+                        else "none"
+                    ),
                 },
             )
+            if claims:
+                store.append(thread, "note", {"text": CLAIMS_REMOVED})
             if missing:
                 store.append(
                     thread,

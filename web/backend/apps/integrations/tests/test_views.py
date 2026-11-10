@@ -488,7 +488,9 @@ class PathCDepartmentViewTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertIn("discord=installed", resp["Location"])
         rows = resolve.bindings_for_guild("g-dept", include_pending=True)
-        self.assertEqual([(b.lab_id, b.department_id) for b in rows], [(None, self.dept.id)])
+        self.assertEqual(
+            [(b.lab_id, b.department_id) for b in rows], [(None, self.dept.id)]
+        )
         # The lab's own server is untouched.
         lab_rows = resolve.bindings_for_guild("g-lab", include_pending=True)
         self.assertEqual([b.lab_id for b in lab_rows], [self.lab.id])

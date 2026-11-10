@@ -307,9 +307,14 @@ def ask(
     text: str,
     attachments=(),
     start=None,
+    reply_to_id="",
 ) -> Handle | Refusal:
     """Ask Mylo something from Discord. A :class:`Handle` to follow, or a
-    :class:`Refusal` whose ``message`` is ready to post."""
+    :class:`Refusal` whose ``message`` is ready to post.
+
+    A question that replies to one of Mylo's answers (or to the question it
+    answered) continues that conversation, whoever asked it first; any other
+    question goes to the asker's own conversation in this place."""
     from tools._framework import host
 
     if not host.is_loaded("agent"):
@@ -336,7 +341,11 @@ def ask(
         return Refusal("no_model", NO_MODEL)
     place_id = str(thread_id or channel_id)
     try:
-        link = _open_link(
+        link = _link_for_reply(
+            guild_id=str(guild_id or ""),
+            place_id=place_id,
+            reply_to_id=str(reply_to_id or ""),
+        ) or _open_link(
             caller,
             place,
             guild_id=str(guild_id or ""),
@@ -612,11 +621,37 @@ def set_status_message(handle: Handle, message_id) -> Handle:
     return replace(handle, status_message_id=str(message_id))
 
 
-def finish(handle: Handle, state: str) -> None:
-    """Record that the bot delivered (or gave up on) this turn."""
-    AgentDiscordTurn.objects.filter(pk=handle.turn_id).update(
-        state=state, finished_at=timezone.now()
+def finish(handle: Handle, state: str, message_ids=()) -> None:
+    """Record that the bot delivered (or gave up on) this turn, and every
+    other message the answer was posted as."""
+    fields = {"state": state, "finished_at": timezone.now()}
+    ids = [str(m) for m in message_ids or () if m]
+    if ids:
+        fields["message_ids"] = ids
+    AgentDiscordTurn.objects.filter(pk=handle.turn_id).update(**fields)
+
+
+def _link_for_reply(*, guild_id: str, place_id: str, reply_to_id: str):
+    """The conversation a reply continues: the one whose question or answer
+    the replied-to message was, in this same place. ``None`` when the reply
+    is to anything else."""
+    from django.db.models import Q
+
+    if not reply_to_id:
+        return None
+    turn = (
+        AgentDiscordTurn.objects.filter(
+            Q(status_message_id=reply_to_id)
+            | Q(trigger_message_id=reply_to_id)
+            | Q(message_ids__contains=[reply_to_id]),
+            link__guild_id=guild_id,
+            link__place_id=place_id,
+        )
+        .select_related("link__thread")
+        .order_by("-created_at")
+        .first()
     )
+    return turn.link if turn is not None else None
 
 
 # --------------------------------------------------------------------------- #
@@ -718,6 +753,52 @@ def forget(*, discord_user_id, guild_id, place_id) -> int:
                 _blank(event)
                 count += 1
     return count
+
+
+def new_command(*, discord_user_id, guild_id, place_id) -> str:
+    """``/mylo new``, through the same gate as forget, as a sentence."""
+    from apps.integrations.services import gate, resolve
+
+    discord_user_id = str(discord_user_id)
+    if guild_id and resolve.resolve_user(discord_user_id) is None:
+        place = resolve.place_for(str(guild_id), str(place_id))
+        binding = place.binding or place.any_binding
+        result = gate.authorize_guest(
+            discord_user_id=discord_user_id,
+            action="chat_forget",
+            guild_id=str(guild_id),
+            binding_id=getattr(binding, "pk", None),
+        )
+    else:
+        result = gate.authorize(discord_user_id=discord_user_id, action="chat_forget")
+    if not result:
+        return result.message
+    closed = new_conversation(
+        discord_user_id=discord_user_id, guild_id=guild_id, place_id=place_id
+    )
+    if not closed:
+        return "There's no conversation to refresh here yet: just ask me something."
+    return (
+        "Fresh start: your next question here begins a new conversation. "
+        "Replying to one of my earlier answers still continues that one."
+    )
+
+
+def new_conversation(*, discord_user_id, guild_id, place_id) -> int:
+    """``/mylo new``: close the open conversation the caller's next question
+    here would join (their own; in a Discord thread, the thread's shared one),
+    so it starts afresh. Nothing is deleted: the old conversation stays
+    readable, and a reply to one of its answers still continues it."""
+    from apps.integrations.services import resolve
+
+    guild_id = str(guild_id or "")
+    shared = bool(guild_id) and resolve.place_for(guild_id, str(place_id)).shared
+    return AgentThreadLink.objects.filter(
+        guild_id=guild_id,
+        place_id=str(place_id),
+        discord_user_id="" if shared else str(discord_user_id),
+        closed_at=None,
+    ).update(closed_at=timezone.now())
 
 
 # --------------------------------------------------------------------------- #

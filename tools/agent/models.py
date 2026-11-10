@@ -333,6 +333,9 @@ class AgentDiscordTurn(models.Model):
     trigger_message_id = models.CharField(max_length=32, db_index=True)
     channel_id = models.CharField(max_length=32, blank=True, default="")
     status_message_id = models.CharField(max_length=32, blank=True, default="")
+    #: Every other message the answer was posted as (later chunks, a slow
+    #: answer's ping), so a reply to any of them finds this conversation.
+    message_ids = models.JSONField(default=list, blank=True)
     discord_user_id = models.CharField(max_length=32)
     #: Asked without an account: counted against the guest limits.
     guest = models.BooleanField(default=False)

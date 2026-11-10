@@ -32,8 +32,13 @@ the API, a developer CLI, the web chat panel and Discord.
   agent's own are in `functions/`. Only `read` functions load.
 - **The turn.** `loop.py`: resolve pending calls, step cap, compaction
   (`compaction.py`), thrash guard, one model call (`llmcall.py`, with the
-  local-model repairs), then the citation check (`verify.py`) on a final
-  answer. Everything is an `AgentEvent`; streaming is Redis pub/sub
+  local-model repairs), then the checks on a final answer (`verify.py`):
+  every citation must match something surfaced, an item cited but not read
+  in view must be read, and every concrete detail (an `Authors:`/`Venue:`/
+  `DOI:`/date/amount line, a DOI, a measured figure) must appear in what was
+  read. One repair is asked for with functions still on; what stays unbacked
+  is removed and the person told. A reply that loops (`runaway_cut`) is
+  thrown away and retried once, then replaced by a plain "I got stuck" line. Everything is an `AgentEvent`; streaming is Redis pub/sub
   (`stream.py`, SSE at `threads/<id>/stream/`).
 - **What a person sees.** `activity.py` projects the log into the activity
   view: no thinking text, each call shown only as its function's `activity`
@@ -79,9 +84,18 @@ the API, a developer CLI, the web chat panel and Discord.
   thread. A forum or Discord thread is one **shared** thread (no owner;
   `AgentThread.shared`) where each question is a turn under its own asker
   (`speaker` and `turn` on the `user` event; `caller.for_turn`), queued
-  questions get one turn each (at most five wait), and earlier turns replay as
-  a transcript only. An open channel has one shared-type thread per person,
-  rolled over after `discord_channel_session_hours`. Shared threads are never
+  questions get one turn each (at most five wait). An earlier turn replays in
+  full when the person asking now asked it, or when every lookup in it came
+  from a function whose `output` is `instance` (the same for anyone: the
+  corpus, function loading, skills) and names only objects visible to them
+  (`rebuild._replayed`); otherwise as a transcript only, so a lookup written
+  for one person never reaches another. An open channel has one
+  shared-type thread per person, rolled over after
+  `discord_channel_session_hours`. A question that replies to one of Mylo's
+  answers (any of its messages: `AgentDiscordTurn.status_message_id` and
+  `message_ids`) or to the question it answered continues that conversation,
+  whoever asked it. `/mylo new` closes the caller's open conversation in the
+  place (`new_conversation`) without deleting it. Shared threads are never
   returned by the web API and are skipped by the learning pass, recall,
   digests and titles.
 - **Guests.** Someone in a bound server without an account is a `Guest`

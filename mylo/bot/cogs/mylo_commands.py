@@ -231,6 +231,20 @@ class MyloCog(commands.Cog, name="Mylo"):
         await cog.ask_slash(interaction, question, private=private)
 
     @mylo.command(
+        name="new",
+        description="Start a fresh conversation with Mylo here.",
+    )
+    async def new(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+        ids = chat.interaction_ids(interaction)
+        line = await chat.new_command(
+            str(interaction.user.id),
+            ids["guild_id"],
+            ids["thread_id"] or ids["channel_id"],
+        )
+        await interaction.followup.send(line, ephemeral=True)
+
+    @mylo.command(
         name="forget",
         description="Blank your questions to Mylo here (in a DM: delete the chat).",
     )

@@ -41,6 +41,12 @@ HINT_EVERY = 3600.0
 MAX_FILE_BYTES = 25 * 1024 * 1024
 
 
+def _reply_to(message) -> str:
+    """The id of the message this one replies to, or ``""``."""
+    reference = getattr(message, "reference", None)
+    return str(getattr(reference, "message_id", "") or "")
+
+
 def _none() -> discord.AllowedMentions:
     return discord.AllowedMentions.none()
 
@@ -121,6 +127,7 @@ class ChatCog(commands.Cog, name="Chat"):
             message_id=str(message.id),
             text=text,
             files=await self._files(message),
+            reply_to_id=_reply_to(message),
             **ids,
         )
         if "refusal" in out:
@@ -258,6 +265,9 @@ class ChatCog(commands.Cog, name="Chat"):
     async def _finish(self, handle, status, channel, res: dict) -> None:
         state = res.get("state")
         if state == "answered":
+            # Every message the answer is posted as, so a reply to any of them
+            # continues this conversation.
+            posted: list = []
             chunks = render.answer_chunks(
                 res.get("text") or "",
                 res.get("sources") or [],
@@ -271,17 +281,23 @@ class ChatCog(commands.Cog, name="Chat"):
                     channel_id=int(handle.channel_id),
                     fail_if_not_exists=False,
                 )
-                await self._send(
-                    channel,
-                    render.slow_answer_prefix(handle.discord_user_id) + chunks[0],
-                    allowed=_only(handle.discord_user_id),
-                    reference=reference,
+                posted.append(
+                    await self._send(
+                        channel,
+                        render.slow_answer_prefix(handle.discord_user_id) + chunks[0],
+                        allowed=_only(handle.discord_user_id),
+                        reference=reference,
+                    )
                 )
             else:
                 await self._edit(status, chunks[0], view=None)
             for chunk in chunks[1:]:
-                await self._send(channel, chunk)
-            await self.bridge.finish(handle, "answered")
+                posted.append(await self._send(channel, chunk))
+            await self.bridge.finish(
+                handle,
+                "answered",
+                [m.id for m in posted if m is not None and getattr(m, "id", None)],
+            )
         elif state == "waiting":
             question = res.get("question") or {}
             await self._edit(
