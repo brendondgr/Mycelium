@@ -78,7 +78,7 @@ def refusal(ctx, current: Left | None = None) -> Refusal | None:
     if current.visitor <= 0:
         return Refusal(
             "demo_question_used",
-            "That was your demo question.",
+            "You've asked all your demo questions.",
             "Sign up to keep asking Mylo, about your own lab.",
         )
     if current.ip <= 0 or current.day <= 0:

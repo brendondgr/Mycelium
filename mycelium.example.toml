@@ -154,14 +154,14 @@ teams = false                            # env TEAMS_ENABLED
 enabled = false                          # env DEMO_ENABLED
 # Mylo questions one demo visitor may ask (counted by a signed cookie, over 30
 # days).
-questions_per_visitor = 1
+questions_per_visitor = 10
 # Demo questions from one network address per day: the backstop for a visitor
 # who clears the cookie.
-questions_per_ip_per_day = 3
+questions_per_ip_per_day = 20
 # Demo questions across every visitor per day. This bounds what the demo can
 # cost in model calls. 0 turns Mylo off in the demo and leaves the rest of it
 # up.
-questions_per_day = 100
+questions_per_day = 500
 # Longest question a demo visitor may send.
 question_max_chars = 500
 

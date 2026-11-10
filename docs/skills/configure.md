@@ -188,7 +188,7 @@ turns it off for themself with `/mylo chat off`.
 `web/backend/apps/demo/world.yaml` and ranks it once, then
 `ops/mycelium config set demo.enabled true` serves `/demo`. Tell the operator
 three things: anyone who can reach the site can look around it without an
-account; it is read-only; and each visitor may ask Mylo one question, which
+account; it is read-only; and each visitor may ask Mylo ten questions, which
 costs model calls — `demo.questions_per_day` caps them all together (`0` keeps
 the demo up with Mylo off). Turning it off (`demo.enabled false`) keeps the
 world; `manage.py demo delete` removes it. Editing the fixture means another

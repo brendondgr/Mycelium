@@ -244,8 +244,8 @@ function Conversation({
     lastStatus === "waiting" && last?.question && !last.question.answer ? last.question : null;
   const shownModel = view.model ?? model;
 
-  // The public demo allows one question (apps/demo/budget.py). Spend it here
-  // once a send goes through; a demo refusal from the server spends it too.
+  // The public demo allows a few questions (apps/demo/budget.py). Spend one
+  // here once a send goes through; a demo refusal from the server spends them all.
   const demo = useDemo();
   const wasSending = React.useRef(false);
   React.useEffect(() => {
@@ -367,6 +367,8 @@ function Conversation({
       {demoDone ? (
         <DemoAsked refusal={demoRefusal(demo?.refusal)} />
       ) : (
+      <>
+      {demo ? <DemoNote left={demo.questions_left} /> : null}
       <Composer
         inputRef={inputRef}
         threadId={session.threadId}
@@ -378,6 +380,7 @@ function Conversation({
         onAnswer={(text) => void runtime.answer(text)}
         onStop={() => void runtime.cancel()}
       />
+      </>
       )}
     </>
   );
@@ -388,13 +391,26 @@ function demoRefusal(refusal: AgentRefusal | null | undefined): AgentRefusal {
   return (
     refusal ?? {
       code: "demo_question_used",
-      detail: "That was your demo question.",
+      detail: "You've asked all your demo questions.",
       fix: "Sign up to keep asking Mylo, about your own lab.",
     }
   );
 }
 
-/** In place of the composer once a demo visitor has asked their one question. */
+/** Above the demo's composer: how many questions are left, and that answers
+ * can be slow — the demo shares one model with everyone using the instance. */
+function DemoNote({ left }: { left: number }) {
+  return (
+    <p className="ws-mylo-demo-note">
+      <strong>
+        {left} demo question{left === 1 ? "" : "s"} left.
+      </strong>{" "}
+      Depending on the time of day, Mylo might be slower to respond.
+    </p>
+  );
+}
+
+/** In place of the composer once a demo visitor has used their questions. */
 function DemoAsked({ refusal }: { refusal: AgentRefusal }) {
   return (
     <div className="ws-mylo-demo-asked" role="status">

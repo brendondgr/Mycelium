@@ -251,13 +251,13 @@ SETTINGS: tuple[Setting, ...] = (
             "answer 404 and the front page hides its demo links; the demo's "
             "data is kept.",
             env="DEMO_ENABLED"),
-    Setting("demo.questions_per_visitor", "int", 1,
+    Setting("demo.questions_per_visitor", "int", 10,
             "Mylo questions one demo visitor may ask (counted by a signed "
             "cookie, over 30 days)."),
-    Setting("demo.questions_per_ip_per_day", "int", 3,
+    Setting("demo.questions_per_ip_per_day", "int", 20,
             "Demo questions from one network address per day: the backstop "
             "for a visitor who clears the cookie."),
-    Setting("demo.questions_per_day", "int", 100,
+    Setting("demo.questions_per_day", "int", 500,
             "Demo questions across every visitor per day. This bounds what "
             "the demo can cost in model calls. 0 turns Mylo off in the demo "
             "and leaves the rest of it up."),

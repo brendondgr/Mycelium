@@ -3485,6 +3485,19 @@ html[data-motion="none"] *::after {
   font-weight: 600;
 }
 
+/* The public demo: questions left and the slowness warning, above the composer. */
+.ws-mylo-demo-note {
+  margin: 0 14px 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ws-mylo-demo-note strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 /* The public demo's banner above the workspace header. */
 .ws-demo-banner {
   display: flex;
