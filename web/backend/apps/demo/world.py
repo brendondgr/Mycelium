@@ -62,3 +62,39 @@ def exclude_demo_users(queryset, field: str = "email"):
     """``queryset`` without demo people; ``field`` is the path to their email
     (``"email"`` for users, ``"user__email"`` for profiles and memberships)."""
     return queryset.exclude(**{f"{field}__iendswith": "@" + DOMAIN})
+
+
+# -- the nightly run -------------------------------------------------------
+#
+# The demo world is ordinary rows, so the nightly run ranks and briefs it like
+# anyone's — but only while the demo is served. Off, its people, lab and
+# department cost nothing: the run's target selection
+# (``tools/recommendation/tasks.py``) asks these two.
+
+
+def nightly_users(queryset, field: str = "email"):
+    """``queryset`` as the nightly run should see it: unchanged while the demo
+    is on, without the demo's people while it is off."""
+    return queryset if is_enabled() else exclude_demo_users(queryset, field)
+
+
+def nightly_skipped_scopes() -> tuple[set, set]:
+    """``(lab ids, department ids)`` the nightly run leaves out: the demo's,
+    while the demo is off; none while it is on. Found by owner, so a world
+    left half built by an interrupted ``demo build`` is left out too."""
+    if is_enabled():
+        return set(), set()
+    from apps.accounts.models import Department, Lab
+
+    suffix = "@" + DOMAIN
+    labs = set(
+        Lab.objects.filter(
+            memberships__user__email__iendswith=suffix, memberships__role="owner"
+        ).values_list("id", flat=True)
+    )
+    departments = set(
+        Department.objects.filter(owner__email__iendswith=suffix).values_list(
+            "id", flat=True
+        )
+    )
+    return labs, departments

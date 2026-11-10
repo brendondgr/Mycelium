@@ -33,8 +33,12 @@ def select_users(usernames: list[str] | None) -> list[User]:
     the opportunity pipelines. Entitlement is resolved in bulk to avoid an N+1.
     """
     from apps.billing.entitlements import Feature, users_with_feature
+    from apps.demo.world import nightly_users
 
-    queryset = User.objects.filter(is_active=True).select_related("profile")
+    # The public demo's people are ranked only while the demo is served.
+    queryset = nightly_users(
+        User.objects.filter(is_active=True).select_related("profile")
+    )
     if usernames:
         queryset = queryset.filter(username__in=usernames)
     users = list(queryset.order_by("id"))
@@ -63,7 +67,10 @@ def select_departments(usernames: list[str] | None) -> list:
     them), each once. A targeted run (``usernames`` given) scores none."""
     if usernames:
         return []
-    seen: set = set()
+    from apps.demo.world import nightly_skipped_scopes
+
+    _labs, seen = nightly_skipped_scopes()  # the demo's, while it is off
+    seen = set(seen)
     out: list = []
     for source in _DEPARTMENT_SOURCES:
         for department in source():
@@ -106,10 +113,17 @@ def select_targets(usernames: list[str] | None) -> tuple[list, list]:
             status=Subscription.Status.ACTIVE, scope_department__isnull=False
         ).values_list("scope_department_id", flat=True)
     )
+    # The public demo's lab and department, while the demo is off.
+    from apps.demo.world import nightly_skipped_scopes
+
+    skip_labs, skip_depts = nightly_skipped_scopes()
+    active_lab_ids -= skip_labs
+    active_dept_ids -= skip_depts
     labs = [
         lab
         for lab in Lab.objects.select_related("profile", "watch").order_by("id")
-        if lab.id in active_lab_ids or lab.department_id in active_dept_ids
+        if lab.id not in skip_labs
+        and (lab.id in active_lab_ids or lab.department_id in active_dept_ids)
     ]
 
     # Collect the in-cap active project ids per scope owner. Each owner is only a

@@ -57,9 +57,9 @@ features.rerank	bool	False	RERANK_ENABLED
 features.slack	bool	False	SLACK_ENABLED
 features.teams	bool	False	TEAMS_ENABLED
 demo.enabled	bool	False	DEMO_ENABLED
-demo.questions_per_visitor	int	1	-
-demo.questions_per_ip_per_day	int	3	-
-demo.questions_per_day	int	100	-
+demo.questions_per_visitor	int	10	-
+demo.questions_per_ip_per_day	int	20	-
+demo.questions_per_day	int	500	-
 demo.question_max_chars	int	500	-
 llm.max_tokens	int	0	LLM_MAX_TOKENS
 llm.default	str	'local'	-

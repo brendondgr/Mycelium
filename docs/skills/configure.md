@@ -190,8 +190,11 @@ turns it off for themself with `/mylo chat off`.
 three things: anyone who can reach the site can look around it without an
 account; it is read-only; and each visitor may ask Mylo ten questions, which
 costs model calls — `demo.questions_per_day` caps them all together (`0` keeps
-the demo up with Mylo off). Turning it off (`demo.enabled false`) keeps the
-world; `manage.py demo delete` removes it. Editing the fixture means another
+the demo up with Mylo off) — and the nightly run ranks and briefs its nine
+targets (six people, the lab, two projects) while it is on. Turning it off
+(`demo.enabled false`) keeps the world and drops it from the nightly;
+`manage.py demo refresh` brings it up to date at once, and `demo status` says
+how fresh it is; `manage.py demo delete` removes it. Editing the fixture means another
 `demo build`.
 
 ## Answering "why am I limited?"

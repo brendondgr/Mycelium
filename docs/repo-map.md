@@ -463,7 +463,7 @@ A task index across the three tools; each tool also has its own section below.
 | Turning listening on for a server, excluding channels, the pinned notice | `/setup`'s Listening section in `mylo/bot/cogs/setup.py`; one person's own opt-in is `/mylo listening` in `mylo/bot/cogs/mylo_commands.py` |
 | systemd units | `ops/systemd/` — `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service`; installed by `ops/mycelium install-service` |
 | Gateway routing | `web/infra/nginx/default.conf` (incl. `location /demo`) |
-| The public demo: the door (`/api/demo/` → `/api/` as the demo viewer, read-only), Mylo's question budget, the world and its build | `web/backend/apps/demo/` — `middleware.py`, `budget.py`, `world.py` (`DOMAIN`, `exclude_demo_users`), `models.py` (`DemoWorld`, `DemoQuestion`), `world.yaml` (the fictional lab), `manage.py demo build\|status\|delete`; config `[demo]` in `web/backend/config/instance.py` |
+| The public demo: the door (`/api/demo/` → `/api/` as the demo viewer, read-only), Mylo's question budget, the world and its build | `web/backend/apps/demo/` — `middleware.py`, `budget.py`, `world.py` (`DOMAIN`, `exclude_demo_users`, `nightly_users` / `nightly_skipped_scopes` — the nightly leaves the world out while the demo is off), `models.py` (`DemoWorld`, `DemoQuestion`), `world.yaml` (the fictional lab), `manage.py demo build\|refresh\|status\|delete`; config `[demo]` in `web/backend/config/instance.py` |
 | The public demo in the app: `/demo/*` → `/app/*`, demo-aware links and API base, the banner, Mylo's question budget and slowness note (`DemoNote`) | `web/app/src/proxy.ts`, `web/app/src/app/demo/page.tsx` (entry), `web/app/src/lib/demo.ts` (`toDemoPath`, `canonicalPath`), `web/app/src/components/demo/` (`DemoProvider`, `useAppHref`, `useAppRouter`, `DemoBanner`), `appRedirect` in `lib/auth-server.ts`, `getPublicApiBase` in `lib/api-url.ts`, `DemoNote` and `DemoAsked` in `components/portal/mylo/chat-panel.tsx`; the ESLint rule in `web/app/eslint.config.mjs` |
 | Env contract | `.env.example`, `.env-mylo.example` |
 | Instance configuration (`mycelium.toml`: profiles, billing switch, limits, sign-up, email, features, nightly budgets) | `web/backend/config/instance.py` (keys, profiles, merge, render); template `mycelium.example.toml`; tests `web/backend/apps/core/test_instance_config.py` |
@@ -528,7 +528,7 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `send_test_email` | Send one email through the real stack to check the transport (`--to`, `--template`) |
 | `high_signal_shadow` | Shadow-run the high-signal alert rule |
 | `create_admin`, `seed_demo`, `loadtest_purge` | Ops utilities (`seed_demo` makes hundreds of synthetic org-chart users; it is not the public demo) |
-| `demo build\|status\|delete` | The public demo's fictional lab (`apps/demo`): build from `world.yaml` and rank it once, show it, remove it |
+| `demo build\|refresh\|status\|delete` | The public demo's fictional lab (`apps/demo`): build from `world.yaml` and rank it once; run the nightly's search, ranking and reports for it now; show what each target holds and how fresh it is; remove it |
 | `seed_fsu_sc` | Simulated FSU Dept. of Scientific Computing + PULSE Lab (public roster names, non-deliverable `@fsu-sc.mycelium.invalid` emails); the lab sits in the department but stays off its plan, on its own Lab plan |
 
 ## Documentation

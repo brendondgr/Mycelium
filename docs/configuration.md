@@ -92,7 +92,11 @@ announcements, high-signal messages, reranking, Slack, Teams.
 people (`web/backend/apps/demo/world.yaml`) ranked every night against the real
 corpus, shown in the real app, read-only, with no account. Build it first with
 `manage.py demo build`; `enabled` then serves it (off: `/demo` and `/api/demo/`
-answer 404 and the front page hides its demo links; the data is kept).
+answer 404 and the front page hides its demo links; the data is kept, and the
+nightly run leaves the world out, so an off demo costs no model calls).
+`manage.py demo refresh` runs the nightly's work for the demo world alone, now;
+`manage.py demo status` shows what each of its people, the lab and its projects
+holds, when it was last ranked and its latest report.
 `questions_per_visitor` (10), `questions_per_ip_per_day` (20) and
 `questions_per_day` (500, every visitor together — it bounds the model bill; `0`
 keeps the demo up with Mylo off) budget Mylo; `question_max_chars` caps one

@@ -2,11 +2,15 @@
 
     manage.py demo build            # (re)build from apps/demo/world.yaml, then rank it
     manage.py demo build --no-rank  # build only; the nightly run ranks it
-    manage.py demo status
+    manage.py demo refresh          # tonight's run for the demo world, now
+    manage.py demo status           # what the world holds, and whether it is current
     manage.py demo delete
 
 The world is ordinary rows — a department, a lab inside it, its people and
-projects — so the nightly run ranks it and the app shows it like anyone's.
+projects — so the nightly run ranks and briefs it and the app shows it like
+anyone's (only while ``demo.enabled`` is on: off, the run leaves it out).
+``refresh`` runs that same work for the demo world alone: a literature search on
+its watch topics, the paper and opportunity ranking, and each daily report.
 Every person's address is under ``@showcase.mycelium.invalid`` (RFC 2606: it
 can never deliver), every password is unusable (nobody signs in as them), and
 ``build`` always clears the previous world first, so it is safe to re-run after
@@ -66,7 +70,7 @@ class Command(BaseCommand):
     help = "Build, show or delete the public demo's fictional lab (apps/demo)."
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument("action", choices=("build", "status", "delete"))
+        parser.add_argument("action", choices=("build", "refresh", "status", "delete"))
         parser.add_argument(
             "--no-rank",
             action="store_true",
@@ -79,6 +83,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         action = options["action"]
         if action == "status":
+            return self._status()
+        if action == "refresh":
+            built = DemoWorld.objects.select_related("lab", "department").first()
+            if built is None:
+                raise CommandError("No demo world. Run `manage.py demo build`.")
+            self._refresh(built)
             return self._status()
         if action == "delete":
             with transaction.atomic():
@@ -278,6 +288,58 @@ class Command(BaseCommand):
             self.stdout.write(f"  ranking project {project.name} …")
             rec.refit_project(project)
 
+    def _refresh(self, built: DemoWorld) -> None:
+        """The nightly run's work for the demo world alone, now: search for new
+        papers on its topics and rank them, rank the open grants, conferences
+        and fellowships, then write each person's and the lab's daily report.
+        It calls the model as the nightly does, for nine targets."""
+        from tools._framework import services
+
+        rec = services.get("recommendation")
+        if rec is None:
+            raise CommandError("The recommendation tool is not loaded.")
+        delivery = services.get("delivery")
+        people = list(
+            User.objects.filter(email__iendswith="@" + demo_world.DOMAIN)
+            .select_related("profile")
+            .order_by("id")
+        )
+        projects = list(Project.objects.filter(scope_lab=built.lab).order_by("id"))
+        log = self.stdout.write
+
+        self.stdout.write(self.style.MIGRATE_HEADING("Papers"))
+        batch = rec.run_daily_batch(
+            people, labs=[built.lab], projects=projects, log=log
+        )
+        self.stdout.write(
+            f"  searched: {batch.ingest.get('new', 0)} new paper(s), "
+            f"{batch.ingest.get('embedded', 0)} embedded"
+        )
+        self.stdout.write(
+            self.style.MIGRATE_HEADING("Grants, conferences, fellowships")
+        )
+        rec.run_daily_opportunities_batch(
+            people, labs=[built.lab], projects=projects, prune=False, log=log
+        )
+        if delivery is None:
+            self.stdout.write(
+                self.style.WARNING("  The delivery tool is not loaded: no reports.")
+            )
+            return
+        self.stdout.write(self.style.MIGRATE_HEADING("Daily reports"))
+        for user in people:
+            try:
+                briefing = delivery.generate_briefing_for_user(user)
+            except Exception as exc:  # noqa: BLE001 — one report must not stop the rest
+                self.stderr.write(f"  {user.get_full_name()}: failed — {exc}")
+                continue
+            self.stdout.write(f"  {user.get_full_name()}: {briefing.origin}")
+        try:
+            briefing = delivery.generate_briefing_for_lab(built.lab)
+            self.stdout.write(f"  {built.lab.name}: {briefing.origin}")
+        except Exception as exc:  # noqa: BLE001
+            self.stderr.write(f"  {built.lab.name}: failed — {exc}")
+
     # -- status ------------------------------------------------------------
 
     def _status(self) -> None:
@@ -296,3 +358,55 @@ class Command(BaseCommand):
             f"{people} people, viewing as {built.viewer.get_full_name()}."
         )
         self.stdout.write(f"Questions asked (30 days): {DemoQuestion.objects.count()}")
+        self._check(built)
+
+    def _check(self, built: DemoWorld) -> None:
+        """What each target holds and how fresh it is: its matched papers and
+        opportunities, when they were last ranked, and its latest daily report.
+        A target ranked over a day and a half ago, or with nothing at all, is
+        flagged — the nightly run has not reached it (or the demo is off)."""
+        from datetime import timedelta
+
+        from django.db.models import Count, Max
+        from django.utils import timezone
+
+        stale_before = timezone.now() - timedelta(hours=36)
+        people = User.objects.filter(email__iendswith="@" + demo_world.DOMAIN).order_by(
+            "id"
+        )
+        targets = [(u.get_full_name(), u) for u in people]
+        targets.append((built.lab.name, built.lab))
+        targets += [
+            (f"project {p.name}", p)
+            for p in Project.objects.filter(scope_lab=built.lab).order_by("id")
+        ]
+        flagged = 0
+        self.stdout.write("Target: matches by kind · last ranked · latest report")
+        for name, target in targets:
+            scores = target.relevance_scores.all()
+            kinds = dict(
+                scores.values_list("content__type").annotate(n=Count("id")).order_by()
+            )
+            newest = scores.aggregate(at=Max("created_at"))["at"]
+            reports = getattr(target, "daily_briefings", None)
+            latest = reports.order_by("-generated_on").first() if reports else None
+            stale = not kinds or newest is None or newest < stale_before
+            flagged += stale
+            matched = ", ".join(f"{n} {k}" for k, n in sorted(kinds.items()))
+            line = f"  {name}: {matched or 'nothing'}"
+            if newest is not None:
+                line += f" · {timezone.localtime(newest):%Y-%m-%d %H:%M}"
+            if reports is not None:
+                line += (
+                    f" · report {latest.generated_on} ({latest.origin})"
+                    if latest
+                    else " · no report yet"
+                )
+            self.stdout.write(self.style.WARNING(line) if stale else line)
+        if flagged:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"{flagged} target(s) not ranked in 36 hours. "
+                    "`manage.py demo refresh` runs tonight's work for them now."
+                )
+            )

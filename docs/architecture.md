@@ -153,7 +153,10 @@ cookie; Mylo's budget (`apps/demo/budget.py`) counts questions per visitor, per
 address and per day in Postgres, and a visitor's thread is theirs alone
 (`AgentThread.demo_visitor`), never titled, digested, recalled or learned from,
 and deleted after a day. The demo world is ordinary rows built from
-`apps/demo/world.yaml`, so the nightly ranks it like anyone's. Because nothing is
+`apps/demo/world.yaml`, so the nightly ranks and briefs it like anyone's — while
+the demo is on; off, the run's target selection (`select_users` /
+`select_targets` in `tools/recommendation/tasks.py`, through
+`apps/demo/world.py`) leaves it out. Because nothing is
 forked, a change to the app's UI is in the demo on the next build; the one
 discipline is that workspace links go through `useAppHref` / `useAppRouter` /
 `appRedirect`, which ESLint enforces for `components/portal/` and `app/app/`.
