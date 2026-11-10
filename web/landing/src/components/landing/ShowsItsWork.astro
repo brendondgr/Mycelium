@@ -8,6 +8,12 @@
  * focuses a note — or points at the card — the tour hands over and follows
  * them, and it resumes a few seconds after they leave.
  *
+ * The card's match badge works here as it does in the feed: hovering or
+ * focusing it opens the breakdown by theme, which paints above the dimming.
+ * The tour does not open it on its own — on a phone the breakdown is taller
+ * than the card. The dimming is clipped by its own layer rather than by the
+ * stage, so an opened breakdown may run past the card's lower edge.
+ *
  * Without JavaScript the notes still read as a numbered list beside the card;
  * the spotlight simply never appears. Under reduced motion there is no tour and
  * the frame jumps rather than glides.
@@ -26,15 +32,17 @@ const paper = feedTabs[0].items[0];
       <p class="nf-eyebrow">Why labs trust it</p>
       <h2 id="work-heading" class="nf-h2">Every recommendation shows its work</h2>
       <p class="nf-sub">
-        A generic assistant asks you to trust an answer. Mycelium hands you the item, the
-        reason, and the part it is not sure about. Hover a note to find it on the card.
+        A generic assistant asks you to trust an answer. Mycelium hands you the item, how
+        close it measured, and why. Hover a note to find it on the card.
       </p>
     </div>
 
     <div class="work" data-work>
       <div class="stage reveal" data-stage>
         <ul class="stage-list"><FeedCard item={paper} /></ul>
-        <div class="spot" data-spot aria-hidden="true"><span class="spot-n" data-spot-n></span></div>
+        <div class="spot-clip" aria-hidden="true">
+          <div class="spot" data-spot><span class="spot-n" data-spot-n></span></div>
+        </div>
       </div>
 
       <ol class="notes" data-reveal-group data-reveal-step="110">
@@ -206,15 +214,18 @@ const paper = feedTabs[0].items[0];
 </script>
 
 <style>
+  /* minmax(0, …): the stage does not clip (see .spot-clip), so without it a
+     track would grow to the card's one-line source and reason lines. */
   .work {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2.5rem;
     margin-top: 3.5rem;
   }
 
   @media (min-width: 1024px) {
     .work {
-      grid-template-columns: 1.25fr 1fr;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
       gap: 3.5rem;
       align-items: center;
     }
@@ -224,7 +235,6 @@ const paper = feedTabs[0].items[0];
   .stage {
     position: relative;
     border-radius: 1rem;
-    overflow: clip;
     box-shadow:
       0 0 0 1px rgb(184 217 154 / 14%),
       0 0 70px rgb(141 166 111 / 12%);
@@ -240,6 +250,16 @@ const paper = feedTabs[0].items[0];
   .stage :global(.fc-card),
   .stage :global(.fc-card:hover) {
     transform: none;
+  }
+
+  /* Clips the dimming to the stage; the stage itself does not clip, so the
+     match breakdown can open past the card's lower edge. */
+  .spot-clip {
+    position: absolute;
+    inset: 0;
+    border-radius: 1rem;
+    overflow: clip;
+    pointer-events: none;
   }
 
   .spot {

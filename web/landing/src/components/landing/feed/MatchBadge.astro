@@ -1,0 +1,60 @@
+---
+import type { MatchInfo } from "@/components/landing/feed/match";
+
+/**
+ * The overall match as a ring and a figure, top-left on every card — `MatchBadge`
+ * in `portal/feed/parts.tsx`. Hovering or focusing it opens the breakdown by
+ * theme. Unlike the card's tools this one is a real button: it does on the
+ * public site exactly what it does in the app, so it takes focus and the
+ * breakdown is its description.
+ */
+interface Props {
+  match: MatchInfo;
+  byMylo: boolean;
+  id: string;
+}
+
+const { match, byMylo, id } = Astro.props;
+const tipId = `fc-match-${id}`;
+---
+
+<span class="fc-match">
+  <button type="button" class="fc-match-btn" aria-describedby={tipId}>
+    <span class="fc-match-ring" style={`--p: ${match.overall};`} aria-hidden="true"></span>
+    <span class="fc-match-num">{match.overall}%</span>
+    <span class="fc-match-word">match</span>
+  </button>
+  <span class="fc-match-tip" role="tooltip" id={tipId}>
+    <span class="fc-match-tip-head">{match.overall}% similar to your research</span>
+    <span class="fc-match-tip-note">
+      Embedding similarity between this item and your research — measured, not guessed.
+    </span>
+    {
+      match.themes.length > 0 && (
+        <>
+          <span class="fc-match-tip-label">By theme</span>
+          {match.themes.map((t) => (
+            <span class="fc-match-row" style={`--tone: var(--cluster-${t.token});`}>
+              <span class="fc-match-row-name">
+                <span class="fc-dot" aria-hidden="true" />
+                <span>{t.label}</span>
+              </span>
+              <span class="fc-match-bar" aria-hidden="true">
+                <i style={`width: ${t.pct}%;`} />
+              </span>
+              <span class="fc-match-row-pct">{t.pct}%</span>
+            </span>
+          ))}
+          {match.themes.length > 1 && (
+            <span class="fc-match-tip-note fc-match-tip-foot">
+              Each theme scales the overall figure by how strongly it pulled this item.
+            </span>
+          )}
+        </>
+      )
+    }
+    <span class="fc-match-tip-foot">
+      {byMylo ? "Mylo also read it and wrote a take." : "Matched by similarity; Mylo has not written a take."}
+    </span>
+  </span>
+</span>

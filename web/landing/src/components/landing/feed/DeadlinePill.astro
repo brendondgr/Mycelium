@@ -1,0 +1,22 @@
+---
+import Glyph from "@/components/landing/feed/Glyph.astro";
+import { daysFromBuild, daysLeft } from "@/components/landing/feed/match";
+
+/**
+ * A closing date in opportunity gold, the one place gold is spent —
+ * `DeadlinePill` in `portal/feed/parts.tsx`. The date and the days left; within
+ * two weeks it reads as urgent. `inDays` is an offset from the build date, so
+ * the preview never shows a fictional deadline that has already passed.
+ */
+interface Props {
+  inDays: number;
+  prefix?: string;
+}
+
+const { inDays, prefix = "" } = Astro.props;
+---
+
+<span class="fc-deadline" data-soon={inDays <= 14 ? "" : undefined}>
+  <Glyph name="calendar" class="fc-glyph fc-glyph-sm" />
+  {prefix}{daysFromBuild(inDays)} · {daysLeft(inDays)}
+</span>

@@ -8,15 +8,14 @@ import type { FeedItem } from "@/data/feed-preview";
 /**
  * Picks the card for a feed item.
  *
- * There used to be one template here with `kind` branches threaded through it.
- * The four workspace feeds diverge much further than that allowed — different
- * identity lines, different tool columns, different footers, and three sets of
- * fields that exist on exactly one feed each — so each now has its own card in
- * `components/landing/feed/`, mirroring the app's own split into
- * `SuggestionCard`, `GrantRow`, `FellowshipRow` and `ConferenceCard`.
+ * Every kind shares one skeleton (`feed/Card.astro`, the app's `FeedCard`):
+ * the measured match and the tools, the title, a source line, a meta line,
+ * Mylo's reason and the theme pills. Each kind's card in `components/landing/feed/`
+ * only fills in its own source and meta lines and the odd flag, as the app's
+ * feed configs do.
  *
- * Their shared CSS lives in `src/styles/feed-card.css`, imported once by
- * `LiveFeed.astro`, since Astro's scoped styles cannot span sibling components.
+ * Their shared CSS lives in `src/styles/feed-card.css`, imported by the
+ * sections that show cards, since Astro's scoped styles cannot span components.
  */
 interface Props {
   item: FeedItem;

@@ -1,25 +1,18 @@
 ---
-import ActionBar from "@/components/landing/feed/ActionBar.astro";
-import ClusterRow from "@/components/landing/feed/ClusterRow.astro";
+import Card from "@/components/landing/feed/Card.astro";
+import DeadlinePill from "@/components/landing/feed/DeadlinePill.astro";
 import Glyph from "@/components/landing/feed/Glyph.astro";
-import Reason from "@/components/landing/feed/Reason.astro";
-import SourceRow from "@/components/landing/feed/SourceRow.astro";
 import type { FellowshipItem } from "@/data/feed-preview";
 
 /**
- * A row on Fellowships — `FellowshipRow` in
- * `portal/sections/fellowships-section.tsx`.
+ * An award on Fellowships — the shared skeleton with `FELLOWSHIPS_CONFIG`'s
+ * lines from `fellowships-section.tsx`: the award class and the money, then the
+ * deadline (or "Rolling") and the academic stages.
  *
- * Two things are unique to this feed and both are about eligibility rather than
- * relevance. The tier badge — Qualified, Possible fit, Eligibility not listed —
- * comes from a deterministic rule engine reading the call's prose, not from
- * Mylo, and it sits on its own row so it is never mistaken for a research
- * judgement. The bullets beneath spell out what that tier was decided on, and
- * collapse into a `<details>` once there are four or more.
- *
- * The award class stands in for a sponsor on the identity line; it is not a
- * chip. There is no "Not eligible" tier to draw, because an award a reader
- * fails the gate on is filtered out upstream and never reaches a card.
+ * The eligibility tier rides the top row as the card's flag. It comes from a
+ * deterministic rule engine reading the call's prose, not from Mylo, and is
+ * worded as eligibility so it never reads as a relevance judgement. There is
+ * no "Not eligible" tier: an award a reader fails is filtered out upstream.
  */
 interface Props {
   item: FellowshipItem;
@@ -27,100 +20,25 @@ interface Props {
 
 const { item } = Astro.props;
 
-const identity = `${item.awardClass}; Original Posted ${item.posted}`;
-
-const TIER_CLASS: Record<string, string> = {
+const TIER_CLASS: Record<FellowshipItem["eligibility"], string> = {
   Qualified: "is-qualified",
   "Possible fit": "is-possible",
   "Eligibility not listed": "is-unlisted",
 };
 
-const bullets = item.eligibilityBullets ?? [];
-const collapsed = bullets.length >= 4;
-
-/* The card shows at most four facets and counts the rest, so a broadly scoped
-   award cannot push the footer off the bottom of a uniform row. */
-const facets = item.facets ?? [];
-const shownFacets = facets.slice(0, 4);
-const extraFacets = facets.length - shownFacets.length;
-
-/* A rolling or undated call has no date to remind anyone about, so the app
-   omits the bell rather than rendering one that cannot fire. */
-const remindable = item.deadlines.some((d) => !d.passed);
+const meta = [item.deadlineInDays === null ? "Rolling" : "", item.stages.slice(0, 3).join(" / ")]
+  .filter(Boolean)
+  .join(" · ");
 ---
 
-<li class="fc-card reveal">
-  <div class="fc-head">
-    <div class="fc-head-main">
-      <h4 class="fc-title">{item.title}</h4>
-      <p class="fc-identity">{identity}</p>
-      <p class="fc-amount">
-        <Glyph name="bank" class="fc-glyph" />
-        {item.amount}
-      </p>
-
-      <ClusterRow
-        cluster={item.cluster}
-        clusterToken={item.clusterToken}
-        bridge={item.bridge}
-        isNew={item.isNew}
-      />
-
-      {
-        item.eligibility && (
-          <div class="fc-chip-row">
-            <span class={`fc-chip fc-eligibility ${TIER_CLASS[item.eligibility]}`}>
-              {item.eligibility}
-            </span>
-          </div>
-        )
-      }
-    </div>
-
-    <ActionBar deadlines={item.deadlines} remindable={remindable} />
-  </div>
-
-  {item.description && <p class="fc-description is-clamped">{item.description}</p>}
-
-  <Reason
-    reason={item.reason}
-    caveat={item.caveat}
-    bridgeNote={item.bridgeNote}
-    origin={item.origin}
-  />
-
-  {
-    bullets.length > 0 &&
-      (collapsed ? (
-        <details style="margin-top:0.75rem">
-          <summary class="fc-rail-label" style="cursor:pointer">
-            Eligibility details ({bullets.length})
-          </summary>
-          <ul class="fc-bullets">
-            {bullets.map((line) => (
-              <li>{line}</li>
-            ))}
-          </ul>
-        </details>
-      ) : (
-        <ul class="fc-bullets">
-          {bullets.map((line) => (
-            <li>{line}</li>
-          ))}
-        </ul>
-      ))
-  }
-
-  {
-    shownFacets.length > 0 && (
-      <div class="fc-chip-row" style="margin-top:0.75rem">
-        {shownFacets.map((facet) => (
-          <span class="fc-chip fc-facet">{facet}</span>
-        ))}
-        {extraFacets > 0 && <span class="fc-chip fc-facet">+{extraFacets} more</span>}
-      </div>
-    )
-  }
-
-  <SourceRow credit={item.sourceCredit} label="View fellowship" />
-</li>
+<Card item={item} remindable={item.deadlineInDays !== null}>
+  <span slot="flag" class={`fc-pill fc-eligibility ${TIER_CLASS[item.eligibility]}`}>{item.eligibility}</span>
+  <Fragment slot="source">
+    <span class="fc-src">{item.awardClass}</span>
+    <span class="fc-money fc-dotsep"><Glyph name="bank" class="fc-glyph" /> {item.amount}</span>
+  </Fragment>
+  <Fragment slot="meta">
+    {item.deadlineInDays !== null && <DeadlinePill inDays={item.deadlineInDays} />}
+    {meta && <span>{meta}</span>}
+  </Fragment>
+</Card>

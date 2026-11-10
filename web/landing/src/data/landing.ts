@@ -117,34 +117,34 @@ export const reportLines = [
  */
 export const anatomy = [
   {
+    id: "match",
+    label: "How close it is",
+    note: "The embedding similarity between the item and your research — measured, never a model's guess. Hover or focus it for the split by theme.",
+    targets: [".fc-match-btn"],
+  },
+  {
     id: "item",
     label: "The item",
-    note: "The paper itself — its title, where it was published, the year and the authors — linked to the source record and never paraphrased away from it.",
-    targets: [".fc-title", ".fc-meta"],
-  },
-  {
-    id: "theme",
-    label: "The theme it matched",
-    note: "Which of your lab's research themes pulled it in. There is no global rank: scores from two themes are not comparable.",
-    targets: [".fc-cluster"],
-  },
-  {
-    id: "summary",
-    label: "What it says",
-    note: "The listing's own summary, untouched, so you can judge the work before reading Mylo's take on it.",
-    targets: [".fc-description"],
+    note: "The paper itself — its title, where it was published, the authors and the year — linked to the source record and never paraphrased away from it.",
+    targets: [".fc-title", ".fc-lines"],
   },
   {
     id: "reason",
     label: "Why it fits",
-    note: "Mylo's reading, in his green field, tied to your lab's own work. Readers without model reasoning see a plain topical match instead.",
-    targets: [".fc-mylo-reason", ".fc-plain-reason"],
+    note: "Mylo's reading in one line, tied to your lab's own work; his portrait marks the ones he wrote. Open the item for his whole take, with the strongest reason it might not be worth your time.",
+    targets: [".fc-why"],
   },
   {
-    id: "caveat",
-    label: "Why it might not",
-    note: "The caveat — the strongest reason this could be a waste of your time. It is never empty; a recommendation without one is refused.",
-    targets: [".fc-caveat"],
+    id: "themes",
+    label: "The themes it matched",
+    note: "Which of your research themes pulled it in, each with its share of the match. There is no global rank: scores from two themes are not comparable.",
+    targets: [".fc-topics"],
+  },
+  {
+    id: "tools",
+    label: "What you do with it",
+    note: "Save it, set a reminder on a deadline, or ignore it and it will not come back. Papers have no deadline, so no reminder.",
+    targets: [".fc-tools"],
   },
 ] as const;
 

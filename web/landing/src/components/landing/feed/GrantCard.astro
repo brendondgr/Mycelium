@@ -1,59 +1,31 @@
 ---
-import ActionBar from "@/components/landing/feed/ActionBar.astro";
-import ClusterRow from "@/components/landing/feed/ClusterRow.astro";
+import Card from "@/components/landing/feed/Card.astro";
+import DeadlinePill from "@/components/landing/feed/DeadlinePill.astro";
 import Glyph from "@/components/landing/feed/Glyph.astro";
-import Reason from "@/components/landing/feed/Reason.astro";
-import SourceRow from "@/components/landing/feed/SourceRow.astro";
+import { daysFromBuild } from "@/components/landing/feed/match";
 import type { GrantItem } from "@/data/feed-preview";
 
 /**
- * A row on Grants — `GrantRow` in `portal/sections/opportunities-section.tsx`.
- *
- * The amount sits under the identity line, not off in the right-hand column:
- * it is part of what the call *is*, and pairing it with the deadline invited a
- * reader to compare two numbers that have nothing to do with each other.
+ * A call on Grants — the shared skeleton with `GRANTS_CONFIG`'s lines from
+ * `opportunities-section.tsx`: the sponsor and the money, then the deadline
+ * and when it was posted. A listing that changed since Mylo read it carries a
+ * quiet "Changed" pill beside New.
  */
 interface Props {
   item: GrantItem;
 }
 
 const { item } = Astro.props;
-
-/* The app joins the identity fields with a semicolon rather than stacking them,
-   so a grant's provenance occupies one line however long the sponsor's name. */
-const identity = `${item.sponsor}; Original Posted ${item.posted}`;
 ---
 
-<li class="fc-card reveal">
-  <div class="fc-head">
-    <div class="fc-head-main">
-      <h4 class="fc-title">{item.title}</h4>
-      <p class="fc-identity">{identity}</p>
-      <p class="fc-amount">
-        <Glyph name="bank" class="fc-glyph" />
-        {item.amount}
-      </p>
-
-      <ClusterRow
-        cluster={item.cluster}
-        clusterToken={item.clusterToken}
-        bridge={item.bridge}
-        isNew={item.isNew}
-        isUpdated={item.isUpdated}
-      />
-    </div>
-
-    <ActionBar deadlines={item.deadlines} />
-  </div>
-
-  {item.description && <p class="fc-description">{item.description}</p>}
-
-  <Reason
-    reason={item.reason}
-    caveat={item.caveat}
-    bridgeNote={item.bridgeNote}
-    origin={item.origin}
-  />
-
-  <SourceRow credit={item.sourceCredit} label="View opportunity" />
-</li>
+<Card item={item} remindable>
+  {item.isUpdated && <span slot="flag" class="fc-pill">Changed</span>}
+  <Fragment slot="source">
+    <span class="fc-src">{item.sponsor}</span>
+    <span class="fc-money fc-dotsep"><Glyph name="bank" class="fc-glyph" /> {item.amount}</span>
+  </Fragment>
+  <Fragment slot="meta">
+    <DeadlinePill inDays={item.deadlineInDays} />
+    <span>Posted {daysFromBuild(-item.postedDaysAgo)}</span>
+  </Fragment>
+</Card>
