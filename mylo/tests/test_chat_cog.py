@@ -95,8 +95,16 @@ def handle(**kw):
 
 
 class FakeBridge:
-    def __init__(self, *, activity=(), result=None, slow=False, refusal="",
-                 queued=False, pending=()):
+    def __init__(
+        self,
+        *,
+        activity=(),
+        result=None,
+        slow=False,
+        refusal="",
+        queued=False,
+        pending=(),
+    ):
         self.activity = list(activity)
         self._result = result or {
             "state": "answered",
@@ -191,14 +199,17 @@ class DeliveryTests(unittest.TestCase):
     def _assert_status_then_answer(self, question, channel, bridge):
         self.assertEqual(len(question.replies), 1)
         status = question.replies[0]
-        self.assertEqual(status.content.split("\n")[0], "It is due Friday (#1).")
+        self.assertEqual(
+            status.content.split("\n")[0],
+            "It is due Friday ([#1](<https://x.org/c>)).",
+        )
         self.assertIn("view", status.kwargs)  # the Stop button
         self.assertEqual(status.kwargs["mention_author"], False)
         texts = [e.get("content") for e in status.edits]
         self.assertIn(render.THINKING, texts)
         self.assertIn("*Reading the call…*", texts)
         self.assertIsNone(status.edits[-1]["view"])  # Stop removed with the answer
-        self.assertIn("**Sources**", status.content)
+        self.assertNotIn("Sources", status.content)
         self.assertEqual(bridge.finished, [(1, "answered")])
         for kwargs in _all_kwargs(question, channel):
             self.assertEqual(
@@ -287,7 +298,9 @@ class DeliveryTests(unittest.TestCase):
         channel = Channel()
         question = Question(channel)
         self._ask(bridge, question)
-        self.assertEqual(question.replies[0].content, "This server isn't set up for Mylo.")
+        self.assertEqual(
+            question.replies[0].content, "This server isn't set up for Mylo."
+        )
         self.assertEqual(
             question.replies[0].kwargs["allowed_mentions"].to_dict(),
             discord.AllowedMentions.none().to_dict(),
@@ -381,7 +394,9 @@ class RouteTests(unittest.TestCase):
     def test_ignored(self) -> None:
         bot = SimpleNamespace(id=999)
         route = chat_module.route
-        other_bot = self._message(author=SimpleNamespace(id=2, bot=True), mentions=[bot])
+        other_bot = self._message(
+            author=SimpleNamespace(id=2, bot=True), mentions=[bot]
+        )
         self.assertEqual(route(other_bot, bot).kind, "none")
         hook = self._message(webhook_id=5, mentions=[bot])
         self.assertEqual(route(hook, bot).kind, "none")

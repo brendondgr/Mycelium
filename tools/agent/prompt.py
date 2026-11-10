@@ -92,10 +92,26 @@ Mycelium."""
 #: How to write where the reply is a Discord message (S-9: never thinking).
 SURFACE_RULES = {
     "discord": """\
-You are answering in Discord. Keep it short: a few sentences or a short list, \
-under about 1,500 characters. Use Discord markdown (bold, italics, lists, \
-inline code). No tables and no headings. Never write @everyone, @here or a \
-<@...> mention; refer to people by name.""",
+You are answering in Discord. Give the same answer you would give anywhere \
+else: read what you need, then explain, compare and conclude in your own \
+words. A list of titles is not an answer, and a search only gives you titles: \
+before you recommend or explain items, read the ones you will rely on (the \
+best three to five, with corpus_item or the function that reads them) and \
+answer from what they say. When you name items, say for each what it found or \
+why it matters to this person, and say which ones you would start with. Do \
+not end by offering to look up details you could have read already. Lead with \
+the answer, not with a count of what you found. Every \
+new message is a new question: answer what it asks, even when it is not about \
+the items already listed, and do not repeat an earlier list. Aim for under \
+about 3,000 characters; a longer answer is posted as several messages. Use \
+Discord markdown (bold, italics, lists, inline code, a bold line as a section \
+label). No tables and no # headings: Discord does not draw them. Write \
+citations as plain #3: each becomes a small link, so never write a URL or a \
+list of sources yourself. Only when the person asked for links, or asked you \
+to find things they will want to open, end your answer with a line that says \
+exactly [[links]]: a list of the cited items with their links is then posted \
+after your answer. Leave it out of every other answer. Never write @everyone, \
+@here or a <@...> mention; refer to people by name.""",
 }
 
 

@@ -9,7 +9,9 @@ from mylo.bot import chat_render as render
 
 class SplitTests(unittest.TestCase):
     def test_short_text_is_one_chunk(self) -> None:
-        self.assertEqual(render.split("Hello.\n\nTwo paragraphs."), ["Hello.\n\nTwo paragraphs."])
+        self.assertEqual(
+            render.split("Hello.\n\nTwo paragraphs."), ["Hello.\n\nTwo paragraphs."]
+        )
 
     def test_every_chunk_is_under_the_limit_and_splits_on_paragraphs(self) -> None:
         paras = [f"Paragraph {i} " + "word " * 120 for i in range(12)]
@@ -60,16 +62,45 @@ class MentionTests(unittest.TestCase):
 
 
 class SourcesAndModelTests(unittest.TestCase):
-    def test_sources_are_masked_links_without_embeds(self) -> None:
+    def test_a_citation_is_a_link_where_it_stands(self) -> None:
+        sources = [
+            {"n": 1, "title": "[grant] Ocean call", "url": "https://x.org/a"},
+            {"n": 2, "title": "A lab", "url": ""},
+        ]
+        text = "Due Friday (**#1**), says #2. See `#1` and issue#1.\n```\n#1\n```"
+        out = render.link_citations(text, sources)
+        self.assertIn("(**[#1](<https://x.org/a>)**), says #2.", out)
+        self.assertIn("`#1` and issue#1.", out)  # code and words are left alone
+        self.assertIn("```\n#1\n```", out)
+        self.assertEqual(out.count("https://x.org/a"), 1)
+
+    def test_only_sources_without_a_link_are_listed(self) -> None:
         block = render.sources_block(
             [
                 {"n": 1, "title": "[grant] Ocean call", "url": "https://x.org/a"},
                 {"n": 2, "title": "A lab", "url": ""},
+                {"n": 3, "title": "x" * 200, "url": "javascript:alert(1)"},
             ]
         )
-        self.assertIn("**Sources**", block)
-        self.assertIn("`#1` [(grant) Ocean call](<https://x.org/a>)", block)
-        self.assertIn("`#2` A lab", block)
+        self.assertEqual(block.split("\n")[0], "-# #2 A lab")
+        self.assertNotIn("Ocean call", block)
+        self.assertNotIn("javascript", block)
+        self.assertLessEqual(len(block.split("\n")[1]), 100)
+
+    def test_links_follow_the_answer_only_when_mylo_asks(self) -> None:
+        sources = [{"n": 1, "title": "[paper] Cell maps", "url": "https://x.org/a"}]
+        plain = render.answer_chunks("Read #1 first.", sources, None, first=False)
+        self.assertEqual(plain, ["Read [#1](<https://x.org/a>) first."])
+        asked = render.answer_chunks(
+            "Read #1 first.\n\n[[links]]", sources, None, first=False
+        )
+        self.assertEqual(
+            asked,
+            [
+                "Read [#1](<https://x.org/a>) first.",
+                "**Links**\n- [Cell maps](<https://x.org/a>)",
+            ],
+        )
 
     def test_the_model_line(self) -> None:
         local = {"name": "qwen", "label": "Qwen", "location": "local"}
@@ -87,7 +118,8 @@ class SourcesAndModelTests(unittest.TestCase):
             first=True,
         )
         self.assertEqual(len(chunks), 1)
-        self.assertIn("Sources", chunks[0])
+        self.assertIn("It is due Friday ([#1](<https://x.org>)).", chunks[0])
+        self.assertNotIn("Sources", chunks[0])
         self.assertIn("-# Qwen", chunks[0])
 
 

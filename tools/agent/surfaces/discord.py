@@ -507,6 +507,17 @@ def follow(handle: Handle, *, poll: float = 1.0, max_seconds=None) -> Iterator[d
         time.sleep(poll)
 
 
+#: The app page that opens an item in its reader, by the kind the agent names
+#: in the item's title ("[grant] …"). The web panel's `open-ref.ts` has the
+#: same table; keep the two in step.
+_FEEDS = {
+    "paper": "/app/research-papers",
+    "grant": "/app/grants",
+    "fellowship": "/app/fellowships",
+    "conference": "/app/conferences",
+}
+
+
 def _item_url(key: str, *, guest: bool, title: str) -> str:
     from django.conf import settings
 
@@ -519,8 +530,11 @@ def _item_url(key: str, *, guest: bool, title: str) -> str:
         meta = item.metadata or {}
         return item.source_url or meta.get("url") or meta.get("website") or ""
     base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
-    clean = re.sub(r"^\[\w+\]\s*", "", title)
-    return f"{base}/app/search?q={quote(clean)}" if base else ""
+    if not base:
+        return ""
+    kind = re.match(r"^\[(\w+)\]", title)
+    feed = _FEEDS.get(kind.group(1).lower() if kind else "", _FEEDS["paper"])
+    return f"{base}{feed}?item={quote(str(key), safe='')}"
 
 
 def sources(thread, text: str, *, guest: bool) -> list[dict]:

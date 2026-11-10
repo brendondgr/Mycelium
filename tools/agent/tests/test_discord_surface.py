@@ -585,3 +585,20 @@ def test_a_removed_binding_or_a_left_server_closes_its_links(server):
     assert h2.thread_id != h.thread_id  # a fresh conversation after re-activation
     resolve.mark_guild_kicked(GUILD)
     assert AgentThreadLink.objects.filter(closed_at=None).count() == 0
+
+
+def test_a_members_link_opens_the_item_in_the_app(settings):
+    settings.DISCORD_APP_BASE_URL = "https://app.example.org/"
+    url = surface._item_url("ab-12", guest=False, title="[grant] Ocean call")
+    assert url == "https://app.example.org/app/grants?item=ab-12"
+    paper = surface._item_url("ab-12", guest=False, title="Untyped title")
+    assert paper == "https://app.example.org/app/research-papers?item=ab-12"
+    settings.DISCORD_APP_BASE_URL = ""
+    assert surface._item_url("ab-12", guest=False, title="[grant] x") == ""
+
+
+def test_discord_is_told_to_answer_not_to_list(server, scripted):
+    prompt = _system_prompt(ask(server.member_id), scripted)
+    assert "A list of titles is not an answer" in prompt
+    assert "[[links]]" in prompt
+    assert "Keep it short" not in prompt

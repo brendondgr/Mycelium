@@ -8,8 +8,12 @@ no Discord I/O, so every rule here is tested without either.
 * Nothing Mylo writes can ping anyone: ``<@…>``, ``<@&…>``, ``@everyone`` and
   ``@here`` in model output are neutralised here, and every send also carries
   ``AllowedMentions.none()`` (the cog's job).
-* Citations become a short *Sources* list of masked links with embeds
-  suppressed (``<url>``).
+* A citation (``#3``) is a masked link where it stands in the answer, with
+  its embed suppressed (``<url>``). Only a source with nowhere to link to
+  is listed under the answer, by title.
+* A list of links is posted after the answer only when Mylo asks for one
+  by ending the answer with ``[[links]]`` (the person asked for links, or
+  for things to open). The marker itself is never shown.
 """
 
 from __future__ import annotations
@@ -142,22 +146,70 @@ def split(text: str, limit: int = SAFE) -> list[str]:
     return out
 
 
+def _linkable(source: dict) -> bool:
+    url = str(source.get("url") or "")
+    return url.startswith(("http://", "https://")) and ">" not in url
+
+
+_CODE = re.compile(r"(```.*?(?:```|\Z)|`[^`\n]*`)", re.S)
+#: ``#3`` that is not already a link's text, part of a word, or a URL fragment.
+_CITE = re.compile(r"(?<![\w\[/#])#(\d+)\b(?!\]\()")
+
+
+def link_citations(text: str, sources: list[dict]) -> str:
+    """Each ``#n`` the answer cites becomes a masked link to that source, in
+    place, with its embed suppressed. Code is left as written."""
+    urls = {int(s["n"]): str(s["url"]) for s in sources or [] if _linkable(s)}
+    if not urls:
+        return text
+
+    def cite(match: re.Match) -> str:
+        url = urls.get(int(match.group(1)))
+        return f"[#{match.group(1)}](<{url}>)" if url else match.group(0)
+
+    parts = _CODE.split(text or "")
+    return "".join(p if i % 2 else _CITE.sub(cite, p) for i, p in enumerate(parts))
+
+
+#: Mylo's request for a list of links after the answer (see the prompt).
+_LINKS_MARK = re.compile(r"[ \t]*\[\[links\]\][ \t]*", re.I)
+
+
+def take_links_mark(text: str) -> tuple[str, bool]:
+    """The answer without the ``[[links]]`` marker, and whether it was there."""
+    out, found = _LINKS_MARK.subn("", text or "")
+    return out.strip(), bool(found)
+
+
+def _short_title(source: dict, width: int = 90) -> str:
+    title = neutralise(str(source.get("title") or ""))
+    title = re.sub(r"^\[\w+\]\s*", "", title).replace("[", "(").replace("]", ")")
+    return title if len(title) <= width else title[: width - 1].rstrip() + "…"
+
+
+def links_block(sources: list[dict]) -> str:
+    """The cited items as a list of links, for the message after an answer."""
+    lines = [
+        f"- [{_short_title(s)}](<{s['url']}>)" for s in sources or [] if _linkable(s)
+    ]
+    return "**Links**\n" + "\n".join(lines) if lines else ""
+
+
 def sources_block(sources: list[dict]) -> str:
-    """``**Sources**`` with masked links whose embeds are suppressed."""
+    """The sources a citation cannot link to (a lab, a project, an item with
+    no page), by title, in small text. Linked ones are not listed again: the
+    answer already names them and its ``#n`` opens them."""
     lines = []
     for s in sources or []:
-        title = neutralise(str(s.get("title") or "")).replace("[", "(").replace(
-            "]", ")"
-        )[:120]
-        url = str(s.get("url") or "")
-        n = s.get("n")
-        if url.startswith(("http://", "https://")):
-            lines.append(f"`#{n}` [{title}](<{url}>)")
-        else:
-            lines.append(f"`#{n}` {title}")
-    if not lines:
-        return ""
-    return "**Sources**\n" + "\n".join(lines)
+        if _linkable(s):
+            continue
+        title = (
+            neutralise(str(s.get("title") or "")).replace("[", "(").replace("]", ")")
+        )
+        if len(title) > 90:
+            title = title[:89].rstrip() + "…"
+        lines.append(f"-# #{s.get('n')} {title}")
+    return "\n".join(lines)
 
 
 def model_line(model: dict | None, *, first: bool) -> str:
@@ -178,9 +230,13 @@ def model_line(model: dict | None, *, first: bool) -> str:
 def answer_chunks(
     text: str, sources: list[dict], model: dict | None, *, first: bool
 ) -> list[str]:
-    """The whole answer as messages: text split safely, then sources and the
-    model line on the last chunk (or a chunk of their own)."""
-    body = split(neutralise(text)) or ["(Mylo had nothing to say.)"]
+    """The whole answer as messages: text split safely with its citations
+    as links, then unlinked sources and the model line on the last chunk (or
+    a chunk of their own)."""
+    text, wants_links = take_links_mark(text)
+    body = split(link_citations(neutralise(text), sources)) or [
+        "(Mylo had nothing to say.)"
+    ]
     tail = "\n".join(
         p for p in (sources_block(sources), model_line(model, first=first)) if p
     )
@@ -189,6 +245,9 @@ def answer_chunks(
             body[-1] = f"{body[-1]}\n\n{tail}"
         else:
             body.extend(split(tail))
+    if wants_links:
+        # a message of its own, after the answer
+        body.extend(split(links_block(sources)))
     return body
 
 
