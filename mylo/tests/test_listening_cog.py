@@ -197,6 +197,15 @@ class GuildMessageTests(unittest.TestCase):
         self.assertEqual(len(fake.calls), 1)
         self.assertFalse(fake.calls[0]["explicit"])  # overheard, not addressed
 
+    def test_an_owner_command_is_never_carried(self) -> None:
+        fake = FakeListening()
+        cog = _cog(fake, listen_enabled=True, message_content=True)
+        with mock.patch.object(listen_module, "listening", fake):
+            _run(cog.on_message(_message(content="!mylo sync global")))
+            _run(cog.on_message(_message(guild=False, content="!mylo global sync")))
+        self.assertEqual(fake.calls, [])
+        self.assertEqual(fake.turns, [])
+
     def test_mylos_own_line_is_carried_as_its_own(self) -> None:
         """A question Mylo asked is what makes the next line an answer."""
         fake = FakeListening()

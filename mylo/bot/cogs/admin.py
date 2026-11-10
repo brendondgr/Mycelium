@@ -2,9 +2,14 @@
 
 Adapted from the ``discord-bot`` skill's reference admin cog. ``sync`` lives here,
 not in ``setup_hook``, on purpose: a global sync is rate limited and slow to
-propagate, so it must be a deliberate act — ``@Mylo sync global`` — not something
+propagate, so it must be a deliberate act — ``!mylo sync global`` — not something
 that fires on every restart. These are prefix commands because you need a way to
 register slash commands that does not itself depend on slash commands existing.
+
+The prefix is ``!mylo``, not an @mention: a mention is a question for Mylo chat.
+Discord only delivers a server message's text to Mylo when it mentions Mylo
+(no Message Content intent), so in a server write ``@Mylo !mylo sync guild``;
+in a DM to Mylo plain ``!mylo sync global`` works.
 """
 
 from __future__ import annotations
@@ -21,7 +26,18 @@ class AdminCog(commands.Cog, name="Admin"):
 
     @commands.command(name="sync")
     async def sync(self, ctx: commands.Context, scope: str = "guild") -> None:
-        """``@Mylo sync guild`` (instant, this server) | ``sync global`` | ``sync clear``."""
+        """``!mylo sync guild`` (instant, this server) | ``sync global`` | ``sync clear``."""
+        await self._sync(ctx, scope.lower())
+
+    @commands.command(name="global")
+    async def global_sync(self, ctx: commands.Context, action: str = "sync") -> None:
+        """``!mylo global sync``: the same as ``!mylo sync global``."""
+        if action.lower() != "sync":
+            await ctx.reply("Did you mean `!mylo global sync`?")
+            return
+        await self._sync(ctx, "global")
+
+    async def _sync(self, ctx: commands.Context, scope: str) -> None:
         tree = self.bot.tree
         if scope == "global":
             synced = await tree.sync()
@@ -44,7 +60,7 @@ class AdminCog(commands.Cog, name="Admin"):
 
     @commands.command(name="reload")
     async def reload(self, ctx: commands.Context, extension: str) -> None:
-        """``@Mylo reload mylo.bot.cogs.status`` — hot-reload a cog."""
+        """``!mylo reload mylo.bot.cogs.status`` — hot-reload a cog."""
         try:
             await self.bot.reload_extension(extension)
         except commands.ExtensionError as exc:

@@ -104,6 +104,9 @@ class ListenCog(commands.Cog, name="Listening"):
             await self._forward(message, from_mylo=True, explicit=False)
             return
 
+        if chat.admin_prefix(message.content):
+            return  # ``!mylo sync …``: an owner command, handled by the Admin cog
+
         # Mylo chat first (plan D): is this a question for Mylo?
         route = chat.route(message, self.bot.user)
         is_dm = message.guild is None

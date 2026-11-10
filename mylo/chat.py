@@ -13,6 +13,7 @@ is a question for Mylo. Identity is always the event's author id, never text.
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
@@ -39,6 +40,18 @@ class Route:
 
 
 NONE = Route("none")
+
+#: An owner command (``!mylo sync global``), optionally after an @mention of
+#: Mylo or a role: never a question for the agent, never something said.
+_ADMIN = re.compile(r"^\s*(?:<@[!&]?\d+>\s*)*(!mylo)(?:\s+|$)", re.IGNORECASE)
+
+
+def admin_prefix(content: str) -> str:
+    """The text up to and including ``!mylo `` when ``content`` is an owner
+    command, else ``""``. The bot's command prefix and :func:`route` share it,
+    so a command is never also answered as a question."""
+    found = _ADMIN.match(content or "")
+    return found.group(0) if found else ""
 
 
 def _bot_role_ids(message, bot_id) -> list[int]:
@@ -69,6 +82,8 @@ def route(message, bot_user) -> Route:
     if getattr(author, "bot", False) or getattr(message, "webhook_id", None):
         return NONE
     bot_id = bot_user.id
+    if admin_prefix(message.content):
+        return NONE
     if message.guild is None:
         return Route("chat", (message.content or "").strip())
     roles = _bot_role_ids(message, bot_id)

@@ -483,7 +483,9 @@ the Celery worker. Rules that hold for any change here:
   `/mylo forget`, `/mylo chat on|off`,
   `/mylo chat here on|off`, `/mylo chat guests …` live in
   `mylo/bot/cogs/mylo_commands.py` (one `/mylo` group, a `chat` subgroup).
-  They reach production only after `@Mylo sync global`.
+  They reach production only after the owner DMs Mylo `!mylo sync global`
+  (`mylo/bot/cogs/admin.py`; the `!mylo` prefix is shared with `chat.route`,
+  which skips it, so a command is never also answered as a question).
 - **Tests** use fakes only: `mylo/tests/test_chat_cog.py` (fake transport) and
   `test_chat_render.py`; the backend side is `tools/agent/tests/test_discord_*`.
   `manage.py smoke_agent_discord` runs the whole path against the real model.

@@ -16,6 +16,7 @@ import logging
 import discord
 from discord.ext import commands
 
+from ..chat import admin_prefix
 from ..config import MyloConfig
 from .errors import MyloCommandTree
 
@@ -50,13 +51,19 @@ def _intents(config: MyloConfig) -> discord.Intents:
     return intents
 
 
+def _command_prefix(bot: commands.Bot, message: discord.Message) -> list[str]:
+    found = admin_prefix(message.content)
+    return [found] if found else []
+
+
 class MyloBot(commands.Bot):
     def __init__(self, config: MyloConfig) -> None:
         self.config = config
         super().__init__(
-            # A prefix nobody types keeps the owner-only ``@Mylo sync`` escape
-            # hatch usable without exposing a prefix-command surface.
-            command_prefix=commands.when_mentioned,
+            # ``!mylo`` (also after an @mention) is the owner-only escape hatch
+            # (``!mylo sync global``). A bare @mention is a question for Mylo,
+            # never a command, so the two cannot collide.
+            command_prefix=_command_prefix,
             intents=_intents(config),  # privileged only for Stage B listening
             tree_cls=MyloCommandTree,
             help_command=None,
@@ -79,7 +86,7 @@ class MyloBot(commands.Bot):
             synced = await self.tree.sync(guild=guild)
             log.info("synced %d command(s) to dev guild %s", len(synced), guild.id)
         else:
-            log.info("production mode: skipping automatic sync (use `@Mylo sync global`)")
+            log.info("production mode: skipping automatic sync (DM Mylo `!mylo sync global`)")
 
     async def on_ready(self) -> None:
         assert self.user is not None

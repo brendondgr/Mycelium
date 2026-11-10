@@ -295,8 +295,11 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   `/activate-lab`, `/setup`, `/mylo status`) dies at `django.setup()` with
   `ModuleNotFoundError`, surfacing to the user as the generic "something went
   wrong on my end."
-* After deploy, run a one-time `@Mylo sync global` (owner-only) so the command set
-  changes (`/activate-lab` and `/setup` added, `/mylo setup` removed) propagate.
+* After a deploy that changes slash commands, DM Mylo `!mylo sync global`
+  (owner-only; `!mylo global sync` also works) so the new command set
+  propagates. In a server, Discord only shows Mylo a message that mentions it,
+  so write `@Mylo !mylo sync guild` there. A plain `@Mylo …` is a question for
+  Mylo chat, never a command.
 
 ## Configuration
 
