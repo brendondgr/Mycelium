@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useAppRouter, useDemo } from "@/components/demo/demo-context";
 import { useState } from "react";
 
 import { LogOut, Moon, Palette } from "lucide-react";
@@ -19,11 +19,17 @@ import { useDismissable } from "@/lib/portal/use-dismissable";
  */
 export function UserMenu() {
   const { user, scope, goToSection, theme, toggleTheme } = usePortal();
-  const router = useRouter();
+  const router = useAppRouter();
+  const demo = useDemo();
   const { open, setOpen, ref } = useDismissable<HTMLDivElement>();
   const [signingOut, setSigningOut] = useState(false);
 
   async function signOut() {
+    if (demo) {
+      // Nobody is signed in to the demo: leaving it is going back to the site.
+      window.location.assign("/");
+      return;
+    }
     setSigningOut(true);
     try {
       await logout();
@@ -138,7 +144,7 @@ export function UserMenu() {
           >
             <span className="flex items-center gap-2.5">
               <LogOut size={15} aria-hidden className="text-[var(--text-muted)]" />
-              {signingOut ? "Signing out…" : "Sign out"}
+              {demo ? "Leave the demo" : signingOut ? "Signing out…" : "Sign out"}
             </span>
           </button>
         </div>

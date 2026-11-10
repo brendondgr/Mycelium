@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 
 import Link from "next/link";
@@ -287,6 +288,7 @@ export function LabsSection() {
 
 /** Why the create buttons are dark, and where to go to light them up. */
 function VerifyToCreateNotice() {
+  const appHref = useAppHref();
   return (
     <p className="mb-4 rounded-xl border border-border bg-surface-alt px-3.5 py-2.5 text-[12.5px] text-[var(--text-secondary)]">
       Creating a lab or department needs an activated account. A lab exists to
@@ -294,7 +296,7 @@ function VerifyToCreateNotice() {
       address that has not answered its own code — enter yours on the{" "}
       <Link
         className="font-medium text-primary underline underline-offset-2"
-        href={SECTION_ROUTES.account}
+        href={appHref(SECTION_ROUTES.account)}
       >
         Account page
       </Link>
@@ -326,9 +328,10 @@ function DepartmentsBlock() {
 }
 
 function DepartmentCard({ department }: { department: MyDepartment }) {
+  const appHref = useAppHref();
   return (
     <Link
-      href={`/app/department/${department.id}`}
+      href={appHref(`/app/department/${department.id}`)}
       className="block rounded-2xl border border-border bg-card p-4 transition-colors hover:border-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <p className="text-[15px] font-semibold text-[var(--text-primary)]">
@@ -645,6 +648,7 @@ function MyloServerCard({
   onIssueCode,
   issueCode,
 }: MyloServerCardProps) {
+  const appHref = useAppHref();
   const { data: status, isLoading, isError } = statusQuery;
   const noun = kind === "lab" ? "lab" : "department";
   const command = kind === "lab" ? "/activate-lab" : "/activate-department";
@@ -710,7 +714,7 @@ function MyloServerCard({
       <p className="mt-2 text-[12.5px] text-[var(--text-secondary)]">{detail}</p>
       {kind === "lab" && !synced && !isLoading && !billingLoading && !myloIncluded ? (
         <Link
-          href={SECTION_ROUTES.account}
+          href={appHref(SECTION_ROUTES.account)}
           className="mt-3 inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Activate Mylo on this plan
@@ -1060,6 +1064,7 @@ function CreateLabModal({
  * the department arrives with its plan inactive, like a lab does.
  */
 function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
+  const appHref = useAppHref();
   const create = useCreateDepartment();
   const [name, setName] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -1087,7 +1092,7 @@ function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
       { name: value },
       {
         onSuccess: (department) => {
-          window.location.href = `/app/department/${department.id}`;
+          window.location.href = appHref(`/app/department/${department.id}`);
         },
         onError: (e2) => setError((e2 as Error).message),
       },

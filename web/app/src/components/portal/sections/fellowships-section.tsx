@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 
 import { ClusterRow } from "@/components/portal/primitives/cluster-badge";
@@ -386,6 +387,7 @@ export function FellowshipRow({
  * on research and deadlines, not on stage, and one answer changes that.
  */
 function StageNotice() {
+  const appHref = useAppHref();
   return (
     <div
       className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border px-3.5 py-2.5 text-[13px] leading-relaxed"
@@ -400,7 +402,7 @@ function StageNotice() {
         filtered out.
       </span>
       <a
-        href="/app/profile"
+        href={appHref("/app/profile")}
         className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
       >
         Set your career stage

@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+
+import { useAppRouter } from "@/components/demo/demo-context";
 
 import { SearchIcon } from "@/components/portal/icons";
 import { EmptyState } from "@/components/portal/primitives/empty-state";
@@ -54,7 +56,7 @@ function titleCase(value: string): string {
 
 export function SearchSection() {
   const params = useSearchParams();
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
 
   const q = params.get("q") ?? "";

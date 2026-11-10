@@ -4,7 +4,7 @@
  * source yourself. `#self-host` is linked from the hero and the footer.
  */
 import { ways } from "@/data/landing";
-import { primaryCta, sourceRepoUrl } from "@/data/site";
+import { demoUrl, primaryCta, sourceRepoUrl } from "@/data/site";
 ---
 
 <section id="self-host" class="nf-section" aria-labelledby="ways-heading">
@@ -45,14 +45,20 @@ import { primaryCta, sourceRepoUrl } from "@/data/site";
             <span class="cmd" style={`--i:${i}`}><span class="prompt" aria-hidden="true">$ </span>{c}</span>
           ))}<span class="term-caret" aria-hidden="true"></span></code></pre>
         </div>
-        <span class="nf-soon-wrap">
-          <a class="nf-btn nf-btn-line" href={sourceRepoUrl} rel="noopener">
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
-            View the source
-          </a>
-          <span class="nf-soon">Soon</span>
-        </span>
+        <a class="nf-btn nf-btn-line" href={sourceRepoUrl} rel="noopener">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
+          View the source
+        </a>
       </article>
+    </div>
+
+    {/* Hidden until the demo reports itself on; see `demoUrl` in site.ts. */}
+    <div class="ways-demo reveal" data-demo-link hidden>
+      <p>
+        <span class="ways-demo-lead">Not ready to choose?</span>
+        Look around a demo lab first — a fictional lab, ranked each night against the real literature and calls.
+      </p>
+      <a class="nf-btn nf-btn-line nf-btn-sm" href={demoUrl}>See it working</a>
     </div>
   </div>
 </section>
@@ -110,6 +116,34 @@ import { primaryCta, sourceRepoUrl } from "@/data/site";
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1.5rem;
     }
+  }
+
+  /* A third, lighter path under the two cards: a ruled row, not a card. */
+  .ways-demo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem 1.25rem;
+    max-width: 46rem;
+    margin: 2rem auto 0;
+    padding: 1.1rem 1.25rem;
+    border: 1px dashed rgb(184 217 154 / 22%);
+    border-radius: 1.1rem;
+    text-align: center;
+  }
+
+  .ways-demo p {
+    flex: 1 1 22rem;
+    margin: 0;
+    font-size: 0.93rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .ways-demo-lead {
+    color: var(--text-primary);
+    font-weight: 600;
   }
 
   .way {

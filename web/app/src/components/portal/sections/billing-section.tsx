@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 import Link from "next/link";
 
@@ -149,6 +150,7 @@ function PersonalBilling() {
  * leave that as an unexplained absence, say it here and point at the lab.
  */
 function TeamPlanCard() {
+  const appHref = useAppHref();
   const { labs } = usePortal();
   const managed = (labs ?? []).filter(canManageLab);
 
@@ -172,7 +174,7 @@ function TeamPlanCard() {
             <React.Fragment key={lab.slug}>
               {index > 0 ? ", " : ""}
               <Link
-                href={`/app/${lab.slug}/dashboard`}
+                href={appHref(`/app/${lab.slug}/dashboard`)}
                 className="font-medium text-primary underline-offset-2 hover:underline"
               >
                 {lab.name}
@@ -185,7 +187,7 @@ function TeamPlanCard() {
         <p className="mt-3 text-sm text-[var(--text-secondary)]">
           You don&apos;t manage a lab yet.{" "}
           <Link
-            href="/app/labs"
+            href={appHref("/app/labs")}
             className="font-medium text-primary underline-offset-2 hover:underline"
           >
             Create one
@@ -295,6 +297,7 @@ function LabBilling({ lab }: { lab: MyLab }) {
  * is where a manager finds out *why* that flow is locked.
  */
 function LabAddOnsCard({ lab }: { lab: MyLab }) {
+  const appHref = useAppHref();
   const { data, isLoading, isError } = useLabBilling(lab.slug);
   const included = Boolean(data?.mylo_included);
 
@@ -332,7 +335,7 @@ function LabAddOnsCard({ lab }: { lab: MyLab }) {
             <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
               Connect a server from{" "}
               <Link
-                href="/app/profile"
+                href={appHref("/app/profile")}
                 className="font-medium text-primary underline-offset-2 hover:underline"
               >
                 Lab settings

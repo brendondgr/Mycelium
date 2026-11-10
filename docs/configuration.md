@@ -88,6 +88,16 @@ domain is proved.
 (`ambient` and its parts), collaborator search, project alerts, Discord
 announcements, high-signal messages, reranking, Slack, Teams.
 
+**`[demo]`** — the public demo at `/demo`: a fictional department, lab and
+people (`web/backend/apps/demo/world.yaml`) ranked every night against the real
+corpus, shown in the real app, read-only, with no account. Build it first with
+`manage.py demo build`; `enabled` then serves it (off: `/demo` and `/api/demo/`
+answer 404 and the front page hides its demo links; the data is kept).
+`questions_per_visitor` (1), `questions_per_ip_per_day` (3) and
+`questions_per_day` (100, every visitor together — it bounds the model bill; `0`
+keeps the demo up with Mylo off) budget Mylo; `question_max_chars` caps one
+question.
+
 **`[nightly]`** — cost controls. `model_calls` caps the language-model calls one
 nightly run may make (`"unlimited"` by default — set it if your model bills per
 call); the rest bound parallelism and per-night batch sizes.
@@ -117,4 +127,8 @@ ops/mycelium config set limits.clusters 6 limits.watch_topics 20
 
 # Sell seats: today's tiered plans
 ops/mycelium config set billing.mode subscriptions
+
+# Show anyone a working demo lab (build it once, then switch it on)
+docker compose exec backend uv run --project web/backend python web/backend/manage.py demo build
+ops/mycelium config set demo.enabled true
 ```

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 
 import Link from "next/link";
@@ -372,6 +373,7 @@ function ReminderGate({
   access: ReminderAccess;
   onClose: () => void;
 }) {
+  const appHref = useAppHref();
   // A lab the caller doesn't manage: the answer is "not you", not a billing report.
   const isPermission = access.reason === "permission";
   return (
@@ -386,7 +388,7 @@ function ReminderGate({
             <GateCondition ok={access.discord_ok} label="Discord connected" />
           </ul>
           <Link
-            href="/app/profile"
+            href={appHref("/app/profile")}
             onClick={onClose}
             className="mt-3.5 inline-flex rounded-full border border-primary bg-primary/10 px-3.5 py-1.5 text-[12.5px] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >

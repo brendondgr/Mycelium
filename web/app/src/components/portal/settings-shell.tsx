@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 import Link from "next/link";
 import { Building2, IdCard, Palette, Sparkles, UserRound, Users, type LucideIcon } from "lucide-react";
@@ -124,6 +125,7 @@ export function AppearanceCard() {
 
 export function SettingsShell({ current, children }: { current: SectionKey; children: React.ReactNode }) {
   const { scope } = usePortal();
+  const appHref = useAppHref();
   const entries = useSettingsEntries();
   const key = scopeKey(scope);
   const groups = Array.from(new Set(entries.map((e) => e.group)));
@@ -142,7 +144,7 @@ export function SettingsShell({ current, children }: { current: SectionKey; chil
                 return (
                   <Link
                     key={e.key}
-                    href={routeWithScope(SECTION_ROUTES[e.key], key)}
+                    href={appHref(routeWithScope(SECTION_ROUTES[e.key], key))}
                     className="ws-settings-link"
                     aria-current={current === e.key ? "page" : undefined}
                   >
@@ -156,7 +158,7 @@ export function SettingsShell({ current, children }: { current: SectionKey; chil
         <div className="ws-settings-group">
           <p className="ws-settings-group-label">This device</p>
           <Link
-            href={`${routeWithScope(SECTION_ROUTES.account, key)}#appearance`}
+            href={appHref(`${routeWithScope(SECTION_ROUTES.account, key)}#appearance`)}
             className="ws-settings-link"
           >
             <Palette size={16} aria-hidden="true" />

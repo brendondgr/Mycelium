@@ -144,6 +144,27 @@ slack = false                            # env SLACK_ENABLED
 # The Microsoft Teams integration.
 teams = false                            # env TEAMS_ENABLED
 
+# The public demo at /demo: a fictional lab ranked against the real corpus,
+# read-only, with a small Mylo question budget.
+[demo]
+# Serve the public demo at /demo: a fictional lab on real data that anyone can
+# look around, read-only, without an account. Build it first with `manage.py
+# demo build`. Off: /demo and /api/demo/ answer 404 and the front page hides
+# its demo links; the demo's data is kept.
+enabled = false                          # env DEMO_ENABLED
+# Mylo questions one demo visitor may ask (counted by a signed cookie, over 30
+# days).
+questions_per_visitor = 1
+# Demo questions from one network address per day: the backstop for a visitor
+# who clears the cookie.
+questions_per_ip_per_day = 3
+# Demo questions across every visitor per day. This bounds what the demo can
+# cost in model calls. 0 turns Mylo off in the demo and leaves the rest of it
+# up.
+questions_per_day = 100
+# Longest question a demo visitor may send.
+question_max_chars = 500
+
 # The language model servers. The local endpoint lives in .env (LLM_BASE_URL,
 # LLM_MODEL) and is the server named "local"; more servers are declared as
 # [llm.providers.<name>] sections and chosen per component in [llm.routes].

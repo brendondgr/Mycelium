@@ -104,6 +104,11 @@ def maybe_notice(thread) -> None:
 
 
 def after_turn(caller, thread, port) -> None:
+    if thread.demo_visitor:
+        # A public-demo visitor's question (apps.demo): no title call, no recall
+        # digest and no notice. A stranger's words are never kept as memory of
+        # the demo person, nor recalled into the next visitor's answer.
+        return
     if thread.shared:
         # No owner and no list to show it in: no title call, no recall
         # digest, no learning notice (plan D). Its place names it.

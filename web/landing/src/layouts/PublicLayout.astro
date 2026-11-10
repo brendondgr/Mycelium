@@ -84,7 +84,24 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
 
         Fire-once: a page of cards replaying every time the reader scrolls back
         up would be nausea, not polish.
+
+        The first block reveals the links to the public demo, which the
+        operator can switch off: they render `hidden` with `data-demo-link`
+        and appear only if the status endpoint answers `enabled: true`. Off,
+        it 404s; any error or odd answer leaves them hidden.
       */
+      (function () {
+        var links = document.querySelectorAll("[data-demo-link]");
+        if (!links.length || typeof fetch !== "function") return;
+        fetch("/api/demo/status/", { credentials: "omit", headers: { Accept: "application/json" } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (s) {
+            if (!s || s.enabled !== true) return;
+            for (var i = 0; i < links.length; i++) links[i].removeAttribute("hidden");
+          })
+          .catch(function () {});
+      })();
+
       (function () {
         var root = document.documentElement;
         if (root.getAttribute("data-reveal") !== "armed") return;

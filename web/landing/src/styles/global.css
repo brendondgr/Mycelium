@@ -578,38 +578,11 @@ body {
 }
 
 /*
- * "Soon" — a small badge perched on the top-right corner of anything that
- * points at the source repository, which is not public yet. Remove the badges
- * (search `nf-soon`) on the day it is. A button carrying one is wrapped in
- * `.nf-soon-wrap` so the badge can overhang its corner.
+ * Links to the public demo are rendered `hidden` and revealed by the inline
+ * script in PublicLayout.astro once `/api/demo/status/` reports it on. The
+ * attribute alone loses to any `display` a component sets (`.nav-link` is
+ * inline-flex), so it is enforced here.
  */
-.nf-soon-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.nf-soon {
-  position: absolute;
-  top: -0.45rem;
-  right: -0.55rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 9999px;
-  background: var(--nf-glow);
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1.3;
-  text-transform: uppercase;
-  color: var(--nf-night);
-  white-space: nowrap;
-  box-shadow: 0 0 0 2px var(--nf-night);
-  pointer-events: none;
-}
-
-.nf-soon-inline {
-  position: static;
-  display: inline-block;
-  margin-left: 0.4rem;
-  vertical-align: middle;
-  box-shadow: none;
+[data-demo-link][hidden] {
+  display: none !important;
 }

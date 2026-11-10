@@ -243,6 +243,26 @@ SETTINGS: tuple[Setting, ...] = (
             env="SLACK_ENABLED"),
     Setting("features.teams", "bool", False, "The Microsoft Teams integration.",
             env="TEAMS_ENABLED"),
+    # ---- demo ------------------------------------------------------------
+    Setting("demo.enabled", "bool", False,
+            "Serve the public demo at /demo: a fictional lab on real data that "
+            "anyone can look around, read-only, without an account. Build it "
+            "first with `manage.py demo build`. Off: /demo and /api/demo/ "
+            "answer 404 and the front page hides its demo links; the demo's "
+            "data is kept.",
+            env="DEMO_ENABLED"),
+    Setting("demo.questions_per_visitor", "int", 1,
+            "Mylo questions one demo visitor may ask (counted by a signed "
+            "cookie, over 30 days)."),
+    Setting("demo.questions_per_ip_per_day", "int", 3,
+            "Demo questions from one network address per day: the backstop "
+            "for a visitor who clears the cookie."),
+    Setting("demo.questions_per_day", "int", 100,
+            "Demo questions across every visitor per day. This bounds what "
+            "the demo can cost in model calls. 0 turns Mylo off in the demo "
+            "and leaves the rest of it up."),
+    Setting("demo.question_max_chars", "int", 500,
+            "Longest question a demo visitor may send."),
     # ---- llm ---------------------------------------------------------------
     Setting("llm.max_tokens", "int", 0,
             "Most tokens one model reply may use, thinking included. 0 sends no "
@@ -366,6 +386,8 @@ SECTION_HELP = {
     "signup": "Who can create an account, and whether email must be verified.",
     "email": "How mail leaves the instance. Keys and passwords stay in .env.",
     "features": "Optional features, all off unless switched on.",
+    "demo": "The public demo at /demo: a fictional lab ranked against the real "
+            "corpus, read-only, with a small Mylo question budget.",
     "decision": "The decision model that re-orders the head of each theme's "
                 "slate: TypeSafe's hosted Jev, a model you serve on a port, or "
                 "none.",

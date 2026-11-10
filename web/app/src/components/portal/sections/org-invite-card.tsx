@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
@@ -73,6 +74,7 @@ export function OrgInvitePanel({
   canInvite,
   isVerified,
 }: OrgInvitePanelProps) {
+  const appHref = useAppHref();
   const { list, create, createMany, revoke } = useOrgInvites(kind, id);
   const [tab, setTab] = React.useState<Tab>("email");
   const [chips, setChips] = React.useState<string[]>([]);
@@ -254,7 +256,7 @@ export function OrgInvitePanel({
           the code is on your{" "}
           <a
             className="font-medium text-primary underline underline-offset-2"
-            href="/app/account"
+            href={appHref("/app/account")}
           >
             Account page
           </a>

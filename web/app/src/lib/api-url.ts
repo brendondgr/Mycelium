@@ -1,3 +1,5 @@
+import { inDemoBrowser } from "@/lib/demo";
+
 const DEFAULT_BROWSER_API_BASE = "/api";
 const DEFAULT_SERVER_API_BASE = "http://127.0.0.1:8000/api";
 
@@ -5,10 +7,17 @@ function normalizeBase(base: string): string {
   return base.replace(/\/$/, "");
 }
 
-/** Browser-facing API base. Prefer same-origin `/api` (Next.js proxy) in local dev. */
+/**
+ * Browser-facing API base. Prefer same-origin `/api` (Next.js proxy) in local dev.
+ *
+ * Under `/demo` it is `<base>/demo`: the backend's demo door
+ * (`apps/demo/middleware.py`) serves the same routes there, read-only, as the
+ * demo viewer. Every browser call in the app is built on this function, which
+ * is what lets the demo reuse the app unchanged.
+ */
 export function getPublicApiBase(): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_BROWSER_API_BASE;
-  return normalizeBase(base);
+  const base = normalizeBase(process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_BROWSER_API_BASE);
+  return inDemoBrowser() ? `${base}/demo` : base;
 }
 
 /** Server-side API base. Always absolute so SSR can reach Django directly. */

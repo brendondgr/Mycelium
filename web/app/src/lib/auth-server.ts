@@ -1,7 +1,8 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { cookies, headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 
 import { buildApiUrl, getServerApiBase } from "@/lib/api-url";
+import { DEMO_HEADER, toDemoPath } from "@/lib/demo";
 import type { AuthUser, SignupPolicy } from "@/lib/auth-types";
 
 async function parseJson<T>(response: Response): Promise<T | null> {
@@ -33,16 +34,30 @@ export async function getSignupPolicy(): Promise<SignupPolicy> {
   }
 }
 
+/** Whether this server render is a `/demo/*` request (set by `src/proxy.ts`). */
+export async function isDemoRequest(): Promise<boolean> {
+  return (await headers()).get(DEMO_HEADER) === "1";
+}
+
+/** `redirect()` that keeps a demo visitor in the demo. */
+export async function appRedirect(href: string): Promise<never> {
+  redirect((await isDemoRequest()) ? toDemoPath(href) : href);
+}
+
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
+  const demo = await isDemoRequest();
 
-  if (!cookieHeader) {
+  // The demo is nobody's session: the backend's demo door answers as the
+  // demo viewer whatever cookies come with it.
+  if (!cookieHeader && !demo) {
     return null;
   }
 
-  const response = await fetch(buildApiUrl(getServerApiBase(), "auth", "me"), {
-    headers: { Cookie: cookieHeader },
+  const base = demo ? `${getServerApiBase()}/demo` : getServerApiBase();
+  const response = await fetch(buildApiUrl(base, "auth", "me"), {
+    headers: cookieHeader ? { Cookie: cookieHeader } : {},
     cache: "no-store",
   });
 
@@ -69,10 +84,16 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
  * onboarding are forced to `/app/onboarding` and cannot reach workspace pages
  * until they complete it. Every authenticated page under `/app` (except the
  * onboarding flow itself) should call this instead of `getCurrentUser`.
+ *
+ * In the demo there is no one to sign in: a demo the operator has switched off
+ * (or never built) is simply not found.
  */
 export async function requireOnboardedUser(): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (!user) {
+    if (await isDemoRequest()) {
+      notFound();
+    }
     redirect("/login");
   }
   if (!user.onboarding_completed) {

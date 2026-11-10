@@ -47,6 +47,14 @@ def retention_sweep() -> int:
     from .models import AgentThread
 
     deleted = closed_announcement_sweep()
+    # A public-demo visitor's question lives a day (apps.demo).
+    demo_cutoff = timezone.now() - timedelta(hours=24)
+    gone, _ = (
+        AgentThread.objects.exclude(demo_visitor="")
+        .filter(last_activity_at__lt=demo_cutoff)
+        .delete()
+    )
+    deleted += gone
     days = int(config.get("retention_days") or 0)
     if days <= 0:
         return deleted

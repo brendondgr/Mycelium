@@ -2,6 +2,10 @@
 
 import { usePathname } from "next/navigation";
 
+import { DemoBanner } from "@/components/demo/demo-banner";
+import { DemoProvider } from "@/components/demo/demo-context";
+import { canonicalPath } from "@/lib/demo";
+
 import { CollaboratorSearchHost } from "@/components/portal/collab/search-panel";
 import { ChatHost } from "@/components/portal/mylo/chat-host";
 import { PortalHeader } from "@/components/portal/portal-header";
@@ -29,9 +33,10 @@ export function WorkspaceShell({
   user: PortalUser;
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const pathname = canonicalPath(usePathname());
 
   return (
+    <DemoProvider demo={user.demo}>
     <PortalProvider user={user}>
       <div
         className="ws-shell flex h-screen flex-col overflow-hidden bg-background text-foreground"
@@ -41,6 +46,7 @@ export function WorkspaceShell({
         <WorkspacePalette />
         <CollaboratorSearchHost />
         <ChatHost />
+        <DemoBanner />
         <PortalHeader />
         {/*
           No secondary mobile nav row. At phone width the rail and the sidebar
@@ -74,5 +80,6 @@ export function WorkspaceShell({
         </div>
       </div>
     </PortalProvider>
+    </DemoProvider>
   );
 }

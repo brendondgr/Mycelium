@@ -20,6 +20,36 @@ def _error(exc: ServiceError) -> Response:
     return Response(exc.as_dict(), status=exc.status)
 
 
+def _visitor(request) -> str:
+    """The public-demo visitor asking (``apps.demo``), or ``""`` for everyone
+    else. Every demo visitor is the same demo person; this keeps each one to
+    their own conversation."""
+    demo = getattr(request, "demo", None)
+    return demo.visitor if demo is not None else ""
+
+
+def _demo_question(request, text: str):
+    """Spend a demo visitor's question, or raise why they may not ask.
+    ``None`` outside the demo."""
+    demo = getattr(request, "demo", None)
+    if demo is None:
+        return None
+    from apps.demo import budget
+    from django.conf import settings
+
+    cap = int(settings.DEMO_QUESTION_MAX_CHARS)
+    if len((text or "").strip()) > cap:
+        raise ServiceError(
+            "demo_too_long",
+            f"Demo questions are limited to {cap} characters.",
+            "Shorten it a little.",
+        )
+    spent = budget.take(demo)
+    if isinstance(spent, budget.Refusal):
+        raise ServiceError(spent.code, spent.detail, spent.fix, status=429)
+    return spent
+
+
 def _thread_json(t) -> dict:
     return {
         "id": str(t.pk),
@@ -51,7 +81,7 @@ class _Base(APIView):
         return super().handle_exception(exc)
 
     def thread(self, request, thread_id):
-        return service.get_thread(request.user, thread_id)
+        return service.get_thread(request.user, thread_id, visitor=_visitor(request))
 
 
 class StatusView(_Base):
@@ -78,6 +108,7 @@ class ThreadsView(_Base):
             q=request.query_params.get("q", ""),
             archived=request.query_params.get("archived") in ("1", "true"),
             anchor=request.query_params.get("anchor") or None,
+            visitor=_visitor(request),
         )
         return Response({"threads": [_thread_json(t) for t in rows]})
 
@@ -92,6 +123,7 @@ class ThreadsView(_Base):
             surface="web",
             title=str(request.data.get("title", "")),
             anchor=request.data.get("anchor") or None,
+            demo_visitor=_visitor(request),
         )
         return Response(_thread_json(thread), status=201)
 
@@ -133,14 +165,29 @@ class MessagesView(_Base):
             else request.data.get("mentions") or []
         )
         steer = str(request.data.get("steer", "")).lower() in ("1", "true")
-        out = service.send(
-            caller,
-            thread,
-            str(request.data.get("text", "")),
-            mentions=mentions,
-            attachments=attachments,
-            steer=steer,
-        )
+        text = str(request.data.get("text", ""))
+        if getattr(request, "demo", None) is not None and attachments:
+            raise ServiceError("demo_no_files", "The demo can't take files.")
+        question = _demo_question(request, text)
+        try:
+            out = service.send(
+                caller,
+                thread,
+                text,
+                mentions=mentions,
+                attachments=attachments,
+                steer=steer,
+            )
+        except Exception:
+            # Refused before Mylo was asked: the visitor keeps their question.
+            if question is not None:
+                from apps.demo.budget import refund
+
+                refund(question)
+            raise
+        if question is not None:
+            question.thread_id = thread.pk
+            question.save(update_fields=["thread_id"])
         return Response(out, status=202)
 
 

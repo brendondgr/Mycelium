@@ -1,6 +1,7 @@
 "use client";
 
 import { buildApiUrl, getPublicApiBase } from "@/lib/api-url";
+import { noteDemoRefusal } from "@/lib/demo";
 import { ensureCsrfCookie, readCsrfToken } from "@/lib/auth-client";
 import { announcementQuery } from "@/lib/portal/client";
 import type {
@@ -129,6 +130,7 @@ async function sendJson<T>(
     if (isProjectCapError(parsed)) {
       throw new ProjectCapReachedError(parsed);
     }
+    noteDemoRefusal(parsed);
     throw new Error(firstError(parsed) ?? fallbackMessage);
   }
   return parsed as T;
@@ -161,6 +163,7 @@ async function sendForm<T>(
     parsed = null;
   }
   if (!response.ok) {
+    noteDemoRefusal(parsed);
     throw new Error(firstError(parsed) ?? fallbackMessage);
   }
   return parsed as T;

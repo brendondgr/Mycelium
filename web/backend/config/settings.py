@@ -63,6 +63,12 @@ SIGNUP_ALLOWED_DOMAINS = _cfg["signup.allowed_domains"]
 SIGNUP_VERIFY_EMAIL = _cfg["signup.verify_email"]
 EMAIL_PROVIDER = _cfg["email.provider"]
 NIGHTLY_MODEL_CALLS = _cfg["nightly.model_calls"]
+# The public demo (`[demo]`, apps/demo).
+DEMO_ENABLED = _cfg["demo.enabled"]
+DEMO_QUESTIONS_PER_VISITOR = _cfg["demo.questions_per_visitor"]
+DEMO_QUESTIONS_PER_IP_PER_DAY = _cfg["demo.questions_per_ip_per_day"]
+DEMO_QUESTIONS_PER_DAY = _cfg["demo.questions_per_day"]
+DEMO_QUESTION_MAX_CHARS = _cfg["demo.question_max_chars"]
 
 # The external hostname this stack is served at (Cloudflare tunnel, reverse
 # proxy, real domain) — the single knob for public routing. Every absolute URL
@@ -108,6 +114,7 @@ INSTALLED_APPS = [
     "apps.ambient",
     "apps.knowledge",
     "apps.collab",
+    "apps.demo",
 ]
 
 # Modular tools (tools/ at the repository root). The import script decides,
@@ -139,6 +146,9 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "config.debug_middleware.CsrfDebugMiddleware",
+    # The public demo's door: /api/demo/<x> is /api/<x> as the demo viewer,
+    # read-only. Inert unless demo.enabled (apps/demo/middleware.py).
+    "apps.demo.middleware.DemoMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -276,6 +286,9 @@ REST_FRAMEWORK = {
         # Signed-in, so the cap is per account: it bounds resend spam and the
         # rate at which one user can grind at codes.
         "email_verify": env("DJANGO_EMAIL_VERIFY_THROTTLE_RATE", default="30/hour"),
+        # Every /api/demo/ request, per network address: the demo is an
+        # unauthenticated read path, so it gets the same kind of cap.
+        "demo": env("DJANGO_DEMO_THROTTLE_RATE", default="1200/hour"),
     },
 }
 

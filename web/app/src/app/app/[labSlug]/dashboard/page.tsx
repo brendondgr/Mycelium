@@ -1,6 +1,10 @@
 import Link from "next/link";
 
-import { requireOnboardedUser } from "@/lib/auth-server";
+import { isDemoRequest, requireOnboardedUser } from "@/lib/auth-server";
+import { toDemoPath } from "@/lib/demo";
+import { SECTION_ROUTES } from "@/lib/portal/routes";
+
+const toDemoPathIf = (demo: boolean, href: string) => (demo ? toDemoPath(href) : href);
 
 type LabDashboardPageProps = {
   params: Promise<{ labSlug: string }>;
@@ -9,6 +13,7 @@ type LabDashboardPageProps = {
 export default async function LabDashboardPage({ params }: LabDashboardPageProps) {
   await requireOnboardedUser();
   const { labSlug } = await params;
+  const overview = toDemoPathIf(await isDemoRequest(), SECTION_ROUTES.overview);
 
   return (
     <main className="min-h-screen bg-background px-6 py-16 text-foreground">
@@ -25,7 +30,7 @@ export default async function LabDashboardPage({ params }: LabDashboardPageProps
         </p>
         <Link
           className="mt-8 inline-flex min-h-11 items-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-brand-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          href="/app/overview"
+          href={overview}
         >
           Back to workspace
         </Link>

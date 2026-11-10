@@ -385,7 +385,15 @@ def me(request: Request) -> Response:
     if not isinstance(user, User) or not user.is_authenticated:
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
-    return Response(user_to_dict(user))
+    data = user_to_dict(user)
+    demo = getattr(request, "demo", None)
+    if demo is not None:
+        # The public demo (apps/demo): the app shows its banner and Mylo's
+        # one-question state from this block.
+        from apps.demo.budget import summary
+
+        data["demo"] = {"lab": demo.world.lab.slug, **summary(demo)}
+    return Response(data)
 
 
 # -- Account management: name, email, password --------------------------------

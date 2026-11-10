@@ -8,7 +8,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+
+import { useAppRouter, useDemo } from "@/components/demo/demo-context";
+import { canonicalPath } from "@/lib/demo";
+import type { DemoInfo } from "@/lib/auth-types";
 
 import { useMyDepartments, useMyLabs, useProjects } from "@/lib/portal/hooks";
 import {
@@ -55,6 +59,8 @@ export type PortalUser = {
    * someone fill in a form that will 403 on save.
    */
   isVerified: boolean;
+  /** Set only in the public demo: the `demo` block of `/api/demo/auth/me/`. */
+  demo?: DemoInfo | null;
 };
 
 /** Whether a user may see the admin dashboard (staff or superuser). */
@@ -125,8 +131,10 @@ export function PortalProvider({
   user: PortalUser;
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
+  // Canonical: `/demo/grants` parses as `/app/grants` (lib/demo.ts).
+  const pathname = canonicalPath(usePathname());
+  const router = useAppRouter();
+  const demo = useDemo() !== null;
   const searchParams = useSearchParams();
 
   // Navigation is derived from the URL — the route is the source of truth.
@@ -259,7 +267,8 @@ export function PortalProvider({
   const setScope = useCallback(
     (next: WorkspaceScope) => {
       const key = scopeKey(next);
-      if (typeof window !== "undefined") {
+      // The demo never writes the visitor's own default workspace.
+      if (typeof window !== "undefined" && !demo) {
         window.localStorage.setItem(LAB_SCOPE_KEY, key);
       }
       // The remembered default has to move with the scope, not just the URL.
@@ -269,7 +278,7 @@ export function PortalProvider({
       setStoredScopeKey(key === PERSONAL_SLUG ? null : key);
       router.push(routeWithScope(SECTION_ROUTES.overview, key));
     },
-    [router],
+    [router, demo],
   );
 
   // Kept for the call sites that still speak in lab slugs. A key that is not a

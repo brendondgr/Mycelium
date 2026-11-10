@@ -181,6 +181,19 @@ Who may ask Mylo in Discord is the host's choice, in `[tools.agent]`:
 A manager turns chat off for one channel with `/mylo chat here off`; a person
 turns it off for themself with `/mylo chat off`.
 
+## The public demo
+
+"Let people try it" / "show a demo" means `[demo]`. Two steps, in order:
+`manage.py demo build` (in the backend container) makes the fictional world from
+`web/backend/apps/demo/world.yaml` and ranks it once, then
+`ops/mycelium config set demo.enabled true` serves `/demo`. Tell the operator
+three things: anyone who can reach the site can look around it without an
+account; it is read-only; and each visitor may ask Mylo one question, which
+costs model calls — `demo.questions_per_day` caps them all together (`0` keeps
+the demo up with Mylo off). Turning it off (`demo.enabled false`) keeps the
+world; `manage.py demo delete` removes it. Editing the fixture means another
+`demo build`.
+
 ## Answering "why am I limited?"
 
 1. `ops/mycelium config show --changed --json` — what differs from the defaults

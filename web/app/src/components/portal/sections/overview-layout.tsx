@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -105,20 +106,22 @@ export function overviewItems({
 
 function useItemHref() {
   const { scope } = usePortal();
+  const appHref = useAppHref();
   const key = scopeKey(scope);
   return React.useCallback(
     (item: OverviewItem) => {
       const base = routeWithScope(SECTION_ROUTES[KIND_SECTION[item.kind]], key);
-      return `${base}${base.includes("?") ? "&" : "?"}item=${encodeURIComponent(item.id)}`;
+      return appHref(`${base}${base.includes("?") ? "&" : "?"}item=${encodeURIComponent(item.id)}`);
     },
-    [key],
+    [key, appHref],
   );
 }
 
 function useSectionHref() {
   const { scope } = usePortal();
+  const appHref = useAppHref();
   const key = scopeKey(scope);
-  return (section: SectionKey) => routeWithScope(SECTION_ROUTES[section], key);
+  return (section: SectionKey) => appHref(routeWithScope(SECTION_ROUTES[section], key));
 }
 
 /** Only on the client: the time of day and the date are the reader's, not the server's. */

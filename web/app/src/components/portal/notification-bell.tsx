@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 
 import {
@@ -145,6 +146,7 @@ export function NotificationBell() {
  * pick). The ✕ dismisses it via the notifications endpoint, refreshing the badge.
  */
 function NotificationRow({ note }: { note: NotificationItem }) {
+  const appHref = useAppHref();
   const act = useNotificationAction();
   return (
     <li className="px-4 py-3">
@@ -157,7 +159,7 @@ function NotificationRow({ note }: { note: NotificationItem }) {
         <div className="min-w-0 flex-1">
           {note.url ? (
             <a
-              href={note.url}
+              href={appHref(note.url)}
               // An in-app page opens here; an item's source opens beside it.
               {...(note.url.startsWith("/app/")
                 ? {}

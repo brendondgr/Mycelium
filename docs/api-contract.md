@@ -226,6 +226,25 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `labs/` `labs/<slug>/` | GET / GET, PATCH | Lab roster; detail; assign plan |
 | `llm/servers/` | GET | Read-only. `{default, allow_cloud, fallback, servers: [{server, label, kind, location, enabled, callable, default, model, ok, error, cached, base_url, api_key_env, has_key, models: [{id, label, context_window, capabilities, loaded}]}], routes: {"*" or component: {server, model, label, location, requested, problem}}}`. A dead server is `ok: false` with the reason, still HTTP 200. `?refresh=1` skips the discovery cache. Never carries a key, only the name of its variable |
 
+### Public demo — `/api/demo/` (`apps/demo`; only while `demo.enabled` and a world is built, else 404)
+
+`/api/demo/<x>` is `/api/<x>` answered as the demo viewer, without a session
+(the caller's own is ignored). `GET`/`HEAD`/`OPTIONS` pass; every other method
+answers `403 {"detail", "fix", "code": "demo_read_only"}` except `POST` to
+Mylo's `threads/`, `threads/<id>/messages/`, `…/answer/` and `…/cancel/`. Sign-in,
+sign-out, password, email and `admin/` routes are refused whatever the method.
+The first response sets the signed visitor cookie `mycelium_demo_v`.
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `demo/status/` | GET | No auth. `{enabled: true, lab, entry, questions_left, question_max_chars, refusal}`; `entry` is where `/demo` sends a visitor |
+| `demo/auth/me/` | GET | The `me` payload plus `demo: {lab, questions_left, question_max_chars, refusal}` |
+| `demo/tools/agent/threads/<id>/messages/` | POST | Spends the visitor's question. `429` with `code` `demo_question_used`, `demo_closed_today` or `demo_chat_off`; `400 demo_too_long` past `question_max_chars`; files are refused. A send that fails is refunded |
+
+Threads made here carry the visitor (`AgentThread.demo_visitor`): list, detail,
+events and stream show a visitor only their own, and nothing outside the demo
+shows them at all.
+
 ### Tools — `/api/tools/`
 
 | Route | Methods | Purpose |

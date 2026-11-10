@@ -1,7 +1,7 @@
 "use client";
 
+import { useAppHref, useAppRouter, useDemo } from "@/components/demo/demo-context";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import * as React from "react";
 import { History, Pin, SquarePen, X } from "lucide-react";
 
@@ -229,7 +229,7 @@ function Conversation({
   onCited?: () => void;
   onNewChat?: () => void;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const runtime = useThreadRuntime({
     threadId: session.threadId,
     draft: session.draft,
@@ -243,6 +243,20 @@ function Conversation({
   const pendingQuestion =
     lastStatus === "waiting" && last?.question && !last.question.answer ? last.question : null;
   const shownModel = view.model ?? model;
+
+  // The public demo allows one question (apps/demo/budget.py). Spend it here
+  // once a send goes through; a demo refusal from the server spends it too.
+  const demo = useDemo();
+  const wasSending = React.useRef(false);
+  React.useEffect(() => {
+    if (wasSending.current && !runtime.sending && demo) {
+      const refusal = runtime.sendError?.refusal;
+      if (!refusal) demo.setBudget(Math.max(0, demo.questions_left - 1));
+      else if (refusal.code.startsWith("demo_")) demo.setBudget(0, refusal);
+    }
+    wasSending.current = runtime.sending;
+  }, [runtime.sending, runtime.sendError, demo]);
+  const demoDone = demo !== null && demo.questions_left <= 0 && !pendingQuestion;
 
   // keep the newest turn in view as it grows
   const tail = `${view.lastSeq}:${last?.draft.length ?? 0}:${runtime.queued.length}`;
@@ -280,7 +294,11 @@ function Conversation({
             </div>
           </div>
         ) : view.turns.length === 0 && !runtime.sending && view.state !== "running" ? (
-          <Empty session={session} onPick={(q) => void runtime.send(q)} />
+          demoDone ? (
+            <NotAllowed refusal={demoRefusal(demo?.refusal)} />
+          ) : (
+            <Empty session={session} onPick={(q) => void runtime.send(q)} />
+          )
         ) : (
           <ol className="ws-mylo-turns" aria-label="Conversation">
             {view.turns.map((turn, i) => {
@@ -318,7 +336,7 @@ function Conversation({
         ) : null}
       </div>
 
-      {runtime.sendError ? (
+      {runtime.sendError && !runtime.sendError.refusal.code.startsWith("demo_") ? (
         <div className="ws-mylo-error ws-mylo-send-error" role="alert">
           <div>
             <p>{runtime.sendError.refusal.detail}</p>
@@ -346,6 +364,9 @@ function Conversation({
         />
       ) : null}
 
+      {demoDone ? (
+        <DemoAsked refusal={demoRefusal(demo?.refusal)} />
+      ) : (
       <Composer
         inputRef={inputRef}
         threadId={session.threadId}
@@ -357,7 +378,33 @@ function Conversation({
         onAnswer={(text) => void runtime.answer(text)}
         onStop={() => void runtime.cancel()}
       />
+      )}
     </>
+  );
+}
+
+/** The demo's refusal, or what to say once the visitor has had their question. */
+function demoRefusal(refusal: AgentRefusal | null | undefined): AgentRefusal {
+  return (
+    refusal ?? {
+      code: "demo_question_used",
+      detail: "That was your demo question.",
+      fix: "Sign up to keep asking Mylo, about your own lab.",
+    }
+  );
+}
+
+/** In place of the composer once a demo visitor has asked their one question. */
+function DemoAsked({ refusal }: { refusal: AgentRefusal }) {
+  return (
+    <div className="ws-mylo-demo-asked" role="status">
+      <p>
+        <strong>{refusal.detail}</strong> {refusal.fix}
+      </p>
+      <a className="ws-mylo-chip" href="/signup">
+        Sign up
+      </a>
+    </div>
   );
 }
 
@@ -427,11 +474,16 @@ function Skeleton() {
 /** Where to change what refused the person, for the refusals that have a place. */
 const WHERE: Record<string, { href: string; label: string }> = {
   chat_off: { href: SECTION_ROUTES.mylo, label: "Open Mylo & you" },
-  not_entitled: { href: "/app/billing", label: "See your plan" },
+  not_entitled: { href: SECTION_ROUTES.account, label: "See your plan" },
   unverified: { href: SECTION_ROUTES.account, label: "Open Account" },
+  // The public demo's question budget (apps/demo/budget.py).
+  demo_question_used: { href: "/signup", label: "Sign up" },
+  demo_closed_today: { href: "/signup", label: "Sign up" },
+  demo_chat_off: { href: "/signup", label: "Sign up" },
 };
 
 function NotAllowed({ refusal }: { refusal: AgentRefusal }) {
+  const appHref = useAppHref();
   const where = WHERE[refusal.code];
   return (
     <div className="ws-mylo-empty ws-mylo-denied" role="status">
@@ -439,7 +491,7 @@ function NotAllowed({ refusal }: { refusal: AgentRefusal }) {
       <p className="ws-mylo-greet">{refusal.detail}</p>
       {refusal.fix ? <p className="ws-mylo-fix">{refusal.fix}</p> : null}
       {where ? (
-        <Link className="ws-mylo-chip" href={where.href}>
+        <Link className="ws-mylo-chip" href={appHref(where.href)}>
           {where.label}
         </Link>
       ) : null}
@@ -462,7 +514,7 @@ function AboutLine({
   href?: string;
   onOpened?: () => void;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   return (
     <p className="ws-mylo-about">
       About:{" "}

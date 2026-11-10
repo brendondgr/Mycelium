@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import Link from "next/link";
 
 import { Card } from "@/components/portal/primitives/card";
@@ -35,6 +36,7 @@ function isLive(plan: PlanSummary): boolean {
 }
 
 function PlanRow({ plan }: { plan: PlanSummary }) {
+  const appHref = useAppHref();
   const live = isLive(plan);
   const paid = plan.tier !== "free";
   return (
@@ -67,7 +69,7 @@ function PlanRow({ plan }: { plan: PlanSummary }) {
         </Pill>
         {plan.scope_type === "department" && plan.scope_slug ? (
           <Link
-            href={`/app/department/${plan.scope_slug}`}
+            href={appHref(`/app/department/${plan.scope_slug}`)}
             className="text-xs font-medium text-primary underline-offset-2 hover:underline"
           >
             Manage

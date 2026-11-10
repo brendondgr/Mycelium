@@ -1,6 +1,6 @@
 "use client";
 
-import { projectRoute, routeWithScope, SECTION_ROUTES } from "@/lib/portal/routes";
+import { departmentRoute, projectRoute, routeWithScope, SECTION_ROUTES } from "@/lib/portal/routes";
 
 import { openItemInReader } from "./events";
 
@@ -37,7 +37,7 @@ export function refHref(ref: { kind: string; key: string; title?: string }): str
     case "lab":
       return routeWithScope(SECTION_ROUTES.overview, ref.key);
     case "department":
-      return `/app/department/${encodeURIComponent(ref.key)}`;
+      return departmentRoute(ref.key);
     default:
       return null;
   }

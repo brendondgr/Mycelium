@@ -21,6 +21,20 @@ export type AuthUser = {
   institution_verified?: boolean;
   /** What the current address would prove once verified; "" for none. */
   institution_from_email?: string;
+  /** Present only in the public demo (`/api/demo/auth/me/`). */
+  demo?: DemoInfo;
+};
+
+/** Why a demo visitor may not ask Mylo now. */
+export type DemoRefusal = { code: string; detail: string; fix: string };
+
+/** The public demo's block on `/me` (`apps/demo/budget.py`, `summary`). */
+export type DemoInfo = {
+  /** The demo lab's slug — the workspace the demo opens in. */
+  lab: string;
+  questions_left: number;
+  question_max_chars: number;
+  refusal: DemoRefusal | null;
 };
 
 /** The Account page's view of who the user is — `GET /api/auth/account/`. */

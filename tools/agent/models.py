@@ -44,6 +44,13 @@ class AgentThread(models.Model):
     )
     #: No owner: the thread belongs to its place (exactly when ``user`` is null).
     shared = models.BooleanField(default=False)
+    #: A public-demo visitor's thread (``apps.demo``): every visitor is the same
+    #: demo person, so this — the visitor's cookie id — is what keeps one
+    #: visitor's question from another's. Empty for everyone else. Such a
+    #: thread is never titled, digested, recalled or learned from.
+    demo_visitor = models.CharField(
+        max_length=64, blank=True, default="", db_index=True
+    )
     scope_kind = models.CharField(
         max_length=12, choices=[(k, k) for k in SCOPE_KINDS], default="personal"
     )

@@ -19,7 +19,7 @@ Paths are relative to the repository root.
 | Task | Path |
 |---|---|
 | A marketing page | `web/landing/src/pages/*.astro` — four pages: `index`, `product`, `about`, `contact`. There is no pricing page (removed for the open-source release); `/pricing` redirects to `/` in `astro.config.mjs` |
-| Landing copy & capability claims | `web/landing/src/data/{landing,product,site}.ts`; `site.ts` holds the nav, the sign-up CTA ("free with a sign-up code") and `sourceRepoUrl` |
+| Landing copy & capability claims | `web/landing/src/data/{landing,product,site}.ts`; `site.ts` holds the nav, the sign-up CTA ("free with a sign-up code"), `sourceRepoUrl` and `demoUrl` (demo links render `hidden` + `data-demo-link`; the first body script in `layouts/PublicLayout.astro` reveals them when `/api/demo/status/` reports `enabled`) |
 | Landing components | `web/landing/src/components/{landing,site}/` |
 | Front page sections (Night Forest) | `web/landing/src/components/landing/` — `HomeHero` (wordmark and build-time threads; no Mylo figure, by decision), `MorningReport`, `FeedTabs`, `ShowsItsWork` (spotlight that tours the card's parts; hover a note to move it), `WhatItCovers`, `OneNight`, `TwoWays` (`#self-host`), `FinalCta` |
 | Mycelium threads & spores (seeded, grown at build time) | `web/landing/src/lib/mycelium.ts`; `components/site/Spores.astro` |
@@ -462,7 +462,9 @@ A task index across the three tools; each tool also has its own section below.
 | Hearing a conversation and handing it to the ledger | `mylo/bot/cogs/listen.py` (Stage A: DMs, mentions, reactions on Mylo's posts, edits, deletions, the *Tell Mylo about this* action; Stage B behind `MYLO_LISTEN_ENABLED` **and** the Message Content intent, both off) + `mylo/listening.py` |
 | Turning listening on for a server, excluding channels, the pinned notice | `/setup`'s Listening section in `mylo/bot/cogs/setup.py`; one person's own opt-in is `/mylo listening` in `mylo/bot/cogs/mylo_commands.py` |
 | systemd units | `ops/systemd/` — `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service`; installed by `ops/mycelium install-service` |
-| Gateway routing | `web/infra/nginx/default.conf` |
+| Gateway routing | `web/infra/nginx/default.conf` (incl. `location /demo`) |
+| The public demo: the door (`/api/demo/` → `/api/` as the demo viewer, read-only), Mylo's question budget, the world and its build | `web/backend/apps/demo/` — `middleware.py`, `budget.py`, `world.py` (`DOMAIN`, `exclude_demo_users`), `models.py` (`DemoWorld`, `DemoQuestion`), `world.yaml` (the fictional lab), `manage.py demo build\|status\|delete`; config `[demo]` in `web/backend/config/instance.py` |
+| The public demo in the app: `/demo/*` → `/app/*`, demo-aware links and API base, the banner, Mylo's one-question state | `web/app/src/proxy.ts`, `web/app/src/app/demo/page.tsx` (entry), `web/app/src/lib/demo.ts` (`toDemoPath`, `canonicalPath`), `web/app/src/components/demo/` (`DemoProvider`, `useAppHref`, `useAppRouter`, `DemoBanner`), `appRedirect` in `lib/auth-server.ts`, `getPublicApiBase` in `lib/api-url.ts`, `DemoAsked` in `components/portal/mylo/chat-panel.tsx`; the ESLint rule in `web/app/eslint.config.mjs` |
 | Env contract | `.env.example`, `.env-mylo.example` |
 | Instance configuration (`mycelium.toml`: profiles, billing switch, limits, sign-up, email, features, nightly budgets) | `web/backend/config/instance.py` (keys, profiles, merge, render); template `mycelium.example.toml`; tests `web/backend/apps/core/test_instance_config.py` |
 | Onboarding load test | `ops/loadtest/loadtest.py`, `ops/loadtest/loadtest_interests.py`; guide in [`loadtest.md`](loadtest.md) |
@@ -525,7 +527,8 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `decision_check` | Which decision backend the switch resolves to, then latency and throughput (`--url`, `--calls`, `--concurrency`, `--json`; one fixed state, never database text) |
 | `send_test_email` | Send one email through the real stack to check the transport (`--to`, `--template`) |
 | `high_signal_shadow` | Shadow-run the high-signal alert rule |
-| `create_admin`, `seed_demo`, `loadtest_purge` | Ops utilities |
+| `create_admin`, `seed_demo`, `loadtest_purge` | Ops utilities (`seed_demo` makes hundreds of synthetic org-chart users; it is not the public demo) |
+| `demo build\|status\|delete` | The public demo's fictional lab (`apps/demo`): build from `world.yaml` and rank it once, show it, remove it |
 | `seed_fsu_sc` | Simulated FSU Dept. of Scientific Computing + PULSE Lab (public roster names, non-deliverable `@fsu-sc.mycelium.invalid` emails); the lab sits in the department but stays off its plan, on its own Lab plan |
 
 ## Documentation

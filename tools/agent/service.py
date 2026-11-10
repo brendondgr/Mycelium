@@ -95,6 +95,7 @@ def create_thread(
     anchor=None,
     caller: Caller | None = None,
     shared: bool = False,
+    demo_visitor: str = "",
 ) -> AgentThread:
     """A new thread. With ``anchor`` (``{"kind", "key"}`` or ``"kind:key"``)
     the conversation is about that object for good: it is reference ``#1``
@@ -132,6 +133,7 @@ def create_thread(
             surface=surface,
             title=title[:200],
             settings={"anchor": anchor} if info is not None else {},
+            demo_visitor=demo_visitor,
             **kwargs,
         )
         if info is not None:
@@ -139,24 +141,34 @@ def create_thread(
     return thread
 
 
-def get_thread(user, thread_id) -> AgentThread:
-    """Only the owner may read a thread; an org admin cannot."""
+def get_thread(user, thread_id, *, visitor: str = "") -> AgentThread:
+    """Only the owner may read a thread; an org admin cannot. In the public
+    demo every visitor is the same owner, so ``visitor`` narrows it to the
+    one who asked; outside it, ``""`` keeps demo threads out of reach."""
     try:
         return AgentThread.objects.select_related(
             "user", "scope_lab", "scope_department", "scope_project"
-        ).get(pk=thread_id, user=user, shared=False)
+        ).get(pk=thread_id, user=user, shared=False, demo_visitor=visitor)
     except Exception:  # missing, someone else's, or a malformed id: all the same
         raise ServiceError("not_found", "No such conversation.", status=404) from None
 
 
 def list_threads(
-    user, *, q: str = "", archived: bool = False, anchor=None, limit: int = 50
+    user,
+    *,
+    q: str = "",
+    archived: bool = False,
+    anchor=None,
+    limit: int = 50,
+    visitor: str = "",
 ):
     """The person's threads, most recent first. ``anchor`` (``"kind:key"`` or
     a dict) keeps only the threads about that object."""
     from django.db.models import Q
 
-    rows = AgentThread.objects.filter(user=user, shared=False, archived=archived)
+    rows = AgentThread.objects.filter(
+        user=user, shared=False, archived=archived, demo_visitor=visitor
+    )
     if anchor:
         a = _anchor(anchor)
         rows = rows.filter(
@@ -324,7 +336,10 @@ def send(
     text = (text or "").strip()
     if not text and not attachments:
         raise ServiceError("empty", "Say something to Mylo.")
-    _check_budget(caller.user)
+    if not thread.demo_visitor:
+        # A demo thread is budgeted per visitor at the door (apps.demo.budget),
+        # never against the one demo person every visitor shares.
+        _check_budget(caller.user)
     thread.refresh_from_db()
     if thread.state == AgentThread.State.WAITING:
         raise ServiceError(

@@ -26,6 +26,7 @@ export default async function WorkspaceLayout({
     isStaff: user.is_staff,
     isSuperuser: user.is_superuser,
     isVerified: Boolean(user.is_verified),
+    demo: user.demo ?? null,
   };
 
   return <WorkspaceShell user={portalUser}>{children}</WorkspaceShell>;

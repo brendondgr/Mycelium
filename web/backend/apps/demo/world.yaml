@@ -1,0 +1,219 @@
+# The public demo's world (apps/demo). Everyone and everything here is invented;
+# the papers, grants, fellowships and conferences they are matched against are
+# the instance's real corpus, ranked by the ordinary nightly run.
+#
+# Edit freely, bump `version`, then `manage.py demo build` (it rebuilds from
+# scratch). Interests use the v2 contract (apps/accounts/interests.py): every
+# area belongs to exactly one cluster. `topics` are the watch topics — the
+# literature searches the nightly runs for that person — so pick ones the
+# corpus covers well, or the feeds start thin.
+version: 1
+
+institution: Northwood University
+
+department:
+  name: Department of Earth & Ocean Data Science
+  statement: >-
+    A department of oceanographers, climate scientists and data scientists
+    building forecasting, observation and decision tools for coasts and
+    oceans under a changing climate.
+  areas:
+    - ocean forecasting
+    - climate change impact modeling
+    - satellite ocean remote sensing
+    - environmental data science
+  chair: ingrid
+
+lab:
+  name: Coastal Ocean Intelligence Lab
+  slug: coastal-ocean-lab
+  statement: >-
+    We combine ocean models, satellite observations and machine learning to
+    forecast what coastal waters will do next: marine heatwaves, circulation,
+    water quality and where floating debris ends up, and to hand those
+    forecasts to the people who manage the coast.
+  areas:
+    - ocean data assimilation
+    - machine learning for ocean forecasting
+    - marine heatwave prediction
+    - satellite ocean remote sensing
+    - marine litter tracking
+    - ocean data dashboards
+  clusters:
+    - id: forecasting
+      label: Forecasting the ocean
+      areas: [ocean data assimilation, machine learning for ocean forecasting, marine heatwave prediction]
+    - id: observing
+      label: Observing from space
+      areas: [satellite ocean remote sensing]
+    - id: pathways
+      label: Debris pathways
+      areas: [marine litter tracking]
+    - id: tools
+      label: Tools for coastal managers
+      areas: [ocean data dashboards]
+  keywords:
+    - data assimilation
+    - deep learning surrogates
+    - sea surface temperature
+    - Lagrangian particle tracking
+    - coastal resilience
+  topics:
+    - ocean data assimilation
+    - machine learning for data assimilation
+    - marine heatwave forecasting
+    - satellite ocean remote sensing
+    - marine litter tracking
+    - ocean circulation modeling
+  pi: mara
+
+# `key` names a person inside this file. `title` is an AcademicTitle value;
+# `lab_role` a LabMembership role; `stage` a fellowship stage token.
+people:
+  - key: mara
+    first: Mara
+    last: Ellison
+    title: pi
+    lab_role: owner
+    statement: >-
+      I lead the Coastal Ocean Intelligence Lab. My work blends data
+      assimilation with machine learning to forecast coastal ocean extremes,
+      especially marine heatwaves, weeks ahead.
+    clusters:
+      - id: assimilation
+        label: Data assimilation with ML
+        areas: [ocean data assimilation, machine learning for data assimilation]
+      - id: extremes
+        label: Ocean extremes
+        areas: [marine heatwave prediction, sea surface temperature forecasting]
+    keywords: [ensemble Kalman filter, deep learning surrogates, subseasonal forecasting]
+    funding_needs: [NSF, NOAA, ONR]
+    topics:
+      - ocean data assimilation
+      - machine learning for data assimilation
+      - marine heatwave forecasting
+      - sea surface temperature prediction
+
+  - key: tomas
+    first: Tomás
+    last: Ferreira-Lind
+    title: postdoc
+    lab_role: member
+    statement: >-
+      Postdoc working on physics-informed neural networks as fast surrogates
+      for coastal circulation and turbulence models.
+    clusters:
+      - id: circulation
+        label: Circulation and turbulence
+        areas: [ocean circulation modeling, ocean turbulence modeling]
+      - id: piml
+        label: Physics-informed ML
+        areas: [physics-informed neural networks]
+    keywords: [neural operators, regional ocean models, mesoscale eddies]
+    seeking: [early-career fellowship]
+    topics:
+      - ocean circulation modeling
+      - ocean turbulence modeling
+      - physics-informed neural networks
+
+  - key: priya
+    first: Priya
+    last: Raman
+    title: student
+    lab_role: member
+    stage: doctoral_early
+    statement: >-
+      PhD student using deep learning on satellite ocean colour to map coastal
+      water quality and harmful algal blooms.
+    clusters:
+      - id: remote
+        label: Satellite oceanography
+        areas: [satellite ocean remote sensing, ocean color]
+      - id: quality
+        label: Coastal water quality
+        areas: [harmful algal blooms]
+    keywords: [Sentinel-3, chlorophyll-a, semantic segmentation]
+    seeking: [PhD fellowship, conference travel]
+    topics:
+      - satellite ocean remote sensing
+      - ocean color remote sensing
+      - harmful algal bloom detection
+
+  - key: jonah
+    first: Jonah
+    last: Whitcombe
+    title: student
+    lab_role: member
+    stage: doctoral_dissertation
+    statement: >-
+      Dissertation on where floating plastic goes: Lagrangian particle
+      tracking driven by forecast currents, checked against beach surveys.
+    clusters:
+      - id: litter
+        label: Marine litter
+        areas: [marine litter tracking]
+      - id: lagrangian
+        label: Lagrangian analysis
+        areas: [particle tracking simulations]
+    keywords: [Lagrangian ocean analysis, beaching, ocean plastics]
+    seeking: [dissertation fellowship]
+    topics:
+      - marine litter tracking
+      - particle tracking simulations
+      - ocean plastic transport
+
+  - key: sunhee
+    first: Sun-hee
+    last: Park
+    title: researcher
+    lab_role: member
+    statement: >-
+      Research software engineer building the lab's web dashboards that put
+      ocean forecasts in front of coastal managers.
+    clusters:
+      - id: dashboards
+        label: Ocean data tools
+        areas: [ocean data dashboards, web GIS]
+    keywords: [NetCDF, visualization, open data]
+    topics:
+      - ocean data dashboards
+      - web GIS
+      - NetCDF visualization
+
+  - key: ingrid
+    first: Ingrid
+    last: Halvorsen
+    title: pi
+    lab_role: null
+    statement: >-
+      Department chair. I study how climate change reshapes regional weather
+      and coastal hazards, and what that means for adaptation planning.
+    clusters:
+      - id: climate
+        label: Climate impacts
+        areas: [climate change impact modeling, regional weather modeling]
+    keywords: [downscaling, coastal flooding, adaptation]
+    funding_needs: [NSF, DOE]
+    topics:
+      - climate change impact modeling
+      - regional weather modeling
+      - coastal flooding
+
+projects:
+  - name: Marine heatwave early warning
+    lead: mara
+    members: [mara, tomas, sunhee]
+    statement: >-
+      A two-to-six-week forecast of marine heatwaves for the regional coast,
+      from an ML-corrected ensemble, delivered to fisheries managers through a
+      public dashboard.
+    areas: [marine heatwave prediction, ocean data assimilation, ocean data dashboards]
+    keywords: [subseasonal forecasting, sea surface temperature, fisheries]
+  - name: Plastic pathways
+    lead: jonah
+    members: [jonah, priya, mara]
+    statement: >-
+      Tracing floating debris from river mouths to beaches with forecast
+      currents and satellite detections, to target clean-ups.
+    areas: [marine litter tracking, satellite ocean remote sensing]
+    keywords: [Lagrangian particle tracking, beaching, floating debris detection]

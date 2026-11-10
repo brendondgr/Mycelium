@@ -35,8 +35,9 @@ def due_threads(now=None):
     # A shared thread (Discord, plan D) is never read here: a question in a
     # shared place is learned from only under Discord listening consent, and a
     # guest's never (S-7).
+    # Nor a public-demo visitor's: strangers do not teach the demo person.
     rows = AgentThread.objects.filter(
-        last_activity_at__lte=now - idle, shared=False
+        last_activity_at__lte=now - idle, shared=False, demo_visitor=""
     ).exclude(state="running")
     rows = rows.filter(learn_after__isnull=True) | rows.filter(learn_after__lte=now)
     return rows.select_related("user").order_by("last_activity_at")

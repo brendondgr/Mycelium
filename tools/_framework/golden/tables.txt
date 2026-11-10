@@ -88,6 +88,8 @@ content_reminderoffset	ReminderOffset
 content_remindersubscription	ReminderSubscription
 content_savedopportunity	SavedOpportunity
 core_llmusagedaily	LLMUsageDaily
+demo_demoquestion	DemoQuestion
+demo_demoworld	DemoWorld
 django_admin_log	LogEntry
 django_content_type	ContentType
 django_session	Session

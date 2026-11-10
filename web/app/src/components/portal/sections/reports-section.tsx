@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
@@ -145,6 +146,7 @@ function SkeletonHistory() {
  * has not landed yet, and a free account that will never accrue reports at all.
  */
 export function ReportsSection() {
+  const appHref = useAppHref();
   const { labScope, currentLab } = usePortal();
   const isLab = labScope !== PERSONAL_SLUG && Boolean(currentLab);
   const labSlug = isLab ? labScope : undefined;
@@ -294,7 +296,7 @@ export function ReportsSection() {
                     Written against version {detail.data.context_version.slice(0, 7)} of
                     what Mylo understands about you ·{" "}
                     <a
-                      href="/app/mylo-and-you"
+                      href={appHref("/app/mylo-and-you")}
                       className="underline-offset-2 hover:underline"
                     >
                       see what Mylo understands now

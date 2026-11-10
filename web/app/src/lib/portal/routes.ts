@@ -51,6 +51,11 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   admin: "/app/admin",
 };
 
+/** Route for a department's page. */
+export function departmentRoute(id: string): string {
+  return `/app/department/${encodeURIComponent(id)}`;
+}
+
 /** Route for a single project's detail view. */
 export function projectRoute(id: string): string {
   return `/app/projects/${id}`;

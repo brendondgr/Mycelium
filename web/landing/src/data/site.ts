@@ -32,6 +32,15 @@ export const primaryCta = {
  */
 export const sourceRepoUrl = "https://github.com/brendondgr/Mycelium";
 
+/**
+ * The public demo: a fictional lab in the real app, served by Next behind the
+ * same nginx origin. The operator can switch it off, so every link to it is
+ * rendered `hidden` with `data-demo-link` and revealed only when
+ * `GET /api/demo/status/` says it is on (the inline script in
+ * `PublicLayout.astro`). Never link here without that attribute.
+ */
+export const demoUrl = `${appBaseUrl}/demo`;
+
 export const selfHostCta = {
   href: "/#self-host",
   label: "Run it yourself",

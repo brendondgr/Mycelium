@@ -3458,6 +3458,81 @@ html[data-motion="none"] *::after {
   margin: 0 14px 8px;
 }
 
+/* The public demo: in place of the composer once the one question is asked. */
+.ws-mylo-demo-asked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 0 14px 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.ws-mylo-demo-asked p {
+  flex: 1 1 14rem;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.ws-mylo-demo-asked strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* The public demo's banner above the workspace header. */
+.ws-demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 14px;
+  padding: 7px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 11%, var(--surface));
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.ws-demo-banner p {
+  margin: 0;
+}
+
+.ws-demo-banner .ws-demo-tag {
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ws-demo-banner a {
+  color: var(--link);
+  font-weight: 600;
+  text-underline-offset: 2px;
+}
+
+.ws-demo-banner a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.ws-demo-banner[data-refused="true"] {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
 .ws-mylo-fix {
   margin: 2px 0 0;
   color: var(--text-secondary);

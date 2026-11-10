@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useAppRouter } from "@/components/demo/demo-context";
 
 import { SearchIcon } from "@/components/portal/icons";
 import { SECTION_ROUTES } from "@/lib/portal/routes";
@@ -15,7 +15,7 @@ import { SECTION_ROUTES } from "@/lib/portal/routes";
  * brand green) carries the state.
  */
 export function GlobalSearch() {
-  const router = useRouter();
+  const router = useAppRouter();
   const [value, setValue] = React.useState("");
 
   const submit = (event: React.FormEvent) => {

@@ -137,12 +137,33 @@ bound server without an account asks as a guest, at the level the host and the l
 allow (`discord_guest_level`, `AgentOrgPolicy.discord_guests`). Everything is
 stored in this instance's Postgres.
 
+**The public demo.** `/demo/*` is the authenticated app, not a copy of it.
+`web/app/src/proxy.ts` rewrites `/demo/<x>` to the page at `/app/<x>` and marks
+the request with `x-mycelium-demo`; the server render then reads `/me` through
+`/api/demo/`, and in the browser `getPublicApiBase()` (`lib/api-url.ts`) is
+`/api/demo` under `/demo`. On the backend, `apps/demo/middleware.py` maps
+`/api/demo/<x>` onto the ordinary `/api/<x>` view with `request.user` set to the
+demo world's viewer (the demo lab's PI) — so the ordinary object permissions
+bound what a visitor sees to the demo world and the shared corpus. The door is
+**deny by default**: every unsafe method is refused (`403 demo_read_only`)
+except Mylo's question routes, and a test sweeps every URL pattern to keep it
+so. The visitor never gets a login; their own session, if any, is set aside for
+the request and handed back untouched. Each visitor is a random id in a signed
+cookie; Mylo's budget (`apps/demo/budget.py`) counts questions per visitor, per
+address and per day in Postgres, and a visitor's thread is theirs alone
+(`AgentThread.demo_visitor`), never titled, digested, recalled or learned from,
+and deleted after a day. The demo world is ordinary rows built from
+`apps/demo/world.yaml`, so the nightly ranks it like anyone's. Because nothing is
+forked, a change to the app's UI is in the demo on the next build; the one
+discipline is that workspace links go through `useAppHref` / `useAppRouter` /
+`appRedirect`, which ESLint enforces for `components/portal/` and `app/app/`.
+
 Single-origin routing through Nginx at `http://localhost:11050`:
 
 | Path | Service |
 |---|---|
 | `/` and public pages | Astro landing |
-| `/login`, `/signup`, `/app/*`, `/_next/*` | Next.js app |
+| `/login`, `/signup`, `/app/*`, `/demo`, `/demo/*`, `/_next/*` | Next.js app |
 | `/api/*`, `/admin/*` | Django |
 
 **Why the nightly run is split across host and container.** `ops/nightly/manual_all.py` runs
@@ -171,6 +192,7 @@ they never stop the run, and both do nothing while
 | `accounts` | Identity & organization: users, profiles, departments, labs, memberships, permission roles, academic titles, audit events, derived membership. Owns session auth (CSRF, login/logout/me), the invite-only sign-up gate, lab invitations, the interests contract, and profile/lab intake (`intake/`) |
 | `research` | Projects scoped to a user, lab, or department: membership, visibility over the org hierarchy, plan-gated creation and archiving, team collaboration (shares, feed, link ingest, seen ledger, events), and collections |
 | `billing` | Subscriptions, per-seat billing, add-ons, and tier-based entitlement resolution. `entitlements.py` is the single read path; an expired plan reverts to Free at read time with no cleanup job. It is a module the instance switches on (`billing.mode` in `mycelium.toml`): with billing off (the default) no tier decides anything — every feature is granted and every limit comes from `[limits]` or a staff override; with `subscriptions` the limits come from `[limits.tiers.*]`, and features are withheld only if `billing.enforce_features` is also on |
+| `demo` | The public demo: the `/api/demo/` door (read-only, deny by default, as the demo viewer), Mylo's per-visitor question budget, and the fictional world's build (`world.yaml`, `manage.py demo`) |
 | `integrations` | Discord identity and lab linking: OAuth, activation codes, guild install, the durable outbox, and the single ORM boundary in `services/resolve.py` |
 | `ambient` | The evidence ledger for what Mylo understands from the lab's own conversation: connected surfaces and their consent, one person's per-platform opt-in, the transient raw-message buffer, the adapter contract, retention and deletion. **Ships off** (`AMBIENT_ENABLED=false`) — except one platform: **Mylo chat** (`agent_chat`, a person's own messages to Mylo in the app, handed over by the agent tool's `agent.thread_quiet` event to `ambient/adapters/agent_chat.py`), which is governed by `tools.agent.learning` instead, is on unless the person turned it off (a missing consent row reads as on), and is always explicit and personal. Imports `integrations` and `research`; `content` reads it only through `ambient/read.py`, which an AST test enforces. Raw message text never reaches Postgres — it lives in Redis under a TTL and is deleted once a window has been read. The Mylo gateway writes to it only through `ambient/service.py`, in process, the way `integrations/services/resolve.py` already works; there is no HTTP ingest endpoint. Each message is attributed to a project on arrival from cheap deterministic signals, with a floor and a margin and an honest "unresolved" (`attribution.py`); the read re-scores what that left unresolved with semantic similarity and re-checks every speaker's eligibility first. `ProjectAttention` (7- and 28-day shares per person per project) is derived nightly. Project editors see and correct attributions at `/api/ambient/`. **Reading and deciding are split (Plan 04):** an hourly Beat task reads conversations that have gone quiet — within the buffer's TTL — into grounded observations (model-written, no quotes, no rule-based fallback) and links each topic to a concept through `knowledge/service.py`; a nightly step in `ops/nightly/manual_all.py` decides, per person and topic, one outcome (ignore, record, suggest, capability, propose, ask) from consistency across days and conversations, what the person already holds, and what they declined, and has the model explain it from its own notes. Deciding ships off (`AMBIENT_DELIBERATE_ENABLED=false`). **The evolving layer (Plan 05)** sits beside the declared profile and never inside it: suggestions become *pending* conversational edges in `apps/knowledge` (ranking nothing until the person says yes), told project facts become active `ProjectDevelopment`s with undo, ambient ones pending; confirmed explorations can join a person's paper search as their own down-weighted themes (`AMBIENT_DRIFT_ENABLED`, off); confirmed preferences, direction and learning goals reach the prompts; closed blockers and dropped methods reach the alerts; each report carries a `context_version`. **Asking and changing (Plans 06–09):**
 - Nightly questions (`dialogue.py`) are answered by button or in the person's own words. A reader model maps a reply to a choice, and a chosen no is never recorded as a yes.

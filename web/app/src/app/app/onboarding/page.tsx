@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
-import { getCurrentUser } from "@/lib/auth-server";
+import { appRedirect, getCurrentUser } from "@/lib/auth-server";
 
 export const metadata = {
   title: "Set up your workspace · Mycelium",
@@ -21,7 +21,7 @@ export default async function OnboardingPage({
   // gate only redirects finished users when they are *not* editing.
   const editing = Boolean((await searchParams).edit);
   if (user.onboarding_completed && !editing) {
-    redirect("/app/overview");
+    await appRedirect("/app/overview");
   }
 
   return (

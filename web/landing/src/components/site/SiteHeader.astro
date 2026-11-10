@@ -1,5 +1,5 @@
 ---
-import { appLoginUrl, primaryCta, primaryNav, siteName, sourceRepoUrl } from "@/data/site";
+import { appLoginUrl, demoUrl, primaryCta, primaryNav, siteName, sourceRepoUrl } from "@/data/site";
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 ---
@@ -26,10 +26,11 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
           );
         })
       }
+      {/* Hidden until the demo reports itself on; see `demoUrl` in site.ts. */}
+      <a class="nav-link" href={demoUrl} data-demo-link hidden>Demo</a>
       <a class="nav-link nav-source" href={sourceRepoUrl} rel="noopener">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
         Source
-        <span class="nf-soon">Soon</span>
       </a>
     </nav>
 
@@ -58,7 +59,8 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
                 </li>
               ))
             }
-            <li><a href={sourceRepoUrl} rel="noopener">Source code <span class="nf-soon nf-soon-inline">Soon</span></a></li>
+            <li data-demo-link hidden><a href={demoUrl}>Demo</a></li>
+            <li><a href={sourceRepoUrl} rel="noopener">Source code</a></li>
           </ul>
           <div class="mobile-actions">
             <a class="nf-btn nf-btn-line" href={appLoginUrl}>Log in</a>

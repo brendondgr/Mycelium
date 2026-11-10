@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { canonicalPath } from "@/lib/demo";
 import * as React from "react";
 
 import { Portal } from "@/components/portal/feed/reader";
@@ -58,7 +59,7 @@ const nextKey = () => (sessionCounter += 1);
  */
 export function ChatHost() {
   const availability = useChatAvailability();
-  const pathname = usePathname();
+  const pathname = canonicalPath(usePathname());
   const { scope } = usePortal();
   const wide = useWide();
   const [open, setOpen] = React.useState(false);
