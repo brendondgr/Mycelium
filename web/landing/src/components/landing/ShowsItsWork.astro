@@ -214,20 +214,26 @@ const paper = feedTabs[0].items[0];
 </script>
 
 <style>
-  /* minmax(0, …): the stage does not clip (see .spot-clip), so without it a
-     track would grow to the card's one-line source and reason lines. */
+  /* minmax(0, …): the stage does not clip (see .spot-clip), so a track must
+     never grow to the card's content. Below the two-column width the card and
+     the notes share one centred measure, so a tablet does not stretch the card
+     into a banner. */
   .work {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 2.5rem;
-    margin-top: 3.5rem;
+    max-width: 40rem;
+    margin: 3.5rem auto 0;
   }
 
+  /* Two columns: the card stays in view (sticky) while the notes beside it
+     are read, so the spotlight is never off-screen from the note it answers. */
   @media (min-width: 1024px) {
     .work {
-      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
       gap: 3.5rem;
-      align-items: center;
+      max-width: none;
+      align-items: start;
     }
   }
 
@@ -240,6 +246,14 @@ const paper = feedTabs[0].items[0];
       0 0 70px rgb(141 166 111 / 12%);
   }
 
+  /* After the base rule, which would otherwise put `relative` back. */
+  @media (min-width: 1024px) {
+    .stage {
+      position: sticky;
+      top: calc(var(--header-h) + 2rem);
+    }
+  }
+
   .stage-list {
     margin: 0;
     padding: 0;
@@ -250,6 +264,47 @@ const paper = feedTabs[0].items[0];
   .stage :global(.fc-card),
   .stage :global(.fc-card:hover) {
     transform: none;
+  }
+
+  /*
+    The card shown whole. In a feed the card cuts its title at two lines, its
+    source and meta lines and Mylo's reason at one, and its theme pills to one
+    row — right for a list you scan, wrong for the one card this section takes
+    apart: the spotlight framed half a sentence and, on a phone, three pills
+    cut to "Retri…". Here every part runs to its end and wraps instead.
+  */
+  .stage :global(.fc-card) {
+    padding: 1.15rem 1.25rem 1.2rem;
+    gap: 0.65rem;
+  }
+
+  .stage :global(.fc-title-clamp),
+  .stage :global(.fc-why-text) {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    line-clamp: none;
+  }
+
+  .stage :global(.fc-source),
+  .stage :global(.fc-meta) {
+    flex-wrap: wrap;
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .stage :global(.fc-topics) {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .stage :global(.fc-topic-label) {
+    overflow: visible;
+  }
+
+  /* Brighter than a feed's resting tools: they are one of the parts named. */
+  .stage :global(.fc-tools) {
+    opacity: 0.8;
   }
 
   /* Clips the dimming to the stage; the stage itself does not clip, so the
@@ -289,10 +344,12 @@ const paper = feedTabs[0].items[0];
     opacity: 1;
   }
 
+  /* Overhangs the frame by less than the card's padding, so the clip layer
+     never cuts it when the frame sits on the card's top-left part. */
   .spot-n {
     position: absolute;
-    left: -0.75rem;
-    top: -0.75rem;
+    left: -0.6rem;
+    top: -0.6rem;
     display: grid;
     place-items: center;
     width: 1.6rem;

@@ -131,7 +131,7 @@ export const anatomy = [
   {
     id: "reason",
     label: "Why it fits",
-    note: "Mylo's reading in one line, tied to your lab's own work; his portrait marks the ones he wrote. Open the item for his whole take, with the strongest reason it might not be worth your time.",
+    note: "Mylo's reading, tied to your lab's own work; his portrait marks the ones he wrote. A feed shows it on one line; open the item for his whole take, with the strongest reason it might not be worth your time.",
     targets: [".fc-why"],
   },
   {

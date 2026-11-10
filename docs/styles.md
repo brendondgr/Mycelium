@@ -232,7 +232,7 @@ The front page moves through:
 - Hero: the **Mycelium** wordmark first, then "While you sleep, Mylo reads the field." and the two ways in. No Mylo figure on the opening screen — the user removed it; the name and the network carry it
 - The 06:00 report writing itself — the output before the pitch
 - The four feeds, as tabs over the workspace's own cards
-- Every recommendation shows its work — a spotlight that tours one card's parts in order (the item, its theme, its summary, why it fits, why it might not) and follows the reader's hover
+- Every recommendation shows its work — the whole feed card, shown in full beside its notes, and a spotlight that tours its parts in order (the match, the item, why it fits, its themes, the tools) and follows the reader's hover
 - What it covers, as a numbered catalogue
 - How it works, as one night from 22:00 to 06:00
 - Two ways in: hosted with a sign-up code, or self-hosted
