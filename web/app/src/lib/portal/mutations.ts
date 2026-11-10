@@ -1188,6 +1188,24 @@ export function issueLabActivationCode(
   );
 }
 
+/** A one-time department code, redeemed with `/activate-department` in Discord. */
+export function issueDeptActivationCode(
+  id: string,
+): Promise<DiscordLabCodeResponse> {
+  const url = buildApiUrl(
+    getPublicApiBase(),
+    "integrations",
+    "discord",
+    "department-code",
+  );
+  return sendJson<DiscordLabCodeResponse>(
+    "POST",
+    `${url}?department=${encodeURIComponent(id)}`,
+    undefined,
+    "Could not generate a department activation code. Try again.",
+  );
+}
+
 /** Update a user's plan and/or watch quota (staff/superuser only). */
 export function updateAdminUser(
   id: number,

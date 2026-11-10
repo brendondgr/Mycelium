@@ -527,8 +527,8 @@ def _binding_state(binding) -> str:
     return DiscordGuildLink.State.PENDING_SETUP
 
 
-def _primary_binding(lab, purpose: str | None = None):
-    rows = all_bindings_for_lab(lab)
+def _primary_binding(lab, purpose: str | None = None, *, rows=None):
+    rows = all_bindings_for_lab(lab) if rows is None else rows
     if not rows:
         return None
     live = [b for b in rows if binding_is_live(b)]
@@ -541,7 +541,20 @@ def _primary_binding(lab, purpose: str | None = None):
 
 
 def primary_server_for_lab(lab, purpose: str | None = None) -> LabServer | None:
-    binding = _primary_binding(lab, purpose)
+    return _server_for(_primary_binding(lab, purpose))
+
+
+def primary_server_for_department(department) -> LabServer | None:
+    """The department's own server — what its settings card reports."""
+    rows = list(
+        DiscordTargetBinding.objects.filter(department=department)
+        .exclude(state=DiscordTargetBinding.State.REMOVED)
+        .select_related("guild")
+    )
+    return _server_for(_primary_binding(None, rows=rows))
+
+
+def _server_for(binding) -> LabServer | None:
     if binding is None:
         return None
     return LabServer(
@@ -708,13 +721,23 @@ def _ensure_guild(guild_id: str, guild_name: str = "") -> DiscordGuildLink:
     return guild
 
 
-def bind_guild(lab, guild: dict, *, installed_by=None) -> DiscordTargetBinding:
-    """Record an OAuth install for ``lab``: the server plus a PENDING_SETUP binding.
+def bind_guild(
+    lab, guild: dict, *, installed_by=None, department=None
+) -> DiscordTargetBinding:
+    """Record an OAuth install for ``lab`` (or ``department``): the server plus a
+    PENDING_SETUP binding for that one target.
 
     ``guild`` is the object from the OAuth code-grant token response — never the
     forgeable redirect params. A server can hold several bindings, so an install
     into a server that already serves another lab or a department is not a conflict.
     """
+    if (lab is None) == (department is None):
+        raise ValueError("bind_guild takes exactly one of a lab or a department")
+    target = (
+        {"lab_id": str(lab.id)}
+        if lab is not None
+        else {"department_id": str(department.id)}
+    )
     guild_id = str(guild.get("id") or "")
     if not guild_id:
         raise GuildConflict("token exchange returned no guild")
@@ -727,7 +750,9 @@ def bind_guild(lab, guild: dict, *, installed_by=None) -> DiscordTargetBinding:
         link.state = DiscordGuildLink.State.PENDING_SETUP
     link.save()
 
-    binding, _ = DiscordTargetBinding.objects.get_or_create(guild=link, lab=lab)
+    binding, _ = DiscordTargetBinding.objects.get_or_create(
+        guild=link, lab=lab, department=department
+    )
     if binding.state == DiscordTargetBinding.State.REMOVED:
         binding.state = DiscordTargetBinding.State.PENDING_SETUP
         binding.save(update_fields=["state", "updated_at"])
@@ -736,13 +761,13 @@ def bind_guild(lab, guild: dict, *, installed_by=None) -> DiscordTargetBinding:
         action="discord.guild.installed",
         actor=installed_by,
         guild_id=guild_id,
-        metadata={"lab_id": str(lab.id), "verified_via_code_grant": True},
+        metadata={**target, "verified_via_code_grant": True},
     )
     audit.discord_audit(
         action="discord.guild.verified",
         actor=installed_by,
         guild_id=guild_id,
-        metadata={"lab_id": str(lab.id)},
+        metadata=target,
     )
     return binding
 

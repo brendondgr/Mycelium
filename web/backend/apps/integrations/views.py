@@ -321,6 +321,17 @@ def _manager_department_or_error(request):
     return department, None
 
 
+def _manager_target_or_error(request):
+    """``?department=<id>`` or ``?lab=<slug>``, manager-gated: ``(lab, department,
+    error)`` with exactly one of the first two set when ``error`` is None. A server
+    install and its status serve either kind of target."""
+    if request.GET.get("department"):
+        department, error = _manager_department_or_error(request)
+        return None, department, error
+    lab, error = _manager_lab_or_error(request)
+    return lab, None, error
+
+
 class DiscordDepartmentActivationCodeView(APIView):
     """Issue a department activation code (the website half of
     `/activate-department`). Manager-only; binds the department, never its labs."""
@@ -406,15 +417,20 @@ def _empty_channels() -> dict:
 
 
 class DiscordGuildStatusView(APIView):
-    """Is this Lab's Discord server synced? Drives the Manage & Invite badge."""
+    """Is this lab's (``?lab=``) or department's (``?department=``) Discord server
+    synced? Drives the settings card's badge."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        lab, error = _manager_lab_or_error(request)
+        lab, department, error = _manager_target_or_error(request)
         if error is not None:
             return error
-        server = resolve.primary_server_for_lab(lab)
+        server = (
+            resolve.primary_server_for_department(department)
+            if department is not None
+            else resolve.primary_server_for_lab(lab)
+        )
         if server is None:
             return Response(DiscordGuildStatusSerializer.empty())
         return Response(DiscordGuildStatusSerializer(server).data)
@@ -424,7 +440,7 @@ class DiscordGuildStartView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        lab, error = _manager_lab_or_error(request)
+        lab, department, error = _manager_target_or_error(request)
         if error is not None:
             return error
         # D-6 guard: an installer should already be linked, so someone can claim
@@ -435,10 +451,15 @@ class DiscordGuildStartView(APIView):
                  "code": "link_required"},
                 status=status.HTTP_409_CONFLICT,
             )
+        target = (
+            {"department_id": str(department.id)}
+            if department is not None
+            else {"lab_id": str(lab.id)}
+        )
         try:
             nonce = state.issue_state(
                 _session_key(request),
-                {"kind": "guild", "lab_id": str(lab.id), "user_id": request.user.id},
+                {"kind": "guild", **target, "user_id": request.user.id},
             )
         except StateBackendError:
             return Response(
@@ -447,7 +468,7 @@ class DiscordGuildStartView(APIView):
             )
         logger.info(
             "discord oauth start (guild %s): redirect_uri=%s",
-            getattr(lab, "slug", lab),
+            getattr(lab, "slug", None) or f"department {department.id}",
             oauth.guild_redirect_uri(request),
         )
         return Response(
@@ -471,18 +492,31 @@ class DiscordGuildCallbackView(APIView):
             return Response(
                 {"detail": "missing code"}, status=status.HTTP_400_BAD_REQUEST
             )
-        lab = resolve.get_lab_by_id(payload.get("lab_id"))
-        if lab is None:
-            return Response(
-                {"detail": "unknown lab"}, status=status.HTTP_400_BAD_REQUEST
-            )
+        lab = department = None
+        if payload.get("department_id"):
+            department = resolve.get_department_by_id(payload["department_id"])
+            if department is None:
+                return Response(
+                    {"detail": "unknown department"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            lab = resolve.get_lab_by_id(payload.get("lab_id"))
+            if lab is None:
+                return Response(
+                    {"detail": "unknown lab"}, status=status.HTTP_400_BAD_REQUEST
+                )
         installer = resolve.get_user_by_id(payload.get("user_id"))
         try:
             oauth.complete_guild_link(
-                lab, code, installed_by=installer, request=request
+                lab,
+                code,
+                installed_by=installer,
+                request=request,
+                department=department,
             )
         except oauth.BotServerRequired:
-            # The lab has no Mylo-server add-on — bounce back with an upgrade cue.
+            # No Mylo-server add-on on the plan — bounce back with an upgrade cue.
             return _return("bot_server_required")
         except resolve.GuildConflict:
             return Response(

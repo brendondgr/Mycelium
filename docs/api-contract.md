@@ -1790,7 +1790,9 @@ so the portal polls `status/` while a code is live to notice it landed.
 `/activate-department`. `bindings/<id>/remove/` switches off one lab-or-department
 binding in one server; other bindings, in that server and elsewhere, keep working.
 `status/`, `guild/status/`, `health/`, and `probe/` report link and reachability
-state; `guild/status/` and `health/` describe the lab's primary server, and
+state; `guild/status/` and `health/` describe the lab's primary server
+(`guild/start/` and `guild/status/` take `?department=<id>` in place of
+`?lab=<slug>` for a department's own server), and
 `health/` also returns `servers`, one entry per server the lab is bound in (each
 with `binding_id`, `state`, `guild_name`, `channels`, and `routes`). `daily-report/` toggles `DiscordIdentity.daily_report_opt_out` (the
 profile card's "Daily research report" switch). `disconnect/` unlinks.

@@ -644,6 +644,28 @@ export async function fetchLabDiscordStart(
   );
 }
 
+/** A department's own Discord server status (department managers only). */
+export async function fetchDeptDiscordStatus(
+  id: string,
+): Promise<DiscordGuildStatus> {
+  const url = buildApiUrl(getPublicApiBase(), "integrations", "discord", "guild", "status");
+  return getJson<DiscordGuildStatus>(
+    `${url}?department=${encodeURIComponent(id)}`,
+    "Could not load this department's Discord connection.",
+  );
+}
+
+/** Start adding Mylo to a department's server: the authorize URL to redirect to. */
+export async function fetchDeptDiscordStart(
+  id: string,
+): Promise<DiscordStartResponse> {
+  const url = buildApiUrl(getPublicApiBase(), "integrations", "discord", "guild", "start");
+  return getJson<DiscordStartResponse>(
+    `${url}?department=${encodeURIComponent(id)}`,
+    "Could not start adding Mylo to your server.",
+  );
+}
+
 /** One page of the admin user roster (staff/superuser only; the API 403s else). */
 export async function fetchAdminUsers(
   params: AdminUsersQuery,

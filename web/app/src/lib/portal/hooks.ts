@@ -43,6 +43,8 @@ import {
   fetchBriefings,
   fetchDailyBriefing,
   fetchDailyReport,
+  fetchDeptDiscordStart,
+  fetchDeptDiscordStatus,
   fetchDiscordStart,
   fetchDiscordStatus,
   fetchEntitlements,
@@ -126,6 +128,7 @@ import {
   ingestProjectLink,
   inviteToProject,
   issueActivationCode,
+  issueDeptActivationCode,
   issueLabActivationCode,
   removeDeptMember,
   removeLabMember,
@@ -1398,6 +1401,30 @@ export function useLabDiscordHealth(slug?: string) {
     enabled,
     staleTime: 30_000,
   });
+}
+
+/** A department's own Discord server status (department settings; managers only). */
+export function useDeptDiscordStatus(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "dept-discord", id ?? "none"],
+    queryFn: () => fetchDeptDiscordStatus(id as string),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/** Start the guild install for a department: fetch the authorize URL, then redirect. */
+export function useConnectDeptDiscord() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { authorize_url } = await fetchDeptDiscordStart(id);
+      window.location.href = authorize_url;
+    },
+  });
+}
+
+export function useIssueDeptActivationCode() {
+  return useMutation({ mutationFn: (id: string) => issueDeptActivationCode(id) });
 }
 
 /** Start the Discord OAuth link: fetch the authorize URL, then redirect. */

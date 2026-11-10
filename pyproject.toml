@@ -33,6 +33,14 @@ dependencies = [
     "pypdf>=5.0,<7",
     "rank-bm25>=0.2.2,<1",
     "redis>=5.2,<6",
+    # Mirrors of web/backend deps the host processes (Mylo, nightly) import
+    # through the tools: delivery (reportlab), retrieval (lxml), the model
+    # servers (anthropic, google-genai) and the decision model (typesafe-sdk).
+    "anthropic>=0.40,<1",
+    "google-genai>=1.0,<2",
+    "lxml>=5.0,<7",
+    "reportlab>=4.2,<5",
+    "typesafe-sdk>=0.6,<1",
 ]
 
 # fastembed comes from a dependency group rather than the dependency list so the

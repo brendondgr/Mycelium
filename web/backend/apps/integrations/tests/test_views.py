@@ -435,3 +435,75 @@ class PathCViewTests(TestCase):
         body = resp.json()
         self.assertTrue(body["synced"])
         self.assertEqual(body["state"], "active")
+
+
+@discord_test_settings
+class PathCDepartmentViewTests(TestCase):
+    """A department adds Mylo to its own server the way a lab does."""
+
+    def setUp(self):
+        from apps.accounts.models import Department, DeptMembership
+
+        # The suite pins enforcement on per test; ungate here, as the shipped
+        # default does, so no department subscription is needed.
+        self.enterContext(override_settings(BILLING_ENFORCE_ENTITLEMENTS=False))
+        clear_discord_cache()
+        self.head = User.objects.create_user("head", password="x")
+        self.member = User.objects.create_user("member", password="x")
+        self.dept = Department.objects.create(owner=self.head, name="EOAS")
+        DeptMembership.objects.create(
+            user=self.head, department=self.dept, role=DeptMembership.Role.OWNER
+        )
+        DeptMembership.objects.create(
+            user=self.member, department=self.dept, role=DeptMembership.Role.MEMBER
+        )
+        self.lab = Lab.objects.create(name="Lab", slug="lab", department=self.dept)
+        self.q = {"department": str(self.dept.id)}
+
+    def test_start_requires_department_manager(self):
+        self.client.force_login(self.member)
+        resp = self.client.get(reverse("discord-guild-start"), self.q)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_unknown_department_is_404(self):
+        self.client.force_login(self.head)
+        resp = self.client.get(reverse("discord-guild-status"), {"department": "nope"})
+        self.assertEqual(resp.status_code, 404)
+
+    def test_install_binds_the_department_not_its_labs(self):
+        # The lab already sits in its own server; the department picks another.
+        resolve.bind_guild(self.lab, {"id": "g-lab"})
+        resolve.bind_identity(self.head, "d-head", method=resolve.LINK_OAUTH)
+        self.client.force_login(self.head)
+        start = self.client.get(reverse("discord-guild-start"), self.q)
+        self.assertEqual(start.status_code, 200)
+        state = _state_from(start.json()["authorize_url"])
+        with mock.patch.object(
+            discord_api, "exchange_code",
+            return_value={"access_token": "AT", "guild": {"id": "g-dept", "name": "D"}},
+        ), mock.patch.object(discord_api, "create_message"):
+            resp = self.client.get(
+                reverse("discord-guild-callback"), {"code": "c", "state": state}
+            )
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("discord=installed", resp["Location"])
+        rows = resolve.bindings_for_guild("g-dept", include_pending=True)
+        self.assertEqual([(b.lab_id, b.department_id) for b in rows], [(None, self.dept.id)])
+        # The lab's own server is untouched.
+        lab_rows = resolve.bindings_for_guild("g-lab", include_pending=True)
+        self.assertEqual([b.lab_id for b in lab_rows], [self.lab.id])
+
+    def test_status_reports_the_departments_own_server(self):
+        self.client.force_login(self.head)
+        body = self.client.get(reverse("discord-guild-status"), self.q).json()
+        self.assertFalse(body["synced"])
+        self.assertIsNone(body["state"])
+        resolve.bind_guild(self.lab, {"id": "g-lab", "name": "LabServer"})
+        resolve.bind_guild(None, {"id": "g-dept", "name": "D"}, department=self.dept)
+        body = self.client.get(reverse("discord-guild-status"), self.q).json()
+        self.assertEqual(body["state"], "pending_setup")
+        self.assertEqual(body["guild_name"], "D")
+        resolve.bind_identity(self.head, "d-head", method=resolve.LINK_OAUTH)
+        resolve.confirm_guild("g-dept", confirmed_by=self.head)
+        body = self.client.get(reverse("discord-guild-status"), self.q).json()
+        self.assertTrue(body["synced"])

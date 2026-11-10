@@ -22,10 +22,14 @@ import { LabEditorModal } from "@/components/portal/sections/lab-editor-modal";
 import { MemberRow } from "@/components/portal/sections/member-row";
 import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
 import {
+  useConnectDeptDiscord,
   useConnectLabDiscord,
   useCreateDepartment,
   useCreateLab,
   useCreateProject,
+  useDeptBilling,
+  useDeptDiscordStatus,
+  useIssueDeptActivationCode,
   useIssueLabActivationCode,
   useLabBilling,
   useLabDiscordStatus,
@@ -39,7 +43,12 @@ import { InstitutionFromEmail } from "@/components/ui/institution-from-email";
 import { ApiError } from "@/lib/api-error";
 import { SECTION_ROUTES } from "@/lib/portal/routes";
 import type { ClusterGroup } from "@/lib/auth-types";
-import type { LabMember, MyDepartment, MyLab } from "@/lib/portal/types";
+import type {
+  DiscordGuildStatus,
+  LabMember,
+  MyDepartment,
+  MyLab,
+} from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
 /** Pull the (untyped) `clusters` array off a lab's stored `interests` blob. */
@@ -572,17 +581,77 @@ function Field({
  * the two surfaces should recognise it without re-reading.
  */
 export function DiscordSyncCard({ lab }: { lab: MyLab }) {
-  const { data: status, isLoading, isError } = useLabDiscordStatus(lab.slug);
-  const { data: billing, isLoading: billingLoading } = useLabBilling(lab.slug);
+  const status = useLabDiscordStatus(lab.slug);
+  const billing = useLabBilling(lab.slug);
   const connect = useConnectLabDiscord();
   const issueCode = useIssueLabActivationCode();
+  return (
+    <MyloServerCard
+      kind="lab"
+      status={status}
+      myloIncluded={billing.isLoading || billing.data?.mylo_included !== false}
+      billingLoading={billing.isLoading}
+      onConnect={() => connect.mutate(lab.slug)}
+      connect={connect}
+      onIssueCode={() => issueCode.mutate(lab.slug)}
+      issueCode={issueCode}
+    />
+  );
+}
+
+/** The same card for a department's own server (department settings). */
+export function DeptDiscordCard({ deptId }: { deptId: string }) {
+  const status = useDeptDiscordStatus(deptId);
+  const billing = useDeptBilling(deptId);
+  const connect = useConnectDeptDiscord();
+  const issueCode = useIssueDeptActivationCode();
+  return (
+    <MyloServerCard
+      kind="department"
+      status={status}
+      myloIncluded={billing.isLoading || billing.data?.mylo_included !== false}
+      billingLoading={billing.isLoading}
+      onConnect={() => connect.mutate(deptId)}
+      connect={connect}
+      onIssueCode={() => issueCode.mutate(deptId)}
+      issueCode={issueCode}
+    />
+  );
+}
+
+type MyloServerCardProps = {
+  kind: "lab" | "department";
+  status: { data?: DiscordGuildStatus; isLoading: boolean; isError: boolean };
+  /** Treat "still loading" as included so the card never flashes a false lock. */
+  myloIncluded: boolean;
+  billingLoading: boolean;
+  onConnect: () => void;
+  connect: { isPending: boolean; isError: boolean; error: unknown };
+  onIssueCode: () => void;
+  issueCode: {
+    isPending: boolean;
+    isError: boolean;
+    data?: { code: string; expires_in: number };
+  };
+};
+
+function MyloServerCard({
+  kind,
+  status: statusQuery,
+  myloIncluded,
+  billingLoading,
+  onConnect,
+  connect,
+  onIssueCode,
+  issueCode,
+}: MyloServerCardProps) {
+  const { data: status, isLoading, isError } = statusQuery;
+  const noun = kind === "lab" ? "lab" : "department";
+  const command = kind === "lab" ? "/activate-lab" : "/activate-department";
 
   const synced = Boolean(status?.synced);
-  // Treat "still loading" as included so the card never flashes a false lock; the
-  // buttons stay disabled while either read is in flight anyway.
-  const myloIncluded = billingLoading || billing?.mylo_included !== false;
   // The manual code path is the fallback for a guild Mylo reached some other way,
-  // not a second step of the normal install.
+  // and the second step after an install lands as pending.
   const needsCode =
     status?.state === "pending_setup" || status?.state === "kicked";
 
@@ -601,10 +670,12 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
 
   const detail = (() => {
     if (isLoading || billingLoading)
-      return "Checking this lab's Discord connection…";
+      return `Checking this ${noun}'s Discord connection…`;
     if (isError) return "Couldn't check the Discord connection. Try again.";
     if (!myloIncluded && !synced)
-      return "Mylo isn't part of this lab's plan yet, so this lab can't add him to a Discord server. Add Mylo to the plan from Account, then come back to connect your server.";
+      return kind === "lab"
+        ? "Mylo isn't part of this lab's plan yet, so this lab can't add him to a Discord server. Add Mylo to the plan from Account, then come back to connect your server."
+        : "Mylo isn't part of this department's plan yet, so it can't add him to a Discord server. Add Mylo to the department's plan, then come back to connect your server.";
     if (synced) {
       const where = status?.guild_name
         ? `the ${status.guild_name} server`
@@ -612,10 +683,12 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
       return `Mylo is synced to ${where}. Run /setup there to choose where reminders and updates post.`;
     }
     if (status?.state === "pending_setup")
-      return "Mylo is in a server but no lab has claimed it yet. Re-add Mylo from here to link it automatically, or use a one-time code if you added Mylo from Discord.";
+      return `Mylo is in ${status.guild_name ? `the ${status.guild_name} server` : "a server"} but this ${noun} hasn't claimed it yet. Get a one-time code below and run it in that server to finish.`;
     if (status?.state === "kicked")
-      return "Mylo was removed from the connected server. Add Mylo again from here and the lab reconnects itself.";
-    return "Add Mylo to your Discord server. You'll pick the server in Discord, and this lab connects itself on the way back.";
+      return `Mylo was removed from the connected server. Add Mylo again from here and the ${noun} reconnects itself.`;
+    return kind === "lab"
+      ? "Add Mylo to your lab's Discord server. You'll pick the server in Discord, then finish with a one-time code."
+      : "Add Mylo to your department's Discord server — it can be a different server from your labs'. You'll pick the server in Discord, then finish with a one-time code.";
   })();
 
   const connectError =
@@ -635,7 +708,7 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
         <Pill tone={badge.tone}>{badge.label}</Pill>
       </div>
       <p className="mt-2 text-[12.5px] text-[var(--text-secondary)]">{detail}</p>
-      {!synced && !isLoading && !billingLoading && !myloIncluded ? (
+      {kind === "lab" && !synced && !isLoading && !billingLoading && !myloIncluded ? (
         <Link
           href={SECTION_ROUTES.account}
           className="mt-3 inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -649,7 +722,7 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
             <button
               type="button"
               className={DISCORD_BUTTON}
-              onClick={() => connect.mutate(lab.slug)}
+              onClick={onConnect}
               disabled={connect.isPending}
             >
               <DiscordIcon size={16} />
@@ -663,10 +736,10 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
               <button
                 type="button"
                 className={SECONDARY_BUTTON}
-                onClick={() => issueCode.mutate(lab.slug)}
+                onClick={onIssueCode}
                 disabled={issueCode.isPending}
               >
-                {issueCode.isPending ? "Generating…" : "Use a code instead"}
+                {issueCode.isPending ? "Generating…" : "Get activation code"}
               </button>
             ) : null}
           </div>
@@ -678,9 +751,9 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
           {issueCode.data ? (
             <div className="rounded-lg border border-border bg-surface-alt px-3 py-2">
               <p className="text-[12.5px] text-[var(--text-secondary)]">
-                In your Discord server, run{" "}
+                In that Discord server, run{" "}
                 <code className="font-mono text-[var(--text-primary)]">
-                  /activate-lab code:{issueCode.data.code}
+                  {command} code:{issueCode.data.code}
                 </code>{" "}
                 within {Math.round(issueCode.data.expires_in / 60)} minutes. Shown
                 once.
@@ -689,7 +762,7 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
           ) : null}
           {issueCode.isError ? (
             <p className="text-[12.5px] text-clay" role="alert">
-              Couldn&apos;t generate a lab code. Try again.
+              Couldn&apos;t generate a {noun} code. Try again.
             </p>
           ) : null}
         </div>

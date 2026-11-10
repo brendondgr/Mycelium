@@ -10,6 +10,7 @@ import { Pill } from "@/components/portal/primitives/pill";
 import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { AnnouncementsCard } from "@/components/portal/sections/announcements-card";
 import { AgentPolicyCard } from "@/components/portal/mylo/settings-cards";
+import { DeptDiscordCard } from "@/components/portal/sections/labs-section";
 import { DeptPlanCard } from "@/components/portal/sections/org-plan-card";
 import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
 import { usePortal } from "@/components/portal/portal-context";
@@ -67,6 +68,7 @@ export function DepartmentSection() {
           <DeptLabsCard deptId={deptId} canManage={canManage} />
         </div>
         <div className="space-y-4">
+          {canManage && deptId ? <DeptDiscordCard deptId={deptId} /> : null}
           {billingOn ? <DeptPlanCard deptId={deptId} /> : null}
           {deptId ? <AgentPolicyCard kind="department" orgRef={deptId} name={deptName} /> : null}
         </div>

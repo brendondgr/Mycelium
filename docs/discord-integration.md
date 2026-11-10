@@ -76,9 +76,13 @@ no Mylo database, schema, or migration history.
      not activation. `verified_via_code_grant` stays whatever the install set it to
      (True for a prior website install).
 
-* **Departments:** `/activate-department code:<code>` does the same for a department.
-  The code comes from `POST discord/department-code?department=<id>`
-  (department-manager-gated). It binds the department only, never its labs.
+* **Departments:** the same two steps, from **Department settings** → Discord card.
+  "Add Mylo to Discord" runs the install with `guild/start?department=<id>`, which
+  adds a pending binding for the department only (never its labs), so a department
+  can use a different server from its labs. `guild/status?department=<id>` drives
+  the card. `/activate-department code:<code>` then activates it; the code comes
+  from `POST discord/department-code?department=<id>`. All three are
+  department-manager-gated.
 
   **Servers, bindings, routes.** A server (`DiscordGuildLink`) records install and
   presence only. Each lab or department activated in it is a

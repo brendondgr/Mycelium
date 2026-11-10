@@ -149,25 +149,37 @@ def complete_user_link(user, code: str, *, actor=None, request=None) -> DiscordI
     )
 
 
-def complete_guild_link(lab, code: str, *, installed_by=None, request=None):
+def complete_guild_link(
+    lab, code: str, *, installed_by=None, request=None, department=None
+):
     """Exchange the code and bind the guild from the authoritative ``guild`` object.
 
-    Adds a pending lab binding to the server (a server can hold several). Raises
+    Adds a pending binding for ``lab`` — or ``department``, when that is given and
+    ``lab`` is None — to the server (a server can hold several). Raises
     ``discord_api.DiscordHTTPError`` on a Discord failure, or ``ValueError`` if the
     exchange returned no guild (code grant not actually completed).
     """
-    # The Mylo-server capability is an add-on on the lab's subscription (A4); a lab
-    # without it may not have the bot join its guild.
-    from apps.billing.entitlements import Feature, lab_has_feature
+    # The Mylo-server capability is an add-on on the target's subscription (A4); a
+    # lab or department without it may not have the bot join its guild.
+    from apps.billing.entitlements import (
+        Feature,
+        department_has_feature,
+        lab_has_feature,
+    )
 
-    if not lab_has_feature(lab, Feature.BOT_SERVER):
+    if department is not None:
+        if not department_has_feature(department, Feature.BOT_SERVER):
+            raise BotServerRequired(department)
+    elif not lab_has_feature(lab, Feature.BOT_SERVER):
         raise BotServerRequired(lab)
 
     token = discord_api.exchange_code(code, guild_redirect_uri(request))
     guild = token.get("guild")
     if not guild or not guild.get("id"):
         raise ValueError("token exchange returned no guild object")
-    binding = resolve.bind_guild(lab, guild, installed_by=installed_by)
+    binding = resolve.bind_guild(
+        lab, guild, installed_by=installed_by, department=department
+    )
     _post_setup_nudge(guild)
     return binding
 
