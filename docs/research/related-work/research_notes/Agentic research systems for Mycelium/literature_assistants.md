@@ -75,10 +75,10 @@ Seven of the candidates are verified **demo-track** papers: OpenResearcher and A
 - **DeepResearch Bench**: repo Ayanami0730/deep_research_bench. Apache-2.0, ~850 stars, last push 2026-09. 100 PhD-level tasks (50 English, 50 Chinese), scored with the RACE LLM-judge metric. — [open_deep_research README](https://github.com/langchain-ai/open_deep_research)
 - **Agent-research frameworks** (not literature assistants, listed for context): SakanaAI/AI-Scientist (~15k stars) and SamuelSchmidgall/AgentLaboratory (~5.9k stars, MIT). — [GitHub API snapshot](https://github.com/SakanaAI/AI-Scientist)
 
-**Demo-volume scan:** a scan of the ACL Anthology demo volumes for ACL/NAACL/EMNLP 2024–2025, EACL 2026 and ACL 2026 found only the above as literature or research-assistant demos. There is no 2026 NAACL demo volume, which fits NAACL 2027 being the next one. — [EMNLP 2025 demos volume](https://aclanthology.org/volumes/2025.emnlp-demos/); [ACL 2026 demo volume](https://aclanthology.org/volumes/2026.acl-demo/)
+**Demo-volume scan:** a scan of the ACL Anthology demo volumes for ACL/NAACL/EMNLP 2024–2025, EACL 2026 and ACL 2026 found only the above as literature or research-assistant demos. There is no 2026 NAACL demo volume. — [EMNLP 2025 demos volume](https://aclanthology.org/volumes/2025.emnlp-demos/); [ACL 2026 demo volume](https://aclanthology.org/volumes/2026.acl-demo/)
 
 ### Inferences
-- Precedent for a NAACL 2027 Mycelium demo is strong. Five literature or research-assistant systems were accepted in demo tracks in each of 2024 and 2025. ACL 2026 alone had about a dozen science-tooling demos, so reviewers know the genre. The novelty bar will be in **lab scope + push + consent ledger + verification**, not in "RAG over papers".
+- Literature and research-assistant demos are a well-trodden genre. Five literature or research-assistant systems were accepted in demo tracks in each of 2024 and 2025. ACL 2026 alone had about a dozen science-tooling demos. What is new in Mycelium is **lab scope + push + consent ledger + verification**, not "RAG over papers".
 - Arxiv Copilot (EMNLP 2024 demo) and Scholar Inbox (ACL 2025 demo) are the two closest prior **demo** papers on personalised feeds, and Mycelium must position against both. CHOIR (CHI 2026) is the closest prior work on **lab chat**, though it is HCI rather than NLP.
 
 ### Gaps
@@ -232,11 +232,6 @@ The best moves are, cheapest first:
   - Running 7B models adds GPU needs that Mycelium's host does not have (per project memory, no GPU on this host).
 
 ### Inferences
-- A defensible NAACL 2027 framing:
-  - Agentic routing (Paper Finder pattern) over **verified** deterministic tools.
-  - A consent-gated lab memory benchmarked against Hindsight-style memory.
-  - Push delivery evaluated with a PaperFlow-style longitudinal protocol and an AstaBench/DeepScholar slice.
-  - This differs clearly from all prior demos and reuses permissively licensed components.
 - Licence compatibility with Mycelium's Apache 2.0:
   - Compatible: PaperQA2, ai2-scholarqa-lib, OpenScholar, PaSa, GPT-Researcher and LLM×MapReduce (Apache-2.0); STORM, open_deep_research, Hindsight and TinyScientist (MIT).
   - No licence on GitHub: AutoSurvey, SurveyX, SurveyForge and IRIS. Treat them as reference-only.

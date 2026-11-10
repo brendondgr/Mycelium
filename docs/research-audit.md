@@ -14,7 +14,7 @@
 > | §1.6 implicit claims C1–C7 | [`research/CLAIMS.md`](research/CLAIMS.md) — same IDs, plus evidence and status |
 > | §6.5 workstreams W0–W12 | [`research/OPEN_QUESTIONS.md`](research/OPEN_QUESTIONS.md) — same IDs, plus what is done |
 > | §3 closest prior work, §9 bibliography | [`research/RELATED_WORK.md`](research/RELATED_WORK.md) — the works that bear on a claim, plus a scoop watch |
-> | §7 reshaping paths, §8 venue strategy | [`research/paper/`](research/paper/) |
+> | §7 reshaping paths, §8 venue strategy | Kept privately, outside this repository |
 >
 > W2 — the audit's "cheapest decisive next action" — has since been run. Its
 > falsifier fired; see
@@ -44,7 +44,7 @@ It is genuinely built. 1,379 tests, 55 migrations, systemd-scheduled production 
 
 > **Readiness: L1 — near from demo track, far from applied conference and far from top-tier archival; blocked by claim clarity, evaluation rigor, baseline coverage, and positioning (all scored 0/4); critical path 10–16 weeks to a credible applied/workshop submission; cheapest next action: run the existing retrieval stack on the openly-downloadable LongEval-Sci 2026 collection against its published BM25 and Qwen3-Embedding-4B baselines (~1 week).**
 
-**Recommended action.** Stop adding product features. Spend one week producing a number — any number — against an external baseline. Then choose between two framings: *(a)* eligibility-constrained funding recommendation with graded ineligibility, evaluated on a public award-derived ground truth (constructible from NIH RePORTER / NSF Awards / CORDIS; the recipe is proven [B14]); or *(b)* item-to-team-member routing as a variant of the reviewer-assignment problem, evaluated against the RAP gold-standard protocol [B15]. Path (a) is ranked first in §7. Both are 12–20 weeks. Neither requires writing more of the system — only measuring it.
+**Recommended action.** Stop adding product features. Spend one week producing a number — any number — against an external baseline. Neither of the framings the audit weighed requires writing more of the system — only measuring it.
 
 ---
 
@@ -336,7 +336,7 @@ These are derived from what the code does, not what the documentation asserts. T
 
 The paper-recommendation pipeline is a competent 2023-vintage recipe applied to a problem that was published last year with an evaluation and a public 800,000-rating dataset [B1]. Its distinguishing framing — "multi-agent" — is refuted by three independent 2025–2026 studies [B9, B10, B11] and is factually inaccurate about this codebase besides.
 
-**Recommended framings and their cost.** Path A (eligibility-constrained funding recommendation) is ~14–18 weeks; Path B (lab-level recommendation and member routing) is ~16–22. A minimum viable submission along Path A is 12–16 weeks. Its evaluation is not weak; it is absent, in a subfield whose own literature has spent fifteen years arguing that evaluation is the thing that separates a recommender from an opinion [B31, B32, B33, B34, B35].
+**What a submission costs.** Its evaluation is not weak; it is absent, in a subfield whose own literature has spent fifteen years arguing that evaluation is the thing that separates a recommender from an opinion [B31, B32, B33, B34, B35].
 
 What is *not* anticipated is narrower and more interesting than the product: **eligibility-constrained funding and fellowship recommendation with graded ineligibility, deadline-aware ranking, and reciprocal routing of opportunities to lab members under workload constraints.** No paper found does this. Claiming it requires exactly one thing the project has never done — measurement — and requires *less* system than already exists, not more.
 
@@ -433,11 +433,6 @@ L1, not L2. Do not inflate this. Clearing it means writing down three claims, ad
 
 **Critical path.** W0 → W1 → W3 → W5 → W6 is the spine: the doc cleanup and model pinning gate everything downstream; formal claims are needed before labelling is meaningful; labelled judgments are needed before ablations mean anything; ablations are what clear disqualifier #6. **0.2 + 0.2 + 2.5 + 2.5 + 2 = 7.4 weeks of focused work.** W2 (1 wk) is off the path and should run first anyway. W4 (1.5 wk) is fully parallel. W9 must start immediately because its elapsed time, not its effort, is the constraint. W7 and W8 are alternative *second* papers and should not both be attempted.
 
-**Distance by tier:**
-- **Fast-feedback (demo track — ECIR/JCDL/CHIIR demo):** **2–4 weeks.** W0 + W1 + W2 + write-up + video. This is achievable now.
-- **Workshop / applied conference (archival — SCOLIA, AI4SciSci, iConference short, TPDL, UMAP LBR):** **10–16 weeks** = 7.4 (spine) + 1.5 (W4, parallel, so partly absorbed) + 3–8 weeks of writing, revision, and slack. The spread is dominated by annotator availability for W5, which is the one item whose duration is set by other people.
-- **Top-tier archival (SIGIR / RecSys / CHI full):** **40–70 weeks**, and only via a genuine method or resource contribution that does not yet exist. Realistically this is a 2028 target, and the most plausible route is the group-recommendation framing (Path B in §7), not the current system.
-
 **Cheapest decisive next action:** **W2 — run the existing retrieval stack on LongEval-Sci 2026 against its published BM25 and Qwen3-Embedding-4B baselines. One week. No labelling, no recruitment, no IRB, no permission.** It is decisive because it is a genuine falsification test of C1: if the hybrid does not beat BM25 on a scholarly collection, the retrieval layer has no claim and the project should reallocate to the funding and routing halves immediately. Runner-up on value-per-week is W5 (the 250-item labelling), which unlocks more but costs 2.5× as much and needs annotators.
 
 **Confidence in these estimates: moderate.** They assume one person working full-time and unchanged scope. What would change them, in order of impact: (i) whether W2 falsifies or confirms C1 — a falsification saves months by redirecting early; (ii) annotator availability for W5 and recruitment for W8, which are the two items whose duration is set by other people; (iii) whether the Pivot corpus must be abandoned for legal reasons, which would add W10 to the critical path and push the workshop estimate to 14–20 weeks.
@@ -448,131 +443,11 @@ L1, not L2. Do not inflate this. Clearing it means writing down three claims, ad
 
 ---
 
-## 7. Reshaping Paths
+## 7–8. Reshaping Paths and Venue Strategy
 
-Four reframings of the same codebase, ranked.
-
-### Path A — *Eligibility-Constrained Fellowship & Grant Recommendation with Graded Ineligibility* **(recommended)**
-
-**Research question.** Does modelling eligibility as a *graded, per-criterion* constraint with provenance — rather than a boolean gate or a blended score term — improve the ranking of funding opportunities a researcher can actually win, relative to (i) relevance-only retrieval and (ii) a boolean eligibility gate?
-
-**Carries over:** the entire ingestion and embedding stack; `fellowships.py`'s facet vocabulary as a starting taxonomy; the 946-fellowship corpus as development data; `opportunities.py`'s threshold-and-rank machinery.
-**Must be built:** per-criterion eligibility prediction with sentence-level provenance in the style of TrialGPT [B7] (replacing the hardcoded facet table); graded relevance judgments; the award-linkage ground truth (W7); a learned or at minimum ablated weighting to replace the hand-picked 0.65/0.35 and 0.45/0.15/0.12/0.18/0.10 (an unfitted 6-feature LTR model, per [B46]); a relaxation path for when the feasible set empties, which [B6] identifies as the core requirement of constraint-based recommendation.
-**Evaluation.** *Datasets:* NIH RePORTER + NSF Awards + CORDIS for grant ground truth (proven recipe [B14]) with profiles time-sliced strictly before award date; 250–300 hand-annotated fellowship records for the eligibility half. *Baselines:* BM25 over opportunity text; dense-only cosine; boolean-gate-then-rank (i.e. the current system); LambdaMART on the same features [B46]. *Metrics:* nDCG@10 with TREC-CDS graded gains (eligible=2, relevant-but-ineligible=1, irrelevant=0) [B21], MRR, Recall@20; report eligibility precision/recall separately from topical relevance. *Ablations:* boolean vs. graded eligibility; each rule feature removed; learned vs. hand-set weights; ±LLM rationale.
-**Effort:** 14–18 weeks. **Closes:** G1, G2, partially G7. **Risks:** the award-linkage proxy conflates fit with reviewer behaviour and institutional prestige (state this as a limitation, do not hide it); temporal leakage is severe if profiles are not strictly time-sliced [B14]; the fellowship corpus may need rebuilding from open sources (W10).
-
-### Path B — *Group-Level Scholarly Recommendation and Item-to-Member Routing*
-
-**Research question.** How should a scholarly recommender serve a *research group* rather than an individual — and does per-cluster ranking with max-pooling preserve coverage of a lab's minority themes better than global ranking? Secondarily: how well does embedding similarity route an item to the right lab member, against a TF-IDF baseline?
-
-**Carries over:** cluster-scoped fusion (`fusion.py:165-245`), per-theme slates (`pipeline.py:504-522`), `member_fit.py`, the `MatchTarget` polymorphism.
-**Must be built:** a formalization of lab-level relevance that connects to the group-recommendation aggregation literature; per-theme coverage metrics; the RAP-protocol member evaluation (W8); a TF-IDF baseline, which the literature says may win [B15, B17]; workload balancing, which reviewer assignment treats as mandatory; and — critically — an adaptive-expansion variant to test whether the remove-only veto is costing recall [B43].
-**Evaluation.** *Datasets:* self-reported expertise scores from ≥15 members across ≥3 labs, following [B15]; per-theme relevance judgments for lab profiles. *Baselines:* global ranking (no clustering); TF-IDF member matching; individual-level recommendation aggregated post hoc; random and round-robin routing. *Metrics:* misranking rate [B15], per-theme recall, Gini coefficient over member assignment load, nDCG@10. *Ablations:* ±cluster scoping; β sweep; ±LLM veto; remove-only vs. expand-allowed.
-**Effort:** 16–22 weeks (recruitment-bound, not code-bound). **Closes:** G3, G4. **Risks:** recruiting three labs is the whole project; [B17] suggests the cosine approach may lose to TF-IDF, which is a publishable negative result but a bruising one; the group-recsys aggregation literature may already cover more of this than the scholarly-specific search surfaced.
-
-### Path C — *A Public Benchmark for Personalized Scholarly Feeds with Declared-Interest Profiles*
-
-**Research question.** Not "is our system good" but "how should this task be measured?" Release a benchmark: declared natural-language interest profiles, a time-sliced scholarly corpus, graded relevance judgments, and reference implementations.
-
-**Carries over:** the ingestion pipeline as corpus-construction machinery; the profile/cluster representation as the task format.
-**Must be built:** essentially all of the science; the system becomes a data-generation tool. **Note SciNUP [B49] already occupies part of this ground** — 1,000 synthetic users built from authors' publication histories for natural-language-profile paper recommendation. The delta would have to be *real* declared profiles and *real* judgments, plus the funding half, which SciNUP does not cover.
-**Evaluation.** Reference implementations (BM25, dense, hybrid, LLM-reranked) with reported numbers; annotator agreement statistics; documented provenance and access.
-**Effort:** 20–28 weeks. **Closes:** G1, G5, the evaluation half of everything. **Risks:** highest effort, and partially anticipated by [B49] and by Scholar Inbox's 800k-rating release [B1]; benchmark papers live or die on adoption, which a first-time release rarely gets.
-
-### Path D — *Deployment Experience Report: What Breaks When You Build a Scholarly Recommender for One Lab*
-
-**Research question.** What does an honest account of building and operating a lab-scale scholarly recommender reveal about the gap between the recommender-systems literature and deployment reality?
-
-**Carries over:** everything, unchanged. The 30 production logs, the placeholder constants, the un-tuned thresholds, the 8% LLM coverage against a design that assumed the model would score the feed, the engagement-event stream that was modelled and weighted but never wired to the personal feed — these become the *findings*, honestly reported.
-**Must be built:** almost nothing. A rigorous retrospective and a limitations section.
-**Evaluation.** Descriptive statistics from the logs; a candid catalogue of design decisions and their unmeasured consequences.
-**Effort:** 3–5 weeks. **Closes:** nothing, but it is publishable at a non-archival workshop or as a position paper, and it costs little. **Risks:** low CV weight; reviewers may read it as an admission rather than a contribution unless the framing is disciplined. Venues that explicitly welcome this: NeurIPS 2026 AI for Meta-Science (position papers, non-archival), and BEYOND@RecSys, which invites "case studies of RS failures."
-
-### Ranking and choice
-
-**1. Path A. 2. Path B. 3. Path D (as a cheap parallel move). 4. Path C.**
-
-**I would choose Path A.** Three reasons. *First, the gap is real and independently attested* — two surveys state that grant recommendation is the least-studied scholarly recommender task [B12, B39], there is no shared task or leaderboard anywhere, and the commercial systems have published nothing, so there is no strong baseline waiting to beat you. *Second, the ground truth is constructible from public data and the recipe is proven* [B14] — Path B's evaluation is recruitment-bound and Path C's is annotation-bound, but Path A's grant half can be built by one person from open award data. *Third, the method transfer is well-mapped* — clinical-trial matching [B7, B8, B21] has already solved the graded-eligibility problem properly, so you are not inventing a method, you are transferring a well-validated one to a domain that lacks it, which is precisely the kind of transfer that is defensible when the source and target domains are structurally analogous and the target has no incumbent.
-
-Path D should be run **in parallel and immediately** — it is 3–5 weeks, non-archival, reuses existing material, and its deadline (NeurIPS AI for Meta-Science, 29 Aug 2026) is 26 days away. It costs almost nothing and produces reviewer contact.
-
-### 7.5 Minimum viable contribution
-
-The smallest complete package that constitutes a credible submission:
-
-- **Claim.** "Modelling fellowship eligibility as graded per-criterion constraints, rather than a boolean gate or a blended score term, improves nDCG@10 under TREC-CDS-style graded relevance over (a) relevance-only ranking and (b) boolean-gate-then-rank, on a corpus of N fellowship records."
-- **Dataset.** 300 fellowship records, hand-annotated by 3 annotators outside the lab against 10 researcher profiles, with graded judgments (eligible=2 / relevant-but-ineligible=1 / irrelevant=0) and reported Cohen's or Fleiss' κ. Provenance documented; released if the corpus is rebuilt from open sources, described in full if not.
-- **Baselines.** (1) BM25 over opportunity text. (2) Dense cosine only. (3) Boolean gate → dense rank — *this is the current system, and it must be named as such.* (4) LambdaMART over the same six features.
-- **Experiment.** nDCG@10, MRR, Recall@20, plus eligibility precision/recall reported separately from topical relevance. Three seeds or three annotator-subset folds. Error analysis on the 20 worst-ranked eligible items.
-- **Ablation.** Boolean vs. graded eligibility, holding everything else fixed. **This is the one that isolates the claimed mechanism** and clears disqualifier #6.
-- **Contamination check.** Model identity and cutoff pinned and reported; match-% distributions compared on pre- vs. post-cutoff opportunity records [B5, B19].
-- **Positioning.** Explicit delta against [B14], [B39], [B7], [B8], [B1].
-
-That is a workshop or applied-conference paper. It is roughly 12–16 weeks. It requires no new system features.
-
----
-
-## 8. Venue Strategy
-
-All deadlines verified against official sources on 3 August 2026. Where a 2027 deadline is unannounced, the 2026 date is given as a clearly-labelled estimate anchor.
-
-⚠️ **Two structural facts to absorb first.** (1) **Several venue families now desk-reject for missing evaluation.** ACL 2026 and EMNLP 2026 demo tracks: "submissions that fail to provide any form of evaluation may be desk rejected." CIKM 2026 Applied Research: submissions without post-launch metrics "will be desk-rejected without review." WWW 2026: submissions that "merely use a Web artifact" are out of scope and desk-rejected. (2) **You missed AltRecSys 2026 by 72 hours** (deadline 31 July 2026) — 500-word abstracts, editorially reviewed, non-archival, explicitly for unconventional and in-progress work. It was the single best-matched venue in the calendar. Set a reminder for the 2027 edition.
-
-### Tier 3 — Fast feedback (recommended first moves)
-
-| Venue | Type | Deadline | Limit | Fit and honest likelihood |
-|---|---|---|---|---|
-| **JCDL 2026 Posters & Demos** | Archival, ACM DL | **14 Aug 2026** (11 days) | 2–4 pp | Digital-libraries community; scholarly infrastructure is core scope. Single-blind, working demo link or ≤5-min video **mandatory**. **~50–65%** with a candid limitations paragraph. **Highest value per unit effort available right now.** |
-| **NeurIPS 2026 "AI for Meta-Science"** (Paris) | **Non-archival** | **29 Aug 2026** | 4 pp technical / 8 pp position | Accepts position papers *and* previously published work. **Frame as Path D** — an experience report, not a system paper. **~40–50% as a position/experience paper; ~20% as a system paper.** Costs nothing, reusable later. |
-| **AI4SciSci @ JCDL 2026** | Archival, CEUR | **7 Sep 2026** | 2 pp abstract / 4 pp short / 8 pp full | Best topical fit in the near window; science-of-science audience tolerates infrastructural contributions. Accepts already-published work as 2-pp abstracts. **~65–75%.** The extra five weeks lets you include a LongEval number. |
-| **iConference 2027 Short Paper** | Archival — *Information Research*, Scopus + WoS + DBLP | **15 Sep 2026** | ≤3,000 words | Best archival indexing per unit effort this cycle; virtual presentation permitted. ⚠️ Unusually strict policy: AI-generated prose is prohibited and grounds for retraction. Aim Short, not Full. **~50%.** |
-| **CHIIR 2027 Demo** | Archival, ACM DL | **29 Oct 2026** | 4 pp | Human-information-interaction community; no evaluation requirement in the CFP. Berlin, Mar 2027. **~55%.** |
-| **ECIR 2027 Demo** | Archival, Springer LNCS | **2 Nov 2026** | 4 pp | **Best IR-community target.** Single-blind; 13 demos accepted at ECIR 2026, so a real channel. Southampton, 21–25 Mar 2027. **~45–55%.** |
-| **SCOLIA 2027 @ ECIR** | CEUR | **~Jan 2027 (estimate;** 2026 anchor was 31 Jan 2026; announcement expected after ECIR workshop notifications on 19 Oct 2026) | 12 pp full / 6 pp short | ⚠️ **Note the rename: BIR/BIRNDL became SCOLIA in 2025.** Stated topics include "construction of scholarly information access systems for tasks such as search, recommendation" and an entire section on "evaluation of scholarly information access systems." **The best topical fit of any venue here — and the one room where everyone knows what nDCG is.** ~30% with zero eval; **~60–70% with a modest eval.** You have ~6 months. |
-| **CHI 2027 Posters + Interactive Demos** | Posters **non-archival** (reusable in a future CHI full paper); demos 6 pp | **21 Jan 2027** | 4 pp / 6 pp | Posters CFP states outright that "completeness of the work is not a direct review criterion" — the only venue here that says so. Submit both; same deadline. ⚠️ CHI 2027 has **no Late-Breaking Work track**; LBW was replaced by Posters. |
-| **IUI 2027 Posters & Demos** | Archival | **~mid/late Dec 2026 (estimate;** 2026 anchor 21 Dec 2025) | ~4–6 pp | A deployed system with a Discord bot demos very well here. ⚠️ Do **not** attempt the IUI full paper (abstract 13 Aug, paper 20 Aug 2026) — the CFP requires "rigorous evidence… user study, system evaluation, or computational analysis," and you have none of the three in 17 days. |
-
-### Tier 2 — Target (after 10–16 weeks of measurement)
-
-- **TPDL 2027** — deadline unannounced; estimate ~Apr–May 2027 for a ~Sept 2027 conference. Full 15 pp → LNCS; short/demo 8 pp → CCIS. **The most plausible full-paper target on this list**, precisely because the runway is long enough to build the evaluation. Digital-libraries reviewers are receptive to infrastructural work with honest measurement.
-- **UMAP 2027** — ⚠️ **not announced anywhere**; `um.org/umap2027/` returns an empty page and aggregator listings are unverified. Estimate: papers ~late Jan 2027, LBR/demos ~Mar 2027. **Topically the best-matched venue in this report** (personalization, evaluation of human-centred adaptive systems). Full paper with zero eval = near-certain reject; the **4-pp LBR/Demo track is a genuine likely-accept**. Check the site monthly from October.
-- **CHIIR 2027 Short** (29 Oct 2026, 4 pp) — borderline-feasible *only if* click/dismiss instrumentation and recruitment start this week. **CHIIR 2028 Full (~Oct 2027) is the realistic target**, and the CFP is unusually permissive about method: it names log analysis, in-situ observational studies, and simulations of search behaviour alongside lab studies. **You do not need qrels to publish at CHIIR — you need humans and rigor.**
-- **ISSI 2027** (Taipei, 28 Jun – 2 Jul 2027) — ⚠️ the Important Dates table currently contains literal unfilled template placeholders (`[Month] [Day], 2026`) and submission pages redirect to "under construction." **No deadline exists yet, but the placeholder structure indicates it falls within 2026. Check weekly.** Science-of-science community; studies OpenAlex-based infrastructure as first-class subject matter. Best topical home after SCOLIA.
-- **ECIR 2027 Short** (12 Oct 2026, 6 pp) — CFP requires "empirical or theoretical validation." Only viable with W2 + W5 complete, which is not achievable by October.
-
-### Tier 1 — Reach (honest assessment: none reachable in 12 months)
-
-| Venue | What it would actually take | Realistic |
-|---|---|---|
-| **RecSys full** (8 pp; est. ~Apr 2027, Hawaiʻi; 20–24% acceptance) | Path B developed as a genuine research problem: a formalization of lab-level relevance, an aggregation strategy benchmarked against the group-recommendation literature, offline eval on real judgments, ideally an online arm | **18–24 months.** The strongest reach story, because group scholarly recommendation is genuinely under-served. A 2028 target. |
-| **SIGIR full** (9 pp; est. ~Jan 2027) | A test collection with real judgments, ≥3 strong tuned baselines, significance testing, and a *method* contribution. RRF-over-BGE-small is a 2023 recipe | **Not in 24 months** without a new algorithmic idea. The worst fit on this entire list — a desk-level reject, not a borderline one. |
-| **CHI full** (10 Sept 2026) | IRB, 15–25 participants, longitudinal deployment, grounded qualitative analysis, plus the Review Responsibility Policy requiring four author-reviewers | **12–18 months**, and it is a different project (an HCI study of scholarly attention, not a systems paper) |
-| **WWW full** (18 Oct 2026) | — | **Never in current form.** Explicit desk-reject for work that "merely uses a Web artifact." Do not submit. ⚠️ Note: TheWebConf has **no Resource track**. |
-
-**Also drop entirely:** CSCW (the CFP explicitly excludes work "primarily of relevance or benefit to individual users" — and per-member routing is exactly that exclusion; out-of-scope papers are desk-rejected); ACL/EMNLP/NAACL main tracks and Findings (Findings is reached by being a near-miss main-conference paper via ARR, not a side door, and the mandatory-reviewing obligation is a real cost for a two-person lab); CIKM Applied Research and Resource tracks; ECIR Reproducibility (it is for reproducing *other people's* work; same-team repeatability is explicitly excluded); ICLR 2027 workshops; RecSys Challenge.
-
-### Shared tasks, leaderboards, and benchmarks
-
-⚠️ **Nothing you can enter is currently open.** Every relevant 2026 competition closed between April and July.
-
-- **TREC 2026** runs exactly 7 tracks (AutoJudge, Change Detection, Million LLM, RAG, RAGTIME, User Simulation, VQA). **Nothing biomedical and nothing scholarly.** Applications closed in late May. Worth *reading*: the Change Detection track explicitly models "an expert user following a topic of interest over time" with an "inbox or reading queue" maximizing importance and novelty — that is your product framing, in a news/intelligence domain.
-- **CLEF 2026 LongEval** — participation closed 23 April 2026, **but the data is openly downloadable now.** Task 1 (LongEval-Sci) is ad-hoc scientific retrieval over CORE open-access publications across three temporal snapshots, 100 train + 338 test queries, with **published BM25 and Qwen3-Embedding-4B baselines**. `pip install ir-datasets-longeval`. **This is W2 and it is your highest-leverage single action.** CLEF 2027 (Bucharest, 14–17 Sept 2027) lab acceptances were notified 7 Aug 2026 — check whether LongEval returns for a 5th edition; if so, participation registration opens ~Nov 2026.
-- **Static benchmarks usable today:** **LitSearch** [B18] (597 realistic literature-search queries; reports a 24.8-point BM25-to-dense Recall@5 gap and +4.4% from LLM reranking — directly your sparse/dense/fusion question); **SciRepEval** [B28]; BEIR scientific slices (SciFact, SCIDOCS, TREC-COVID, NFCorpus); **AstaBench**, which accepts external agent submissions and controls for model cost and tool access.
-- ⚠️ **For funding and fellowship recommendation, nothing exists** — no shared task, no leaderboard, no benchmark. That is simultaneously your strongest novelty claim and your largest evaluation liability: **you will have to build the ground truth yourself, and the paper's credibility will rest on how defensibly you do it.**
-
-### Groups whose work bears most directly on this project
-
-1. **Scholar Inbox / Autonomous Vision Group, Tübingen** — *highest overlap, currently coasting.* Their ACL 2025 demo paper [B1] is your most important citation and your most direct comparison. Note their architecture for contrast: a **per-user binary classifier** with easy random negatives mixed with hard negatives drawn from the system's own surfaced papers, plus active learning for cold start. ⚠️ Andreas Geiger is on leave of absence (CEO of KE:SAI) and AVG is not hiring; the group produced **no new Scholar Inbox research papers in 2026**. Their gaps are your differentiators: no team-level recommendation, no funding recommendation, no LLM rationales, no editable profiles. **Cite the 800k-rating dataset and the hard-negative strategy, or a reviewer will flag the omission.**
-2. **Allen Institute for AI — Semantic Scholar / Asta** — *sets the benchmark standard, and ships prior art for your rationale feature.* The Asta "find papers" agent already "presents studies along with summaries of why each is pertinent," so Ai2 Scholar QA is prior art you must cite. AstaBench (oral at ICLR 2026, >2.4K research problems) is open and accepts external submissions — cheap credibility if you ever claim retrieval quality. Doug Downey directs the Semantic Scholar research group; Daniel S. Weld is GM/Chief Scientist. ⚠️ Arman Cohan is now Assistant Professor at Yale, no longer primarily at Ai2.
-3. **Hamed Zamani (UMass CIIR) & Sheshera Mysore** — *best collaboration target and your direct intellectual ancestor.* LACE [B41] is the editable-concept-profile paper your interest/cluster representation descends from. ⚠️ Mysore has left academia — Senior Applied Scientist, Microsoft Office of Applied Research — and his stated current interests are "LLM post-training from in-the-wild interactions" and personalization "to users **or groups of users** while giving users agency," which is literally your team-recommendation + editable-profile combination. **He is your best warm contact.** Zamani is a near-certain reviewer at SIGIR/CHIIR/CIKM.
-4. **Joeran Beel, University of Siegen** — *low overlap risk, very high reviewer risk.* He wrote the canonical research-paper-recommender surveys [B22] and the offline-vs-online evaluation critiques [B31], has moved on to AutoRecSys and Green RecSys, joined the ACM RecSys Steering Committee in 2025, and is **General Co-Chair of RecSys 2027**. Read his evaluation and reproducibility work before writing your evaluation section, because that is exactly how it will be judged. ⚠️ **Opportunity:** the RecSys community has **no scholarly-recommendation workshop** (verified against the full RecSys 2026 workshop list). Proposing one for RecSys 2027 — proposals likely due ~March 2027 — costs no evaluation, builds the community you would publish into, and is a real line on a CV.
-
-### Recommended sequence
-
-**Next 26 days:** (1) run W1 today — pin the model, it is one line; (2) start W2 (LongEval-Sci) this week; (3) submit to **JCDL 2026 Posters/Demos by 14 Aug**; (4) start IRB paperwork now, since elapsed time is the constraint; (5) instrument click/dismiss and recruit beyond two users — everything after October depends on having 8–10 weeks of logs; (6) submit the Path D experience report to **NeurIPS AI for Meta-Science by 29 Aug** (non-archival, so it costs nothing).
-**Sept–Nov 2026:** AI4SciSci (7 Sep, with the LongEval numbers), iConference Short (15 Sep), CHIIR Demo (29 Oct), ECIR Demo (2 Nov).
-**Dec 2026 – Mar 2027:** IUI Posters/Demos (~Dec), CHI Posters + Demos (21 Jan), **SCOLIA 2027 (~Jan) with a real evaluation** — this is the first submission that should carry Path A's results.
-**Calendar reminders:** 19 Oct 2026 (ECIR workshop notifications → SCOLIA 2027 announcement); late Sept 2026 (RecSys 2027 dates announced at RecSys 2026 — consider a workshop proposal); ~2 Oct 2026 (ACL 2027 workshop notifications → whether SDP returns; ⚠️ **there was no SDP 2026 and none is announced for 2027** — do not plan around it); weekly (ISSI 2027 site, whose placeholders confirm a 2026 deadline).
+Not kept in this repository. The audit's candidate paper framings and its venue
+strategy are research planning, and they live with the project's other
+publication and grant plans outside the public tree.
 
 ---
 
@@ -700,8 +575,7 @@ Every entry below was retrieved during this session. Entries marked **[unverifie
 | §5 Novelty | **High** for methodological (None) and empirical-realized (None); **Medium** for problem novelty, which depends on how thin the funding literature really is |
 | §6 Readiness | **High** — the scorecard floors are matters of fact, not judgment |
 | §6.4 Disqualifier #5 (contamination) | **Medium** — the exposure is established; its magnitude is **not determinable from the repository**, and cannot be, until the model is pinned |
-| §7 Reshaping paths | **Medium** — effort estimates assume one full-time person and are the softest numbers in this document |
-| §8 Venues | **High for verified 2026 dates; explicitly low for 2027 estimates**, each labelled inline |
+| §7–8 | Not kept in this repository |
 
 ### What could not be verified
 
@@ -710,7 +584,6 @@ Every entry below was retrieved during this session. Entries marked **[unverifie
 - **Real user counts beyond the logs.** The logs are authoritative for 30 dated runs; whether other deployments exist is not determinable.
 - **Full author lists and exact titles** for the entries marked **[unverified metadata]** in §9. Their existence and identifiers were confirmed via a search index; the abstract or author list was not independently fetched. **Re-check each before citing in a manuscript.**
 - **The legal status of the Pivot-RP scrape.** Flagged as a risk; assessing it requires reading Clarivate's terms and is a question for the institution's counsel, not for this audit. This document does not constitute legal advice.
-- **2027 venue deadlines.** SIGIR 2027, JCDL 2027, TPDL 2027, UMAP 2027, RecSys 2027, and SCOLIA 2027 are all unannounced as of 3 August 2026. Every date given for them is labelled inline as an estimate anchored on the 2026 cycle.
 
 ### Where the literature is genuinely contested
 
@@ -723,4 +596,4 @@ Presented as disputes, not resolved:
 
 ### Self-check
 
-All fourteen items of the audit protocol were satisfied. Specifically: every architectural statement traces to a file or module; the implemented/aspirational table exists and flags six overstatements with ⚠️; seven falsifiable claims were extracted and searched; every cited paper was retrieved this session, with unverified metadata marked; three works that scoop or undercut the project are identified by name ([B1], [B26], and the multi-agent critique line), alongside an explicit statement that a good-faith search found no scoop for the two intersection claims, with the queries listed; the verdict states a position; exactly one readiness level (L1) is assigned with its blocking criterion named; all eight scorecard axes are scored with justification and the minimum identified; all eight hard disqualifiers were checked explicitly and reported, including the contamination check; distance is given in weeks per tier with a critical path and a cheapest decisive action; the readiness verdict line appears verbatim in §0 and §6.6; reshaping paths carry effort estimates and evaluation designs; venue deadlines were verified against current sources with 2027 estimates labelled.
+All fourteen items of the audit protocol were satisfied. Specifically: every architectural statement traces to a file or module; the implemented/aspirational table exists and flags six overstatements with ⚠️; seven falsifiable claims were extracted and searched; every cited paper was retrieved this session, with unverified metadata marked; three works that scoop or undercut the project are identified by name ([B1], [B26], and the multi-agent critique line), alongside an explicit statement that a good-faith search found no scoop for the two intersection claims, with the queries listed; the verdict states a position; exactly one readiness level (L1) is assigned with its blocking criterion named; all eight scorecard axes are scored with justification and the minimum identified; all eight hard disqualifiers were checked explicitly and reported, including the contamination check; distance is given in weeks per tier with a critical path and a cheapest decisive action; the readiness verdict line appears verbatim in §0 and §6.6; reshaping paths carried effort estimates and evaluation designs, and venue deadlines were verified against current sources (both now kept outside this repository).

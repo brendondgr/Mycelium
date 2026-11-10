@@ -17,14 +17,14 @@ experiment. It is the contract, and `make validate-research` checks it.
 | [`DECISIONS.md`](DECISIONS.md) | Why did we choose this metric / collection / baseline? |
 | [`RELATED_WORK.md`](RELATED_WORK.md) | Who else has done this, and has anyone scooped us? |
 | [`datasets/DATASETS.md`](datasets/DATASETS.md) | What data, what licence, how to get it? |
-| [`paper/OUTLINE.md`](paper/OUTLINE.md) | What is the paper, and which venue? |
-| [`paper/publication-plan.md`](paper/publication-plan.md) | What are we submitting in 2027–28, where, and when? |
-| [`paper/venue-tracks.md`](paper/venue-tracks.md) | What does each venue accept, and which Mycelium papers fit it? |
-| [`paper/presubmission-checklists.md`](paper/presubmission-checklists.md) | What must we do before, at and after each submission? |
-| [`paper/submission-steps.html`](paper/submission-steps.html) | The same steps as a page: a timeline plus checklists for SIGIR, US-RSE and IUI (open in a browser) |
 
 `CLAIMS.md` is the highest-value file here. Its `unsupported` rows are the
 experiment backlog.
+
+Paper outlines, publication and venue plans, submission checklists and grant
+drafts are not kept in this repository; they live in the maintainers' private
+proposals repository. This record holds the evidence a paper would cite, not
+the plan for where it goes.
 
 ## Adding an experiment
 
@@ -85,6 +85,5 @@ docs/research/
 ├── experiments/            # the record itself, one directory per experiment
 ├── figures/                # publication-ready figures only, + their generators
 ├── tables/                 # publication-ready generated tables
-├── datasets/               # provenance, licence, access; one card per dataset
-└── paper/                  # outline, venue targets, venue checklists
+└── datasets/               # provenance, licence, access; one card per dataset
 ```

@@ -103,8 +103,10 @@ temp/
 # Documentation builds
 docs/_build/
 
-# Grant drafts (private until submitted; the repo is going public)
+# Grant drafts and paper plans are kept in a private repository, never here.
+# These paths stay ignored so a stray copy cannot be committed.
 docs/grants/
+docs/research/paper/
 
 # Editors
 .vscode/
