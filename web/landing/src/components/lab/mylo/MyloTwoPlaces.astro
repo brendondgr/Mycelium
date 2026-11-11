@@ -1,0 +1,472 @@
+---
+/**
+ * Lab prototype · mylo/two-places — one question, asked in the app and in the
+ * lab's Discord server, answered by the same Mylo from the same sources.
+ *
+ * The two surfaces start apart, angled away from each other on their own
+ * planes, and slide together as the section crosses the viewport (`--p`); a
+ * thread of light draws from the question on one side to the same question on
+ * the other. Under them, the three ways to reach Mylo in Discord.
+ *
+ * Night Forest styling on both sides: the server side is described in words
+ * ("your lab's Discord server") and drawn in the site's own vocabulary, not
+ * in Discord's. Static: the two surfaces side by side, flat, thread drawn.
+ */
+---
+
+<section class="nf-section tp" data-proto="mylo-two-places" aria-labelledby="mylo-two-places-heading" data-progress>
+  <div class="nf-wrap">
+    <div class="nf-head-center reveal">
+      <p class="nf-eyebrow">Ask Mylo</p>
+      <h2 id="mylo-two-places-heading" class="nf-h2">The same Mylo, wherever the lab talks</h2>
+      <p class="nf-sub">
+        Ask in the app, or in your lab's Discord server. It is one Mylo with one view of the lab, so
+        the answer and its sources are the same in both places.
+      </p>
+    </div>
+
+    <div class="tp-stage" data-pointer>
+      <svg class="tp-thread" viewBox="0 0 1000 400" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M300 92 C 430 30, 560 170, 700 96" pathLength="1"></path>
+        <circle cx="300" cy="92" r="4"></circle>
+        <circle cx="700" cy="96" r="4"></circle>
+      </svg>
+
+      <!-- In the app -->
+      <article class="tp-plane tp-web" aria-label="Sample: asked in the app">
+        <p class="tp-where">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"></rect><path d="M12 4v12"></path></svg>
+          In the app
+        </p>
+        <div class="tp-web-body">
+          <p class="tp-q">Does the Okonkwo paper change anything for the Lakeside grant?</p>
+          <p class="tp-row">
+            <img src="/images/mylo-head-96.webp" alt="" width="24" height="24" loading="lazy" />
+            <span class="tp-name">Mylo</span>
+            <span class="tp-status">Looked at 3 things</span>
+          </p>
+          <p class="tp-answer">
+            Yes, in one place: it measures grounding falling off as the patient population drifts
+            <span class="tp-pill" title="Source 1: the paper">1</span>, the risk Lakeside lists under what
+            blocks it <span class="tp-pill" title="Source 2: the Lakeside project">2</span>. Its sites are all
+            academic medical centres, so it says nothing direct about community hospitals.
+          </p>
+        </div>
+      </article>
+
+      <!-- In the lab's server -->
+      <article class="tp-plane tp-chat" aria-label="Sample: asked in a thread in the lab's Discord server">
+        <p class="tp-where">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H9l-3.5 3v-3H4A1.5 1.5 0 0 1 2.5 13V7A1.5 1.5 0 0 1 4 5.5z"></path></svg>
+          In your lab's Discord server
+        </p>
+        <div class="tp-chan">
+          <span class="tp-hash" aria-hidden="true">#</span>clinical-nlp
+          <span class="tp-chan-sep" aria-hidden="true">›</span>
+          <span class="tp-chan-thread">Okonkwo and Lakeside</span>
+        </div>
+
+        <ol class="tp-msgs">
+          <li class="tp-msg">
+            <span class="tp-av tp-av-a" aria-hidden="true">DR</span>
+            <div>
+              <p class="tp-by">Dana R. <time>9:12</time></p>
+              <p><span class="tp-at">@Mylo</span> does the Okonkwo paper change anything for the Lakeside grant?</p>
+            </div>
+          </li>
+          <li class="tp-msg tp-mylo">
+            <img class="tp-av" src="/images/mylo-head-96.webp" alt="" width="32" height="32" loading="lazy" />
+            <div>
+              <p class="tp-by">Mylo <span class="tp-reply">replying to Dana R.</span></p>
+              <p>
+                Yes, in one place: it measures grounding falling off as the patient population drifts
+                (<span class="tp-link">the paper</span>), the risk Lakeside lists under what blocks it
+                (<span class="tp-link">Lakeside</span>). Its sites are all academic medical centres.
+              </p>
+            </div>
+          </li>
+          <li class="tp-msg">
+            <span class="tp-av tp-av-b" aria-hidden="true">SK</span>
+            <div>
+              <p class="tp-by">Sam K. <time>9:20</time></p>
+              <p><span class="tp-at">@Mylo</span> could we run its harness ourselves?</p>
+            </div>
+          </li>
+          <li class="tp-msg tp-mylo">
+            <img class="tp-av" src="/images/mylo-head-96.webp" alt="" width="32" height="32" loading="lazy" />
+            <div>
+              <p class="tp-by">Mylo <span class="tp-reply">replying to Sam K.</span></p>
+              <p>It runs on MIMIC-IV, which the lab already has (<span class="tp-link">datasets</span>).</p>
+            </div>
+          </li>
+        </ol>
+      </article>
+    </div>
+
+    <p class="tp-sample">Sample conversation · fictional lab</p>
+
+    <ul class="tp-ways" data-reveal-group data-reveal-step="110">
+      <li class="reveal">
+        <p class="tp-way-h">In a direct message</p>
+        <p>Personal, like your panel in the app. Only you see it.</p>
+      </li>
+      <li class="reveal">
+        <p class="tp-way-h">With an @mention or a reply</p>
+        <p>In a channel, mention Mylo or reply to him. Each person keeps their own conversation there.</p>
+      </li>
+      <li class="reveal">
+        <p class="tp-way-h">In a thread</p>
+        <p>One shared conversation for everyone in it, each question answered under the person who asked.</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<style>
+  .tp {
+    overflow: clip;
+  }
+
+  .tp-stage {
+    --pv: var(--p, 0.6);
+    /* 0 apart → 1 together. */
+    --e: clamp(0, calc((var(--pv) - 0.12) / 0.38), 1);
+    position: relative;
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 3rem;
+    perspective: 1500px;
+  }
+
+  @media (min-width: 900px) {
+    .tp-stage {
+      grid-template-columns: 1fr 1fr;
+      gap: 4.5rem;
+      align-items: start;
+    }
+  }
+
+  .tp-thread {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  .tp-thread path {
+    fill: none;
+    stroke: var(--nf-glow);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: calc(1 - clamp(0, calc((var(--pv) - 0.3) / 0.25), 1));
+    vector-effect: non-scaling-stroke;
+    filter: drop-shadow(0 0 6px rgb(184 217 154 / 85%));
+    opacity: 0.75;
+  }
+
+  .tp-thread circle {
+    fill: var(--nf-glow);
+    opacity: clamp(0, calc((var(--pv) - 0.3) / 0.25), 1);
+    filter: drop-shadow(0 0 6px rgb(184 217 154 / 90%));
+  }
+
+  @media (max-width: 899px) {
+    .tp-thread {
+      display: none;
+    }
+  }
+
+  /* ------------------------------------------------------------ the planes */
+
+  .tp-plane {
+    position: relative;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 1.2rem;
+    background: var(--surface);
+    box-shadow:
+      0 30px 70px rgb(0 0 0 / 45%),
+      0 0 0 1px rgb(184 217 154 / 5%) inset;
+    overflow: hidden;
+  }
+
+  @media (min-width: 900px) {
+    .tp-web {
+      transform:
+        translate3d(calc((1 - var(--e)) * -60px + var(--mx, 0) * 6px), 0, calc((1 - var(--e)) * -120px))
+        rotateY(calc((1 - var(--e)) * 22deg + var(--mx, 0) * 3deg));
+      transform-origin: 100% 50%;
+    }
+
+    .tp-chat {
+      transform:
+        translate3d(calc((1 - var(--e)) * 60px + var(--mx, 0) * 6px), 1.5rem, calc((1 - var(--e)) * -120px))
+        rotateY(calc((1 - var(--e)) * -22deg + var(--mx, 0) * 3deg));
+      transform-origin: 0 50%;
+    }
+  }
+
+  .tp-where {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--divider);
+    background: var(--surface-alt);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .tp-where svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: var(--nf-glow);
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+  }
+
+  /* --------------------------------------------------------------- the app */
+
+  .tp-web-body {
+    display: grid;
+    gap: 0.8rem;
+    padding: 1.1rem 1rem 1.3rem;
+  }
+
+  .tp-q {
+    justify-self: end;
+    max-width: 88%;
+    margin: 0;
+    padding: 0.6rem 0.85rem;
+    border-radius: 1rem 1rem 0.3rem 1rem;
+    background: color-mix(in srgb, var(--brand-primary) 32%, var(--surface-alt));
+    font-size: 0.87rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+  }
+
+  .tp-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.8rem;
+  }
+
+  .tp-row img {
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 9999px;
+    background: #253021;
+    box-shadow: 0 0 0 1px rgb(184 217 154 / 25%);
+  }
+
+  .tp-name {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .tp-status {
+    color: var(--text-muted);
+  }
+
+  .tp-answer {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .tp-pill {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--brand-primary) 30%, transparent);
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    vertical-align: 0.12em;
+  }
+
+  /* ------------------------------------------------------------ the server */
+
+  .tp-chan {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--divider);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  .tp-hash {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .tp-chan-sep {
+    color: var(--text-muted);
+  }
+
+  .tp-chan-thread {
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-overflow: ellipsis;
+  }
+
+  .tp-msgs {
+    display: grid;
+    gap: 0.95rem;
+    margin: 0;
+    padding: 1rem 1rem 1.2rem;
+    list-style: none;
+  }
+
+  .tp-msg {
+    display: flex;
+    gap: 0.7rem;
+    min-width: 0;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+  }
+
+  .tp-msg p {
+    margin: 0;
+  }
+
+  /* Mylo's answers sit under the question they answer. */
+  .tp-mylo {
+    margin-left: 1.6rem;
+    padding-left: 0.8rem;
+    border-left: 2px solid color-mix(in srgb, var(--brand-primary) 45%, transparent);
+  }
+
+  .tp-av {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  img.tp-av {
+    background: #253021;
+    box-shadow: 0 0 0 1px rgb(184 217 154 / 25%);
+  }
+
+  .tp-av-a {
+    background: color-mix(in srgb, var(--cluster-3, #8da66f) 45%, var(--surface-alt));
+  }
+
+  .tp-av-b {
+    background: color-mix(in srgb, var(--cluster-5, #c9a35a) 40%, var(--surface-alt));
+  }
+
+  .tp-by {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .tp-by time {
+    margin-left: 0.35rem;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  .tp-reply {
+    margin-left: 0.35rem;
+    font-weight: 400;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+  }
+
+  .tp-at {
+    padding: 0 0.2rem;
+    border-radius: 0.3rem;
+    background: color-mix(in srgb, var(--brand-primary) 28%, transparent);
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .tp-link {
+    color: var(--nf-glow);
+    text-decoration: underline;
+    text-decoration-color: rgb(184 217 154 / 40%);
+    text-underline-offset: 0.2em;
+  }
+
+  .tp-sample {
+    margin: 2.4rem 0 0;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* ---------------------------------------------------------- three ways */
+
+  .tp-ways {
+    display: grid;
+    gap: 1rem;
+    max-width: 62rem;
+    margin: 2.5rem auto 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 760px) {
+    .tp-ways {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+
+    .tp-ways li + li {
+      border-left: 1px solid var(--divider);
+    }
+  }
+
+  .tp-ways li {
+    padding: 0.4rem 1.4rem;
+  }
+
+  .tp-ways p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .tp-ways .tp-way-h {
+    margin-bottom: 0.3rem;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tp-web,
+    .tp-chat {
+      transform: none !important;
+    }
+  }
+</style>

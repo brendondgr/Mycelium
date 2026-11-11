@@ -1,0 +1,273 @@
+---
+/**
+ * Lab prototype — covers/catalogue. "What it covers", brought up to date.
+ *
+ * The live catalogue's form (numbered entries, a line drawing each), with nine
+ * entries for what ships now and nothing the code does not make good: the
+ * knowledge entry describes the graph that exists (concepts and typed links,
+ * each with how it is known) and drops claims and contradictions, which are
+ * not built. Collaboration search ships switched off and full text has no app
+ * surface, so neither is listed.
+ *
+ * Depth: each entry sits on one of three planes and drifts at its own rate as
+ * the section crosses the viewport (`--p`), so the grid reads as a field
+ * rather than a table. At rest (no JS, reduced motion) every plane is level.
+ */
+const entries = [
+  {
+    title: "Literature discovery",
+    description:
+      "New papers from OpenAlex, PubMed and Semantic Scholar, matched to each of your themes, with the reason it fits and the strongest reason it might not.",
+    glyph: "M8 14c6-3 12-3 16 1v24c-4-4-10-4-16-1z M40 14c-6-3-12-3-16 1v24c4-4 10-4 16-1z",
+  },
+  {
+    title: "Grant calls",
+    description:
+      "Public funding calls matched to the lab and its projects, every deadline round tracked, and checked: open or closed, the next deadline against your buffer, who may apply and from where.",
+    glyph: "M24 40c-7 0-12-5-12-12s5-12 12-12 12 5 12 12-5 12-12 12z M24 16c0-6 4-9 9-9-1 5-4 8-9 9",
+    gold: true,
+  },
+  {
+    title: "Fellowships",
+    description:
+      "Matched to each person, with eligibility checked by rule before it raises anyone's hopes, and named plainly when a human still has to check.",
+    glyph: "M24 42V8 M24 14c-5-1-8 1-10 4 M24 14c5-1 8 1 10 4 M24 22c-6-1-10 1-12 5 M24 22c6-1 10 1 12 5 M24 30c-6-1-9 1-11 5 M24 30c6-1 9 1 11 5",
+    gold: true,
+  },
+  {
+    title: "Conferences",
+    description:
+      "Surfaced on the next submission deadline, never the event date, with the series' CORE, CCF or THCPL ranking where it has one.",
+    glyph: "M10 38V18l14-9 14 9v20z M10 18h28 M17 38V26h14v12 M24 9v-3",
+    gold: true,
+  },
+  {
+    title: "Daily reports",
+    description:
+      "One written pass through the night, by theme: each item's place in its theme and a verdict. In the app, as a PDF, or posted to your lab's Discord.",
+    glyph: "M14 8h16l6 6v26H14z M30 8v6h6 M19 22h12 M19 28h12 M19 34h8",
+  },
+  {
+    title: "Ask Mylo",
+    description:
+      "Questions answered from everything you are allowed to see, with each step he takes shown and every source cited. In the app and in Discord. He reads; he never changes anything.",
+    glyph: "M10 12h28v18H22l-8 7v-7h-4z M17 21h0.1 M24 21h0.1 M31 21h0.1",
+  },
+  {
+    title: "Announcements in Discord",
+    description:
+      "New calls posted as threads in your lab's forums, with Interested, Remind me and Not for us on each. Anyone in the server can set a reminder.",
+    glyph: "M8 12h24v16H18l-6 5v-5H8z M32 18h8v14h-4v5l-6-5h-8",
+  },
+  {
+    title: "Labs, departments and projects",
+    description:
+      "Personal, lab and project profiles with their own themes. A project keeps its state: what it claims, what blocks it, what it aims at. A department hears about the calls only it can put forward.",
+    glyph: "M8 26c0-6 5-10 10-10s10 4 10 10z M18 26v12 M27 31c0-4 3-7 7-7s7 3 7 7z M34 31v7 M5 38h38",
+  },
+  {
+    title: "Knowledge connections",
+    description:
+      "Concepts from your profiles, projects and papers, linked with how each link is known: declared by you, shown in your own papers, or raised in conversation. Mylo reads it when he answers.",
+    glyph: "M12 34 24 14 36 30 12 34 M12 34a3 3 0 1 0 0 .1 M24 14a3 3 0 1 0 0 .1 M36 30a3 3 0 1 0 0 .1",
+  },
+] as const;
+
+const numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
+/* Three planes, spread so no row or column shares one throughout. */
+const planes = [1, 3, 2, 2, 1, 3, 3, 2, 1];
+---
+
+<section class="nf-section cc" data-proto="covers-catalogue" data-progress aria-labelledby="covers-catalogue-heading">
+  <div class="nf-wrap">
+    <div class="cc-head reveal">
+      <p class="nf-eyebrow">What it covers</p>
+      <h2 id="covers-catalogue-heading" class="nf-h2">One workspace for the whole research week</h2>
+      <p class="nf-sub">Nine things it does tonight, for a person, a lab or a whole department.</p>
+    </div>
+    <ol class="cc-entries" data-reveal-group data-reveal-step="80">
+      {
+        entries.map((e, i) => (
+          <li class="reveal cc-entry" style={`--z:${planes[i]}`} data-gold={"gold" in e && e.gold ? "" : undefined}>
+            <div class="cc-float">
+              <svg class="cc-glyph" viewBox="0 0 48 48" aria-hidden="true"><path d={e.glyph} pathLength="1"></path></svg>
+              <p class="cc-no">{numerals[i]}.</p>
+              <h3>{e.title}</h3>
+              <p class="cc-desc">{e.description}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .cc {
+    overflow: clip;
+  }
+
+  .cc-head {
+    max-width: 42rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .cc-entries {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 720px) {
+    .cc-entries {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .cc-entries {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .cc-entry {
+    position: relative;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  /*
+   * The plane. Nearer entries (z 3) travel further against the scroll and sit
+   * a touch brighter; far ones (z 1) barely move and dim slightly. `--p`
+   * defaults to 0.5, the level midpoint, so the static page is a flat grid.
+   */
+  .cc-float {
+    --drift: calc((var(--p, 0.5) - 0.5) * 2);
+    position: relative;
+    height: 100%;
+    padding: 2.2rem 1.5rem 2.4rem 0;
+    transform: translate3d(0, calc(var(--drift) * (var(--z) - 2) * -22px), 0);
+    transition: background-color 300ms ease;
+  }
+
+  :global(html[data-lab-motion="on"]) .cc-float {
+    opacity: calc(0.82 + var(--z) * 0.06);
+  }
+
+  .cc-entry:hover .cc-float {
+    background: linear-gradient(180deg, rgb(184 217 154 / 5%), transparent 80%);
+  }
+
+  .cc-entry[data-gold]:hover .cc-float {
+    background: linear-gradient(180deg, rgb(211 174 102 / 6%), transparent 80%);
+  }
+
+  @media (min-width: 720px) {
+    .cc-float {
+      padding-inline: 1.5rem;
+    }
+
+    .cc-entry {
+      border-left: 1px solid var(--divider);
+    }
+
+    .cc-entry:nth-child(2n + 1) {
+      border-left: 0;
+    }
+
+    .cc-entry:nth-child(2n + 1) .cc-float {
+      padding-left: 0;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .cc-entry:nth-child(2n + 1) {
+      border-left: 1px solid var(--divider);
+    }
+
+    .cc-entry:nth-child(2n + 1) .cc-float {
+      padding-left: 1.5rem;
+    }
+
+    .cc-entry:nth-child(3n + 1) {
+      border-left: 0;
+    }
+
+    .cc-entry:nth-child(3n + 1) .cc-float {
+      padding-left: 0;
+    }
+
+    .cc-entry:nth-last-child(-n + 3) {
+      border-bottom: 0;
+    }
+  }
+
+  .cc-glyph {
+    position: absolute;
+    top: 2rem;
+    right: 1.25rem;
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+
+  .cc-glyph path {
+    fill: none;
+    stroke: var(--nf-glow);
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    filter: drop-shadow(0 0 4px rgb(184 217 154 / 45%));
+  }
+
+  /* Gold is for opportunities and deadlines only: the three calls. */
+  .cc-entry[data-gold] .cc-glyph path {
+    stroke: var(--brand-accent);
+    filter: drop-shadow(0 0 4px rgb(211 174 102 / 45%));
+  }
+
+  :global(html[data-reveal="armed"]) .cc-entry .cc-glyph path {
+    stroke-dashoffset: 1;
+  }
+
+  :global(html[data-reveal="armed"]) .cc-entry:global(.is-revealed) .cc-glyph path {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1.6s var(--nf-ease) calc(var(--reveal-delay, 0ms) + 250ms);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cc-entry:hover .cc-glyph path {
+      animation: nf-draw 1.4s var(--nf-ease);
+    }
+  }
+
+  .cc-no {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.5rem;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--nf-glow);
+  }
+
+  .cc-entry[data-gold] .cc-no {
+    color: var(--brand-accent);
+  }
+
+  h3 {
+    margin: 0.6rem 3.2rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .cc-desc {
+    margin: 0.6rem 0 0;
+    font-size: 0.93rem;
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+</style>

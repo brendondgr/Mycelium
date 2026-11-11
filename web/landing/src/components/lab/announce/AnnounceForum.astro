@@ -1,0 +1,602 @@
+---
+/**
+ * Lab prototype · announce/forum — a new front-page section: opportunity
+ * announcements in the lab's Discord server.
+ *
+ * Three threads stand in a stack, each from one of the lab's forums. As the
+ * section crosses the viewport (`--p`) they slide forward out of depth one at
+ * a time, the oldest first, so the newest call lands in front. The front
+ * thread is a whole announcement: what the call is, the checks, who should
+ * look (project teams, by name) and the four buttons. Behind it, a conference
+ * thread that leads with its place and continent, and a changed call whose
+ * thread was updated rather than posted again.
+ *
+ * The buttons are live but local: they show what each does without sending
+ * anything. Drawn in the site's own vocabulary, not Discord's; the platform is
+ * named in words only. Static: the stack, composed and still.
+ */
+---
+
+<section class="nf-section af" data-proto="announce-forum" aria-labelledby="announce-forum-heading" data-progress>
+  <div class="nf-wrap af-grid">
+    <div class="af-copy reveal">
+      <p class="nf-eyebrow">In your lab's Discord server</p>
+      <h2 id="announce-forum-heading" class="nf-h2">New calls arrive where the lab already talks</h2>
+      <p class="nf-sub">
+        Each grant, fellowship and conference that fits the lab becomes its own thread in the server's
+        forums, so the discussion about a call stays with the call.
+      </p>
+      <ul class="af-facts">
+        <li><strong>One thread per call.</strong> When a call changes, Mylo updates its thread and says what moved, rather than posting it again.</li>
+        <li><strong>Who should look.</strong> The project teams it suits, by name.</li>
+        <li><strong>Anyone can be reminded.</strong> Remind me works for everyone in the server, with no Mycelium account.</li>
+        <li><strong>Conferences lead with the place,</strong> and every thread is tagged by continent.</li>
+      </ul>
+    </div>
+
+    <div class="af-stage" data-pointer>
+      <!-- Back: a changed call, updated in place. -->
+      <article class="af-thread af-back" style="--i:0" aria-label="Sample thread: an updated grant">
+        <header class="af-th-head">
+          <p class="af-forum"><span aria-hidden="true">#</span>grants</p>
+          <span class="af-tag af-tag-updated">Updated</span>
+        </header>
+        <p class="af-th-title">R21 Exploratory/Developmental Research Award</p>
+        <p class="af-th-line">
+          <img src="/images/mylo-head-96.webp" alt="" width="18" height="18" loading="lazy" />
+          The call changed: its next round now closes in <span class="af-gold">11 days</span>. This thread is up to date.
+        </p>
+      </article>
+
+      <!-- Middle: a conference, place first. -->
+      <article class="af-thread af-mid" style="--i:1" aria-label="Sample thread: a conference">
+        <header class="af-th-head">
+          <p class="af-forum"><span aria-hidden="true">#</span>conferences</p>
+          <span class="af-tag">North America</span>
+        </header>
+        <p class="af-th-place">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17s5-4.6 5-8.5a5 5 0 0 0-10 0C5 12.4 10 17 10 17z"></path><circle cx="10" cy="8.5" r="1.8"></circle></svg>
+          Washington DC, USA
+        </p>
+        <p class="af-th-title">AMIA Annual Symposium</p>
+        <p class="af-th-line">Submit by <span class="af-gold">58 days from now</span> · the submission deadline, not the event date.</p>
+      </article>
+
+      <!-- Front: the newest call, whole. -->
+      <article class="af-thread af-front" style="--i:2" aria-label="Sample thread: a new grant announcement" data-af-front>
+        <header class="af-th-head">
+          <p class="af-forum"><span aria-hidden="true">#</span>grants</p>
+          <span class="af-tag af-tag-new">New</span>
+        </header>
+        <div class="af-post">
+          <img class="af-av" src="/images/mylo-head-96.webp" alt="" width="34" height="34" loading="lazy" />
+          <div class="af-post-body">
+            <p class="af-by">Mylo</p>
+            <p class="af-th-title af-big">Smart Health and Biomedical Research in the Era of AI</p>
+            <p class="af-src">National Science Foundation · <span class="af-money">$1.2M / 4 yrs</span></p>
+
+            <p class="af-deadline">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2"></path></svg>
+              Closes in 46 days
+            </p>
+
+            <p class="af-why">
+              Funds the community-hospital evaluation your Lakeside work has been waiting on, and asks for exactly the
+              grounding failure analysis the lab already runs.
+            </p>
+
+            <dl class="af-checks">
+              <div><dt>Open</dt><dd>Accepting applications</dd></div>
+              <div><dt>Deadline</dt><dd>Clear of your 14-day buffer</dd></div>
+              <div><dt>Who may apply</dt><dd>US institutions</dd></div>
+            </dl>
+
+            <p class="af-look">
+              <span class="af-look-h">Who should look</span>
+              <span class="af-team">Lakeside deployment</span>
+              <span class="af-team">MIMIC harness</span>
+            </p>
+
+            <div class="af-btns">
+              <button type="button" class="af-btn" data-af-act="interested" aria-pressed="false">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.5s-6-3.6-6-8a3.4 3.4 0 0 1 6-2.2 3.4 3.4 0 0 1 6 2.2c0 4.4-6 8-6 8z"></path></svg>
+                Interested <span class="af-count" data-af-count>2</span>
+              </button>
+              <button type="button" class="af-btn" data-af-act="remind" aria-pressed="false">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 13.5V9a4 4 0 0 1 8 0v4.5l1.3 1.5H4.7z M8.5 17h3"></path></svg>
+                Remind me
+              </button>
+              <button type="button" class="af-btn" data-af-act="no" aria-pressed="false">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8"></path></svg>
+                Not for us
+              </button>
+              <span class="af-btn af-btn-link">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 5H5v10h10v-3 M11 4h5v5 M16 4l-7 7"></path></svg>
+                View the call
+              </span>
+            </div>
+            <p class="af-ephemeral" data-af-note aria-live="polite" hidden></p>
+          </div>
+        </div>
+      </article>
+
+      <p class="af-sample">Sample threads · fictional lab</p>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  /*
+    The buttons show what each does, here and nowhere else: nothing is sent.
+    Scoped to this prototype's root.
+  */
+  (function () {
+    document.querySelectorAll('[data-proto="announce-forum"]').forEach(function (root) {
+      var note = root.querySelector("[data-af-note]");
+      var count = root.querySelector("[data-af-count]");
+      var notes = {
+        interested: "Counted. The thread shows who in the lab is interested.",
+        remind: "Only you can see this: Mylo will remind you before the call closes. No account needed.",
+        no: "Marked not for us.",
+      };
+      root.querySelectorAll("[data-af-act]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var act = b.getAttribute("data-af-act");
+          var on = b.getAttribute("aria-pressed") !== "true";
+          b.setAttribute("aria-pressed", on ? "true" : "false");
+          if (act === "interested") count.textContent = on ? "3" : "2";
+          note.textContent = on ? notes[act] : "";
+          note.hidden = !on;
+        });
+      });
+    });
+  })();
+</script>
+
+<style>
+  .af {
+    overflow: clip;
+  }
+
+  .af-grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  @media (min-width: 1024px) {
+    .af-grid {
+      grid-template-columns: 0.85fr 1.15fr;
+      gap: 4rem;
+    }
+  }
+
+  .af-facts {
+    display: grid;
+    gap: 0.75rem;
+    margin: 1.6rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.93rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .af-facts li {
+    padding-left: 1.1rem;
+    position: relative;
+  }
+
+  .af-facts li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    background: var(--nf-glow);
+    box-shadow: 0 0 8px rgb(184 217 154 / 60%);
+  }
+
+  .af-facts strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  /* ------------------------------------------------------------ the stack */
+
+  .af-stage {
+    --pv: var(--p, 0.6);
+    position: relative;
+    display: grid;
+    min-width: 0;
+    padding-top: 7.5rem;
+    perspective: 1400px;
+    perspective-origin: 50% 0%;
+  }
+
+  .af-thread {
+    /* Oldest first, newest last: each slides forward out of depth. */
+    --e: clamp(0, calc((var(--pv) - 0.1 - var(--i) * 0.08) / 0.24), 1);
+    grid-area: 1 / 1;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 1.1rem;
+    background: var(--surface);
+    opacity: min(1, calc(0.1 + var(--e) * 2.4));
+    transform:
+      translate3d(calc(var(--mx, 0) * var(--sway)), calc(var(--y) - (1 - var(--e)) * 40px), calc(var(--z) - (1 - var(--e)) * 260px))
+      rotateX(calc(var(--my, 0) * -2deg));
+    transform-origin: 50% 0;
+  }
+
+  .af-back {
+    --y: -7.5rem;
+    --z: -150px;
+    --sway: -4px;
+    background: color-mix(in srgb, var(--surface) 70%, var(--nf-night));
+    box-shadow: 0 20px 40px rgb(0 0 0 / 35%);
+  }
+
+  .af-mid {
+    --y: -3.9rem;
+    --z: -75px;
+    --sway: 3px;
+    background: color-mix(in srgb, var(--surface) 85%, var(--nf-night));
+    box-shadow: 0 24px 50px rgb(0 0 0 / 40%);
+  }
+
+  .af-front {
+    --y: 0px;
+    --z: 0px;
+    --sway: 9px;
+    box-shadow:
+      0 40px 90px rgb(0 0 0 / 55%),
+      0 0 0 1px rgb(184 217 154 / 6%) inset;
+  }
+
+  /* The threads behind show their head only; the rest is covered. */
+  .af-back,
+  .af-mid {
+    padding-bottom: 14rem;
+  }
+
+  .af-th-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.7rem 1rem 0;
+  }
+
+  .af-forum {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+
+  .af-tag {
+    padding: 0.08rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .af-tag-new {
+    border-color: color-mix(in srgb, var(--brand-primary) 50%, transparent);
+    background: color-mix(in srgb, var(--brand-primary) 20%, transparent);
+    color: var(--nf-glow);
+  }
+
+  .af-tag-updated {
+    border-style: dashed;
+  }
+
+  .af-th-title {
+    margin: 0.35rem 1rem 0;
+    overflow: hidden;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .af-th-place {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.4rem 1rem 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .af-th-place svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: var(--nf-glow);
+    stroke-width: 1.6;
+  }
+
+  .af-mid .af-th-title {
+    margin-top: 0.15rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .af-th-line {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.3rem 1rem 0;
+    overflow: hidden;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .af-th-line img {
+    flex: none;
+    border-radius: 9999px;
+  }
+
+  .af-gold {
+    color: var(--brand-accent);
+    font-weight: 600;
+  }
+
+  /* ------------------------------------------------------ the front thread */
+
+  .af-post {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.8rem 1rem 1.1rem;
+  }
+
+  .af-av {
+    flex: none;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 9999px;
+    background: #253021;
+    box-shadow: 0 0 0 1px rgb(184 217 154 / 25%);
+  }
+
+  .af-post-body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .af-by {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .af-big {
+    margin: 0.25rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: normal;
+  }
+
+  .af-src {
+    margin: 0.25rem 0 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+  }
+
+  .af-money {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .af-deadline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.6rem 0 0;
+    padding: 0.2rem 0.7rem 0.2rem 0.5rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--brand-accent-soft) 70%, transparent);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #f2e3c2;
+  }
+
+  .af-deadline svg {
+    width: 0.95rem;
+    height: 0.95rem;
+    fill: none;
+    stroke: var(--brand-accent);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+
+  .af-why {
+    margin: 0.7rem 0 0;
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .af-checks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 0.4rem;
+    margin: 0.8rem 0 0;
+  }
+
+  .af-checks div {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--divider);
+    border-radius: 0.6rem;
+    background: rgb(255 255 255 / 2%);
+  }
+
+  .af-checks dt {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .af-checks dt::before {
+    content: "✓";
+    color: var(--nf-glow);
+    font-size: 0.8rem;
+    letter-spacing: 0;
+  }
+
+  .af-checks dd {
+    margin: 0.1rem 0 0;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+  }
+
+  .af-look {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.8rem 0 0;
+  }
+
+  .af-look-h {
+    margin-right: 0.2rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .af-team {
+    padding: 0.1rem 0.6rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--brand-secondary) 22%, transparent);
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .af-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 1rem;
+  }
+
+  .af-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.2rem;
+    padding: 0 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    background: var(--surface-alt);
+    box-shadow: 0 2px 0 rgb(0 0 0 / 35%);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition:
+      transform 120ms ease,
+      box-shadow 120ms ease,
+      background-color 200ms ease;
+  }
+
+  .af-btn svg {
+    width: 0.95rem;
+    height: 0.95rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  button.af-btn:hover {
+    border-color: color-mix(in srgb, var(--brand-primary) 50%, var(--border));
+  }
+
+  button.af-btn:active,
+  .af-btn[aria-pressed="true"] {
+    transform: translateY(2px);
+    box-shadow: inset 0 2px 4px rgb(0 0 0 / 35%);
+  }
+
+  .af-btn[aria-pressed="true"] {
+    border-color: var(--brand-primary);
+    background: color-mix(in srgb, var(--brand-primary) 28%, var(--surface-alt));
+  }
+
+  .af-btn-link {
+    cursor: default;
+    color: var(--text-secondary);
+  }
+
+  .af-count {
+    min-width: 1.1rem;
+    padding: 0 0.3rem;
+    border-radius: 9999px;
+    background: rgb(184 217 154 / 14%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .af-ephemeral {
+    margin: 0.6rem 0 0;
+    padding: 0.45rem 0.7rem;
+    border-left: 2px solid var(--brand-primary);
+    border-radius: 0 0.5rem 0.5rem 0;
+    background: rgb(184 217 154 / 6%);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  .af-sample {
+    grid-area: 2 / 1;
+    margin: 1rem 0 0;
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 480px) {
+    .af-post {
+      padding-inline: 0.8rem;
+    }
+
+    .af-av {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .af-thread {
+      opacity: 1;
+      transform: translate3d(0, var(--y), var(--z));
+    }
+
+    .af-btn {
+      transition: none;
+    }
+  }
+</style>

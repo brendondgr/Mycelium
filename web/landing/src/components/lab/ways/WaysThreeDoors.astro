@@ -1,0 +1,527 @@
+---
+/**
+ * Lab prototype — ways/three-doors. The ways in, as doors.
+ *
+ * Hosted, the demo lab and self-hosted, side by side. The demo door carries
+ * `data-demo-link` and starts `hidden` like every demo link on the site, so
+ * with the demo off the row is two doors and the grid closes up around them.
+ *
+ * The self-hosted door's terminal shows the real first run: clone, then
+ * `make setup`, which asks who the instance is for (the four deployment
+ * profiles, in the order and words `ops/setup/bootstrap.py` prints them, cut
+ * to their first sentence). It types itself once the door is on screen.
+ *
+ * Depth: the doors stand on three planes and drift apart a little with the
+ * scroll (`--p`); a door opens toward the reader on hover or focus-within.
+ * At rest the doors are level and the terminal is fully written.
+ */
+import { ways } from "@/data/landing";
+import { demoUrl, primaryCta, sourceRepoUrl } from "@/data/site";
+
+const commands = [
+  "git clone https://github.com/brendondgr/Mycelium.git",
+  "cd Mycelium",
+  "make setup",
+];
+
+const profiles = [
+  { n: 1, name: "personal", help: "Just you." },
+  { n: 2, name: "lab", help: "One lab.", default: true },
+  { n: 3, name: "department", help: "Several labs." },
+  { n: 4, name: "institution", help: "A whole school." },
+];
+---
+
+<section id="three-doors-self-host" class="nf-section td" data-proto="three-doors" data-progress aria-labelledby="three-doors-heading">
+  <div class="nf-wrap">
+    <div class="nf-head-center reveal">
+      <p class="nf-eyebrow">Open source</p>
+      <h2 id="three-doors-heading" class="nf-h2">Every way in is free</h2>
+      <p class="nf-sub">Use the hosted workspace, look around a demo lab, or run the whole thing on your own machine.</p>
+    </div>
+
+    <div class="td-doors" data-reveal-group data-reveal-step="140">
+      <article class="td-door reveal" style="--z:1">
+        <div class="td-plane"><div class="td-leaf">
+          <svg class="td-glyph" viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M24 40V22 M24 22c0-8 5-12 12-12-1 7-5 12-12 12z M24 28c0-6-4-9-10-9 1 5 4 9 10 9z M14 40h20"></path>
+          </svg>
+          <p class="td-kicker">Hosted</p>
+          <h3>{ways.hosted.title}</h3>
+          <p class="td-desc">{ways.hosted.description}</p>
+          <ol class="td-steps">
+            {ways.hosted.steps.map((s, i) => (
+              <li><span aria-hidden="true">{i + 1}</span>{s}</li>
+            ))}
+          </ol>
+          <div class="td-foot">
+            <a class="nf-btn nf-btn-solid" href={primaryCta.href}>{primaryCta.label}</a>
+            <p class="td-note">Free with a sign-up code</p>
+          </div>
+        </div></div>
+      </article>
+
+      {/* Hidden until the demo reports itself on; see `demoUrl` in site.ts. */}
+      <article class="td-door td-door-demo reveal" style="--z:3" data-demo-link hidden>
+        <div class="td-plane"><div class="td-leaf">
+          <svg class="td-glyph" viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M6 24c5-8 11-12 18-12s13 4 18 12c-5 8-11 12-18 12S11 32 6 24z M24 29a5 5 0 1 0 0-10 5 5 0 0 0 0 10z"></path>
+          </svg>
+          <p class="td-kicker">Demo</p>
+          <h3>Look around first</h3>
+          <p class="td-desc">
+            A fictional lab in the real app, ranked each night against the real literature and calls. Read-only,
+            with nothing to sign up for, and you can ask Mylo a few questions too.
+          </p>
+          <div class="td-foot">
+            <a class="nf-btn nf-btn-line" href={demoUrl}>See it working</a>
+            <p class="td-note">Sample people and projects · real papers and calls</p>
+          </div>
+        </div></div>
+      </article>
+
+      <article class="td-door td-door-self reveal" style="--z:2">
+        <div class="td-plane"><div class="td-leaf">
+          <svg class="td-glyph" viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M8 12h32v24H8z M14 20l5 4-5 4 M23 29h9"></path>
+          </svg>
+          <p class="td-kicker">Self-hosted</p>
+          <h3>{ways.selfHost.title}</h3>
+          <p class="td-desc">
+            Mycelium is open source. One command writes the configuration and secrets, starts the stack, applies
+            the migrations and creates your admin account.
+          </p>
+          <div class="td-term" role="group" aria-label="Commands to run Mycelium yourself">
+            <div class="td-term-bar">
+              <span class="td-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+              <button type="button" class="td-copy" data-td-copy={commands.join("\n")}>
+                <svg class="td-copy-icon" viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"></rect><path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path></svg>
+                <svg class="td-check-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>
+                <span class="td-copy-label" aria-live="polite">Copy</span>
+              </button>
+            </div>
+            <pre><code data-td-code>{commands.map((c) => (
+              <span class="td-line td-cmd" data-td-type><span class="td-prompt" aria-hidden="true">$ </span><span data-td-text>{c}</span></span>
+            ))}<span class="td-line td-out" data-td-type><span data-td-text>  Who will use this instance?</span></span>{profiles.map((p) => (
+              <span class:list={["td-line", "td-out", { "td-default": p.default }]} data-td-type><span data-td-text>{`    ${p.n}. ${p.name.padEnd(12)} ${p.help}${p.default ? " (default)" : ""}`}</span></span>
+            ))}<span class="td-line td-ask" data-td-type><span data-td-text>  Choose 1-4 or a name [lab]: </span><span class="td-caret" aria-hidden="true"></span></span></code></pre>
+          </div>
+          <div class="td-foot">
+            <a class="nf-btn nf-btn-line" href={sourceRepoUrl} rel="noopener">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
+              View the source
+            </a>
+            <p class="td-note">Docker with Compose, and Python 3</p>
+          </div>
+        </div></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  (function () {
+    document.querySelectorAll('[data-proto="three-doors"]').forEach(function (root) {
+      /* Copy the commands; the label confirms it. */
+      var btn = root.querySelector("[data-td-copy]");
+      var label = btn.querySelector(".td-copy-label");
+      var reset;
+      btn.addEventListener("click", function () {
+        var text = btn.getAttribute("data-td-copy");
+        function done(ok) {
+          btn.toggleAttribute("data-copied", ok);
+          label.textContent = ok ? "Copied" : "Press Ctrl+C";
+          clearTimeout(reset);
+          reset = setTimeout(function () {
+            btn.removeAttribute("data-copied");
+            label.textContent = "Copy";
+          }, 1800);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+        } else {
+          var range = document.createRange();
+          range.selectNodeContents(root.querySelector("[data-td-code]"));
+          var sel = getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          done(false);
+        }
+      });
+
+      /*
+        The terminal types itself, once, when it is on screen. Every line is in
+        the markup already; only when motion is allowed is it emptied and then
+        written back, so the static page is always the full run.
+      */
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (typeof IntersectionObserver === "undefined") return;
+      var term = root.querySelector(".td-term");
+      var lines = Array.prototype.slice.call(root.querySelectorAll("[data-td-type]"));
+      var texts = lines.map(function (l) { return l.querySelector("[data-td-text]").textContent; });
+      var played = false;
+
+      var io = new IntersectionObserver(function (entries) {
+        if (played || !entries[0].isIntersecting) return;
+        played = true;
+        io.disconnect();
+        play();
+      }, { rootMargin: "0px 0px -15% 0px" });
+      io.observe(term);
+
+      function play() {
+        lines.forEach(function (l) {
+          l.classList.add("is-waiting");
+          l.querySelector("[data-td-text]").textContent = "";
+        });
+        var i = 0;
+        function nextLine() {
+          if (i >= lines.length) return;
+          var line = lines[i];
+          var node = line.querySelector("[data-td-text]");
+          var full = texts[i];
+          var isCmd = line.classList.contains("td-cmd");
+          line.classList.remove("is-waiting");
+          line.classList.add("is-typing");
+          if (!isCmd) {
+            /* Program output arrives whole, a beat apart. */
+            node.textContent = full;
+            line.classList.remove("is-typing");
+            i++;
+            setTimeout(nextLine, 110);
+            return;
+          }
+          var c = 0;
+          (function type() {
+            c += 1 + (Math.random() < 0.3 ? 1 : 0);
+            node.textContent = full.slice(0, c);
+            if (c < full.length) setTimeout(type, 28 + Math.random() * 40);
+            else {
+              line.classList.remove("is-typing");
+              i++;
+              setTimeout(nextLine, i === 3 ? 520 : 300);
+            }
+          })();
+        }
+        setTimeout(nextLine, 500);
+      }
+    });
+  })();
+</script>
+
+<style>
+  .td {
+    scroll-margin-top: var(--header-h);
+    overflow: clip;
+  }
+
+  /* Two or three doors; a hidden demo door simply drops out of the grid. */
+  .td-doors {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    margin-top: 3rem;
+    perspective: 1800px;
+  }
+
+  @media (min-width: 900px) {
+    .td-doors {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* The terminal needs the room, so the self-hosted door takes the wider share. */
+    .td-doors:has(.td-door-demo:not([hidden])) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr) minmax(0, 1.3fr);
+    }
+  }
+
+  @media (min-width: 900px) and (max-width: 1180px) {
+    .td-doors:has(.td-door-demo:not([hidden])) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .td-doors:has(.td-door-demo:not([hidden])) .td-door-self {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .td-door {
+    min-width: 0;
+  }
+
+  /* The plane: a door drifts with the scroll by how near it stands. Kept off
+     the article, whose transform belongs to the reveal. */
+  .td-plane {
+    height: 100%;
+    transform: translate3d(0, calc((var(--p, 0.5) - 0.5) * (var(--z) - 2) * -36px), 0);
+    transform-style: preserve-3d;
+  }
+
+  .td-door[hidden] {
+    display: none;
+  }
+
+  /* An arched leaf, hinged at its left edge, that swings toward the reader. */
+  .td-leaf {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+    padding: clamp(2.4rem, 4vw, 3.2rem) clamp(1.4rem, 3vw, 2rem) clamp(1.5rem, 3vw, 2rem);
+    border: 1px solid var(--border);
+    border-radius: 11rem 11rem 1.4rem 1.4rem;
+    background:
+      radial-gradient(22rem 12rem at 50% 0%, rgb(141 166 111 / 14%), transparent 70%),
+      linear-gradient(180deg, var(--surface-alt), var(--surface) 40%);
+    box-shadow:
+      0 20px 50px rgb(0 0 0 / 30%),
+      inset 0 0 0 6px rgb(16 20 14 / 35%),
+      inset 0 0 0 7px rgb(184 217 154 / 8%);
+    transform-origin: left center;
+    transition:
+      transform 600ms var(--nf-ease),
+      box-shadow 600ms ease,
+      border-color 400ms ease;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .td-door:hover .td-leaf,
+    .td-door:focus-within .td-leaf {
+      transform: rotateY(-7deg) translateZ(28px);
+      border-color: rgb(184 217 154 / 40%);
+      box-shadow:
+        26px 30px 60px rgb(0 0 0 / 45%),
+        0 0 60px rgb(141 166 111 / 14%),
+        inset 0 0 0 6px rgb(16 20 14 / 35%),
+        inset 0 0 0 7px rgb(184 217 154 / 14%);
+    }
+  }
+
+  /* The demo door's arch is narrower: a lighter way in. */
+  .td-door-demo .td-leaf {
+    background:
+      radial-gradient(18rem 10rem at 50% 0%, rgb(184 217 154 / 9%), transparent 70%),
+      linear-gradient(180deg, rgb(37 48 33 / 70%), rgb(29 36 26 / 80%) 40%);
+    border-style: dashed;
+  }
+
+  .td-glyph {
+    align-self: center;
+    width: 2.8rem;
+    height: 2.8rem;
+  }
+
+  .td-glyph path {
+    fill: none;
+    stroke: var(--nf-glow);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 5px rgb(184 217 154 / 45%));
+  }
+
+  .td-kicker {
+    margin: 0;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--nf-glow);
+  }
+
+  h3 {
+    margin: -0.5rem 0 0;
+    text-align: center;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.65rem;
+    font-weight: 400;
+    color: var(--text-primary);
+  }
+
+  .td-desc {
+    margin: 0;
+    font-size: 0.94rem;
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+
+  .td-steps {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0.25rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .td-steps li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.92rem;
+    color: var(--text-primary);
+  }
+
+  .td-steps span {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 1.7rem;
+    height: 1.7rem;
+    border: 1px solid rgb(184 217 154 / 45%);
+    border-radius: 9999px;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 0.85rem;
+    color: var(--nf-glow);
+  }
+
+  .td-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+  }
+
+  .td-note {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* ---------------------------------------------------------- terminal */
+  .td-term {
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+    background: #0b0e0a;
+    box-shadow: inset 0 12px 30px rgb(0 0 0 / 40%);
+    overflow: hidden;
+  }
+
+  .td-term-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.5rem 0.4rem 0.8rem;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .td-dots {
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .td-dots span {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 9999px;
+    background: var(--border);
+  }
+
+  .td-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2rem;
+    padding: 0 0.7rem;
+    border: 1px solid rgb(184 217 154 / 25%);
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 200ms ease, border-color 200ms ease, background-color 200ms ease;
+  }
+
+  .td-copy:hover {
+    color: var(--text-primary);
+    border-color: rgb(184 217 154 / 55%);
+    background: rgb(184 217 154 / 6%);
+  }
+
+  .td-copy svg {
+    width: 0.95rem;
+    height: 0.95rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .td-check-icon,
+  .td-copy[data-copied] .td-copy-icon {
+    display: none;
+  }
+
+  .td-copy[data-copied] .td-check-icon {
+    display: block;
+  }
+
+  .td-copy[data-copied] {
+    color: var(--nf-glow);
+    border-color: rgb(184 217 154 / 55%);
+  }
+
+  pre {
+    margin: 0;
+    padding: 0.9rem 1rem 1rem;
+    overflow-x: auto;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.7;
+    color: #e6eedb;
+  }
+
+  code {
+    display: grid;
+  }
+
+  .td-line {
+    min-height: 1.7em;
+    white-space: pre;
+  }
+
+  .td-line.is-waiting {
+    visibility: hidden;
+  }
+
+  .td-prompt {
+    color: var(--nf-glow);
+  }
+
+  .td-out {
+    color: var(--text-secondary);
+  }
+
+  .td-default {
+    color: var(--nf-glow);
+  }
+
+  .td-ask {
+    color: var(--text-primary);
+  }
+
+  .td-caret {
+    display: inline-block;
+    width: 0.5rem;
+    height: 1rem;
+    vertical-align: -0.15rem;
+    background: var(--nf-glow);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .td-caret {
+      animation: td-blink 1.1s steps(1) infinite;
+    }
+  }
+
+  @keyframes td-blink {
+    50% { opacity: 0; }
+  }
+</style>

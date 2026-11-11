@@ -1,0 +1,184 @@
+---
+/**
+ * Feeds prototype — Fanned deck (`feeds/deck`).
+ *
+ * One card from each of the four feeds, starting as a tilted deck in the
+ * middle of the section and fanning out into a two-by-two spread as the reader
+ * scrolls. In the deck the front card is sharp and the ones behind it are
+ * dimmed and softened; hovering or focusing any card lifts it to the front.
+ * The pointer tilts the whole spread a little.
+ *
+ * The cards are the front page's own (`FeedCard`, the app's skeleton), so a
+ * card change reaches this version too. `--p` drives the fan; its fallback
+ * (0.6) is the finished spread, which reduced motion and phones get (phones
+ * as a single column).
+ */
+import FeedCard from "@/components/landing/FeedCard.astro";
+import { feedTabs } from "@/data/feed-preview";
+import "@/styles/feed-card.css";
+
+/* Deck order, front to back, and each card's cell in the spread. */
+const deck = feedTabs.map((tab, i) => ({
+  label: tab.label,
+  item: tab.items[0],
+  i,
+  col: i % 2,
+  row: Math.floor(i / 2),
+}));
+---
+
+<section class="nf-section fd" aria-labelledby="fd-heading" data-proto="feeds-deck" data-progress data-pointer>
+  <div class="nf-wrap">
+    <div class="nf-head-center reveal">
+      <p class="nf-eyebrow">Four feeds, one profile</p>
+      <h2 id="fd-heading" class="nf-h2">Papers, grants, fellowships, conferences</h2>
+      <p class="nf-sub">
+        Each feed ranks its own kind of thing against the same profile, and every card is built the
+        same way: the measured match to your research, Mylo’s reason, and the themes it reached.
+        Sample content.
+      </p>
+    </div>
+
+    <div class="fd-stage">
+      <div class="fd-tilt">
+        {
+          deck.map((d) => (
+            <div
+              class="fd-cell"
+              style={`--i:${d.i}; --col:${d.col}; --row:${d.row}; --r:${[-3, 2.5, -1.5, 3.5][d.i]}deg`}
+            >
+              <p class="fd-label">
+                <span class="fd-label-n">{String(d.i + 1).padStart(2, "0")}</span>
+                {d.label}
+              </p>
+              <ul class="fd-card">
+                <FeedCard item={d.item} />
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .fd {
+    /* 0 = the deck, 1 = the spread. Fallback 0.6 = the spread. */
+    --f: clamp(0, calc((var(--p, 0.6) - 0.16) / 0.36), 1);
+    --gap: 1.25rem;
+    overflow: clip;
+    background: linear-gradient(180deg, transparent, rgb(37 48 33 / 45%) 25%, rgb(37 48 33 / 45%) 75%, transparent);
+  }
+
+  .fd-stage {
+    max-width: 62rem;
+    margin: 3.5rem auto 0;
+    perspective: 1800px;
+  }
+
+  .fd-tilt {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--gap);
+    transform-style: preserve-3d;
+    transform:
+      rotateX(calc(var(--my, 0) * -2.5deg + (1 - var(--f)) * 16deg))
+      rotateY(calc(var(--mx, 0) * 3deg));
+  }
+
+  /*
+   * Every cell is laid out in its spread position; in the deck it is pulled
+   * to the middle of the grid by its own size (percentages of itself), pushed
+   * back in depth by its place in the deck, and turned a little.
+   */
+  .fd-cell {
+    --unf: calc(1 - var(--f));
+    --dx: calc((0.5 - var(--col)) * (100% + var(--gap)));
+    --dy: calc((0.5 - var(--row)) * (100% + var(--gap)));
+    position: relative;
+    z-index: calc(10 - var(--i));
+    outline: none;
+    transform:
+      translate3d(
+        calc(var(--dx) * var(--unf)),
+        calc(var(--dy) * var(--unf) + var(--i) * -16px * var(--unf)),
+        calc(var(--i) * -70px * var(--unf))
+      )
+      rotateZ(calc(var(--r) * var(--unf)));
+    filter:
+      brightness(calc(1 - var(--i) * 0.14 * var(--unf)))
+      blur(calc(var(--i) * 1.1px * var(--unf)));
+    transition:
+      filter 300ms ease,
+      translate 380ms var(--nf-ease);
+  }
+
+  /* Lifted to the front, sharp, whatever the deck is doing. */
+  .fd-cell:hover,
+  .fd-cell:focus-within {
+    z-index: 20;
+    filter: none;
+    translate: 0 -10px 90px;
+  }
+
+  .fd-cell:hover .fd-card :global(.fc-card),
+  .fd-cell:focus-within .fd-card :global(.fc-card) {
+    box-shadow:
+      0 30px 70px rgb(0 0 0 / 55%),
+      0 0 0 1px rgb(184 217 154 / 30%);
+  }
+
+  .fd-label {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    margin: 0 0 0.6rem 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--nf-glow);
+    opacity: var(--f);
+  }
+
+  .fd-label-n {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1rem;
+    font-style: italic;
+    font-weight: 300;
+    letter-spacing: 0;
+    color: var(--text-muted);
+  }
+
+  .fd-card {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .fd-card :global(.fc-card) {
+    height: 100%;
+    box-shadow: 0 calc(14px + 16px * var(--unf)) calc(36px + 30px * var(--unf)) rgb(0 0 0 / 45%);
+  }
+
+  @media (max-width: 760px) {
+    .fd {
+      --f: 1;
+    }
+
+    .fd-stage {
+      perspective: none;
+    }
+
+    .fd-tilt {
+      grid-template-columns: minmax(0, 1fr);
+      transform: none;
+    }
+
+    .fd-cell:hover,
+    .fd-cell:focus-within {
+      translate: none;
+    }
+  }
+</style>

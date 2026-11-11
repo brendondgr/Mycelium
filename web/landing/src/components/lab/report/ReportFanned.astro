@@ -1,0 +1,535 @@
+---
+/**
+ * Report prototype — Three deliveries (`report/fanned`).
+ *
+ * The same morning report, as the three places it actually lands: the app,
+ * the printed PDF, and the lab's Discord channel (the PDF attached beneath a
+ * counts-by-theme summary, as the real post is). The three sheets start
+ * stacked and fan apart in perspective as the section crosses the viewport;
+ * the pointer tilts the stack a little. Sample content, fictional lab.
+ *
+ * `--p` drives the fan; its fallback (0.62) is the fanned composition, which
+ * is also what reduced motion and phones get (phones without the 3D).
+ */
+import { reportLines } from "@/data/landing";
+
+const items = reportLines.filter((l) => l.kind === "item");
+const lead = reportLines[0].text;
+const deadline = reportLines.find((l) => l.kind === "deadline")!;
+---
+
+<section class="nf-section rf" aria-labelledby="rf-heading" data-proto="report-fanned" data-progress data-pointer>
+  <div class="nf-wrap rf-grid">
+    <div class="rf-head reveal">
+      <p class="nf-eyebrow">The 06:00 report</p>
+      <h2 id="rf-heading" class="nf-h2">One report, wherever your lab reads</h2>
+      <p class="nf-sub">
+        One written pass through the night, ordered by theme — in the workspace, as a PDF you can
+        print or forward, and posted to your lab’s Discord channel with a count of what is new in
+        each theme.
+      </p>
+      <ul class="rf-legend">
+        <li><span class="rf-key rf-key-app" aria-hidden="true"></span>In the app</li>
+        <li><span class="rf-key rf-key-pdf" aria-hidden="true"></span>As a PDF</li>
+        <li><span class="rf-key rf-key-chat" aria-hidden="true"></span>In your lab’s Discord</li>
+      </ul>
+      <p class="rf-sample">Sample content · fictional lab</p>
+    </div>
+
+    <div class="rf-stage reveal" aria-label="The same sample report in three places">
+      <div class="rf-tilt">
+        {/* Back: the Discord post. */}
+        <article class="rf-sheet rf-chat" aria-label="Sample Discord post">
+          <p class="rf-tab">In your lab’s Discord</p>
+          <div class="rf-chat-row">
+            <span class="rf-ava"><img src="/images/mylo-head-96.webp" alt="" width="34" height="34" /></span>
+            <div class="rf-chat-body">
+              <p class="rf-chat-who">Mylo <span>today at 06:00</span></p>
+              <p class="rf-chat-ch"># lab-reports</p>
+              <p class="rf-chat-text">Tuesday’s report for the Clinical NLP Lab is ready.</p>
+              <ul class="rf-counts">
+                <li><span>Retrieval grounding</span><b>4 new</b></li>
+                <li><span>Plasticity mechanisms</span><b>2 new</b></li>
+                <li><span>Neural decoding</span><b>1 new</b></li>
+              </ul>
+              <p class="rf-file">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 2.5h6l4 4v11H6z M12 2.5v4h4"></path></svg>
+                daily-report-tuesday.pdf
+              </p>
+            </div>
+          </div>
+        </article>
+
+        {/* Middle: the printed PDF, on paper. */}
+        <article class="rf-sheet rf-pdf" aria-label="Sample PDF page">
+          <p class="rf-tab">As a PDF</p>
+          <div class="rf-paper">
+            <p class="rf-pdf-kicker">Clinical NLP Lab · Daily report</p>
+            <p class="rf-pdf-title">Tuesday</p>
+            <p class="rf-pdf-theme">Retrieval grounding</p>
+            <p class="rf-pdf-item"><b>{items[0].text}</b><span>{items[0].rank} · <i class="rf-v rf-v-read">{items[0].verdict}</i></span></p>
+            <p class="rf-pdf-theme">Plasticity mechanisms</p>
+            <p class="rf-pdf-item"><b>{items[1].text}</b><span>{items[1].rank} · <i class="rf-v rf-v-skim">{items[1].verdict}</i></span></p>
+            <div class="rf-pdf-rules" aria-hidden="true"><span></span><span></span><span></span></div>
+          </div>
+        </article>
+
+        {/* Front: the app's report. */}
+        <article class="rf-sheet rf-app" aria-label="Sample report in the app">
+          <p class="rf-tab">In the app</p>
+          <header class="rf-app-head">
+            <span class="rf-ava"><img src="/images/mylo-head-96.webp" alt="" width="34" height="34" /></span>
+            <div>
+              <p class="rf-app-title">Daily report</p>
+              <p class="rf-app-meta">Tuesday · 06:00 · Clinical NLP Lab</p>
+            </div>
+          </header>
+          <div class="rf-app-body">
+            <p class="rf-lead">{lead}</p>
+            <p class="rf-theme">Retrieval grounding</p>
+            <div class="rf-item">
+              <span class="rf-item-title">{items[0].text}</span>
+              <span class="rf-item-meta">{items[0].rank}<span class="rf-v rf-v-read">{items[0].verdict}</span></span>
+            </div>
+            <p class="rf-deadline">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2"></path></svg>
+              <span>{deadline.text}</span>
+            </p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .rf {
+    /* 0 stacked → 1 fanned. Fallback 0.62 is fanned. */
+    --f: clamp(0, calc((var(--p, 0.62) - 0.18) / 0.4), 1);
+    overflow: clip;
+  }
+
+  .rf-grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  @media (min-width: 1024px) {
+    .rf-grid {
+      grid-template-columns: 0.78fr 1.22fr;
+      gap: 3.5rem;
+    }
+  }
+
+  .rf-legend {
+    display: grid;
+    gap: 0.5rem;
+    margin: 1.6rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+
+  .rf-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .rf-key {
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--border);
+  }
+
+  .rf-key-app { background: var(--surface-alt); border-color: rgb(184 217 154 / 45%); }
+  .rf-key-pdf { background: #f8f4ec; }
+  .rf-key-chat { background: #22291f; }
+
+  .rf-sample {
+    display: inline-block;
+    margin: 1.5rem 0 0;
+    padding: 0.3rem 0.75rem;
+    border: 1px dashed var(--border);
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  /* -------------------------------------------------------------- stage */
+  .rf-stage {
+    position: relative;
+    height: 34rem;
+    perspective: 1700px;
+  }
+
+  .rf-tilt {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transform:
+      rotateX(calc(10deg * var(--f) + var(--my, 0) * -3deg))
+      rotateY(calc(-14deg * var(--f) + var(--mx, 0) * 5deg));
+  }
+
+  .rf-sheet {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(30rem, 92%);
+    margin: 0;
+    border-radius: 1.2rem;
+    transform-origin: 50% 50%;
+    /* Each sheet's fanned offset, scaled by --f. */
+    transform:
+      translate(-50%, -50%)
+      translate3d(calc(var(--x) * var(--f)), calc(var(--y) * var(--f)), calc(var(--z) * var(--f)))
+      rotateZ(calc(var(--r) * var(--f)));
+    /* A warm shadow that deepens as the sheet lifts off the one beneath. */
+    box-shadow:
+      0 calc(10px + 30px * var(--f)) calc(30px + 50px * var(--f)) rgb(0 0 0 / calc(35% + 15% * var(--f))),
+      0 calc(4px + 14px * var(--f)) calc(18px * var(--f) + 6px) rgb(91 74 42 / 25%);
+  }
+
+  .rf-chat { --x: -9.5rem; --y: -8.5rem; --z: -180px; --r: -7deg; z-index: 1; }
+  .rf-pdf  { --x: -3.5rem; --y: -3.5rem; --z: -90px;  --r: -3deg; z-index: 2; }
+  .rf-app  { --x: 5rem;    --y: 4.5rem;  --z: 0px;    --r: 1.5deg; z-index: 3; }
+
+  .rf-tab {
+    position: absolute;
+    top: -1.9rem;
+    left: 0.6rem;
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--nf-glow);
+    opacity: var(--f);
+  }
+
+  .rf-ava {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.3rem;
+    height: 2.3rem;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 50% 40%, #3a4a30, #253021);
+    box-shadow: 0 0 0 1px rgb(184 217 154 / 25%);
+  }
+
+  .rf-ava img {
+    width: 1.95rem;
+    height: 1.95rem;
+  }
+
+  /* --------------------------------------------------------- the post */
+  .rf-chat {
+    padding: 1rem 1.1rem 1.2rem;
+    border: 1px solid #2f3a2a;
+    background: #1b2118;
+    filter: brightness(calc(0.72 + 0.28 * var(--f)));
+  }
+
+  .rf-chat-row {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .rf-chat-body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .rf-chat-who {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .rf-chat-who span {
+    margin-left: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  .rf-chat-ch {
+    margin: 0.1rem 0 0;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .rf-chat-text {
+    margin: 0.5rem 0 0;
+    font-size: 0.86rem;
+    color: var(--text-secondary);
+  }
+
+  .rf-counts {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0.6rem 0 0;
+    padding: 0.6rem 0.75rem;
+    border-left: 3px solid var(--brand-primary);
+    border-radius: 0.4rem;
+    background: rgb(255 255 255 / 3%);
+    list-style: none;
+    font-size: 0.8rem;
+  }
+
+  .rf-counts li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--text-secondary);
+  }
+
+  .rf-counts b {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .rf-file {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0.6rem 0 0;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #2f3a2a;
+    border-radius: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--nf-glow);
+  }
+
+  .rf-file svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+
+  /* ----------------------------------------------------------- the PDF */
+  .rf-pdf {
+    padding: 0.55rem;
+    background: #e9e0cc;
+    filter: brightness(calc(0.8 + 0.2 * var(--f)));
+  }
+
+  .rf-paper {
+    padding: 1.2rem 1.3rem 1.3rem;
+    border-radius: 0.8rem;
+    background: #f8f4ec;
+    color: #2e3627;
+  }
+
+  .rf-pdf-kicker {
+    margin: 0;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #5f6853;
+  }
+
+  .rf-pdf-title {
+    margin: 0.15rem 0 0.4rem;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.35rem;
+  }
+
+  .rf-pdf-theme {
+    margin: 0.65rem 0 0.25rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid #d9d0be;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #4d6733;
+  }
+
+  .rf-pdf-item {
+    display: grid;
+    gap: 0.15rem;
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .rf-pdf-item span {
+    font-size: 0.7rem;
+    color: #5f6853;
+  }
+
+  .rf-pdf-rules {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.9rem;
+  }
+
+  .rf-pdf-rules span {
+    height: 0.35rem;
+    border-radius: 9999px;
+    background: #e8e0d1;
+  }
+
+  .rf-pdf-rules span:nth-child(2) { width: 82%; }
+  .rf-pdf-rules span:nth-child(3) { width: 64%; }
+
+  /* ----------------------------------------------------------- the app */
+  .rf-app {
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--surface-alt), var(--surface) 34%);
+    overflow: visible;
+  }
+
+  .rf-app-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1.2rem;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .rf-app-title {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .rf-app-meta {
+    margin: 0;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+  }
+
+  .rf-app-body {
+    display: grid;
+    gap: 0.6rem;
+    padding: 1.1rem 1.2rem 1.3rem;
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+
+  .rf-app-body p {
+    margin: 0;
+  }
+
+  .rf-lead {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.05rem;
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  .rf-theme {
+    margin-top: 0.3rem !important;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brand-primary-hover);
+  }
+
+  .rf-item {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--divider);
+    border-radius: 0.75rem;
+    background: rgb(255 255 255 / 2%);
+  }
+
+  .rf-item-title {
+    font-weight: 600;
+  }
+
+  .rf-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+  }
+
+  .rf-v {
+    padding: 0.02rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  .rf-v-read {
+    background: var(--brand-primary);
+    color: var(--primary-foreground);
+  }
+
+  .rf-v-skim {
+    background: color-mix(in srgb, var(--brand-secondary) 40%, transparent);
+    color: var(--text-primary);
+  }
+
+  .rf-paper .rf-v-read { background: #5e7a3e; color: #fffdf8; }
+  .rf-paper .rf-v-skim { background: #dfe6d2; color: #2e3627; }
+
+  .rf-deadline {
+    display: flex;
+    gap: 0.55rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--brand-accent-soft) 60%, transparent);
+    font-size: 0.84rem;
+    color: #f2e3c2;
+  }
+
+  .rf-deadline svg {
+    flex: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.12rem;
+    fill: none;
+    stroke: var(--brand-accent);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+
+  /* Phones: no 3D. The three sheets read top to bottom, the app first. */
+  @media (max-width: 720px) {
+    .rf-stage {
+      height: auto;
+      perspective: none;
+    }
+
+    .rf-tilt {
+      position: static;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 2.6rem;
+      transform: none;
+    }
+
+    .rf-sheet {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: 100%;
+      transform: none;
+      filter: none;
+      box-shadow: 0 18px 40px rgb(0 0 0 / 40%);
+    }
+
+    .rf-tab {
+      opacity: 1;
+    }
+  }
+</style>

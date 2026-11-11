@@ -1,0 +1,476 @@
+---
+/**
+ * Lab prototype — stack/layers. A new section: Mycelium as the grounding layer.
+ *
+ * Four plates make the layer (the corpus, the profiles, the knowledge graph,
+ * the ranked feeds) and the tools sit on a fifth plate on top. Threads run up
+ * through the plates from each tool, because every tool reads the lab's
+ * context from the layer rather than keeping its own. Pointing at a tool in
+ * the legend lights its thread and block.
+ *
+ * Depth: a 2D isometric drawing, so the labels stay legible at any width. The
+ * plates sit almost flush when the section arrives and separate as it crosses
+ * the viewport (`--p`), each thread stretching to keep its plates joined. The
+ * resting composition (no JS, reduced motion) is fully separated.
+ */
+
+const plates = [
+  { name: "Corpus", sub: "Papers, grants, fellowships, conferences" },
+  { name: "Profiles", sub: "People, labs, departments, projects" },
+  { name: "Knowledge graph", sub: "Concepts, and how each link is known" },
+  { name: "Feeds", sub: "Ranked for every theme, every night" },
+] as const;
+
+const tools = [
+  { n: 1, name: "Feeds and reports", text: "Four feeds and the 06:00 report, for each person and each lab.", dx: -84 },
+  { n: 2, name: "Mylo", text: "Answers questions from everything you may see, in the app and in Discord.", dx: -28 },
+  { n: 3, name: "Announcements", text: "New calls posted as threads in the lab's Discord forums.", dx: 28 },
+  { n: 4, name: "Reminders", text: "Ahead of each deadline, in the app or in Discord.", dx: 84 },
+] as const;
+
+/* The drawing: a plate is a 2:1 diamond centred at (CX, BASE) with a lip. */
+const CX = 170;
+const BASE = 470;
+const HW = 140;
+const HH = 70;
+const LIP = 10;
+const top = `M${CX - HW} ${BASE} L${CX} ${BASE - HH} L${CX + HW} ${BASE} L${CX} ${BASE + HH}Z`;
+const left = `M${CX - HW} ${BASE} L${CX} ${BASE + HH} L${CX} ${BASE + HH + LIP} L${CX - HW} ${BASE + LIP}Z`;
+const right = `M${CX} ${BASE + HH} L${CX + HW} ${BASE} L${CX + HW} ${BASE + LIP} L${CX} ${BASE + HH + LIP}Z`;
+
+/* A tool block: a small cube standing on the top plate. */
+function cube(dx: number) {
+  const x = CX + dx;
+  const y = BASE + dx * 0.0;
+  const w = 24;
+  const h = 12;
+  const t = 20;
+  return {
+    top: `M${x - w} ${y - t} L${x} ${y - h - t} L${x + w} ${y - t} L${x} ${y + h - t}Z`,
+    left: `M${x - w} ${y - t} L${x} ${y + h - t} L${x} ${y + h} L${x - w} ${y}Z`,
+    right: `M${x} ${y + h - t} L${x + w} ${y - t} L${x + w} ${y} L${x} ${y + h}Z`,
+    nx: x,
+    ny: y - t + 4,
+  };
+}
+---
+
+<section class="nf-section gs" data-proto="grounding-stack" data-progress aria-labelledby="grounding-stack-heading">
+  <div class="nf-wrap gs-grid">
+    <div class="gs-copy reveal">
+      <p class="nf-eyebrow">Under the tools</p>
+      <h2 id="grounding-stack-heading" class="nf-h2">The layer research tools stand on</h2>
+      <p class="nf-sub">
+        Mycelium keeps a lab's context in one place: what it reads, who the lab is, how its ideas connect,
+        and what is worth its time tonight. Every tool reads from that layer instead of keeping its own.
+      </p>
+
+      <ul class="gs-points">
+        <li>
+          <span class="gs-pt">Modular.</span> Each tool lives in its own folder with its own settings. One that
+          cannot load is set aside, and nothing that depends on it runs.
+        </li>
+        <li>
+          <span class="gs-pt">Your model.</span> Point it at any OpenAI-compatible endpoint, a local server or a
+          hosted API. The embedding model runs on your own CPU or GPU.
+        </li>
+        <li>
+          <span class="gs-pt">Checked.</span> Ranking is checked against a public benchmark whenever it
+          changes.
+        </li>
+      </ul>
+
+      <p class="gs-legend-h">Built on it</p>
+      <ol class="gs-legend">
+        {tools.map((t) => (
+          <li>
+            <button type="button" class="gs-tool" data-gs-tool={t.n}>
+              <span class="gs-tool-n" aria-hidden="true">{t.n}</span>
+              <span class="gs-tool-body">
+                <span class="gs-tool-name">{t.name}</span>
+                <span class="gs-tool-text">{t.text}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+
+    <div class="gs-figure reveal">
+      <svg
+        class="gs-svg"
+        viewBox="0 70 540 500"
+        role="img"
+        aria-labelledby="grounding-stack-fig"
+        data-gs-svg
+      >
+        <title id="grounding-stack-fig">
+          Four stacked layers, from the bottom: corpus, profiles, knowledge graph and feeds. On top, a plate of
+          tools: feeds and reports, Mylo, announcements and reminders, each joined by a thread to the layers
+          beneath.
+        </title>
+        <defs>
+          <linearGradient id="grounding-stack-face" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#3a4a30" stop-opacity="0.95"></stop>
+            <stop offset="1" stop-color="#1d241a" stop-opacity="0.92"></stop>
+          </linearGradient>
+          <linearGradient id="grounding-stack-tools" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#8da66f" stop-opacity="0.32"></stop>
+            <stop offset="1" stop-color="#253021" stop-opacity="0.7"></stop>
+          </linearGradient>
+          <radialGradient id="grounding-stack-glow">
+            <stop offset="0" stop-color="#b8d99a" stop-opacity="0.35"></stop>
+            <stop offset="1" stop-color="#b8d99a" stop-opacity="0"></stop>
+          </radialGradient>
+        </defs>
+
+        <ellipse cx={CX} cy={BASE + 40} rx="190" ry="60" fill="url(#grounding-stack-glow)"></ellipse>
+
+        {plates.map((p, i) => (
+          <g class="gs-plate" style={`--i:${i}`} data-top={i === plates.length - 1 ? "" : undefined}>
+            {/* Threads to the plate above: drawn here so the plate above covers their ends. */}
+            {tools.map((t) => (
+              <rect class="gs-thread" data-gs-thread={t.n} x={CX + t.dx - 0.8} y={BASE - 80} width="1.6" height="80"></rect>
+            ))}
+            <path class="gs-side-l" d={left}></path>
+            <path class="gs-side-r" d={right}></path>
+            <path class="gs-top" d={top}></path>
+            <path class="gs-grid-line" d={`M${CX - HW / 2} ${BASE - HH / 2} L${CX + HW / 2} ${BASE + HH / 2} M${CX + HW / 2} ${BASE - HH / 2} L${CX - HW / 2} ${BASE + HH / 2}`}></path>
+            {tools.map((t) => (
+              <circle class="gs-socket" data-gs-thread={t.n} cx={CX + t.dx} cy={BASE} r="2.6"></circle>
+            ))}
+            <line class="gs-leader" x1={CX + HW + 6} y1={BASE} x2={CX + HW + 26} y2={BASE}></line>
+            <text class="gs-name" x={CX + HW + 32} y={BASE + 2}>{p.name}</text>
+            <text class="gs-sub" x={CX + HW + 32} y={BASE + 19}>{p.sub.split(", ").slice(0, 2).join(", ")}{p.sub.split(", ").length > 2 ? "," : ""}</text>
+            {p.sub.split(", ").length > 2 && (
+              <text class="gs-sub" x={CX + HW + 32} y={BASE + 34}>{p.sub.split(", ").slice(2).join(", ")}</text>
+            )}
+          </g>
+        ))}
+
+        <g class="gs-plate gs-tools" style="--i:4">
+          <path class="gs-side-l" d={left}></path>
+          <path class="gs-side-r" d={right}></path>
+          <path class="gs-top" d={top}></path>
+          {tools.map((t) => {
+            const c = cube(t.dx);
+            return (
+              <g class="gs-cube" data-gs-cube={t.n}>
+                <path class="gs-cube-l" d={c.left}></path>
+                <path class="gs-cube-r" d={c.right}></path>
+                <path class="gs-cube-t" d={c.top}></path>
+                <text class="gs-cube-n" x={c.nx} y={c.ny}>{t.n}</text>
+              </g>
+            );
+          })}
+          <line class="gs-leader" x1={CX + HW + 6} y1={BASE} x2={CX + HW + 26} y2={BASE}></line>
+          <text class="gs-name gs-name-tools" x={CX + HW + 32} y={BASE + 2}>Tools</text>
+          <text class="gs-sub" x={CX + HW + 32} y={BASE + 19}>Each one reads the layer</text>
+        </g>
+      </svg>
+      <p class="gs-caption">The grounding layer, and the first tools built on it.</p>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  /* Point at a tool in the legend: light its block and its thread. */
+  (function () {
+    document.querySelectorAll('[data-proto="grounding-stack"]').forEach(function (root) {
+      var svg = root.querySelector("[data-gs-svg]");
+      root.querySelectorAll("[data-gs-tool]").forEach(function (btn) {
+        var n = btn.getAttribute("data-gs-tool");
+        function on() {
+          svg.setAttribute("data-on", n);
+          root.querySelectorAll("[data-gs-tool]").forEach(function (b) { b.classList.toggle("is-on", b === btn); });
+        }
+        function off() {
+          svg.removeAttribute("data-on");
+          btn.classList.remove("is-on");
+        }
+        btn.addEventListener("pointerenter", on);
+        btn.addEventListener("focus", on);
+        btn.addEventListener("pointerleave", off);
+        btn.addEventListener("blur", off);
+      });
+    });
+  })();
+</script>
+
+<style>
+  .gs {
+    overflow: clip;
+  }
+
+  .gs-grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  @media (min-width: 1024px) {
+    .gs-grid {
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 4rem;
+    }
+  }
+
+  .gs-points {
+    display: grid;
+    gap: 0.8rem;
+    margin: 1.6rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .gs-points li {
+    padding-left: 1rem;
+    border-left: 1px solid rgb(184 217 154 / 30%);
+  }
+
+  .gs-pt {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .gs-legend-h {
+    margin: 2rem 0 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .gs-legend {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 560px) {
+    .gs-legend {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .gs-tool {
+    display: flex;
+    gap: 0.65rem;
+    width: 100%;
+    height: 100%;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--divider);
+    border-radius: 0.8rem;
+    background: rgb(29 36 26 / 60%);
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    cursor: default;
+    transition: border-color 250ms ease, background-color 250ms ease;
+  }
+
+  .gs-tool.is-on,
+  .gs-tool:hover {
+    border-color: rgb(184 217 154 / 45%);
+    background: rgb(184 217 154 / 7%);
+  }
+
+  .gs-tool-n {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.35rem;
+    background: var(--brand-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary-foreground);
+  }
+
+  .gs-tool-body {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .gs-tool-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .gs-tool-text {
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+  }
+
+  /* ------------------------------------------------------------ figure */
+  .gs-figure {
+    min-width: 0;
+  }
+
+  .gs-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  /*
+   * Separation. Flush plates are 26 units apart; separated, 80. `--sep`
+   * reaches 1 a little past the middle of the section's pass and holds, so
+   * the stack is fully readable while it is centred on screen.
+   */
+  .gs-svg {
+    --sep: clamp(0, calc((var(--p, 1) - 0.12) * 2.6), 1);
+    --gap: calc(26px + 54px * var(--sep));
+  }
+
+  .gs-plate {
+    transform: translateY(calc(var(--i) * -1 * var(--gap)));
+  }
+
+  .gs-tools {
+    /* The tools ride a little higher, so the layer below reads as one unit. */
+    transform: translateY(calc(4 * -1 * var(--gap) - 18px * var(--sep)));
+  }
+
+  .gs-top {
+    fill: url(#grounding-stack-face);
+    stroke: rgb(184 217 154 / 45%);
+    stroke-width: 1;
+  }
+
+  .gs-tools .gs-top {
+    fill: url(#grounding-stack-tools);
+    stroke: rgb(184 217 154 / 70%);
+  }
+
+  .gs-side-l {
+    fill: #182016;
+    stroke: rgb(184 217 154 / 18%);
+    stroke-width: 0.8;
+  }
+
+  .gs-side-r {
+    fill: #10140e;
+    stroke: rgb(184 217 154 / 18%);
+    stroke-width: 0.8;
+  }
+
+  .gs-grid-line {
+    fill: none;
+    stroke: rgb(184 217 154 / 10%);
+    stroke-width: 0.8;
+  }
+
+  /* A thread is drawn 80 long and scaled to the current gap. */
+  .gs-thread {
+    fill: var(--nf-glow);
+    opacity: 0.55;
+    transform-box: fill-box;
+    transform-origin: bottom;
+    transform: scaleY(calc((26 + 54 * var(--sep)) / 80));
+    transition: opacity 250ms ease;
+  }
+
+  /* The tools plate rides 18 higher, so the top threads reach further. */
+  .gs-plate[data-top] .gs-thread {
+    transform: scaleY(calc((26 + 72 * var(--sep)) / 80));
+  }
+
+  .gs-socket {
+    fill: var(--nf-glow);
+    opacity: 0.6;
+    transition: opacity 250ms ease;
+  }
+
+  .gs-cube-t {
+    fill: #a0b77f;
+  }
+
+  .gs-cube-l {
+    fill: #6f8a56;
+  }
+
+  .gs-cube-r {
+    fill: #4d6733;
+  }
+
+  .gs-cube path {
+    stroke: rgb(16 20 14 / 50%);
+    stroke-width: 0.6;
+    transition: filter 250ms ease, opacity 250ms ease;
+  }
+
+  .gs-cube-n {
+    font: 600 11px Inter, sans-serif;
+    fill: #10140e;
+    text-anchor: middle;
+  }
+
+  /* One tool pointed at: its thread and block glow, the rest step back. */
+  .gs-svg[data-on] .gs-thread,
+  .gs-svg[data-on] .gs-socket {
+    opacity: 0.12;
+  }
+
+  .gs-svg[data-on="1"] [data-gs-thread="1"],
+  .gs-svg[data-on="2"] [data-gs-thread="2"],
+  .gs-svg[data-on="3"] [data-gs-thread="3"],
+  .gs-svg[data-on="4"] [data-gs-thread="4"] {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px rgb(184 217 154 / 90%));
+  }
+
+  .gs-svg[data-on] .gs-cube {
+    opacity: 0.45;
+  }
+
+  .gs-svg[data-on="1"] [data-gs-cube="1"],
+  .gs-svg[data-on="2"] [data-gs-cube="2"],
+  .gs-svg[data-on="3"] [data-gs-cube="3"],
+  .gs-svg[data-on="4"] [data-gs-cube="4"] {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgb(184 217 154 / 70%));
+  }
+
+  .gs-leader {
+    stroke: rgb(184 217 154 / 35%);
+    stroke-width: 1;
+  }
+
+  .gs-name {
+    font: 500 17px "Fraunces", Georgia, serif;
+    fill: var(--text-primary);
+  }
+
+  .gs-name-tools {
+    fill: var(--nf-glow);
+  }
+
+  .gs-sub {
+    font: 400 12px Inter, sans-serif;
+    fill: var(--text-secondary);
+  }
+
+  /* Labels fade in once the plates have room for them. */
+  :global(html[data-lab-motion="on"]) .gs-plate text,
+  :global(html[data-lab-motion="on"]) .gs-plate .gs-leader {
+    opacity: clamp(0, calc(var(--sep) * 2 - 0.8), 1);
+  }
+
+  .gs-caption {
+    margin: 0.75rem 0 0;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+</style>

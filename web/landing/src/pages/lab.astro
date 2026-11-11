@@ -1,0 +1,998 @@
+---
+/**
+ * The front page lab: the real front page, section by section, with a switcher
+ * on each section and a panel for picking, noting and exporting what to build.
+ * Registry and audit: `data/lab.ts`. Not linked from the site, and `noindex`.
+ *
+ * ── The prototype contract ────────────────────────────────────────────────
+ * Every prototype under `components/lab/` keeps these, so any of them can be
+ * dropped into the front page unchanged once it is chosen:
+ *
+ * 1. **One section, self-contained.** A `<section>` using the Night Forest
+ *    vocabulary (`nf-section`, `nf-wrap`, `nf-eyebrow`, `nf-h2`, `nf-sub`) and
+ *    scoped styles. Every `id` (headings, gradients, inputs) is prefixed with
+ *    the prototype's name, because every version of every section is in the
+ *    page at once.
+ * 2. **Starts hidden.** Versions not on show carry `hidden` on their wrapper.
+ *    A script must not measure anything at load; it measures when the section
+ *    scrolls into view (IntersectionObserver) or reads the variables below.
+ *    A script scopes itself to its own `[data-proto="<name>"]` root.
+ * 3. **Depth from three variables**, written by the helper at the bottom of
+ *    this page (and only when the reader allows motion):
+ *      `[data-progress]` gets `--p`   0 → 1 as the element crosses the
+ *                                    viewport (top meets bottom → bottom
+ *                                    leaves top), backwards on the way up;
+ *      `[data-pin]`      gets `--pin` 0 → 1 through a tall container whose
+ *                                    child is `position: sticky`;
+ *      `[data-pointer]`  gets `--mx`, `--my` −1 → 1, eased, from the pointer
+ *                                    over the element (0 at rest, and on touch).
+ *    Always read them with a fallback that is the finished composition, e.g.
+ *    `var(--p, 0.5)`: without JavaScript or with reduced motion they are never
+ *    set, and the section must still read as complete and still.
+ * 4. **The site's rules hold**: reduced motion stops everything; only
+ *    opacity, transform, filter and stroke offsets animate; no horizontal
+ *    overflow at 360 px; sample content is fictional and says so; every claim
+ *    is true of the product today (docs/styles.md, docs/goals.md).
+ */
+import FeedTabs from "@/components/landing/FeedTabs.astro";
+import FinalCta from "@/components/landing/FinalCta.astro";
+import HomeHero from "@/components/landing/HomeHero.astro";
+import MorningReport from "@/components/landing/MorningReport.astro";
+import OneNight from "@/components/landing/OneNight.astro";
+import ShowsItsWork from "@/components/landing/ShowsItsWork.astro";
+import TwoWays from "@/components/landing/TwoWays.astro";
+import WhatItCovers from "@/components/landing/WhatItCovers.astro";
+
+import HeroConstellation from "@/components/lab/hero/HeroConstellation.astro";
+import HeroDepthField from "@/components/lab/hero/HeroDepthField.astro";
+import ReportFanned from "@/components/lab/report/ReportFanned.astro";
+import ReportScrubbed from "@/components/lab/report/ReportScrubbed.astro";
+import FeedsDeck from "@/components/lab/feeds/FeedsDeck.astro";
+import WorkExploded from "@/components/lab/work/WorkExploded.astro";
+import MyloPanel from "@/components/lab/mylo/MyloPanel.astro";
+import MyloTwoPlaces from "@/components/lab/mylo/MyloTwoPlaces.astro";
+import AnnounceForum from "@/components/lab/announce/AnnounceForum.astro";
+import AnnounceChecks from "@/components/lab/announce/AnnounceChecks.astro";
+import CoversNetwork from "@/components/lab/covers/CoversNetwork.astro";
+import CoversCatalogue from "@/components/lab/covers/CoversCatalogue.astro";
+import NightDawn from "@/components/lab/night/NightDawn.astro";
+import GroundingStack from "@/components/lab/stack/GroundingStack.astro";
+import WaysThreeDoors from "@/components/lab/ways/WaysThreeDoors.astro";
+
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import { labAudit, labSlots } from "@/data/lab";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const parts: Record<string, any> = {
+  "hero/current": HomeHero,
+  "hero/depth-field": HeroDepthField,
+  "hero/constellation": HeroConstellation,
+  "report/current": MorningReport,
+  "report/fanned": ReportFanned,
+  "report/scrubbed": ReportScrubbed,
+  "feeds/current": FeedTabs,
+  "feeds/deck": FeedsDeck,
+  "work/current": ShowsItsWork,
+  "work/exploded": WorkExploded,
+  "mylo/panel": MyloPanel,
+  "mylo/two-places": MyloTwoPlaces,
+  "announce/forum": AnnounceForum,
+  "announce/checks": AnnounceChecks,
+  "covers/current": WhatItCovers,
+  "covers/network": CoversNetwork,
+  "covers/catalogue": CoversCatalogue,
+  "night/current": OneNight,
+  "night/dawn": NightDawn,
+  "stack/layers": GroundingStack,
+  "ways/current": TwoWays,
+  "ways/three-doors": WaysThreeDoors,
+  "cta/current": FinalCta,
+};
+
+const letters = "ABCDEFGH";
+/** The switcher's options: the live version (or "Leave out" for a new section), then A, B, … */
+const options = labSlots.map((slot) => ({
+  ...slot,
+  options: [
+    ...(slot.status === "new" ? [{ id: "off", tag: "—", name: "Leave out", pitch: "Not on the front page." }] : []),
+    ...slot.variants.map((v) => ({
+      ...v,
+      tag: v.id === "current" ? "Live" : letters[slot.variants.filter((x) => x.id !== "current").indexOf(v)],
+    })),
+  ],
+}));
+
+const registry = JSON.stringify(
+  options.map((s) => ({
+    id: s.id,
+    title: s.title,
+    status: s.status,
+    options: s.options.map((o) => ({ id: o.id, tag: o.tag, name: o.name })),
+  })),
+);
+---
+
+<PublicLayout title="Front page lab" description="Prototypes for the Mycelium front page. Not part of the public site.">
+  <meta name="robots" content="noindex, nofollow" slot="head" />
+
+  <header class="lab-intro" aria-labelledby="lab-title">
+    <div class="nf-wrap">
+      <p class="nf-eyebrow">Front page lab · not public</p>
+      <h1 id="lab-title" class="lab-h1">Every section, every version, in place</h1>
+      <p class="nf-sub lab-lede">
+        This is the front page with a switcher pinned to the top of each section. Flip a section to a
+        prototype and scroll through it among its real neighbours. Open <strong>Choices</strong> to pick a
+        version for each section, leave a note, and copy the lot for Claude to build.
+      </p>
+
+      <div class="audit">
+        <section class="audit-col" aria-labelledby="audit-stale">
+          <h2 id="audit-stale" class="audit-h">Live claims to fix</h2>
+          <ul>
+            {labAudit.stale.map((s) => (
+              <li><span class="audit-where">{s.where}</span>{s.issue}</li>
+            ))}
+          </ul>
+        </section>
+        <section class="audit-col" aria-labelledby="audit-missing">
+          <h2 id="audit-missing" class="audit-h">Shipped, but not on the page</h2>
+          <ul class="audit-missing">
+            {labAudit.missing.map((m) => <li>{m}</li>)}
+          </ul>
+        </section>
+      </div>
+    </div>
+  </header>
+
+  {
+    options.map((slot, si) => (
+      <div class="lab-slot" id={`lab-${slot.id}`} data-lab-slot={slot.id} data-status={slot.status}>
+        <div class="lab-tag" role="group" aria-label={`${slot.title}: choose a version`}>
+          <span class="lab-tag-title">
+            <span class="lab-tag-n">{si + 1}</span>
+            {slot.title}
+            {slot.status === "new" && <span class="lab-new">New</span>}
+          </span>
+          <span class="lab-tag-opts">
+            {slot.options.map((o, oi) => (
+              <button
+                type="button"
+                class="lab-opt"
+                data-lab-opt={o.id}
+                aria-pressed={oi === 0 ? "true" : "false"}
+                title={o.name}
+              >
+                {o.tag === "Live" || o.tag === "—" ? (
+                  <span class="lab-opt-tag">{o.name}</span>
+                ) : (
+                  <>
+                    <span class="lab-opt-tag">{o.tag}</span>
+                    <span class="lab-opt-name">{o.name}</span>
+                  </>
+                )}
+              </button>
+            ))}
+          </span>
+        </div>
+
+        {slot.status === "new" && (
+          <div class="lab-variant lab-off" data-lab-variant="off">
+            <p>
+              <strong>{slot.title}</strong> is a new section and is left out for now. Pick a version above to see
+              it here, between its neighbours.
+            </p>
+          </div>
+        )}
+        {slot.variants.map((v) => {
+          const Part = parts[`${slot.id}/${v.id}`];
+          const shown = slot.status === "live" && v.id === "current";
+          return (
+            <div class="lab-variant" data-lab-variant={v.id} hidden={!shown}>
+              {Part ? <Part /> : <p class="lab-missing">No component mapped for {slot.id}/{v.id}.</p>}
+            </div>
+          );
+        })}
+      </div>
+    ))
+  }
+
+  <button type="button" class="lab-fab" data-lab-open aria-controls="lab-panel" aria-expanded="false">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h7"></path></svg>
+    Choices <span class="lab-fab-count" data-lab-count>0</span>
+  </button>
+
+  <aside id="lab-panel" class="lab-panel" aria-labelledby="lab-panel-title" hidden>
+    <div class="lab-panel-head">
+      <h2 id="lab-panel-title">Choices</h2>
+      <button type="button" class="lab-x" data-lab-close aria-label="Close choices">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15"></path></svg>
+      </button>
+    </div>
+    <p class="lab-panel-hint">Choosing here shows that version on the page too. Notes are kept in this browser.</p>
+
+    <ol class="lab-rows">
+      {
+        options.map((slot, si) => (
+          <li class="lab-row" data-lab-row={slot.id}>
+            <div class="lab-row-head">
+              <a href={`#lab-${slot.id}`} class="lab-row-title">
+                <span class="lab-tag-n">{si + 1}</span>
+                {slot.title}
+              </a>
+              {slot.status === "new" && <span class="lab-new">New</span>}
+            </div>
+            <div class="lab-row-opts" role="radiogroup" aria-label={`${slot.title} version`}>
+              {slot.options.map((o, oi) => (
+                <label class="lab-radio">
+                  <input type="radio" name={`lab-pick-${slot.id}`} value={o.id} checked={oi === 0} />
+                  <span>{o.tag === "Live" || o.tag === "—" ? o.name : `${o.tag} · ${o.name}`}</span>
+                </label>
+              ))}
+            </div>
+            {slot.options.map((o) => (
+              <div class="lab-pitch" data-lab-pitch={o.id} hidden>
+                <p>{o.pitch}</p>
+                {"content" in o && o.content && o.content.length > 0 && (
+                  <>
+                    <p class="lab-pitch-h">Says</p>
+                    <ul>{o.content.map((c: string) => <li>{c}</li>)}</ul>
+                  </>
+                )}
+                {"depth" in o && o.depth && o.depth.length > 0 && (
+                  <>
+                    <p class="lab-pitch-h">Depth</p>
+                    <ul>{o.depth.map((c: string) => <li>{c}</li>)}</ul>
+                  </>
+                )}
+              </div>
+            ))}
+            <label class="lab-note">
+              <span class="sr-only">Note on {slot.title}</span>
+              <textarea rows="2" placeholder="Note: what to keep, change or combine" data-lab-note={slot.id}></textarea>
+            </label>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="lab-panel-foot">
+      <label class="lab-note">
+        <span class="lab-pitch-h">Overall note</span>
+        <textarea rows="3" placeholder="Anything about the page as a whole" data-lab-note="_page"></textarea>
+      </label>
+      <div class="lab-foot-btns">
+        <button type="button" class="nf-btn nf-btn-solid nf-btn-sm" data-lab-copy>
+          <span data-lab-copy-label aria-live="polite">Copy for Claude</span>
+        </button>
+        <button type="button" class="nf-btn nf-btn-line nf-btn-sm" data-lab-reset>Reset</button>
+      </div>
+    </div>
+  </aside>
+</PublicLayout>
+
+<script is:inline define:vars={{ registry }}>
+  /*
+    The lab's own controls: the pinned switcher on each section, the Choices
+    panel, persistence and the Markdown export. One state object, mirrored to
+    localStorage (guarded: a private window simply forgets).
+  */
+  (function () {
+    var slots = JSON.parse(registry);
+    var KEY = "mycelium-front-lab-v1";
+    var state = { picks: {}, notes: {} };
+    try {
+      var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (saved && typeof saved === "object") state = { picks: saved.picks || {}, notes: saved.notes || {} };
+    } catch (e) {}
+
+    function save() {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    }
+
+    function pickOf(slot) {
+      var p = state.picks[slot.id];
+      var ok = slot.options.some(function (o) { return o.id === p; });
+      return ok ? p : slot.options[0].id;
+    }
+
+    function apply(slot, id, scroll) {
+      var root = document.querySelector('[data-lab-slot="' + slot.id + '"]');
+      if (!root) return;
+      root.querySelectorAll(":scope > [data-lab-variant]").forEach(function (v) {
+        v.hidden = v.getAttribute("data-lab-variant") !== id;
+      });
+      root.querySelectorAll("[data-lab-opt]").forEach(function (b) {
+        b.setAttribute("aria-pressed", b.getAttribute("data-lab-opt") === id ? "true" : "false");
+      });
+      var row = document.querySelector('[data-lab-row="' + slot.id + '"]');
+      if (row) {
+        row.querySelectorAll("input[type=radio]").forEach(function (r) { r.checked = r.value === id; });
+        row.querySelectorAll("[data-lab-pitch]").forEach(function (p) {
+          p.hidden = p.getAttribute("data-lab-pitch") !== id;
+        });
+        row.classList.toggle("is-changed", id !== slot.options[0].id);
+      }
+      if (scroll) {
+        var top = root.getBoundingClientRect().top;
+        if (top < 0 || top > innerHeight * 0.6) root.scrollIntoView({ block: "start" });
+      }
+      document.dispatchEvent(new CustomEvent("lab:variant", { detail: { slot: slot.id, variant: id } }));
+      count();
+    }
+
+    function count() {
+      var n = slots.filter(function (s) { return pickOf(s) !== s.options[0].id; }).length;
+      var el = document.querySelector("[data-lab-count]");
+      if (el) el.textContent = String(n);
+    }
+
+    slots.forEach(function (slot) {
+      apply(slot, pickOf(slot), false);
+      var root = document.querySelector('[data-lab-slot="' + slot.id + '"]');
+      root.querySelectorAll("[data-lab-opt]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          state.picks[slot.id] = b.getAttribute("data-lab-opt");
+          save();
+          apply(slot, state.picks[slot.id], true);
+        });
+      });
+      var row = document.querySelector('[data-lab-row="' + slot.id + '"]');
+      row.querySelectorAll("input[type=radio]").forEach(function (r) {
+        r.addEventListener("change", function () {
+          state.picks[slot.id] = r.value;
+          save();
+          apply(slot, r.value, false);
+        });
+      });
+    });
+
+    document.querySelectorAll("[data-lab-note]").forEach(function (t) {
+      var k = t.getAttribute("data-lab-note");
+      t.value = state.notes[k] || "";
+      t.addEventListener("input", function () {
+        state.notes[k] = t.value;
+        save();
+      });
+    });
+
+    /* Panel open / close. Escape closes; focus returns to the button. */
+    var panel = document.getElementById("lab-panel");
+    var fab = document.querySelector("[data-lab-open]");
+    function setOpen(open) {
+      panel.hidden = !open;
+      fab.setAttribute("aria-expanded", open ? "true" : "false");
+      document.documentElement.classList.toggle("lab-panel-open", open);
+      if (open) panel.querySelector("[data-lab-close]").focus();
+      else fab.focus();
+    }
+    fab.addEventListener("click", function () { setOpen(panel.hidden); });
+    panel.querySelector("[data-lab-close]").addEventListener("click", function () { setOpen(false); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !panel.hidden) setOpen(false);
+    });
+
+    /* Export: every section in page order with its pick and note. */
+    function exportText() {
+      var lines = ["# Front page lab — choices", "", "From /lab on " + new Date().toISOString().slice(0, 10) + ". Sections in page order.", ""];
+      slots.forEach(function (s, i) {
+        var id = pickOf(s);
+        var o = s.options.filter(function (x) { return x.id === id; })[0];
+        var what =
+          id === "off" ? "leave out" :
+          id === "current" ? "keep the live version" :
+          "use " + o.tag + " \"" + o.name + "\" (components/lab, " + s.id + "/" + id + ")";
+        lines.push((i + 1) + ". **" + s.title + "**" + (s.status === "new" ? " (new)" : "") + " — " + what);
+        var note = (state.notes[s.id] || "").trim();
+        if (note) lines.push("   - Note: " + note.replace(/\n+/g, " "));
+      });
+      var page = (state.notes._page || "").trim();
+      if (page) lines.push("", "Overall: " + page);
+      lines.push("", "The lab's audit (live claims to fix, shipped features missing) is in web/landing/src/data/lab.ts.");
+      return lines.join("\n");
+    }
+
+    var copyBtn = panel.querySelector("[data-lab-copy]");
+    var copyLabel = panel.querySelector("[data-lab-copy-label]");
+    copyBtn.addEventListener("click", function () {
+      var text = exportText();
+      function done(msg) {
+        copyLabel.textContent = msg;
+        setTimeout(function () { copyLabel.textContent = "Copy for Claude"; }, 1800);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done("Copied"); }, function () { fallback(); });
+      } else fallback();
+      function fallback() {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); done("Copied"); } catch (e) { done("Copy failed"); }
+        ta.remove();
+      }
+    });
+
+    panel.querySelector("[data-lab-reset]").addEventListener("click", function () {
+      if (!confirm("Clear every pick and note in this browser?")) return;
+      state = { picks: {}, notes: {} };
+      save();
+      document.querySelectorAll("[data-lab-note]").forEach(function (t) { t.value = ""; });
+      slots.forEach(function (s) { apply(s, s.options[0].id, false); });
+    });
+  })();
+</script>
+
+<script is:inline>
+  /*
+    The depth helper (see the contract at the top of this file). One rAF per
+    scroll or pointer move, touching only elements near the viewport. Never
+    runs under reduced motion, so every prototype falls back to its finished,
+    still composition.
+  */
+  (function () {
+    try {
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (typeof IntersectionObserver === "undefined") return;
+      document.documentElement.setAttribute("data-lab-motion", "on");
+
+      var live = new Set();
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) live.add(e.target);
+          else live.delete(e.target);
+        });
+        schedule();
+      }, { rootMargin: "25% 0px" });
+
+      function observeAll() {
+        document.querySelectorAll("[data-progress], [data-pin]").forEach(function (el) {
+          if (!el.__labSeen) { el.__labSeen = true; io.observe(el); }
+        });
+      }
+      observeAll();
+
+      var queued = false;
+      function schedule() {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(paint);
+      }
+      function clamp(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+      function paint() {
+        queued = false;
+        var vh = innerHeight;
+        live.forEach(function (el) {
+          var b = el.getBoundingClientRect();
+          if (!b.height) return;
+          if (el.hasAttribute("data-progress")) {
+            el.style.setProperty("--p", clamp((vh - b.top) / (vh + b.height)).toFixed(4));
+          }
+          if (el.hasAttribute("data-pin")) {
+            var span = b.height - vh;
+            el.style.setProperty("--pin", (span > 0 ? clamp(-b.top / span) : 1).toFixed(4));
+          }
+        });
+      }
+      addEventListener("scroll", schedule, { passive: true });
+      addEventListener("resize", schedule, { passive: true });
+      document.addEventListener("lab:variant", function () {
+        observeAll();
+        requestAnimationFrame(schedule);
+      });
+
+      /* Pointer lean: eased toward the target so it glides rather than tracks. */
+      var leaners = new Map();
+      function bindPointer(el) {
+        if (el.__labLean) return;
+        el.__labLean = true;
+        var s = { x: 0, y: 0, tx: 0, ty: 0, run: false };
+        leaners.set(el, s);
+        el.addEventListener("pointermove", function (e) {
+          if (e.pointerType !== "mouse") return;
+          var b = el.getBoundingClientRect();
+          s.tx = ((e.clientX - b.left) / b.width) * 2 - 1;
+          s.ty = ((e.clientY - b.top) / b.height) * 2 - 1;
+          tick();
+        });
+        el.addEventListener("pointerleave", function () { s.tx = 0; s.ty = 0; tick(); });
+        function tick() {
+          if (s.run) return;
+          s.run = true;
+          requestAnimationFrame(function step() {
+            s.x += (s.tx - s.x) * 0.08;
+            s.y += (s.ty - s.y) * 0.08;
+            el.style.setProperty("--mx", s.x.toFixed(4));
+            el.style.setProperty("--my", s.y.toFixed(4));
+            if (Math.abs(s.tx - s.x) > 0.002 || Math.abs(s.ty - s.y) > 0.002) requestAnimationFrame(step);
+            else s.run = false;
+          });
+        }
+      }
+      document.querySelectorAll("[data-pointer]").forEach(bindPointer);
+      document.addEventListener("lab:variant", function () {
+        document.querySelectorAll("[data-pointer]").forEach(bindPointer);
+      });
+    } catch (e) {
+      document.documentElement.removeAttribute("data-lab-motion");
+    }
+  })();
+</script>
+
+<style>
+  .lab-intro {
+    padding: calc(var(--header-h) + 2.5rem) 0 3rem;
+    border-bottom: 1px dashed rgb(184 217 154 / 22%);
+    background:
+      repeating-linear-gradient(135deg, rgb(184 217 154 / 2.5%) 0 2px, transparent 2px 14px),
+      var(--nf-night);
+  }
+
+  .lab-h1 {
+    margin: 0.6rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--text-primary);
+  }
+
+  .lab-lede {
+    max-width: 46rem;
+  }
+
+  .audit {
+    display: grid;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  @media (min-width: 900px) {
+    .audit {
+      grid-template-columns: 1.15fr 1fr;
+    }
+  }
+
+  .audit-col {
+    padding: 1.1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: rgb(29 36 26 / 70%);
+  }
+
+  .audit-h {
+    margin: 0 0 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brand-accent);
+  }
+
+  .audit-col:last-child .audit-h {
+    color: var(--nf-glow);
+  }
+
+  .audit ul {
+    display: grid;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+  }
+
+  .audit-where {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .audit-missing li {
+    position: relative;
+    padding-left: 1rem;
+  }
+
+  .audit-missing li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.6em;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 9999px;
+    background: var(--nf-glow);
+    opacity: 0.6;
+  }
+
+  /* ---------------------------------------------------------- slot + tag */
+  .lab-slot {
+    position: relative;
+    border-top: 1px dashed rgb(184 217 154 / 18%);
+  }
+
+  /* Heroes pull themselves up under the header (they open the real page);
+     here they follow the intro, so give that pull somewhere to land. */
+  .lab-slot[data-lab-slot="hero"] {
+    padding-top: var(--header-h);
+  }
+
+  /* Zero height, so it costs the section nothing; pinned under the header. */
+  .lab-tag {
+    position: sticky;
+    top: var(--header-h);
+    /* Under the site header (40), so a tag leaving with its section slides
+       beneath the header rather than over it. */
+    z-index: 39;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    width: fit-content;
+    max-width: calc(100% - 1.5rem);
+    /* Real height, cancelled by the margin, so the section costs nothing yet
+       the tag stops sticking before its section ends instead of sliding over
+       the next section's tag. */
+    min-height: 3.4rem;
+    margin: 0 0 -3.4rem 0.75rem;
+    padding-top: 0.6rem;
+    align-content: flex-start;
+    pointer-events: none;
+  }
+
+  .lab-tag > * {
+    pointer-events: auto;
+  }
+
+  .lab-tag-title,
+  .lab-tag-opts {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.1rem;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid rgb(184 217 154 / 28%);
+    border-radius: 9999px;
+    background: rgb(16 20 14 / 86%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+    font-size: 0.78rem;
+    color: var(--text-primary);
+  }
+
+  .lab-tag-opts {
+    padding: 0.2rem;
+    gap: 0.15rem;
+  }
+
+  .lab-tag-n {
+    display: inline-grid;
+    place-items: center;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 9999px;
+    background: rgb(184 217 154 / 14%);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--nf-glow);
+  }
+
+  .lab-new {
+    padding: 0.05rem 0.45rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--brand-accent) 22%, transparent);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--brand-accent);
+  }
+
+  .lab-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1.7rem;
+    padding: 0 0.65rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    font: inherit;
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .lab-opt:hover {
+    color: var(--text-primary);
+    background: rgb(184 217 154 / 8%);
+  }
+
+  .lab-opt[aria-pressed="true"] {
+    background: var(--brand-primary);
+    color: var(--primary-foreground);
+    font-weight: 600;
+  }
+
+  .lab-opt-tag {
+    font-weight: 600;
+  }
+
+  @media (max-width: 720px) {
+    .lab-opt-name {
+      display: none;
+    }
+  }
+
+  .lab-off {
+    padding: 4.5rem 1rem 3.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    background: repeating-linear-gradient(135deg, rgb(211 174 102 / 3%) 0 2px, transparent 2px 14px);
+  }
+
+  .lab-off p {
+    max-width: 30rem;
+    margin: 0 auto;
+  }
+
+  .lab-missing {
+    padding: 4rem 1rem;
+    text-align: center;
+    color: var(--brand-accent);
+  }
+
+  /* ------------------------------------------------------------- panel */
+  .lab-fab {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 60;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.9rem;
+    padding: 0 1.1rem;
+    border: 1px solid rgb(184 217 154 / 40%);
+    border-radius: 9999px;
+    background: rgb(29 36 26 / 92%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 12px 30px rgb(0 0 0 / 45%), 0 0 24px rgb(141 166 111 / 18%);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .lab-fab svg,
+  .lab-x svg {
+    width: 1.05rem;
+    height: 1.05rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+
+  .lab-fab-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.4rem;
+    height: 1.4rem;
+    padding: 0 0.3rem;
+    border-radius: 9999px;
+    background: var(--brand-primary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--primary-foreground);
+  }
+
+  .lab-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    width: min(26rem, 100vw);
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: -24px 0 60px rgb(0 0 0 / 50%);
+  }
+
+  .lab-panel[hidden] {
+    display: none;
+  }
+
+  .lab-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.1rem 0.4rem;
+  }
+
+  .lab-panel-head h2 {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+  }
+
+  .lab-x {
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .lab-panel-hint {
+    margin: 0;
+    padding: 0 1.1rem 0.8rem;
+    border-bottom: 1px solid var(--divider);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .lab-rows {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.4rem 1.1rem 1rem;
+    list-style: none;
+  }
+
+  .lab-row {
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .lab-row.is-changed .lab-row-title {
+    color: var(--nf-glow);
+  }
+
+  .lab-row-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .lab-row-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  .lab-row-title:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .lab-row-opts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+  }
+
+  .lab-radio {
+    position: relative;
+  }
+
+  .lab-radio input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  .lab-radio span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.9rem;
+    padding: 0 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .lab-radio input:checked + span {
+    border-color: var(--brand-primary);
+    background: color-mix(in srgb, var(--brand-primary) 22%, transparent);
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .lab-radio input:focus-visible + span {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .lab-pitch {
+    margin-top: 0.6rem;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+  }
+
+  .lab-pitch p {
+    margin: 0;
+  }
+
+  .lab-pitch ul {
+    margin: 0.2rem 0 0;
+    padding-left: 1rem;
+  }
+
+  .lab-pitch-h {
+    display: block;
+    margin-top: 0.5rem !important;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .lab-note {
+    display: block;
+    margin-top: 0.6rem;
+  }
+
+  .lab-note textarea {
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 0.65rem;
+    background: var(--background);
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    resize: vertical;
+  }
+
+  .lab-note textarea::placeholder {
+    color: var(--text-muted);
+  }
+
+  .lab-panel-foot {
+    padding: 0.6rem 1.1rem 1rem;
+    border-top: 1px solid var(--divider);
+    background: var(--surface-alt);
+  }
+
+  .lab-foot-btns {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  :global(html.lab-panel-open) .lab-fab {
+    display: none;
+  }
+</style>

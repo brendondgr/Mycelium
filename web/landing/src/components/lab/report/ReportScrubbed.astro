@@ -1,0 +1,442 @@
+---
+/**
+ * Report prototype — Annotated (`report/scrubbed`).
+ *
+ * The section pins while the reader scrolls through a tall track, and the
+ * sample report writes itself in step with the scroll — forwards going down,
+ * backwards going up. Four margin notes explain what the reader is looking at
+ * (the position within its theme, the verdict, the caveat, the deadline),
+ * each drawing a hairline back to the line it explains as that line arrives.
+ *
+ * `--pin` drives the writing; its fallback (1) is the finished report with
+ * every note showing, which is what reduced motion gets. Below 1024 px there
+ * is no pin: the report is shown whole, with the notes under their lines.
+ */
+import { reportLines } from "@/data/landing";
+
+/* Margin notes, keyed by the index of the report line they explain. */
+const notes: Record<number, { label: string; text: string }[]> = {
+  2: [
+    /* One note, not two: the item line is too short for two stacked notes,
+       and a second one ran into the caveat's note below it. */
+    {
+      label: "Position and verdict",
+      text: "Its place in its own theme, never overall, and how much time it deserves: Read, Skim, File or Skip.",
+    },
+  ],
+  3: [
+    {
+      label: "The caveat",
+      text: "The strongest reason it might not be worth your time. Every item has one.",
+    },
+  ],
+  6: [
+    {
+      label: "Deadlines",
+      text: "Gold is kept for deadlines and opportunities, so a closing date never competes with a verdict.",
+    },
+  ],
+};
+
+const total = reportLines.length;
+---
+
+<section class="rs" aria-labelledby="rs-heading" data-proto="report-scrubbed" data-pin>
+  <div class="rs-sticky">
+    <div class="nf-wrap rs-grid">
+      <div class="rs-head">
+        <p class="nf-eyebrow">The 06:00 report</p>
+        <h2 id="rs-heading" class="nf-h2">Read the report the way Mylo wrote it</h2>
+        <p class="nf-sub">
+          One written pass through the night, ordered by theme. Scroll, and it writes itself; the
+          notes in the margin say what each part is for.
+        </p>
+        <div class="rs-meter" aria-hidden="true">
+          <span class="rs-meter-time">22:00</span>
+          <span class="rs-meter-bar"><span></span></span>
+          <span class="rs-meter-time rs-meter-end">06:00</span>
+        </div>
+        <p class="rs-sample">Sample content · fictional lab</p>
+      </div>
+
+      <article class="rs-doc" aria-label="Sample daily report">
+        <header class="rs-doc-head">
+          <span class="rs-ava"><img src="/images/mylo-head-96.webp" alt="" width="40" height="40" /></span>
+          <div>
+            <p class="rs-doc-title">Daily report</p>
+            <p class="rs-doc-meta">Tuesday · 06:00 · Clinical NLP Lab</p>
+          </div>
+        </header>
+        <ol class="rs-body">
+          {
+            reportLines.map((l, i) => (
+              <li class={`rs-line rs-${l.kind}`} style={`--i:${i}`}>
+                {l.kind === "item" ? (
+                  <>
+                    <span class="rs-item-title">{l.text}</span>
+                    <span class="rs-item-meta">
+                      <span class="rs-mark" data-mark="position">{l.rank}</span>
+                      <span class={`rs-v rs-v-${l.verdict?.toLowerCase()}`}>{l.verdict}</span>
+                    </span>
+                  </>
+                ) : l.kind === "deadline" ? (
+                  <>
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="M10 6v4l2.5 2"></path></svg>
+                    <span>{l.text}</span>
+                  </>
+                ) : (
+                  l.text
+                )}
+                {notes[i] && (
+                  <span class="rs-notes">
+                    {notes[i].map((n) => (
+                      <span class:list={["rs-note", l.kind === "deadline" && "is-gold"]}>
+                        <span class="rs-note-label">{n.label}</span>
+                        {n.text}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </li>
+            ))
+          }
+        </ol>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style define:vars={{ total }}>
+  .rs {
+    /* The track: tall enough that each line gets a comfortable stretch of
+       scroll. `--k` is the writing progress; fallback 1 = finished. */
+    --k: var(--pin, 1);
+    position: relative;
+    height: 300vh;
+  }
+
+  .rs-sticky {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    min-height: 100vh;
+    padding: calc(var(--header-h) + 1.5rem) 0 2rem;
+    overflow: clip;
+    background: radial-gradient(46rem 30rem at 70% 40%, rgb(37 48 33 / 55%), transparent 70%);
+  }
+
+  .rs-grid {
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+  }
+
+  @media (min-width: 1024px) {
+    .rs-grid {
+      grid-template-columns: 0.7fr 1.3fr;
+      gap: 3rem;
+    }
+
+    /* Leave the right third of the document's column for the margin notes. */
+    .rs-doc {
+      margin-right: 16rem;
+    }
+  }
+
+  .rs-meter {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 1.8rem;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1rem;
+    color: var(--nf-glow);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rs-meter-end {
+    color: var(--brand-accent);
+  }
+
+  .rs-meter-bar {
+    position: relative;
+    flex: 1;
+    max-width: 14rem;
+    height: 2px;
+    border-radius: 2px;
+    background: rgb(184 217 154 / 15%);
+    overflow: hidden;
+  }
+
+  .rs-meter-bar span {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, var(--brand-primary), var(--brand-accent));
+    transform-origin: left;
+    transform: scaleX(var(--k));
+  }
+
+  .rs-sample {
+    display: inline-block;
+    margin: 1.4rem 0 0;
+    padding: 0.3rem 0.75rem;
+    border: 1px dashed var(--border);
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  /* ---------------------------------------------------------- document */
+  .rs-doc {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 1.4rem;
+    background: linear-gradient(180deg, var(--surface-alt), var(--surface) 30%);
+    box-shadow: 0 30px 80px rgb(0 0 0 / 45%);
+  }
+
+  .rs-doc-head {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .rs-ava {
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 50% 40%, #3a4a30, #253021);
+    box-shadow: 0 0 0 1px rgb(184 217 154 / 25%);
+  }
+
+  .rs-ava img {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+
+  .rs-doc-title {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .rs-doc-meta {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .rs-body {
+    display: grid;
+    gap: 0.65rem;
+    margin: 0;
+    padding: 1.3rem 1.4rem 1.5rem;
+    list-style: none;
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  /* Each line owns a slice of the scroll: it fades and rises in over its
+     slice, so scrolling back up takes it away again. */
+  .rs-line {
+    --in: clamp(0, calc(var(--k) * (var(--total) + 0.6) - var(--i)), 1);
+    position: relative;
+    opacity: var(--in);
+    transform: translate3d(0, calc((1 - var(--in)) * 10px), 0);
+    filter: blur(calc((1 - var(--in)) * 3px));
+  }
+
+  .rs-lead {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.12rem;
+    font-style: italic;
+    line-height: 1.45;
+  }
+
+  .rs-theme {
+    margin-top: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brand-primary-hover);
+  }
+
+  .rs-item {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--divider);
+    border-radius: 0.8rem;
+    background: rgb(255 255 255 / 2%);
+  }
+
+  .rs-item-title {
+    font-weight: 600;
+  }
+
+  .rs-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .rs-v {
+    padding: 0.05rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .rs-v-read {
+    background: var(--brand-primary);
+    color: var(--primary-foreground);
+  }
+
+  .rs-v-skim {
+    background: color-mix(in srgb, var(--brand-secondary) 40%, transparent);
+    color: var(--text-primary);
+  }
+
+  .rs-caveat {
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--border);
+    font-size: 0.87rem;
+    color: var(--text-secondary);
+  }
+
+  .rs-deadline {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.3rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.8rem;
+    background: color-mix(in srgb, var(--brand-accent-soft) 60%, transparent);
+    color: #f2e3c2;
+  }
+
+  .rs-deadline > svg {
+    flex: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.15rem;
+    fill: none;
+    stroke: var(--brand-accent);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+
+  /* ------------------------------------------------------------- notes */
+  .rs-notes {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+  }
+
+  .rs-note {
+    position: relative;
+    display: block;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgb(184 217 154 / 22%);
+    border-radius: 0.7rem;
+    background: rgb(16 20 14 / 70%);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    font-style: normal;
+    color: var(--text-secondary);
+  }
+
+  .rs-note.is-gold {
+    border-color: rgb(211 174 102 / 35%);
+  }
+
+  .rs-note-label {
+    display: block;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--nf-glow);
+  }
+
+  .rs-note.is-gold .rs-note-label {
+    color: var(--brand-accent);
+  }
+
+  /* Wide screens: the notes leave the document for its right margin, and a
+     hairline grows back to the line each one explains. */
+  @media (min-width: 1024px) {
+    .rs-notes {
+      position: absolute;
+      top: 0.2rem;
+      left: calc(100% + 3.4rem);
+      width: 13.6rem;
+      margin: 0;
+      /* A note arrives just after its line, and leaves just before it. */
+      --note: clamp(0, calc((var(--in) - 0.35) / 0.65), 1);
+      opacity: var(--note);
+      transform: translate3d(calc((1 - var(--note)) * 14px), 0, 0);
+    }
+
+    .rs-notes::before {
+      content: "";
+      position: absolute;
+      top: 1.05rem;
+      right: 100%;
+      width: 3rem;
+      height: 1px;
+      background: linear-gradient(90deg, rgb(184 217 154 / 0%), rgb(184 217 154 / 55%));
+      transform-origin: right;
+      transform: scaleX(var(--note));
+    }
+
+    /* The item's note above runs a few pixels past its line; leave a gap. */
+    .rs-caveat .rs-notes {
+      top: 0.7rem;
+    }
+
+    .rs-deadline .rs-notes::before {
+      background: linear-gradient(90deg, rgb(211 174 102 / 0%), rgb(211 174 102 / 60%));
+    }
+
+    .rs-notes::after {
+      content: "";
+      position: absolute;
+      top: calc(1.05rem - 3px);
+      right: calc(100% + 3rem - 3px);
+      width: 7px;
+      height: 7px;
+      border-radius: 9999px;
+      background: var(--nf-glow);
+      box-shadow: 0 0 10px rgb(184 217 154 / 70%);
+      opacity: var(--note);
+    }
+
+    .rs-deadline .rs-notes::after {
+      background: var(--brand-accent);
+      box-shadow: 0 0 10px rgb(211 174 102 / 70%);
+    }
+  }
+
+  /* No pin below 1024 px: the report is shown whole. */
+  @media (max-width: 1023px) {
+    .rs {
+      --k: 1;
+      height: auto;
+    }
+
+    .rs-sticky {
+      position: relative;
+      min-height: 0;
+      padding: 6rem 0;
+    }
+  }
+</style>

@@ -1,0 +1,478 @@
+---
+/**
+ * Hero prototype — Constellation (`hero/constellation`).
+ *
+ * The live hero's threads, but the tallest ones at each edge end in a labelled
+ * node: a paper, a call, a fellowship, a conference, a person, a project. The
+ * nodes light in turn — a pulse runs up the thread that reaches each one, and
+ * faint arcs over the top link it to what it connects to (a call to the
+ * project it could fund, a fellowship to the person it suits). Behind it, a
+ * second network sits out of focus and leans with the pointer.
+ *
+ * Labels are sample content for a fictional lab. Gold marks only the call
+ * with a deadline. Below 900 px the labels go (the sides of the network are
+ * cropped there) and the nodes stay. Reduced motion: every node shown lit,
+ * nothing cycles.
+ */
+import Spores from "@/components/site/Spores.astro";
+import { growThreads } from "@/lib/mycelium";
+import { demoUrl, primaryCta, selfHostCta } from "@/data/site";
+
+const threads = growThreads(20261024);
+const back = growThreads(551, 1440, 900, 20);
+const letters = [..."Mycelium"];
+
+/* The three outermost roots on each side end in a node. */
+const roots = threads
+  .map((t, i) => ({ ...t, i }))
+  .filter((t) => t.depth === 0)
+  .sort((a, b) => a.tip[0] - b.tip[0]);
+const chosen = [...roots.slice(0, 3), ...roots.slice(-3)];
+
+const labels = [
+  { kind: "Paper", name: "Retrieval grounding under shift" },
+  { kind: "Person", name: "Postdoc · neural decoding" },
+  { kind: "Project", name: "Sepsis early-warning study" },
+  { kind: "Grant", name: "Smart Health · closes in 18 days", gold: true },
+  { kind: "Fellowship", name: "NSF GRFP · eligibility checked" },
+  { kind: "Conference", name: "AMIA Annual Symposium" },
+];
+
+const nodes = chosen.map((t, k) => {
+  const [x, y] = t.tip;
+  const label = labels[k];
+  const w = Math.max(label.kind.length * 7.6, label.name.length * 7.1) + 26;
+  const lx = Math.min(1440 - w / 2 - 14, Math.max(w / 2 + 14, x));
+  return { x, y, d: t.d, label, w, lx, k };
+});
+
+/* What connects to what: paper→project, person→project, grant→project,
+   fellowship→person, conference→paper. Each lights with its first node. */
+const pairs: [number, number][] = [
+  [0, 2],
+  [1, 2],
+  [3, 2],
+  [4, 1],
+  [5, 0],
+];
+const links = pairs.map(([a, b]) => {
+  const A = nodes[a];
+  const B = nodes[b];
+  const top = Math.min(A.y, B.y) - 120 - Math.abs(A.x - B.x) * 0.12;
+  return {
+    d: `M${A.x.toFixed(1)} ${A.y.toFixed(1)} C${A.x.toFixed(1)} ${top.toFixed(1)} ${B.x.toFixed(1)} ${top.toFixed(1)} ${B.x.toFixed(1)} ${B.y.toFixed(1)}`,
+    k: a,
+    gold: nodes[a].label.gold,
+  };
+});
+---
+
+<section class="cn" aria-labelledby="cn-heading" data-proto="hero-constellation" data-pointer>
+  <svg class="cn-back" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    {back.map((t) => <path d={t.d}></path>)}
+  </svg>
+
+  <svg class="cn-net" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="cn-fade" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#8da66f" stop-opacity="0.75"></stop>
+        <stop offset="1" stop-color="#8da66f" stop-opacity="0.2"></stop>
+      </linearGradient>
+      <radialGradient id="cn-halo">
+        <stop offset="0" stop-color="#b8d99a" stop-opacity="0.55"></stop>
+        <stop offset="1" stop-color="#b8d99a" stop-opacity="0"></stop>
+      </radialGradient>
+      <radialGradient id="cn-halo-gold">
+        <stop offset="0" stop-color="#d3ae66" stop-opacity="0.6"></stop>
+        <stop offset="1" stop-color="#d3ae66" stop-opacity="0"></stop>
+      </radialGradient>
+    </defs>
+
+    <g class="cn-base">
+      {threads.map((t, i) => <path d={t.d} pathLength="1" style={`--i:${i}; --w:${t.depth === 0 ? 1.6 : 1}`}></path>)}
+    </g>
+
+    <g class="cn-links">
+      {links.map((l) => <path d={l.d} pathLength="1" class={l.gold ? "is-gold" : undefined} style={`--k:${l.k}`}></path>)}
+    </g>
+
+    <g class="cn-runs">
+      {nodes.map((n) => <path d={n.d} pathLength="1" class={n.label.gold ? "is-gold" : undefined} style={`--k:${n.k}`}></path>)}
+    </g>
+
+    {nodes.map((n) => (
+      <g class:list={["cn-node", n.label.gold && "is-gold"]} style={`--k:${n.k}`}>
+        <circle class="cn-halo" cx={n.x} cy={n.y} r="34" fill={n.label.gold ? "url(#cn-halo-gold)" : "url(#cn-halo)"}></circle>
+        <circle class="cn-dot" cx={n.x} cy={n.y} r="5.5"></circle>
+        <circle class="cn-ring" cx={n.x} cy={n.y} r="11"></circle>
+        <g class="cn-label">
+          <rect x={n.lx - n.w / 2} y={n.y - 74} width={n.w} height="46" rx="12"></rect>
+          <text class="cn-kind" x={n.lx} y={n.y - 56}>{n.label.kind}</text>
+          <text class="cn-name" x={n.lx} y={n.y - 38}>{n.label.name}</text>
+        </g>
+      </g>
+    ))}
+  </svg>
+
+  <Spores seed={7} count={24} />
+
+  <div class="cn-copy">
+    <p class="cn-kicker">Open-source research assistant</p>
+    <h1 id="cn-heading" class="cn-wordmark" aria-label="Mycelium">
+      {letters.map((ch, i) => <span aria-hidden="true" style={`--i:${i}`}>{ch}</span>)}
+    </h1>
+    <p class="cn-tagline">While you sleep, <em>Mylo reads the field.</em></p>
+    <p class="cn-lede">
+      Papers, grants, fellowships and conferences, connected to your lab’s own people and
+      projects. Every night Mycelium reads what is new, matches it to your themes, and leaves
+      a report by morning — reasons and caveats included.
+    </p>
+    <div class="nf-ctas">
+      <a class="nf-btn nf-btn-solid" href={primaryCta.href}>{primaryCta.label}</a>
+      <a class="nf-btn nf-btn-line" href={selfHostCta.href}>{selfHostCta.label}</a>
+    </div>
+    <p class="nf-note">{primaryCta.note}</p>
+    <p class="cn-demo" data-demo-link hidden>
+      Not ready to choose? <a href={demoUrl}>Look around a demo lab<span aria-hidden="true"> →</span></a>
+    </p>
+  </div>
+
+  <p class="cn-sample">Labels are sample content · fictional lab</p>
+</section>
+
+<style>
+  .cn {
+    --cycle: 15s;
+    --slot: 2.5s;
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: max(100svh, 46rem);
+    margin-top: calc(-1 * var(--header-h));
+    padding: calc(var(--header-h) + 3rem) 1rem 6rem;
+    overflow: clip;
+    background:
+      radial-gradient(50rem 30rem at 50% 105%, rgb(141 166 111 / 18%), transparent 70%),
+      radial-gradient(40rem 24rem at 50% -10%, rgb(37 48 33 / 90%), transparent 70%),
+      var(--nf-night);
+    text-align: center;
+  }
+
+  .cn-back,
+  .cn-net {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* The out-of-focus network behind: leans against the pointer. */
+  .cn-back {
+    z-index: -3;
+    filter: blur(3px);
+    opacity: 0.32;
+    transform: translate3d(calc(var(--mx, 0) * -22px), calc(var(--my, 0) * -12px), 0) scale(1.08);
+  }
+
+  .cn-back path {
+    fill: none;
+    stroke: #6f8a56;
+    stroke-width: 1.2;
+  }
+
+  .cn-net {
+    z-index: -2;
+    transform: translate3d(calc(var(--mx, 0) * 8px), calc(var(--my, 0) * 5px), 0);
+  }
+
+  .cn-base path {
+    fill: none;
+    stroke: url(#cn-fade);
+    stroke-width: var(--w);
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+  }
+
+  /* Arcs between connected things: a whisper until their node lights. */
+  .cn-links path {
+    fill: none;
+    stroke: var(--nf-glow);
+    stroke-width: 1;
+    stroke-dasharray: 0.006 0.012;
+    opacity: 0.16;
+  }
+
+  .cn-links path.is-gold {
+    stroke: var(--brand-accent);
+  }
+
+  .cn-runs path {
+    fill: none;
+    stroke: var(--nf-glow);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-dasharray: 0.08 0.92;
+    stroke-dashoffset: 0.08;
+    opacity: 0;
+    filter: drop-shadow(0 0 5px rgb(184 217 154 / 90%));
+  }
+
+  .cn-runs path.is-gold {
+    stroke: var(--brand-accent);
+    filter: drop-shadow(0 0 5px rgb(211 174 102 / 90%));
+  }
+
+  .cn-dot {
+    fill: var(--nf-glow);
+  }
+
+  .cn-ring {
+    fill: none;
+    stroke: var(--nf-glow);
+    stroke-width: 1.2;
+    opacity: 0.5;
+  }
+
+  .cn-node.is-gold .cn-dot {
+    fill: var(--brand-accent);
+  }
+
+  .cn-node.is-gold .cn-ring {
+    stroke: var(--brand-accent);
+  }
+
+  .cn-label rect {
+    fill: rgb(22 28 20 / 88%);
+    stroke: rgb(184 217 154 / 28%);
+    stroke-width: 1;
+  }
+
+  .cn-node.is-gold .cn-label rect {
+    stroke: rgb(211 174 102 / 45%);
+  }
+
+  .cn-kind {
+    font: 600 10.5px/1 Inter, system-ui, sans-serif;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-anchor: middle;
+    fill: var(--nf-glow);
+  }
+
+  .cn-node.is-gold .cn-kind {
+    fill: var(--brand-accent);
+  }
+
+  .cn-name {
+    font: 500 13px/1 Inter, system-ui, sans-serif;
+    text-anchor: middle;
+    fill: #f2ebdd;
+  }
+
+  .cn-halo,
+  .cn-ring,
+  .cn-dot {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  /* Static: every node lit, every link visible. */
+  .cn-halo {
+    opacity: 0.6;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cn-base path {
+      animation: nf-draw 2.6s cubic-bezier(0.4, 0, 0.3, 1) both;
+      animation-delay: calc(200ms + var(--i) * 45ms);
+    }
+
+    /* Each node has its own slot in one shared cycle. */
+    .cn-node,
+    .cn-runs path,
+    .cn-links path {
+      --delay: calc(2.6s + var(--k) * var(--slot));
+    }
+
+    .cn-node {
+      animation: nf-in 900ms var(--nf-ease) both calc(1.8s + var(--k) * 120ms);
+    }
+
+    .cn-label {
+      opacity: 0.38;
+      animation: cn-label-lit var(--cycle) ease-in-out infinite var(--delay);
+    }
+
+    .cn-halo {
+      opacity: 0;
+      animation: cn-halo-lit var(--cycle) ease-in-out infinite var(--delay);
+    }
+
+    .cn-ring {
+      animation: cn-ring-lit var(--cycle) ease-out infinite var(--delay);
+    }
+
+    .cn-runs path {
+      animation: cn-run var(--cycle) linear infinite var(--delay);
+    }
+
+    .cn-links path {
+      animation: cn-link-lit var(--cycle) ease-in-out infinite var(--delay);
+    }
+  }
+
+  /* One slot is 2.5s of a 15s cycle, so 16.7%: the run climbs the thread in
+     the first half of the slot, the node holds lit into the next. */
+  @keyframes cn-run {
+    0% { opacity: 1; stroke-dashoffset: 0.08; }
+    9% { opacity: 1; stroke-dashoffset: -0.92; }
+    10%, 100% { opacity: 0; stroke-dashoffset: -0.92; }
+  }
+
+  @keyframes cn-halo-lit {
+    0%, 7% { opacity: 0; transform: scale(0.6); }
+    11% { opacity: 1; transform: scale(1.1); }
+    24% { opacity: 0.9; transform: scale(1); }
+    32%, 100% { opacity: 0; transform: scale(0.8); }
+  }
+
+  @keyframes cn-ring-lit {
+    0%, 8% { transform: scale(1); opacity: 0.5; }
+    14% { transform: scale(2.4); opacity: 0; }
+    15%, 100% { transform: scale(1); opacity: 0.5; }
+  }
+
+  @keyframes cn-label-lit {
+    0%, 8% { opacity: 0.38; }
+    12%, 26% { opacity: 1; }
+    34%, 100% { opacity: 0.38; }
+  }
+
+  @keyframes cn-link-lit {
+    0%, 9% { opacity: 0.16; stroke-dasharray: 0.006 0.012; }
+    14%, 26% { opacity: 0.7; stroke-dasharray: 1 0; }
+    34%, 100% { opacity: 0.16; stroke-dasharray: 0.006 0.012; }
+  }
+
+  /* --------------------------------------------------------------- copy */
+  .cn-copy {
+    position: relative;
+    max-width: 50rem;
+  }
+
+  .cn-copy::before {
+    content: "";
+    position: absolute;
+    inset: -3rem -7rem -4.5rem;
+    z-index: -1;
+    background: radial-gradient(closest-side, rgb(16 20 14 / 95%), rgb(16 20 14 / 75%) 60%, transparent);
+  }
+
+  .cn-kicker {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--nf-glow);
+  }
+
+  .cn-wordmark {
+    margin: 0.6rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-optical-sizing: none;
+    font-variation-settings: "opsz" 72;
+    font-size: clamp(4rem, 13vw, 9.5rem);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: #f2ebdd;
+    text-shadow: 0 0 60px rgb(184 217 154 / 18%);
+  }
+
+  .cn-wordmark span {
+    display: inline-block;
+  }
+
+  .cn-tagline {
+    margin: 1.1rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(1.45rem, 3.2vw, 2.3rem);
+    font-weight: 300;
+    line-height: 1.2;
+    color: #f2ebdd;
+  }
+
+  .cn-tagline em {
+    font-style: italic;
+    color: var(--nf-glow);
+    text-shadow: 0 0 34px rgb(184 217 154 / 32%);
+  }
+
+  .cn-lede {
+    max-width: 37rem;
+    margin: 1.4rem auto 0;
+    font-size: clamp(1rem, 1.4vw, 1.1rem);
+    line-height: 1.7;
+    color: var(--text-secondary);
+  }
+
+  .cn-demo {
+    margin: 1.5rem 0 0;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+  }
+
+  .cn-demo a {
+    color: var(--nf-glow);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: rgb(184 217 154 / 35%);
+    text-underline-offset: 0.25em;
+  }
+
+  .cn-sample {
+    position: absolute;
+    bottom: 1.4rem;
+    left: 50%;
+    margin: 0;
+    transform: translateX(-50%);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cn-wordmark span {
+      animation: cn-letter 1.2s var(--nf-ease) both;
+      animation-delay: calc(150ms + var(--i) * 70ms);
+    }
+
+    .cn-copy > :not(.cn-wordmark) {
+      animation: nf-in 1.1s var(--nf-ease) both;
+    }
+
+    .cn-kicker { animation-delay: 50ms !important; }
+    .cn-tagline { animation-delay: 850ms !important; }
+    .cn-lede { animation-delay: 1000ms !important; }
+    .cn-copy > .nf-ctas { animation-delay: 1120ms !important; }
+    .cn-copy > .nf-note { animation-delay: 1220ms !important; }
+    .cn-copy > .cn-demo { animation-delay: 1320ms !important; }
+  }
+
+  @keyframes cn-letter {
+    from { opacity: 0; transform: translateY(0.35em); filter: blur(10px); }
+  }
+
+  @media (max-width: 900px) {
+    .cn-label,
+    .cn-links,
+    .cn-sample {
+      display: none;
+    }
+  }
+</style>

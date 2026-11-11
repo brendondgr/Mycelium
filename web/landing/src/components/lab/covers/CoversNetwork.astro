@@ -1,0 +1,533 @@
+---
+/**
+ * Lab prototype — covers/network. "What it covers" as one living map.
+ *
+ * Every capability is a node and the links between them are the point: a
+ * grant reaches a project, a fellowship reaches a person, Mylo reads the graph.
+ * Hovering or focusing a node lights the things it connects to, dims the rest,
+ * and writes what it is into the panel beside the map.
+ *
+ * Depth, three ways:
+ *   - nodes sit on three planes (size, glow and weight by plane);
+ *   - the whole map is one rigid plane that tilts toward the pointer
+ *     (`--mx`/`--my`), so the threads never come unstuck from their nodes;
+ *   - a blurred, far network drifts behind it with the scroll and the pointer.
+ * The threads draw in as the section arrives (`--p`). At rest everything is
+ * drawn, level and still.
+ *
+ * Below 720 px the map would be too small to read, so it is replaced by the
+ * same content as a list: each node, what it is, and what it connects to.
+ */
+import { growThreads } from "@/lib/mycelium";
+
+type Node = {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  /** 0 is the hub; 1 near; 2 far. */
+  depth: 0 | 1 | 2;
+  gold?: boolean;
+  text: string;
+};
+
+const nodes: Node[] = [
+  { id: "profile", label: "Your lab's profile", x: 50, y: 31, depth: 0, text: "Themes and their sub-topics, drafted from your own publications and edited by you. Everything else on this map is ranked against them." },
+  { id: "papers", label: "Papers", x: 16, y: 12, depth: 1, text: "New papers from OpenAlex, PubMed and Semantic Scholar, each matched to one of your themes with the reason it fits." },
+  { id: "graph", label: "Knowledge graph", x: 37, y: 8, depth: 2, text: "Concepts from profiles, projects and papers, linked with how each link is known: declared, shown in a paper, or raised in conversation." },
+  { id: "grants", label: "Grants", x: 64, y: 8, depth: 1, gold: true, text: "Public funding calls with every deadline round, and checks on each: open or closed, the next deadline against your buffer, who may apply." },
+  { id: "reminders", label: "Reminders", x: 86, y: 13, depth: 2, gold: true, text: "Save an item and be reminded ahead of each of its deadlines, in the app or in Discord." },
+  { id: "reports", label: "Daily report", x: 30, y: 30, depth: 2, text: "The 06:00 written pass, by theme: in the app, as a PDF, and posted to the lab's Discord." },
+  { id: "conferences", label: "Conferences", x: 71, y: 31, depth: 1, gold: true, text: "The next submission deadline, never the event date, with the series' CORE, CCF or THCPL ranking where it has one." },
+  { id: "fellowships", label: "Fellowships", x: 89, y: 35, depth: 1, gold: true, text: "Matched to each person, with eligibility checked by rule, and named plainly when a human still has to check." },
+  { id: "mylo", label: "Ask Mylo", x: 11, y: 35, depth: 1, text: "Answers from everything you may see, with each step shown and every source cited. In the app and in Discord. He reads; he changes nothing." },
+  { id: "discord", label: "Discord forums", x: 12, y: 55, depth: 2, text: "New calls posted as threads, with Interested, Remind me and Not for us. Anyone in the server can set a reminder." },
+  { id: "people", label: "People", x: 30, y: 53, depth: 1, text: "Each member has a profile and themes of their own, so a lab's feed can say who in the lab an item suits." },
+  { id: "projects", label: "Projects", x: 51, y: 55, depth: 1, text: "Each with its own focus and state: what it claims, what blocks it, what it aims at." },
+  { id: "departments", label: "Departments", x: 73, y: 53, depth: 2, text: "Hear about the calls a lab cannot put forward alone: limited submissions and institutional nominations." },
+];
+
+const links: [string, string][] = [
+  ["profile", "papers"],
+  ["profile", "grants"],
+  ["profile", "conferences"],
+  ["profile", "fellowships"],
+  ["profile", "people"],
+  ["profile", "projects"],
+  ["profile", "reports"],
+  ["graph", "papers"],
+  ["graph", "people"],
+  ["graph", "projects"],
+  ["mylo", "graph"],
+  ["mylo", "papers"],
+  ["mylo", "projects"],
+  ["mylo", "discord"],
+  ["reports", "papers"],
+  ["reports", "discord"],
+  ["people", "fellowships"],
+  ["projects", "grants"],
+  ["departments", "grants"],
+  ["departments", "projects"],
+  ["reminders", "grants"],
+  ["reminders", "conferences"],
+  ["reminders", "fellowships"],
+  ["discord", "people"],
+  ["conferences", "papers"],
+];
+
+const at = Object.fromEntries(nodes.map((n) => [n.id, n]));
+const H = 62.5;
+
+/* A gentle bow on every thread, alternating sides so the map looks grown. */
+const paths = links.map(([a, b], i) => {
+  const p = at[a];
+  const q = at[b];
+  const mx = (p.x + q.x) / 2;
+  const my = (p.y + q.y) / 2;
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const bow = (i % 2 ? 1 : -1) * Math.min(5, len * 0.14);
+  const cx = mx + (-dy / len) * bow;
+  const cy = my + (dx / len) * bow;
+  return {
+    a,
+    b,
+    i,
+    gold: Boolean(p.gold && q.gold),
+    d: `M${p.x} ${p.y} Q${cx.toFixed(2)} ${cy.toFixed(2)} ${q.x} ${q.y}`,
+  };
+});
+
+const neighbours = (id: string) =>
+  links.flatMap(([a, b]) => (a === id ? [b] : b === id ? [a] : [])).map((n) => at[n].label);
+
+const far = growThreads(41, 1440, 900, 11);
+---
+
+<section class="nf-section cn" data-proto="covers-network" data-progress data-pointer aria-labelledby="covers-network-heading">
+  <svg class="cn-far" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    {far.map((t) => <path d={t.d}></path>)}
+  </svg>
+
+  <div class="nf-wrap">
+    <div class="nf-head-center reveal">
+      <p class="nf-eyebrow">What it covers</p>
+      <h2 id="covers-network-heading" class="nf-h2">Everything it reads, connected</h2>
+      <p class="nf-sub">
+        Papers, calls, people and projects are not separate lists here. Point at any part to see what it
+        reaches.
+      </p>
+    </div>
+
+    <div class="cn-wrap reveal">
+      <div class="cn-map" data-cn-map>
+        <div class="cn-plane">
+          <svg class="cn-links" viewBox={`0 0 100 ${H}`} preserveAspectRatio="none" aria-hidden="true">
+            {paths.map((l) => (
+              <path
+                d={l.d}
+                pathLength="1"
+                class:list={["cn-link", { "is-gold": l.gold }]}
+                data-a={l.a}
+                data-b={l.b}
+                style={`--i:${l.i}`}
+              ></path>
+            ))}
+          </svg>
+          {nodes.map((n) => (
+            <button
+              type="button"
+              class:list={["cn-node", `cn-d${n.depth}`, { "is-gold": n.gold }]}
+              data-node={n.id}
+              style={`left:${n.x}%; top:${(n.y / H) * 100}%`}
+              aria-describedby="covers-network-detail"
+            >
+              <span class="cn-dot" aria-hidden="true"></span>
+              <span class="cn-label">{n.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <aside class="cn-detail" aria-live="polite">
+        <p class="cn-detail-kicker">Selected</p>
+        <p class="cn-detail-title" data-cn-title>{nodes[0].label}</p>
+        <p class="cn-detail-text" id="covers-network-detail" data-cn-text>{nodes[0].text}</p>
+        <p class="cn-detail-kicker">Connects to</p>
+        <p class="cn-detail-links" data-cn-links>{neighbours("profile").join(" · ")}</p>
+      </aside>
+    </div>
+
+    {/* Phones: the same map, read as a list. */}
+    <ul class="cn-list">
+      {nodes.map((n) => (
+        <li class:list={["reveal", { "is-gold": n.gold }]}>
+          <p class="cn-list-title"><span class="cn-dot" aria-hidden="true"></span>{n.label}</p>
+          <p class="cn-list-text">{n.text}</p>
+          <p class="cn-list-links">Connects to {neighbours(n.id).join(", ")}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <script
+    is:inline
+    type="application/json"
+    data-cn-data
+    set:html={JSON.stringify(Object.fromEntries(nodes.map((n) => [n.id, { label: n.label, text: n.text, links: neighbours(n.id) }])))}
+  ></script>
+</section>
+
+<script is:inline>
+  /* Hover or focus a node: light its threads and neighbours, describe it. */
+  (function () {
+    document.querySelectorAll('[data-proto="covers-network"]').forEach(function (root) {
+      var data = JSON.parse(root.querySelector("[data-cn-data]").textContent);
+      var map = root.querySelector("[data-cn-map]");
+      var title = root.querySelector("[data-cn-title]");
+      var text = root.querySelector("[data-cn-text]");
+      var linksOut = root.querySelector("[data-cn-links]");
+      var nodes = map.querySelectorAll("[data-node]");
+      var paths = map.querySelectorAll(".cn-link");
+      var leaveTimer;
+
+      function show(id) {
+        clearTimeout(leaveTimer);
+        var on = {};
+        on[id] = true;
+        paths.forEach(function (p) {
+          var a = p.getAttribute("data-a");
+          var b = p.getAttribute("data-b");
+          var hit = a === id || b === id;
+          p.classList.toggle("is-on", hit);
+          if (hit) { on[a] = true; on[b] = true; }
+        });
+        nodes.forEach(function (n) {
+          var nid = n.getAttribute("data-node");
+          n.classList.toggle("is-on", !!on[nid]);
+          n.classList.toggle("is-active", nid === id);
+        });
+        map.setAttribute("data-active", id);
+        var d = data[id];
+        title.textContent = d.label;
+        text.textContent = d.text;
+        linksOut.textContent = d.links.join(" · ");
+      }
+
+      function clear() {
+        leaveTimer = setTimeout(function () {
+          map.removeAttribute("data-active");
+          nodes.forEach(function (n) { n.classList.remove("is-on", "is-active"); });
+          paths.forEach(function (p) { p.classList.remove("is-on"); });
+        }, 220);
+      }
+
+      nodes.forEach(function (n) {
+        var id = n.getAttribute("data-node");
+        n.addEventListener("pointerenter", function () { show(id); });
+        n.addEventListener("focus", function () { show(id); });
+        n.addEventListener("click", function () { show(id); });
+        n.addEventListener("pointerleave", clear);
+        n.addEventListener("blur", clear);
+      });
+    });
+  })();
+</script>
+
+<style>
+  .cn {
+    isolation: isolate;
+    overflow: clip;
+  }
+
+  /* --------------------------------------------------- the far network */
+  .cn-far {
+    position: absolute;
+    inset: -6% -4%;
+    z-index: -1;
+    width: 108%;
+    height: 112%;
+    filter: blur(3px);
+    opacity: 0.32;
+    transform: translate3d(
+      calc(var(--mx, 0) * -26px),
+      calc((var(--p, 0.5) - 0.5) * 120px + var(--my, 0) * -16px),
+      0
+    );
+    mask-image: radial-gradient(70% 70% at 50% 55%, #000 30%, transparent 85%);
+  }
+
+  .cn-far path {
+    fill: none;
+    stroke: var(--brand-secondary);
+    stroke-width: 1.2;
+  }
+
+  /* ------------------------------------------------------------ layout */
+  .cn-wrap {
+    display: none;
+    margin-top: 3rem;
+  }
+
+  @media (min-width: 720px) {
+    .cn-wrap {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .cn-list {
+      display: none;
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .cn-wrap {
+      grid-template-columns: minmax(0, 1fr) 17rem;
+      align-items: center;
+    }
+  }
+
+  .cn-map {
+    perspective: 1600px;
+  }
+
+  /* One rigid plane, so threads and nodes always move together. */
+  .cn-plane {
+    position: relative;
+    aspect-ratio: 100 / 62.5;
+    margin: 0 4% 0 3%;
+    transform: rotateX(calc(var(--my, 0) * -5deg)) rotateY(calc(var(--mx, 0) * 6deg));
+    transform-style: preserve-3d;
+  }
+
+  .cn-links {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /* Threads draw in, one a little after another, as the section arrives. */
+  .cn-link {
+    --draw: clamp(0, calc((var(--p, 1) - 0.1) * 3.2 - var(--i) * 0.035), 1);
+    fill: none;
+    stroke: var(--brand-secondary);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 1;
+    stroke-dashoffset: calc(1 - var(--draw));
+    opacity: 0.5;
+    transition: opacity 300ms ease, stroke 300ms ease, stroke-width 300ms ease;
+  }
+
+  .cn-link.is-gold {
+    stroke: color-mix(in srgb, var(--brand-accent) 70%, var(--brand-secondary));
+  }
+
+  [data-active] .cn-link {
+    opacity: 0.1;
+  }
+
+  [data-active] .cn-link.is-on {
+    opacity: 1;
+    stroke: var(--nf-glow);
+    stroke-width: 2;
+    filter: drop-shadow(0 0 3px rgb(184 217 154 / 80%));
+  }
+
+  [data-active] .cn-link.is-on.is-gold {
+    stroke: var(--brand-accent);
+    filter: drop-shadow(0 0 3px rgb(211 174 102 / 80%));
+  }
+
+  /* ------------------------------------------------------------- nodes */
+  .cn-node {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.4rem;
+    border: 0;
+    border-radius: 0.8rem;
+    background: transparent;
+    font: inherit;
+    color: var(--text-primary);
+    cursor: pointer;
+    transform: translate(-50%, calc(-1 * var(--dot) / 2 - 0.3rem));
+    transition: opacity 300ms ease;
+    --dot: 1.1rem;
+  }
+
+  .cn-d0 { --dot: 1.9rem; }
+  .cn-d1 { --dot: 1.15rem; }
+  .cn-d2 { --dot: 0.8rem; }
+
+  .cn-dot {
+    display: block;
+    flex: none;
+    width: var(--dot, 0.9rem);
+    height: var(--dot, 0.9rem);
+    border-radius: 9999px;
+    background: radial-gradient(circle at 50% 40%, #e9f5d8, var(--nf-glow) 40%, var(--brand-primary) 100%);
+    box-shadow: 0 0 0 4px rgb(16 20 14 / 90%), 0 0 18px rgb(184 217 154 / 55%);
+    transition: transform 300ms var(--nf-ease), box-shadow 300ms ease;
+  }
+
+  .cn-d2 .cn-dot {
+    box-shadow: 0 0 0 3px rgb(16 20 14 / 90%), 0 0 10px rgb(184 217 154 / 35%);
+    filter: saturate(0.8) brightness(0.85);
+  }
+
+  .is-gold .cn-dot {
+    background: radial-gradient(circle at 50% 40%, #f6e7c4, var(--brand-accent) 55%, #8a6c34 100%);
+    box-shadow: 0 0 0 4px rgb(16 20 14 / 90%), 0 0 16px rgb(211 174 102 / 50%);
+  }
+
+  .cn-d0 .cn-dot {
+    box-shadow: 0 0 0 6px rgb(16 20 14 / 90%), 0 0 0 7px rgb(184 217 154 / 35%), 0 0 36px rgb(184 217 154 / 55%);
+  }
+
+  .cn-label {
+    padding: 0.1rem 0.5rem;
+    border-radius: 9999px;
+    background: rgb(16 20 14 / 78%);
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .cn-d0 .cn-label {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.05rem;
+    font-weight: 500;
+  }
+
+  .cn-d2 .cn-label {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+  }
+
+  .cn-node:hover .cn-dot,
+  .cn-node:focus-visible .cn-dot,
+  .cn-node.is-active .cn-dot {
+    transform: scale(1.3);
+  }
+
+  .cn-node:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  [data-active] .cn-node {
+    opacity: 0.35;
+  }
+
+  [data-active] .cn-node.is-on {
+    opacity: 1;
+  }
+
+  [data-active] .cn-node.is-active .cn-label {
+    background: var(--brand-primary);
+    color: var(--primary-foreground);
+  }
+
+  /* Tips pop in once their threads have reached them. */
+  :global(html[data-lab-motion="on"]) .cn-node {
+    --arrive: clamp(0, calc((var(--p, 1) - 0.18) * 4), 1);
+  }
+
+  :global(html[data-lab-motion="on"]) .cn-node .cn-dot {
+    opacity: var(--arrive, 1);
+  }
+
+  /* ----------------------------------------------------------- detail */
+  .cn-detail {
+    padding: 1.2rem 1.3rem;
+    border: 1px solid var(--border);
+    border-radius: 1.1rem;
+    background: rgb(29 36 26 / 82%);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 24px 60px rgb(0 0 0 / 35%);
+  }
+
+  .cn-detail-kicker {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .cn-detail-title {
+    margin: 0.3rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.35rem;
+    color: var(--text-primary);
+  }
+
+  .cn-detail-text {
+    margin: 0.45rem 0 1rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .cn-detail-links {
+    margin: 0.3rem 0 0;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--nf-glow);
+  }
+
+  /* ------------------------------------------------------- phone list */
+  /* No `display` here: it would come after, and so beat, the min-width rule
+     that hides this list once the map is shown. */
+  .cn-list {
+    margin: 2.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cn-list li {
+    padding: 1.1rem 0;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .cn-list-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.2rem;
+    color: var(--text-primary);
+  }
+
+  .cn-list .cn-dot {
+    --dot: 0.75rem;
+    box-shadow: 0 0 10px rgb(184 217 154 / 45%);
+  }
+
+  .cn-list .is-gold .cn-dot {
+    box-shadow: 0 0 10px rgb(211 174 102 / 45%);
+  }
+
+  .cn-list-text {
+    margin: 0.4rem 0 0;
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .cn-list-links {
+    margin: 0.35rem 0 0;
+    font-size: 0.8rem;
+    color: var(--nf-glow);
+  }
+</style>
