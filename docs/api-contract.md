@@ -104,6 +104,7 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `opportunities/ignore/` | POST | Ignore an item — hide it from this reader's feeds |
 | `opportunities/ignore/<content_id>/` | DELETE | Stop ignoring it |
 | `opportunities/ignored/` | GET | Everything this reader ignored, with feed-parity cards |
+| `items/<content_id>/` | GET | One corpus item as its feed's card: `{area, card}` (`area` is `paper`, `grant`, `fellowship` or `conference`; `card` has the reader's latest score, or a neutral one). How a link opens an item its feed does not list. 404 for an unknown id |
 | `saves/` | GET | Personal bookmarks with feed-parity cards |
 | `labs/<slug>/saves/` | GET | A lab's shared saves |
 | `deadlines/` | GET | Saved deadlines, soonest first |

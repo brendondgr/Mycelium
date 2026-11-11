@@ -468,6 +468,8 @@ api/opportunities/ignore/<uuid:content_id>/	opportunity-unignore	IgnoreItemView
 api/opportunities/ignore/<uuid:content_id>	-	IgnoreItemView
 api/opportunities/ignored/	opportunities-ignored	IgnoredItemsView
 api/opportunities/ignored	-	IgnoredItemsView
+api/items/<uuid:content_id>/	item-card	ItemCardView
+api/items/<uuid:content_id>	-	ItemCardView
 api/labs/<slug:slug>/recommendations/	lab-recommendations	LabRecommendationsView
 api/labs/<slug:slug>/recommendations	-	LabRecommendationsView
 api/labs/<slug:slug>/daily-briefing/	lab-daily-briefing	LabDailyBriefingView
