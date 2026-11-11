@@ -9,6 +9,7 @@ import { HeldBack, heldReason } from "@/components/portal/primitives/held-back";
 import { SourceRow } from "@/components/portal/primitives/source-footer";
 import { CheckPill, UsabilityStrip } from "@/components/portal/primitives/usability-strip";
 import { DeadlinePill, FeedCard, ItemDetail, PageHead, matchInfo } from "@/components/portal/feed/parts";
+import { type FeedKind, useLinkedItemFetch } from "@/components/portal/feed/linked";
 import { ReaderLayout, groupByTheme, useReader } from "@/components/portal/feed/reader";
 import { FeedToolbar, useFeedControls, type Facet, type SortOption } from "@/components/portal/feed/toolbar";
 import { PageSkeleton } from "@/components/portal/skeleton";
@@ -45,6 +46,8 @@ export type OpportunityFeedConfig<T extends OpportunityBase> = {
   noun: string;
   /** e.g. "grant", for "No grants match…". */
   idPrefix: string;
+  /** The item kind this feed shows, so a link to one it does not list still opens. */
+  kind: Exclude<FeedKind, "paper">;
   placeholder: string;
   icon: React.ReactNode;
   /** The source line under the title — the funder or venue in bold, then the
@@ -219,7 +222,12 @@ export function OpportunityFeed<T extends OpportunityBase>({
   );
   const groups = groupByTheme(shown, (i) => i.cluster, config.otherLabel);
   const readable = React.useMemo(() => [...listed, ...held], [listed, held]);
-  const reader = useReader(readable, opportunityId, groups[0]?.items[0] ?? held[0]);
+  const fetchItem = useLinkedItemFetch<T>(config.kind);
+  const reader = useReader(readable, opportunityId, groups[0]?.items[0] ?? held[0], {
+    fetchItem,
+    kind: config.kind,
+    ready: !isLoading,
+  });
 
   const newCount = items.filter((i) => i.is_new).length;
   const closing = items.filter((i) => {

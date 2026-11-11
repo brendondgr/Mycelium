@@ -448,6 +448,7 @@ const FELLOWSHIPS_CONFIG: OpportunityFeedConfig<FellowshipOpportunity> = {
   kicker: "Opportunities",
   noun: "fellowships",
   idPrefix: "fellowships",
+  kind: "fellowship",
   placeholder: "Search fellowships by title, field, or description…",
   icon: <SparkleIcon size={26} className="text-accent" />,
   source: (f) => (

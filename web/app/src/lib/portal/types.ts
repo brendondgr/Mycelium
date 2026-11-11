@@ -956,6 +956,13 @@ export type SavedItem = SavedDeadline & {
     | { area: "paper"; card: Suggestion | null }
   );
 
+/** One corpus item as its feed's card (from `/api/items/<id>/`). */
+export type ItemCard =
+  | { area: "grant"; card: GrantOpportunity }
+  | { area: "conference"; card: ConferenceOpportunity }
+  | { area: "fellowship"; card: FellowshipOpportunity }
+  | { area: "paper"; card: Suggestion };
+
 /**
  * One entry this reader has ignored (from `/api/opportunities/ignored/`). The
  * mirror of `SavedItem`, minus the snapshot: an ignore row is deleted with its

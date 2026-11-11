@@ -281,6 +281,7 @@ const GRANTS_CONFIG: OpportunityFeedConfig<GrantOpportunity> = {
   kicker: "Opportunities",
   noun: "grants",
   idPrefix: "grants",
+  kind: "grant",
   placeholder: "Search grants by title, sponsor, or description…",
   icon: <BankIcon size={26} className="text-accent" />,
   source: (g) => (

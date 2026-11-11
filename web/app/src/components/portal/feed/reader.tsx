@@ -49,21 +49,45 @@ function paneVisible(pane: HTMLElement | null): boolean {
   return Boolean(pane && pane.offsetParent !== null);
 }
 
+export type ReaderOptions<T> = {
+  /**
+   * Fetch an item this list does not hold — a link from Mylo or from Discord
+   * to anything in the corpus, not only today's slate. Resolves `null` when
+   * the item belongs to another feed. Keep it stable (`useCallback`).
+   */
+  fetchItem?: (id: string) => Promise<T | null>;
+  /** The kind this feed shows ("grant", "paper", …), to claim Mylo's requests. */
+  kind?: string;
+  /** False while the list is loading, so nothing it will hold is fetched. */
+  ready?: boolean;
+};
+
 export function useReader<T>(
   items: T[],
   getId: (item: T) => string,
   first: T | undefined,
+  { fetchItem, kind, ready = true }: ReaderOptions<T> = {},
 ) {
   const [selected, setSelected] = React.useState<string | null>(() =>
     readItemParam(),
   );
   const [drawerId, setDrawerId] = React.useState<string | null>(null);
+  // The item a link asked for that the list does not hold, once fetched.
+  const [linked, setLinked] = React.useState<T | null>(null);
   const paneRef = React.useRef<HTMLElement | null>(null);
 
+  const all = React.useMemo(
+    () =>
+      linked && !items.some((i) => getId(i) === getId(linked))
+        ? [...items, linked]
+        : items,
+    [items, linked, getId],
+  );
+
   // Nothing picked (or the pick was filtered away): the first card shown.
-  const current = items.find((i) => getId(i) === selected) ?? first;
+  const current = all.find((i) => getId(i) === selected) ?? first;
   const drawerItem = drawerId
-    ? items.find((i) => getId(i) === drawerId)
+    ? all.find((i) => getId(i) === drawerId)
     : undefined;
 
   const open = React.useCallback(
@@ -78,19 +102,60 @@ export function useReader<T>(
 
   const closeDrawer = React.useCallback(() => setDrawerId(null), []);
 
+  // A linked item the list does not hold: fetch it and open it all the same.
+  React.useEffect(() => {
+    if (!ready || !selected || !fetchItem) return;
+    if (all.some((i) => getId(i) === selected)) return;
+    let live = true;
+    fetchItem(selected)
+      .then((item) => {
+        if (live && item) setLinked(item);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [ready, selected, all, getId, fetchItem]);
+
+  // Arriving by a link on a narrow screen: the pane is not drawn, so the
+  // linked item opens in the drawer, once it is here.
+  const arrived = React.useRef(false);
+  React.useEffect(() => {
+    if (arrived.current || !ready) return;
+    const id = readItemParam();
+    if (!id) {
+      arrived.current = true;
+      return;
+    }
+    if (!all.some((i) => getId(i) === id)) return;
+    arrived.current = true;
+    if (!paneVisible(paneRef.current)) {
+      const timer = window.setTimeout(() => setDrawerId(id), 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [ready, all, getId]);
+
   // Mylo's panel asks to open an item (a citation, a conversation's "About"
-  // line): open it here when this feed has it.
+  // line): open it here when this feed has it, or fetch it when it is of
+  // this feed's kind.
   React.useEffect(() => {
     const onOpenItem = (event: Event) => {
       const request = (event as CustomEvent<OpenItemRequest>).detail;
-      const item = items.find((i) => getId(i) === request.id);
-      if (!item) return;
+      const item = all.find((i) => getId(i) === request.id);
+      if (item) {
+        request.handled = true;
+        open(item);
+        return;
+      }
+      if (!fetchItem || !kind || request.kind !== kind) return;
       request.handled = true;
-      open(item);
+      setSelected(request.id);
+      writeItemParam(request.id);
+      if (!paneVisible(paneRef.current)) setDrawerId(request.id);
     };
     window.addEventListener(OPEN_ITEM_EVENT, onOpenItem);
     return () => window.removeEventListener(OPEN_ITEM_EVENT, onOpenItem);
-  }, [items, getId, open]);
+  }, [all, getId, open, fetchItem, kind]);
 
   return {
     current,

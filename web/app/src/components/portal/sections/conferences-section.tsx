@@ -603,6 +603,7 @@ const CONFERENCES_CONFIG: OpportunityFeedConfig<ConferenceOpportunity> = {
   kicker: "Opportunities",
   noun: "conferences",
   idPrefix: "conferences",
+  kind: "conference",
   placeholder: "Search conferences by name, place, or topic…",
   icon: <ConferenceIcon size={26} className="text-accent" />,
   source: (c) => {

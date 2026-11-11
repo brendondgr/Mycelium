@@ -10,7 +10,7 @@ import { openItemInReader } from "./events";
  * names in the title it gives the item ("[grant] …").
  */
 
-const FEED_FOR_KIND: Record<string, string> = {
+export const FEED_FOR_KIND: Record<string, string> = {
   paper: SECTION_ROUTES.papers,
   grant: SECTION_ROUTES.opportunities,
   fellowship: SECTION_ROUTES.fellowships,
@@ -49,7 +49,11 @@ export function openRef(
   navigate: (href: string) => void,
   fallback?: string,
 ) {
-  if (ref.kind === "item" && openItemInReader(ref.key)) return;
+  if (
+    ref.kind === "item" &&
+    openItemInReader(ref.key, splitItemTitle(ref.title ?? "").kind ?? "paper")
+  )
+    return;
   const href = fallback ?? refHref(ref);
   if (href) navigate(href);
 }
