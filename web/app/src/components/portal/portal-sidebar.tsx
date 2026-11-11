@@ -49,7 +49,7 @@ function WorkspaceIdentity({ workspace }: { workspace: Workspace }) {
           className="max-w-[150px]"
         />
       ) : (
-        <span className="font-serif text-[18px] font-semibold leading-tight text-[var(--text-primary)]">
+        <span className="w-full whitespace-normal break-words text-center font-serif text-[18px] font-semibold leading-tight text-[var(--text-primary)] [text-wrap:balance]">
           {workspace.name}
         </span>
       )}
@@ -74,8 +74,10 @@ function WorkspaceIdentity({ workspace }: { workspace: Workspace }) {
  * scope→sections model in `lib/portal/nav.ts` that the mobile sheet also
  * renders — so the two can never drift.
  *
- * It collapses to icons (the default; the header's toggle expands it), so the
- * page keeps its width and the sections stay one click away.
+ * It starts open and collapses to icons only when the reader uses the header's
+ * toggle. The rail is `whitespace-nowrap` so labels don't reflow while its width
+ * animates; free text inside it (the workspace name, the department note) must
+ * opt back into wrapping with `whitespace-normal`.
  */
 export function PortalSidebar() {
   const {
@@ -148,7 +150,7 @@ export function PortalSidebar() {
       ))}
 
       {scope.kind === "department" && !collapsed ? (
-        <p className="-mt-3 mb-[18px] px-3.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
+        <p className="-mt-3 mb-[18px] whitespace-normal px-3.5 text-center text-[11px] leading-relaxed text-[var(--text-muted)] [text-wrap:pretty]">
           Research feeds are matched to a lab or to you. A department&apos;s
           Opportunities lists the calls only a department can take on.
         </p>

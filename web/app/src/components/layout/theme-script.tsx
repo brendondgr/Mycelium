@@ -20,7 +20,7 @@ const RAIL_KEY = "mycelium-rail-collapsed";
 const themeScript = `
 (function () {
   var html = document.documentElement;
-  var t = "dark", d = "comfortable", m = "full", r = "collapsed";
+  var t = "dark", d = "comfortable", m = "full", r = "expanded";
   try {
     var st = localStorage.getItem(${JSON.stringify(THEME_KEY)});
     if (st === "light" || st === "dark") t = st;
@@ -28,7 +28,7 @@ const themeScript = `
     if (sd === "compact" || sd === "comfortable" || sd === "open") d = sd;
     var sm = localStorage.getItem(${JSON.stringify(MOTION_KEY)});
     if (sm === "full" || sm === "subtle" || sm === "none") m = sm;
-    if (localStorage.getItem(${JSON.stringify(RAIL_KEY)}) === "0") r = "expanded";
+    if (localStorage.getItem(${JSON.stringify(RAIL_KEY)}) === "1") r = "collapsed";
   } catch (e) {}
   html.setAttribute("data-theme", t);
   html.setAttribute("data-density", d);

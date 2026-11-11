@@ -34,7 +34,7 @@ export function PortalHeader() {
   }, []);
 
   return (
-    <header ref={ref} className="sticky top-0 z-30 flex items-center gap-3 border-b border-[var(--border-soft)] bg-[var(--header-glass)] px-4 py-2.5 backdrop-blur-md sm:gap-4 sm:px-6">
+    <header ref={ref} className="sticky top-0 z-30 flex items-center gap-2 border-b border-[var(--border-soft)] bg-[var(--header-glass)] px-3 py-2.5 backdrop-blur-md sm:gap-4 sm:px-6">
       <button
         type="button"
         onClick={toggle}
@@ -67,9 +67,13 @@ export function PortalHeader() {
         <GlobalSearch />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
         <NotificationBell />
-        <ThemeToggle />
+        {/* On a phone the theme lives in the avatar menu, so the workspace
+            name gets the width instead. */}
+        <span className="hidden sm:inline-flex">
+          <ThemeToggle />
+        </span>
         <UserMenu />
       </div>
     </header>
