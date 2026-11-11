@@ -587,14 +587,36 @@ def test_a_removed_binding_or_a_left_server_closes_its_links(server):
     assert AgentThreadLink.objects.filter(closed_at=None).count() == 0
 
 
-def test_a_members_link_opens_the_item_in_the_app(settings):
+def test_an_item_without_a_source_page_falls_back_to_the_app(settings):
     settings.DISCORD_APP_BASE_URL = "https://app.example.org/"
     url = surface._item_url("ab-12", guest=False, title="[grant] Ocean call")
     assert url == "https://app.example.org/app/grants?item=ab-12"
     paper = surface._item_url("ab-12", guest=False, title="Untyped title")
     assert paper == "https://app.example.org/app/research-papers?item=ab-12"
+    assert surface._item_url("ab-12", guest=True, title="[grant] x") == ""
     settings.DISCORD_APP_BASE_URL = ""
     assert surface._item_url("ab-12", guest=False, title="[grant] x") == ""
+
+
+def test_every_link_goes_to_the_items_own_page(settings):
+    from tools.retrieval.models import ContentItem
+
+    settings.DISCORD_APP_BASE_URL = "https://app.example.org/"
+    grant = ContentItem.objects.create(
+        type="grant",
+        source="grants.gov",
+        source_url="https://grants.example.gov/ocean",
+    )
+    conf = ContentItem.objects.create(
+        type="conference",
+        source="wikicfp",
+        metadata={"website": "https://sigx.example.org"},
+    )
+    for guest in (False, True):
+        url = surface._item_url(str(grant.pk), guest=guest, title="[grant] Ocean")
+        assert url == "https://grants.example.gov/ocean"
+        url = surface._item_url(str(conf.pk), guest=guest, title="[conference] X")
+        assert url == "https://sigx.example.org"
 
 
 def test_discord_is_told_to_answer_not_to_list(server, scripted):

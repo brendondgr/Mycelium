@@ -527,17 +527,32 @@ _FEEDS = {
 }
 
 
-def _item_url(key: str, *, guest: bool, title: str) -> str:
-    from django.conf import settings
+def _source_url(key: str) -> str:
+    """The item's own page at its source, or ``""`` when it has none (or the
+    key is not an item)."""
+    from django.core.exceptions import ValidationError
 
     from tools.retrieval.read import ContentItem
 
-    if guest:
+    try:
         item = ContentItem.objects.filter(pk=key).only("source_url", "metadata").first()
-        if item is None:
-            return ""
-        meta = item.metadata or {}
-        return item.source_url or meta.get("url") or meta.get("website") or ""
+    except (ValidationError, ValueError):
+        return ""
+    if item is None:
+        return ""
+    meta = item.metadata or {}
+    return item.source_url or meta.get("url") or meta.get("website") or ""
+
+
+def _item_url(key: str, *, guest: bool, title: str) -> str:
+    """Where a cited item opens from Discord: its own page at the source, for
+    everyone. Only an item with no page of its own falls back to the web app
+    (and only for a member — a guest has no account to open it with)."""
+    from django.conf import settings
+
+    source = _source_url(key)
+    if source or guest:
+        return source
     base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
     if not base:
         return ""
@@ -548,7 +563,8 @@ def _item_url(key: str, *, guest: bool, title: str) -> str:
 
 def sources(thread, text: str, *, guest: bool) -> list[dict]:
     """``[{n, title, url}]`` for every ``#n`` the answer cites, in order. A
-    member's links open the web app; a guest's go to the item's own page."""
+    link goes to the item's own page at its source; the web app only when the
+    item has none."""
     out, seen = [], set()
     for match in re.finditer(r"#(\d+)\b", text or ""):
         n = int(match.group(1))
