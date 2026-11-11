@@ -5,8 +5,8 @@ import { useCallback, useSyncExternalStore } from "react";
 /**
  * Whether the left section rail is collapsed to icons.
  *
- * Collapsed is the default — the workspace look chosen in `/labs` gives the
- * page the width and keeps the rail one click away. The header's toggle and
+ * Open is the default: the rail stays expanded until the reader closes it
+ * with the header's toggle, and that choice is remembered. The header's toggle and
  * the rail itself both read this, so it lives outside React state, in
  * `localStorage` and on <html> as `data-rail` (written before first paint by
  * `ThemeScript`, so the rail's width never jumps on load), with a same-tab
@@ -22,9 +22,9 @@ function read(): boolean {
     if (attr) return attr !== "expanded";
   }
   try {
-    return localStorage.getItem(KEY) !== "0";
+    return localStorage.getItem(KEY) === "1";
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -38,7 +38,7 @@ function subscribe(onChange: () => void): () => void {
 }
 
 export function useRailCollapsed() {
-  const collapsed = useSyncExternalStore(subscribe, read, () => true);
+  const collapsed = useSyncExternalStore(subscribe, read, () => false);
   const toggle = useCallback(() => {
     const next = read() ? "expanded" : "collapsed";
     document.documentElement.setAttribute("data-rail", next);

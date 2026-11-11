@@ -470,8 +470,9 @@ the Celery worker. Rules that hold for any change here:
   citations as masked links where they stand (embeds suppressed), the list
   of links posted after an answer only when Mylo ends it with `[[links]]`
   (the person asked for links or for things to open), the model line. There
-  is no automatic Sources list; a member's link opens the item in the app
-  (`/app/<feed>?item=<id>`), a guest's the item's own page.
+  is no automatic Sources list; every link goes to the item's own page at its
+  source, and only an item with no source page falls back to the app
+  (`/app/<feed>?item=<id>`, members only).
 - **Restarts lose nothing.** Each question has an `AgentDiscordTurn`; on
   `on_ready` and `on_resumed` the cog delivers pending answers once, or says
   "I lost track of this one. Ask again."

@@ -25,6 +25,7 @@ from tools.delivery.models import (
     SavedOpportunity,
 )
 from tools.delivery.serializers import (
+    _SAVED_CARD_SERIALIZERS,
     RANK_EXPLANATIONS,
     RANK_SYSTEM_INFO,
     ConferenceSerializer,
@@ -1529,6 +1530,47 @@ class IgnoredItemsView(APIView):
         }
         return Response(
             {"items": IgnoredItemSerializer(rows, many=True, context=context).data}
+        )
+
+
+class ItemCardView(APIView):
+    """One corpus item as the card its own feed would show (``{area, card}``).
+
+    How a link to an item opens when the item is not in the reader's loaded
+    feed — Mylo cites anything in the corpus, not only today's slate. The
+    reader's own latest score is used when there is one; otherwise the card is
+    drawn from the live item with a neutral score, exactly as Saves does.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, content_id):
+        item = get_object_or_404(
+            ContentItem.objects.prefetch_related("deadline_rows"), pk=content_id
+        )
+        serializer_class = _SAVED_CARD_SERIALIZERS.get(item.type)
+        if serializer_class is None:
+            return Response({"detail": "Unknown item kind."}, status=404)
+        score = (
+            RelevanceScore.objects.filter(target_user=request.user, content=item)
+            .order_by("-created_at")
+            .first()
+        )
+        if score is None:
+            score = RelevanceScore(content=item, score=0.0, signals={})
+        else:
+            score.content = item
+        today = timezone.now().date()
+        context = {
+            "today": today.isoformat(),
+            "today_date": today,
+            "saved_ids": _saved_content_ids(request.user),
+            "saved_labs": _saved_lab_slugs_by_content(request.user),
+            "cluster_labels": _user_cluster_labels(request.user),
+            "usability_reader": usability.reader_for_user(request.user),
+        }
+        return Response(
+            {"area": item.type, "card": serializer_class(score, context=context).data}
         )
 
 

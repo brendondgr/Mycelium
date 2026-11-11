@@ -173,14 +173,14 @@ export function WorkspaceSheet() {
         onClick={() => (open ? close() : setOpen(true))}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-full border border-border bg-surface py-1.5 pl-1.5 pr-3 text-left shadow-[var(--shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-[18px] border border-border bg-surface py-1.5 pl-1.5 pr-2.5 text-left shadow-[var(--shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <WorkspaceMark workspace={currentWorkspace} size={28} />
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block text-[9.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-muted)]">
             {KIND_LABEL[currentWorkspace.kind]}
           </span>
-          <span className="block truncate text-[13.5px] font-semibold">
+          <span className="line-clamp-2 break-words text-[13px] font-semibold">
             {currentWorkspace.name}
           </span>
         </span>
@@ -213,7 +213,7 @@ export function WorkspaceSheet() {
             >
               <WorkspaceMark workspace={currentWorkspace} size={34} />
               <span className="min-w-0 flex-1 leading-tight">
-                <span className="block truncate text-[14px] font-semibold">
+                <span className="block break-words text-[14px] font-semibold">
                   {currentWorkspace.name}
                 </span>
                 <span className="block text-[11px] text-[var(--text-secondary)]">
@@ -311,7 +311,7 @@ export function WorkspaceSheet() {
                 ))}
 
                 {scope.kind === "department" ? (
-                  <p className="px-3 pb-2 pt-1 text-[11.5px] leading-relaxed text-[var(--text-muted)]">
+                  <p className="px-3 pb-2 pt-1 text-center text-[11.5px] leading-relaxed text-[var(--text-muted)] [text-wrap:pretty]">
                     Research feeds are matched to a lab or to you. A department&apos;s
                     Opportunities lists the calls only a department can take on.
                   </p>

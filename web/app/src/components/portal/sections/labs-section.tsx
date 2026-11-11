@@ -364,19 +364,19 @@ function LabCard({
       onClick={onSelect}
       aria-pressed={active}
       className={cn(
-        "flex flex-col items-start gap-1.5 rounded-2xl border bg-surface px-5 py-4 text-left shadow-[var(--shadow)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex w-full min-w-0 flex-col items-start gap-1.5 rounded-2xl border bg-surface px-4 py-4 sm:px-5 text-left shadow-[var(--shadow)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active ? "border-primary" : "border-border",
       )}
     >
-      <div className="flex w-full items-center justify-between gap-2">
-        <span className="truncate font-serif text-[17px] font-semibold text-[var(--text-primary)]">
+      <div className="flex w-full items-start justify-between gap-2">
+        <span className="min-w-0 break-words font-serif text-[17px] font-semibold text-[var(--text-primary)]">
           {lab.name}
         </span>
         {active ? <Pill tone="primary">Active</Pill> : null}
       </div>
-      <div className="flex items-center gap-2 text-[12.5px] text-[var(--text-secondary)]">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-[var(--text-secondary)]">
         <Pill tone="neutral">{roleLabel(lab)}</Pill>
-        {lab.department ? <span>{lab.department}</span> : null}
+        {lab.department ? <span className="min-w-0 break-words">{lab.department}</span> : null}
       </div>
     </button>
   );

@@ -10,6 +10,7 @@ import { FeedSentinel } from "@/components/portal/primitives/feed-sentinel";
 import { PageSkeleton } from "@/components/portal/skeleton";
 import { FeedCard, ItemDetail, PageHead, matchInfo } from "@/components/portal/feed/parts";
 import { shortVenue } from "@/components/portal/feed/venue";
+import { useLinkedItemFetch } from "@/components/portal/feed/linked";
 import { ReaderLayout, groupByTheme, useReader } from "@/components/portal/feed/reader";
 import { FeedToolbar, useFeedControls, type Facet, type SortOption } from "@/components/portal/feed/toolbar";
 import { IgnorableCard, IgnoreButton, SaveButton } from "@/components/portal/sections/opportunity-bits";
@@ -200,7 +201,12 @@ function PapersFeed({
     resetKey,
   );
   const groups = groupByTheme(shown, (s) => s.cluster);
-  const reader = useReader(controls.visible, paperId, groups[0]?.items[0]);
+  const fetchItem = useLinkedItemFetch<Suggestion>("paper");
+  const reader = useReader(controls.visible, paperId, groups[0]?.items[0], {
+    fetchItem,
+    kind: "paper",
+    ready: !isLoading,
+  });
 
   const newCount = suggestions.filter((s) => s.is_new).length;
   const when = formatWhen(generatedAt);

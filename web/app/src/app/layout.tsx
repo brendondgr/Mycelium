@@ -50,7 +50,7 @@ export default function RootLayout({
       data-theme="dark"
       data-density="comfortable"
       data-motion="full"
-      data-rail="collapsed"
+      data-rail="expanded"
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>

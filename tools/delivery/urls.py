@@ -125,6 +125,9 @@ urlpatterns = [
         name="opportunities-ignored",
     ),
     path("opportunities/ignored", views.IgnoredItemsView.as_view()),
+    # One item as its feed's card, for a link to something the feed does not list.
+    path("items/<uuid:content_id>/", views.ItemCardView.as_view(), name="item-card"),
+    path("items/<uuid:content_id>", views.ItemCardView.as_view()),
     # Institutional recommendation feeds: a lab's aggregate matches and one
     # project's focus matches (papers + grants + conferences, fellowships excluded).
     path(

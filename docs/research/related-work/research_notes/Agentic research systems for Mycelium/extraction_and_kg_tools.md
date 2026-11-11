@@ -7,7 +7,7 @@ Mycelium baseline being compared (from the assignment, not re-checked): LLM face
 ## Q1. Which tools exist, with paper / venue / track / repo / licence / maintenance / CPU feasibility?
 
 ### Takeaway
-The demo-track papers most directly comparable to a NAACL "language → KG" demo are **PaperMage (EMNLP 2023 demo)**, **DeepKE (EMNLP 2022 demo)** and **OneKE (WWW 2025 demo)**; everything in the LLM-KG space (GraphRAG, LightRAG, HippoRAG, KGGen, iText2KG, AutoSchemaKG) is a main-track/Findings/arXiv paper, not a demo, and none targets scholarly facet graphs. On a CPU-only host the realistic parsers are **GROBID (CRF mode)**, **Docling** and **Marker (fast/no-OCR mode)**; olmOCR, Nougat and the MinerU VLM backend need a GPU.
+The demo-track papers most directly comparable to Mycelium's language → KG layer are **PaperMage (EMNLP 2023 demo)**, **DeepKE (EMNLP 2022 demo)** and **OneKE (WWW 2025 demo)**; everything in the LLM-KG space (GraphRAG, LightRAG, HippoRAG, KGGen, iText2KG, AutoSchemaKG) is a main-track/Findings/arXiv paper, not a demo, and none targets scholarly facet graphs. On a CPU-only host the realistic parsers are **GROBID (CRF mode)**, **Docling** and **Marker (fast/no-OCR mode)**; olmOCR, Nougat and the MinerU VLM backend need a GPU.
 
 ### Cited Findings
 
@@ -83,7 +83,7 @@ The demo-track papers most directly comparable to a NAACL "language → KG" demo
 - NAACL 2025 demo volume contains agent/science demos (e.g. MetaScientist, CowPilot, Cerebrum) but no clear scholarly-KG-construction demo found in snippets — [ACL Anthology 2025.naacl-demo](https://aclanthology.org/volumes/2025.naacl-demo/).
 
 ### Inferences
-- The NAACL 2027 demo's nearest prior art in the demo track is DeepKE (toolkit, EMNLP'22), PaperMage (document substrate, EMNLP'23) and OneKE (agentic schema-guided extraction, WWW'25). None of them combines **personalised lab-scoped facet graphs + project-state + grounded repair + updates**, which is the gap Mycelium can claim.
+- The language → KG layer's nearest prior art in demo tracks is DeepKE (toolkit, EMNLP'22), PaperMage (document substrate, EMNLP'23) and OneKE (agentic schema-guided extraction, WWW'25). None of them combines **personalised lab-scoped facet graphs + project-state + grounded repair + updates**, which is the gap Mycelium can claim.
 - Licence hazards: Marker weights (revenue-gated), Nougat weights (NC), MinerU (non-standard), kg-gen (no licence), CERMINE (AGPL). Clean Apache/MIT options: GROBID, Docling, PaperMage, GLiNER (check model card), DyGIE++, iText2KG, LightRAG, HippoRAG, GraphRAG.
 - CPU-only feasibility ranking for full-text ingestion: GROBID-CRF (proven at scale on CPU) > Docling (designed for commodity hardware) > Marker no-OCR (fast but low quality per its own table) >> olmOCR/Nougat/MinerU-VLM (GPU).
 
@@ -139,7 +139,7 @@ Mycelium is narrower in schema but deeper in **who** the graph is about: a per-l
 - OneKE is agentic (schema/extraction/reflection agents) — [arXiv](https://arxiv.org/abs/2412.20005v2); Mycelium is fixed pipelines.
 
 ### Inferences
-- Positioning for the NAACL demo: "typed, grounded, temporal, lab-scoped KG maintained from heterogeneous lab language (papers, project docs, chat) on a CPU box" is distinct from every catalogued system; none of the demo-track neighbours handles project state or consented chat.
+- Positioning: "typed, grounded, temporal, lab-scoped KG maintained from heterogeneous lab language (papers, project docs, chat) on a CPU box" is distinct from every catalogued system; none of the demo-track neighbours handles project state or consented chat.
 - The weakest comparative point is evaluation: a synthetic set vs. community benchmarks (SciER, SciDMT, Text2KGBench, MINE).
 
 ### Gaps

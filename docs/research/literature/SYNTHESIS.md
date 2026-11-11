@@ -52,7 +52,7 @@ Grant, or MSCA matching. Nothing treats citizenship, residency, or years-since-P
 *defining* fellowship constraints — as a modelling problem. This is the single emptiest
 niche adjacent to us and it is where `tools/recommendation/fellowships.py` already operates.
 
-### What this means for Path A
+### What this means for multi-lens ranking
 
 Two papers independently converged on our core structural idea. Zhu et al. (2023) cluster a
 researcher's publications with a Dirichlet Process mixture before aggregating; Arroyo-Machado
@@ -499,7 +499,7 @@ Two design implications follow directly, both actionable:
    expertise" to a bag of embeddings. Horizon Europe topic texts explicitly state required
    disciplines, TRL, mandatory partner types, country-diversity minima, mandatory roles — all
    machine-extractable. Pair with the clinical-trial criteria pipeline for eligibility. This
-   serves *both* Path A and the teaming route.
+   serves *both* eligibility-aware funding ranking and the teaming route.
 8. **Fellowship eligibility as a first-class ranking constraint**, with the Kan et al.
    preference/qualification decoupling and in-filtered ANN. Nothing exists in this domain at
    all.

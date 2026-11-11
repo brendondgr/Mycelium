@@ -51,6 +51,7 @@ import type {
   SavedDeadline,
   LabSavesResponse,
   IgnoredItem,
+  ItemCard,
   SavedItem,
   SearchParams,
   SearchResponse,
@@ -343,6 +344,17 @@ export async function fetchSaves(): Promise<{ items: SavedItem[] }> {
   return getJson<{ items: SavedItem[] }>(
     buildApiUrl(getPublicApiBase(), "saves"),
     "Could not load your saves.",
+  );
+}
+
+/**
+ * One corpus item as the card its own feed renders — how a link opens an item
+ * the feed does not list (Mylo cites anything in the corpus).
+ */
+export async function fetchItemCard(contentId: string): Promise<ItemCard> {
+  return getJson<ItemCard>(
+    buildApiUrl(getPublicApiBase(), "items", contentId),
+    "Could not load that item.",
   );
 }
 

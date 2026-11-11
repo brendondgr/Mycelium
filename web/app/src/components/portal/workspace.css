@@ -2378,7 +2378,8 @@ html[data-density="comfortable"] .ws-compact-why .ws-clamp {
 }
 
 .ws-input {
-  min-width: 220px;
+  min-width: min(220px, 100%);
+  max-width: 100%;
   padding: 7px 12px;
   border: 1px solid var(--border);
   border-radius: max(6px, calc(var(--radius) - 4px));
@@ -2714,6 +2715,10 @@ html[data-motion="none"] *::after {
 
 .ws-settings-shell {
   display: grid;
+  /* An explicit minmax(0, 1fr) track: an implicit `auto` track grows to its
+     widest content (a scrolling tab strip, a long pill row), which pushed every
+     settings page past the edge of a phone. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--d-section);
   max-width: var(--ws-maxw);
   margin: 0 auto;
@@ -2721,9 +2726,15 @@ html[data-motion="none"] *::after {
 
 .ws-settings-shell .ws-settings-nav {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 14px;
+  gap: 6px 8px;
+}
+
+.ws-settings-shell .ws-settings-nav > .ws-kicker {
+  flex-basis: 100%;
+  margin: 0;
 }
 
 .ws-settings-group {
@@ -2762,6 +2773,7 @@ html[data-motion="none"] *::after {
 
 .ws-settings-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--d-section);
   min-width: 0;
 }
@@ -2778,6 +2790,10 @@ html[data-motion="none"] *::after {
     top: 0;
     display: grid;
     gap: 2px;
+  }
+
+  .ws-settings-shell .ws-settings-nav > .ws-kicker {
+    margin: 0 0 6px;
   }
 
   .ws-settings-group {

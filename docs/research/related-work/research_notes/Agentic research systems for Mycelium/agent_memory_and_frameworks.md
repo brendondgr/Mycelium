@@ -54,7 +54,7 @@ Most agent-memory systems are vendor projects with arXiv preprints, not peer-rev
 | **Django-native** | No paper | [vintasoftware/django-ai-assistant](https://github.com/vintasoftware/django-ai-assistant): MIT, 430 stars, last push 2026-03-23. [gts360/django-mcp-server](https://github.com/gts360/django-mcp-server): MIT, 386 stars, last push 2026-03-10 [gh api] | Both are small and were last pushed eight months ago |
 
 ### Inferences
-- I found no demo-track papers for any candidate memory system or agent framework through ACL Anthology searches. The ACL/EMNLP 2025 hits were main-track research: MemoryOS, MemInsight, and "Unveiling Privacy Risks in LLM Agent Memory" — [search hits](https://aclanthology.org/2025.emnlp-main.1683/), [ACL 2025](https://aclanthology.org/2025.acl-long.1227/). For the owner's NAACL 2027 demo plan, the memory and agent demo niche looks open for a consent-first, verifiable lab-memory system.
+- I found no demo-track papers for any candidate memory system or agent framework through ACL Anthology searches. The ACL/EMNLP 2025 hits were main-track research: MemoryOS, MemInsight, and "Unveiling Privacy Risks in LLM Agent Memory" — [search hits](https://aclanthology.org/2025.emnlp-main.1683/), [ACL 2025](https://aclanthology.org/2025.acl-long.1227/). For Mycelium, the memory and agent demo niche looks open for a consent-first, verifiable lab-memory system.
 - For Mycelium's stack (Postgres, CPU, a proxy endpoint), the lowest-friction options are Cognee, Mem0 and PydanticAI. Graphiti needs a new graph database, which is a new operational dependency.
 
 ### Gaps
