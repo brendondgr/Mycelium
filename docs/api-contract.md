@@ -128,7 +128,7 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `<id>/state/` | GET, PATCH | What the project claims, blocks on, and aims at |
 | `<id>/state/confirm/` | POST | "Still true" — the date only |
 | `<id>/state/extract/` | POST | Read a state **proposal** out of a document (saves nothing) |
-| `<id>/leave/` | POST | Leave (there is no self-join; a project is joined by invitation) |
+| `<id>/leave/` | POST | Leave (404 unless the caller can see the project; there is no self-join — a project is joined by invitation) |
 | `<id>/members/` | GET, POST | Roster; add a lab member directly |
 | `<id>/members/<username>/` | DELETE | Remove a member |
 | `<id>/invitations/` | GET, POST | Pending invitations; invite by username or email |

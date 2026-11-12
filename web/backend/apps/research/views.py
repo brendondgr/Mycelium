@@ -457,17 +457,22 @@ class ProjectLeaveView(APIView):
 
     def post(self, request: Request, pk) -> Response:
         project = get_object_or_404(Project, pk=pk)
+        # Only someone who can see the project may learn anything about it. Without
+        # this, "leaving" a project you were never on returned its full row —
+        # goals and roster — to anyone holding the id.
+        if not project.is_visible_to(request.user):
+            raise NotFound("No such project.")
         deleted, _ = ProjectMember.objects.filter(
             project=project, user=request.user
         ).delete()
-        record_audit_event(
-            actor=request.user,
-            action="project.leave",
-            target_type="project",
-            target_id=str(project.id),
-            metadata={"name": project.name},
-        )
         if deleted:
+            record_audit_event(
+                actor=request.user,
+                action="project.leave",
+                target_type="project",
+                target_id=str(project.id),
+                metadata={"name": project.name},
+            )
             _maybe_recompute_team(project)
         return Response(
             ProjectSerializer(project, context={"request": request}).data

@@ -147,7 +147,8 @@ export async function fetchReflections(): Promise<ReflectionProposal[]> {
   );
 }
 
-/** Every project of a lab (any lab member may browse them to join). */
+/** The projects of a lab the caller may see: their own, or every one for a lab
+ * manager or a department head. There is no self-join. */
 export async function fetchLabProjects(slug: string): Promise<Project[]> {
   return getJson<Project[]>(
     buildApiUrl(getPublicApiBase(), "projects", "lab", slug),

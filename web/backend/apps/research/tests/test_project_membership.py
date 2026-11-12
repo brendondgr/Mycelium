@@ -139,3 +139,19 @@ def test_plain_member_cannot_add_others(
         f"/api/projects/{project.id}/members/", {"username": "someone"}
     )
     assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_leave_does_not_reveal_a_project_the_caller_cannot_see(
+    client: APIClient, project: Project
+) -> None:
+    """'Leaving' a project you were never on must not return its row."""
+    outsider = User.objects.create_user(username="outsider", password="p")
+    client.force_authenticate(outsider)
+    for path in (
+        f"/api/projects/{project.id}/leave/",
+        f"/api/projects/{project.id}/leave",
+    ):
+        resp = client.post(path)
+        assert resp.status_code == 404
+        assert "goals" not in (resp.data or {})
