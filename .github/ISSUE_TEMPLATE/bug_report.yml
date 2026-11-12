@@ -1,0 +1,41 @@
+name: Bug report
+description: Something in Mycelium does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security problems go through the Security tab
+        ("Report a vulnerability"), not here.** Please remove names, emails and
+        anything else private from logs and screenshots before you paste them.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `make setup` …
+        2. Open …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release tag, or the output of `git rev-parse --short HEAD`.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Docker version, the profile in `mycelium.toml`, and which model server you use (if any).
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `make doctor`
+      render: text

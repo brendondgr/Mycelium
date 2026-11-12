@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend, tools and Mylo tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: mycelium
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: mycelium
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mycelium"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://mycelium:ci-only-password@localhost:5432/mycelium
+      DJANGO_SECRET_KEY: ci-only-not-a-secret-${{ github.run_id }}
+      DJANGO_DEBUG: "False"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - name: Install backend dependencies
+        run: uv sync --locked --project web/backend --extra embeddings --extra scrapers
+      - name: Ruff
+        run: uv run --no-sync --project web/backend ruff check web/backend tools
+      - name: Backend and tool tests
+        run: uv run --no-sync --directory web/backend pytest -q
+      - name: Mylo tests
+        run: uv run --no-sync --project web/backend python -m unittest discover -s mylo/tests -t .
+      - name: Research record
+        run: make validate-research
+
+  frontend:
+    name: Frontend lint, types and tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run sync:assets
+      - run: npm run lint
+      - name: Type-check the app
+        run: npx tsc --noEmit -p app
+      - name: App unit tests
+        run: npm --workspace @mycelium/app test
+
+  audit:
+    name: Dependency and secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: npm audit (production dependencies, high and above)
+        working-directory: web
+        run: npm audit --omit=dev --audit-level=high --package-lock-only
+      - uses: astral-sh/setup-uv@v6
+      - name: pip-audit
+        run: |
+          uv export --frozen --project web/backend --extra embeddings --extra scrapers --no-hashes --no-emit-project > /tmp/requirements.txt
+          uvx pip-audit -r /tmp/requirements.txt --strict
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

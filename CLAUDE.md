@@ -64,16 +64,13 @@ If working inside `web/`, also follow `web/CLAUDE.md`.
 
 ## Papers, venues and grants (not in this repository)
 
-This repository is public. Paper ideas and outlines, the publication plan,
-venue targets (deadlines, tracks, locations), submission checklists and grant
-proposals live in the maintainer's private proposals repository, at
-`/home/bdgr/Papers/Proposals/2026-mycelium/` on the maintainer's machine (read
-its `README.md` first; the repository's own `README.md` explains the layout).
-Search there for any question about where or when Mycelium is being submitted,
-what a paper argues, or what a grant asks for. If that path does not exist,
-the material is not on this computer — say so rather than guessing. Never copy
-that material back into this repository: `docs/research/` holds the public
-evidence (experiments, claims, related work), not the plan for where it goes.
+This repository is public. Paper ideas and outlines, publication and venue
+plans, submission checklists and grant proposals are kept outside it, in the
+maintainer's private notes. If you are asked about them and no location has
+been given to you, say that the material is not in this repository rather than
+guessing. Never copy that material into this repository: `docs/research/` holds
+the public evidence (experiments, claims, related work), not the plan for where
+it goes.
 
 ## Documentation rules
 
