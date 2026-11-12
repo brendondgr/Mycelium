@@ -1,7 +1,8 @@
 # Project Scoping and Visibility — Implementation Plan
 
-**Status:** draft for discussion, nothing built. Open decisions are listed
-first; do not start a phase past Phase 0 until they are answered.
+**Status:** decisions answered on 2026-11-12 and folded in; nothing built.
+Three points are still open (last section). Nothing ships ahead of the rest:
+the phases are an order of work inside one build, not separate releases.
 **Correlation ID:** `20261112-project-scoping`
 **Companion plan:** `20261112-settings-and-workspace-gating.md`
 
@@ -61,7 +62,7 @@ Leaks that exist today, beyond the two holes:
 
 | Value | Seen by | Allowed on |
 |---|---|---|
-| `invite_only` (default) | Members only | every project |
+| `invite_only` (default) | Members, plus the overseers named under "Oversight" | every project |
 | `lab` | The owning lab's members | lab projects |
 | `department` | The lab's members and its department's effective members | lab projects whose lab is in a department; department projects |
 | `public` | Any signed-in, verified account on the instance | every project |
@@ -110,17 +111,29 @@ form of `can_see`.
 
 ### Oversight
 
-- **Lab projects.** The lab's PI and owner keep a ledger row for every project
-  in the lab (name, owner, member count, visibility) and may take ownership of
-  one, with an audit entry and a notice to its members. They do not see its
-  contents unless they are members. Lab admins lose blanket access.
-- **Department heads** lose the cascade into lab projects. They see a lab's
-  project only when its visibility is `department` or `public`, or they are
-  invited.
-- **Department projects** get the same ledger for the department head.
+The lab's PI is the lab's admin, and a department head sponsors its labs.
+Both see everything, whatever a project's scope:
+
+- **Lab projects.** The lab's PI, owner and admins can open every project in
+  the lab, as they can today, and can take ownership of one (audited, members
+  told).
+- **Department heads** can open every project of every lab in the department,
+  and every department project, as they can today. This is adjustable per lab:
+  a lab setting, *What the department sees of this lab's projects* —
+  **Everything** (default) or **Names only** (name, owner, member count,
+  scope). See open point 1 for who holds that switch.
+- **Seeing is not belonging.** An overseer who is not a member does not get
+  the project in "My projects", their personal report, or their attention
+  shares, and oversight never widens where Mylo may mention it.
 - **A project nobody but its members may know about** is a personal project
-  (`scope_user`) with invited members. That is the answer to "if the owner
-  wants nobody to see it, nobody sees it anywhere".
+  (`scope_user`) with invited members. `invite_only` on a lab project means
+  "not the other lab members", not "not the PI". The scope picker says so.
+
+### Outside collaborators
+
+A lab project's owner may invite someone who is not in the lab. They are
+shown as "outside the lab" on the team card, see that project only, and gain
+nothing else in the lab: no feeds, roster, directory or server role.
 
 ### Surfaces
 
@@ -148,11 +161,10 @@ projects, whatever the scope.
 
 ## Phases
 
-### Phase 0 — close the holes (ship alone, first)
+### Phase 0 — close the holes (done first, released with the rest)
 
 - `LabProjectsView` returns only what `visible_to` allows.
-- `ProjectJoinView` refuses unless the caller already passes `visible_to`;
-  removed outright in Phase 2.
+- `ProjectJoinView` is removed; nothing replaces it until Phase 2's requests.
 - `open_alerts` re-checks sharing at read.
 - Make department projects editable by the department's owner/admin, so they
   are not stranded while the rest is built.
@@ -164,8 +176,9 @@ Validation: `uv run --project web/backend pytest apps/research tools/delivery/te
 - Migration adding `visibility`, backfilled from `share_in_lab_reports`;
   `ProjectMember.role` backfilled (`owner` for the creator where known, else
   the lab's PI).
-- `apps/research/visibility.py`; `visible_to` rewritten on it; the oversight
-  ledger endpoint.
+- `apps/research/visibility.py`; `visible_to` rewritten on it, keeping the
+  overseers; the per-lab *What the department sees* setting and its
+  names-only serializer.
 - Every reader of `share_in_lab_reports` switched: `report_projects_for_lab`,
   `hidden_lab_projects`, `_project_teams`, `weekly_changes`, ambient
   `candidate_projects` / `lab_changes` / `changes_between`, agent
@@ -176,9 +189,11 @@ Validation: `uv run --project web/backend pytest apps/research tools/delivery/te
 ### Phase 2 — invitations, requests, directory
 
 - `ProjectJoinRequest`, its endpoints (both slash forms), bell notifications.
-- Lab and department directory endpoints; delete `ProjectJoinView`.
-- Project creation opened per the lab's policy (see decision 3); the creator
-  becomes owner.
+- Lab and department directory endpoints.
+- Project creation follows a lab setting, *Who can create projects*: any
+  member (default) or managers only. The creator becomes owner; the cap is
+  still the lab's. Departments get the same setting.
+- Inviting an outside collaborator onto a lab project.
 - Frontend: "My projects" vs directory in `projects-list-section.tsx`; scope
   picker and its consequences spelled out in `create-project-wizard.tsx` and
   `project-editor-modal.tsx`; request/approve in `project-team-card.tsx`.
@@ -207,6 +222,14 @@ Validation: `uv run --project web/backend pytest apps/research tools/delivery/te
   only projects the editor can see.
 - Member fit: candidates for a project are its members, plus the scope's
   people only when the scope includes them.
+- What a project learns stays with the project. Developments and themes
+  learned from an `invite_only` project are kept on the project and are not
+  used to put a person's name in "who should look" on a lab or department
+  announcement (open point 2).
+- Saves and reminders made inside an `invite_only` project stay there. A
+  deadline reminder goes to the person directly, in a DM or the bell, and is
+  never announced in a lab or department channel. Sharing at lab scope is not
+  offered from inside such a project.
 - Collaborator search from a project: confirm nothing about an `invite_only`
   project reaches a candidate or the search log beyond the coarse pointers.
 
@@ -219,17 +242,25 @@ Validation: `uv run --project web/backend pytest apps/research tools/delivery/te
 - **Widening** is the owner's alone, shows who will newly see what, and
   notifies every member. It applies from the next run; nothing historical is
   back-posted.
-- Leaving or being removed from a lab ends membership in that lab's projects,
-  unless the project's owner keeps the person on as an outside collaborator.
+- Leaving or being removed from a lab ends membership in that lab's projects
+  automatically. The project's owner may invite the person back as an outside
+  collaborator.
 - An owner who leaves or deletes their account: ownership passes to an editor,
   else to the lab's PI (the department head for a department project).
+- A lab that leaves its department: its `department` projects fall back to
+  `lab`, the owners are told, and the department loses access to them. Before
+  leaving, a project may instead be **transferred** to the department — the
+  project's owner offers, the department head accepts, and it becomes a
+  department project with its members kept.
 
 ## Interfaces that change
 
 - `Project.visibility`, `ProjectMember.role`, `ProjectJoinRequest`; removal of
   `share_in_lab_reports`.
-- `GET /api/projects/lab/<slug>/` narrows; new directory, ledger and
-  join-request routes; `POST /api/projects/<id>/join/` removed.
+- `GET /api/projects/lab/<slug>/` narrows; new directory, join-request and
+  transfer routes; `POST /api/projects/<id>/join/` removed.
+- Lab and department settings: *Who can create projects*; lab setting *What
+  the department sees of this lab's projects*.
 - `ProjectSerializer` gains `visibility`, `my_role`, `can_request`; a new
   directory serializer with the reduced fields.
 - `docs/api-contract.md`, `docs/repo-map.md`, `docs/discord-integration.md`,
@@ -237,13 +268,18 @@ Validation: `uv run --project web/backend pytest apps/research tools/delivery/te
 
 ## Acceptance
 
-- A lab member with no invitations sees no `invite_only` project by any
-  route: list, directory, lab endpoint, id guess, search, agent, files,
+- An ordinary lab member with no invitations sees no `invite_only` project by
+  any route: list, directory, lab endpoint, id guess, search, agent, files,
   ambient editing.
 - For each visibility value, a fixture project's name appears in exactly the
   places the surface table allows, checked across the daily post, PDF,
   weekly, alerts, announcement threads and agent chat.
 - A lab bound into its department's server posts no `lab` project there.
+- The lab's PI opens every project in the lab; a department head opens every
+  project of a lab set to *Everything* and sees names only for a lab set to
+  *Names only*. Neither finds those projects in their own report.
+- A reminder set inside an `invite_only` project reaches its author and no
+  channel.
 - Narrowing a project removes it from the next run's lab post and from every
   read of stored alerts and changes.
 
@@ -255,55 +291,45 @@ Validation: `uv run --project web/backend pytest apps/research tools/delivery/te
 - Ranking is untouched: every project is still scored nightly whatever its
   scope; only where results may be shown changes.
 
-## Decisions needed
+## Decisions made (2026-11-12)
 
-1. **What "Public" means.** Recommended: any verified account on this
-   instance, in a directory, with no signed-out page. The alternative — a
-   public web page — is a new surface with its own review.
-2. **Lab PI oversight of `invite_only` lab projects.** Recommended: the ledger
-   row and take-over described above, with true secrecy reserved for personal
-   projects. The alternative — the PI cannot even see that it exists — leaves
-   projects that count against the lab's cap and can be orphaned with no one
-   able to act.
-3. **Who may create a lab project.** The brief says the creator "or
-   individuals within the lab". Recommended: a lab setting, managers only or
-   any member, default any member — with the cap still the lab's.
-4. **Department heads lose sight of their labs' projects by default.** This
-   removes access that exists today. Confirm.
-5. **Outside collaborators.** May a lab project invite someone who is not in
-   the lab? Recommended: yes, by the owner, shown as "outside the lab" on the
-   team card; they never gain lab access.
-6. **Lab servers contain non-members.** A lab's Discord server can hold
-   guests, and Mylo cannot see who reads a channel. `lab` scope therefore
-   means "the lab's registered server", not "verified lab members".
-   Recommended: accept this, and say it where the scope is chosen.
+| # | Decision |
+|---|---|
+| 1 | `public` means any verified account on this instance, in a directory. No signed-out page. |
+| 2 | The lab's PI and admins see every project in the lab. |
+| 3 | Who can create a lab project is a lab setting: any member (default) or managers only. |
+| 4 | Department heads see every project of their labs by default, adjustable per lab down to names only. |
+| 5 | Outside collaborators are allowed on a lab project and gain no lab access. |
+| 6 | `lab` scope in Discord means the lab's registered server, guests included; the scope picker says so. |
+| 7 | Not decided by the maintainer; this plan keeps what a project learns with the project (open point 2). |
+| 8 | Reminders from inside an `invite_only` project go to the person, never a lab channel. |
+| 9 | Leaving a lab ends project membership; the owner may re-invite as an outside collaborator. |
+| 10 | A lab leaving its department: `department` projects fall back to `lab`; a project may be transferred to the department first. |
+| 11 | The hidden-projects count leaves Discord and stays on the managers' web view. |
+| 21 | No early release of Phase 0. |
 
-## Reasoning gaps to settle
+## Things the product must say plainly
 
-- **Items "related to" a restricted project.** What can be enforced is
+- **Items "related to" a restricted project.** What is enforced is
   provenance: anything scored for the project target follows the project's
-  scope. What cannot be enforced is inference — the same grant can reach the
-  lab's feed through the lab's own profile, and a reader may guess why. If a
-  PI writes a secret project into the lab profile, the lab's feed will show
-  it. The scope picker should say so.
-- **A person's own profile carries their projects.** Conversation about an
-  `invite_only` project can still, with the person's yes, become a theme in
-  their personal profile, and "who should look" on a lab announcement is
-  built from personal profiles. The person's name beside a call is then a
-  signal. Decide whether a theme learned from an `invite_only` project is
-  kept out of member fit.
+  scope. Inference is not enforceable — the same grant can reach the lab's
+  feed through the lab's own profile. If a PI writes a secret project into
+  the lab profile, the lab's feed will show it.
 - **Scope and membership are independent.** A `public` project is still
-  joined by invitation or approved request; an `invite_only` project can have
-  forty members. The interface must not present scope as "who is on it".
+  joined by invitation or approved request.
 - **Speaking is not scoping.** Someone who discusses an `invite_only` project
   in the lab's server has told the room. Mylo must not widen it, but cannot
   un-say it.
 - **Operators see everything.** Platform staff and whoever runs the database
-  can read every project. "Nobody sees it" means nobody through the product.
-- **Saves and reminders.** An item saved or a reminder set from inside a
-  project, at lab scope, announces the item in the lab's channel. Decide
-  whether an action taken inside an `invite_only` project may be shared wider
-  than the project at all.
-- **Lab moves.** When a lab leaves or joins a department, `department`
-  projects change audience overnight. Recommended: on leaving, they fall back
-  to `lab` and the owner is told.
+  can read every project.
+
+## Still open
+
+1. **Who holds the *What the department sees* switch.** This plan assumes the
+   lab's PI sets it. If the department head should hold it instead, it is a
+   department setting per lab and a PI cannot narrow it.
+2. **Decision 7.** Assumed: themes learned from an `invite_only` project stay
+   on the project and never name a person in a wider announcement. The cost
+   is that a well-matched person may not be flagged for a call.
+3. **Lab admins.** Assumed: admins see every lab project alongside the PI, as
+   today, since the PI is described as the lab's admin.

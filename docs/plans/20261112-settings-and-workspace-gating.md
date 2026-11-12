@@ -1,7 +1,8 @@
 # Settings, Workspace Gating and Department Research — Implementation Plan
 
-**Status:** draft for discussion, nothing built. Open decisions are listed at
-the end; Phases 0 and 1 do not depend on them.
+**Status:** decisions answered on 2026-11-12 and folded in; nothing built.
+Two points are still open (last section). Nothing ships ahead of the rest:
+the phases are an order of work inside one build, not separate releases.
 **Correlation ID:** `20261112-settings-gating`
 **Companion plan:** `20261112-project-scoping-and-visibility.md`
 
@@ -10,9 +11,10 @@ the end; Phases 0 and 1 do not depend on them.
 1. One **Settings** area at the foot of the sidebar, where a person switches
    between themselves, each lab and each department they belong to, and sees
    only what they may change there.
-2. Permissions that are finer than "manager or not", decided in one place on
-   the server and read — never recomputed — by the app.
-3. A department gets the same four research feeds a lab has.
+2. Permissions decided in one place on the server and read — never
+   recomputed — by the app.
+3. A department does everything a lab does: the four research feeds, a daily
+   post in its Discord server, forum threads, and a profile to rank against.
 
 The workspace itself (Overview, feeds, Projects, Saves, Reminders) keeps its
 sidebar and its look.
@@ -75,11 +77,18 @@ The old routes (`/app/account`, `/app/profile`, `/app/members`,
 | Context | Pages |
 |---|---|
 | **You** | Account (identity, email, password) · Profile & themes · Mylo & you (what Mylo records, questions, chat, what it knows) · Collaboration · Delivery (cadence, linked Discord/Slack/Teams) · Appearance (this device) · Subscription |
-| **Lab** | General (profile and interests) · People (roster, roles, invitations) · Projects (who may create, default visibility, the oversight ledger) · Mylo & servers (Discord/Slack/Teams, channel routes, listening for the server, Mylo's policy) · Announcements · Plan · Your membership (your role, leave the lab) · Transfer & close |
-| **Department** | General (profile and interests — the missing editor) · Labs · People · Projects · Mylo & servers · Announcements · Plan · Your membership · Transfer & close |
+| **Lab** | General (profile and interests) · People (roster, roles, invitations) · Projects (who can create, default visibility, what the department sees) · Mylo & servers (Discord/Slack/Teams, channel routes, listening for the server, Mylo's policy) · Announcements · Plan · Your membership (your role, leave the lab) · Transfer & close |
+| **Department** | General (profile and interests, the same editor a lab has) · Labs · People · Projects · Mylo & servers · Announcements · Plan · Your membership · Transfer & close |
 
-The People page in Settings is where a roster is **managed**. Seeing who is in
-a lab stays in the workspace as a read-only directory.
+The People page in Settings is where a roster is **managed**: roles,
+invitations, adding and removing labs.
+
+### One Members page in the workspace
+
+The workspace's separate *Labs* and *Members* entries become one **Members**
+page. In a department it shows two groups — the department's labs, then its
+individual members. In a lab it shows the lab's people. It is a directory;
+anyone with the right capability gets a "Manage" link to Settings → People.
 
 ### Capabilities
 
@@ -97,39 +106,54 @@ A closed list of capabilities per org, resolved on the server:
 - `/api/auth/me/` returns, for each lab and department, the caller's
   `capabilities`. The frontend's five copies of `canManageLab`, and
   `canManageDepartment`, are deleted in favour of `can(org, capability)`.
-- A role is a preset. An owner may **add or remove individual capabilities**
-  for one admin (`LabMembership.capability_overrides`,
-  `DeptMembership.capability_overrides`), which is what "several admins with
-  different permissions" needs. Nobody can grant a capability they do not
-  hold; `org.transfer` and `org.billing.manage` can never be granted beyond
-  the owner unless the owner does it; every change is audited.
+- Roles are fixed presets for now: owner, admin, member, viewer, and the
+  lead PI. **A lead PI holds every capability an admin does**, which ends
+  today's split where a lead can edit the profile but not the Discord
+  settings.
+- The capability list is the seam for later: giving one admin more or less
+  than the preset becomes a data change, not a rewrite. It is not built now.
 - The Discord gate's manage/edit/read levels map onto capabilities, so the
   bot and the web agree.
 
-### Department research
+### A department works like a lab
 
-A department scope offers Papers, Grants, Fellowships and Conferences, through
-the same serializers as a lab with a department `MatchTarget`.
+Whatever a lab can do with research, a department can do, through the same
+code with a department `MatchTarget`:
 
-- Scoring stops depending on announcements: a department is scored when it is
-  entitled and has a profile to rank against.
-- Papers are added to the department run.
-- Feed endpoints take a department the way they take a lab.
-- The existing Opportunities page becomes a filter on the grants, fellowships
-  and conferences feeds — "For the department itself" — rather than a
-  separate page.
+- **Profile.** The department's profile has the same structure as a lab's
+  and is edited the same way, under Settings → General. Feeds rank against
+  it. `DeptProfile` already has the fields; only the screen is missing.
+- **Feeds.** Papers, Grants, Fellowships and Conferences in the department
+  workspace, readable by every department member.
+- **Discord.** A daily post in the department's server, the weekly, and the
+  grants, fellowships and conferences forum threads — the same routes
+  (`updates`, `grants`, `fellowships`, `conferences`, `deadlines`) a lab
+  binding has.
+- **Opportunities stays.** The page listing calls only a department can take
+  on is kept as its own page, beside the four feeds.
+- Scoring stops depending on announcements being on. A department is scored
+  on the same terms as a lab.
 - Fellowships for a department follow the lab rule (ranked, with counts of
   members who may be eligible), not the personal eligibility engine.
 
+### What Mylo records
+
+- A person can stop Mylo recording them **per server** and **per project**,
+  beyond today's per-platform switch. These live under You → Mylo & you.
+- A lab or department head can turn listening off for a server. **That wins.**
+  A member cannot turn it back on, and their own switch for that server is
+  shown as off and locked, with the reason.
+- Both must be on for anything to be recorded.
+
 ## Phases
 
-### Phase 0 — permission fixes (ship alone, first)
+### Phase 0 — permission fixes (done first, released with the rest)
 
 - `DEPT_ROLE_RANK` and downward-only granting for departments, mirroring
   `LAB_ROLE_RANK`; `DeptMembersView.post` refuses a role the caller cannot
   grant. Department head transfer (`transfer_department_ownership`). This
   completes and retires `20260920-account-and-lab-management.md`.
-- Decide `is_lead` once (see decision 2) and make frontend and backend agree.
+- A lead PI gets every admin capability, in the backend and the frontend.
 - Gate `AgentPolicyCard`.
 - Fix `mylo/listening.py:306`.
 
@@ -139,7 +163,7 @@ Validation: `uv run --project web/backend pytest apps/accounts apps/integrations
 
 - `capabilities.py`, the role maps, `me` payload, `can()` on the client.
 - A test that walks every org-scoped view and asserts it names a capability.
-- No override UI yet; behaviour identical to today except Phase 0's fixes.
+- Behaviour identical to today except Phase 0's fixes.
 
 ### Phase 2 — the Settings area
 
@@ -147,6 +171,7 @@ Validation: `uv run --project web/backend pytest apps/accounts apps/integrations
 - Move existing cards onto their pages without redesigning them; delete
   `/app/department/[id]` as a standalone page.
 - `nav.ts` loses the settings entries; `user-menu.tsx` lists contexts.
+- The merged workspace Members page; the department nav loses *Labs*.
 - Build the department General page on the existing `DeptProfile` API.
 - "Your membership" pages for non-managers.
 - nginx: no new signed-out routes, so no new `location` block.
@@ -154,33 +179,40 @@ Validation: `uv run --project web/backend pytest apps/accounts apps/integrations
 Validation: `next build`, then DOM checks at phone and desktop widths for each
 context as owner, admin, member and viewer.
 
-### Phase 3 — per-admin overrides
+### Phase 3 — the department as a lab
 
-- The two `capability_overrides` fields, the grant rules, the audit entries.
-- A "Permissions" control on a person's row in People.
-
-### Phase 4 — department research
-
-- `select_departments` decoupled from announcements; papers added;
-  entitlement and nightly-budget keys in `config/instance.py`.
-- Department scope in `tools/delivery/views.py` feed endpoints.
-- `nav.ts` department Research group; remove the stale comments in `nav.ts`,
-  `workspace.ts`, `scope-guard.tsx`.
+- `select_departments` decoupled from announcements; papers added to the
+  department run; entitlement keys in `config/instance.py` matching the
+  lab's.
+- Department scope in `tools/delivery/views.py` feed endpoints, through the
+  lab's serializers.
+- Department daily briefing, digest post, PDF and weekly: generalise
+  `generate_briefing_for_lab`, `queue_lab_digest`, `compile_report_for_lab`
+  and `send_lab_weeklies` to take a lab or a department rather than forking
+  them.
+- `nav.ts` department Research group beside Opportunities; remove the stale
+  comments in `nav.ts`, `workspace.ts`, `scope-guard.tsx`.
 - Audit `ops/nightly/manual_all.py` stage order in the same change, as
   `docs/skills/global.md` requires for any pipeline change.
 - Record the before/after run cost as an experiment under
   `docs/research/experiments/`.
 
-### Phase 5 — what Mylo records, per person
+### Phase 4 — what Mylo records
 
-Depends on decision 4. Extends `ListeningConsent` beyond per-platform on/off.
+- Per-server and per-project exclusions beside `ListeningConsent`, checked in
+  `apps/ambient/eligibility.py` on arrival.
+- The head's off switch on the `Source`, and the locked state on the member's
+  page.
+- The per-project exclusion also removes the project from attribution
+  candidates for that person.
 
 ## Interfaces that change
 
 - New `/app/settings/**` routes; six old routes redirect.
 - `/api/auth/me/` gains `capabilities` per org.
-- `LabMembership` / `DeptMembership` gain `capability_overrides`;
-  `Department.owner` stays, with a matching membership row kept in step.
+- `Department.owner` stays, with a matching membership row kept in step.
+- Per-server and per-project recording exclusions.
+- Department briefing, digest and weekly; department channel routes in use.
 - Feed endpoints accept a department.
 - `[limits]` / entitlement keys for department feeds.
 - `docs/repo-map.md`, `docs/api-contract.md`, `docs/architecture.md`,
@@ -196,79 +228,71 @@ Depends on decision 4. Extends `ListeningConsent` beyond per-platform on/off.
 - A department admin cannot create an owner or another admin.
 - A lab member who manages nothing can still open Settings, find their role
   and leave the lab.
-- A department with a profile shows four feeds the morning after the run.
+- A department with a profile shows four feeds the morning after the run,
+  and its server gets a daily post and forum threads as a lab's does.
+- A lead PI can do everything an admin can.
+- A member cannot switch listening back on in a server its head switched off.
+- A department's Members page lists its labs and its people on one page.
 - No settings card is wider than the column or sits beside another.
 
 ## Exclusions
 
 - No redesign of the workspace sidebar, the switcher or the personal overview.
-- No custom, named roles — presets plus overrides only.
+- No custom roles and no per-admin overrides — presets only for now.
 - No institution-level context.
 - No change to what a lab's feeds contain.
 
-## Decisions needed
+## Decisions made (2026-11-12)
 
-1. **How far the top menu goes.** Recommended: top bar inside Settings only;
-   the workspace keeps its sidebar, which was just reworked to stay open. The
-   alternative replaces the sidebar everywhere and is a much larger change.
-2. **What a lead PI is.** `is_lead` currently grants profile, invitations and
-   billing but not Discord, announcements or member management. Recommended:
-   a lead PI holds every capability an admin does.
-3. **How fine the permissions go.** Recommended: presets plus per-admin
-   overrides from the closed list above. The alternative — fixed roles only —
-   is simpler but does not give "admins with different permissions".
-4. **What "prevent certain information from being recorded" covers.** Today a
-   person can switch listening off per platform, mute questions, and delete
-   what was observed. Candidates: per server, per lab, per project ("never
-   record anything about this project"), and per kind of understanding.
-   Recommended: per server and per project.
-5. **What a department ranks against.** Its own written profile, or its labs
-   combined when it has written none? No code writes the combined vector
-   today. Recommended: the department's own profile only, with the General
-   page saying plainly that feeds are empty until it is filled in.
-6. **Who pays for department feeds.** They add one target per department to
-   every nightly run, including model write-ups. Recommended: part of the
-   department plan, off for a department with no profile.
+| # | Decision |
+|---|---|
+| 12 | The top menu is inside Settings only; the workspace keeps its sidebar. |
+| 13 | A lead PI can do everything an admin can. |
+| 14 | Role presets only for now; the capability list leaves room for per-admin changes later. |
+| 15 | A person can stop recording per server and per project. |
+| 16 | A head's off switch wins; a member cannot turn listening back on. |
+| 17 | A department ranks against its own profile, structured and edited like a lab's. |
+| 18 | A department does everything a lab does: feeds, daily Discord post, forum threads. |
+| 19 | Opportunities stays its own page beside the four feeds. |
+| 20 | Labs and Members merge into one Members page with two groups. |
+| 21 | No early release of Phase 0. |
 
-## Reasoning gaps to settle
+## Things to hold to while building
 
 - **Two things called "context".** The workspace a person works in and the
-  thing they are configuring are different, and today one URL parameter
-  carries both. This plan separates them; anything that still reads `?ws=`
+  thing they are configuring are different. Anything that still reads `?ws=`
   inside Settings is a bug.
-- **A member's own settings inside an org.** "Do not record me in this
-  department's server" is the person's choice, not the department's. It
-  belongs under You → Mylo & you, listed per org — not on the department's
-  pages where a head could appear to control it.
-- **A head's settings about members.** The reverse also holds: a lab can turn
-  listening off for its server, and no member can turn it back on. Each
-  control must say whose it is and which one wins.
+- **Whose control is it.** A member's recording switches live under You; a
+  head's live on the org's pages. Each says whose it is and which one wins.
 - **The department head is not a member.** Capabilities resolve from
-  membership rows, and the head has none. Either the foreign key is treated as
-  an implicit owner row everywhere, or a row is created and kept in step.
-  This plan chooses the second; the migration must cover existing departments.
-- **Overrides and rank.** If an admin can be granted `org.people.manage`,
-  they can act on other admins unless rank still applies. Rank stays: a
-  capability says what you may do, rank says to whom.
-- **A person with many orgs.** Someone in two departments and five labs gets a
-  long context picker. It needs grouping and search from the start.
-- **Appearance is per device, not per person.** It is listed under You but is
-  stored in the browser; the page must say so, or people will expect it to
-  follow them.
-- **Department feeds and project scope.** A department feed is a
+  membership rows, and the head has none. A row is created and kept in step;
+  the migration must cover existing departments.
+- **A person with many orgs.** The context picker needs grouping and search
+  from the start.
+- **Appearance is per device.** It is listed under You but stored in the
+  browser; the page must say so.
+- **Department surfaces and project scope.** A department feed or post is a
   department-width surface under the companion plan. Nothing computed from a
-  `lab` or `invite_only` project may appear in it, and "labs that could lead"
-  must not be derived from such projects either.
-- **Department papers may be noise.** A department's interests are broad, and
-  per-theme slates of 25 papers across many themes may be a feed nobody
-  reads. Build it as asked, and measure whether anyone opens it.
+  `lab` or `invite_only` project may appear in it.
+
+## Still open
+
+1. **Where people are managed.** Assumed: the merged Members page is a
+   directory, and roles, invitations and removals happen in Settings →
+   People. If managing should happen on the Members page itself, Settings →
+   People goes away.
+2. **Department papers may be noise.** A department's interests are broad.
+   Built as asked; worth measuring whether anyone opens the feed.
 
 ## Order across both plans
 
 1. Both Phase 0s (holes and permission fixes).
-2. Capabilities (this plan, Phase 1) — the project plan's lab policy and
-   oversight ledger read them.
+2. Capabilities (this plan, Phase 1) — the project plan's lab settings read
+   them.
 3. Project visibility Phases 1–3.
-4. The Settings area (this plan, Phases 2–3), which gives the project policy
-   its page.
-5. Project visibility Phases 4–5; department research; recording controls.
+4. The Settings area (this plan, Phase 2), which gives the project settings
+   their page.
+5. Project visibility Phases 4–5; the department as a lab; recording
+   controls.
+
+Nothing is released until all of it is done.
