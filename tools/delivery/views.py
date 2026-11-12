@@ -5,7 +5,6 @@ from apps.accounts import capabilities as caps
 from apps.accounts.models import Lab, LabMembership
 from apps.accounts.permissions import (
     lab_manager_q,
-    user_can_manage_lab,
     user_has_lab_access,
 )
 from apps.core.people import display_name, initials
@@ -1295,7 +1294,16 @@ class ProjectRecommendationsView(APIView):
 
 
 class SaveOpportunityView(APIView):
-    """Save (POST) or unsave (DELETE) a bookmarkable item for the Saves page."""
+    """Save (POST) or unsave (DELETE) a bookmarkable item for the Saves page.
+
+    Personal by default; with ``lab_slug`` (or ``?lab=``) it saves to the lab,
+    which takes ``org.profile.edit`` there — the capability that curates what
+    the lab works from, the same one ``LabSavedItemsView`` reports as
+    ``can_manage``.
+    """
+
+    #: Needed only when the request names a lab.
+    capabilities = {"POST": caps.PROFILE_EDIT, "DELETE": caps.PROFILE_EDIT}
 
     permission_classes = [IsAuthenticated]
 
@@ -1361,7 +1369,7 @@ class SaveOpportunityView(APIView):
             return None, Response(
                 {"detail": "No such lab."}, status=status.HTTP_404_NOT_FOUND
             )
-        if not user_can_manage_lab(request.user, lab):
+        if not caps.has_capability(request.user, lab, caps.PROFILE_EDIT):
             return None, Response(
                 {"detail": "Only a lab manager can save to a lab."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -1697,7 +1705,9 @@ class LabSavedItemsView(APIView):
         }
         return Response(
             {
-                "can_manage": user_can_manage_lab(request.user, lab),
+                "can_manage": caps.has_capability(
+                    request.user, lab, caps.PROFILE_EDIT
+                ),
                 "items": SavedItemSerializer(saves, many=True, context=context).data,
             }
         )

@@ -378,6 +378,9 @@ class TranscriptUploadView(APIView):
     the transcript is read into the buffer and the reply is the counts.
     """
 
+    #: With a ``lab``: only its members, who are the ones its roster is shown to.
+    capabilities = {"POST": caps.MEMBERSHIP}
+
     def post(self, request: Request) -> Response:
         import json
 
@@ -462,4 +465,8 @@ def _meeting_scope(request):
     lab = Lab.objects.filter(slug=str(request.data.get("lab") or "")).first()
     if lab is None:
         raise ValidationError({"project": ["Choose a project or a lab."]})
+    # The reply without speakers lists the lab's members, so a stranger who
+    # names a lab must not get that far.
+    if not caps.has_capability(request.user, lab, caps.MEMBERSHIP):
+        raise PermissionDenied("You can't add a meeting to that lab.")
     return None, lab

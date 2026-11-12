@@ -251,3 +251,21 @@ def test_the_upload_is_closed_while_off(team, client, settings):
     client.force_login(team.ada)
     response = client.post("/api/ambient/transcripts/", {"text": VTT})
     assert response.status_code == 403
+
+
+def test_a_stranger_naming_a_lab_is_not_shown_its_roster(team, client):
+    """Without speakers the reply lists the lab's members, so only members get it."""
+    stranger = _person("stranger")
+    client.force_login(stranger)
+    response = client.post(
+        "/api/ambient/transcripts/", {"text": VTT, "lab": team.lab.slug}
+    )
+    assert response.status_code == 403
+    assert "members" not in response.json()
+
+    client.force_login(team.ada)
+    response = client.post(
+        "/api/ambient/transcripts/", {"text": VTT, "lab": team.lab.slug}
+    )
+    assert response.status_code == 200
+    assert {m["id"] for m in response.json()["members"]} == {team.ada.pk, team.bo.pk}

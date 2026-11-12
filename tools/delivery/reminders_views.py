@@ -317,6 +317,10 @@ def _resolve_mentions(raw, lab) -> list[dict]:
 class ReminderListCreateView(APIView):
     """GET the user's reminders; POST a new personal or lab reminder."""
 
+    #: When a lab is named: reading lists only labs the caller belongs to, and a
+    #: lab reminder takes org.profile.edit (enforced in ``create_subscription``).
+    capabilities = {"GET": caps.MEMBERSHIP, "POST": caps.PROFILE_EDIT}
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -538,6 +542,9 @@ class ReminderAccessView(APIView):
     lab reminder at all, a non-manager is answered "not allowed" rather than being
     told about the lab's plan.
     """
+
+    #: With ``?lab=``: may this caller set a lab reminder there.
+    capabilities = {"GET": caps.PROFILE_EDIT}
 
     permission_classes = [IsAuthenticated]
 

@@ -136,6 +136,10 @@ class ProjectListView(ListCreateAPIView):
     rights on that lab) or, with no lab, a personal project scoped to the caller.
     """
 
+    #: When a lab or department is named: the list filter reads only what the
+    #: caller already sees, and creating there takes org.profile.edit.
+    capabilities = {"GET": caps.MEMBERSHIP, "POST": caps.PROFILE_EDIT}
+
     def get_serializer_class(self):
         if self.request.method == "POST":
             return ProjectCreateSerializer

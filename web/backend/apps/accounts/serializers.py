@@ -461,8 +461,13 @@ class MyLabSerializer(serializers.Serializer):
         return [c for c in CAPABILITIES if c in held]
 
     def get_grantable_roles(self, membership: LabMembership) -> list[str]:
+        from .capabilities import PEOPLE_MANAGE, membership_capabilities
         from .permissions import LAB_ROLE_RANK, membership_rank
 
+        # Rank says *which* roles; the capability says whether they grant any.
+        # A member outranks a viewer but manages nobody.
+        if PEOPLE_MANAGE not in membership_capabilities(membership):
+            return []
         mine = membership_rank(membership)
         return [r for r in GRANTABLE_ROLES if mine > LAB_ROLE_RANK[r]]
 
@@ -493,6 +498,7 @@ class LabMemberSerializer(serializers.Serializer):
     can_act = serializers.SerializerMethodField()
 
     def get_can_act(self, membership: LabMembership) -> bool:
+        from .capabilities import PEOPLE_MANAGE, has_capability
         from .permissions import lab_role_rank, membership_rank
 
         viewer = self.context.get("viewer")
@@ -500,7 +506,13 @@ class LabMemberSerializer(serializers.Serializer):
             return False
         ranks = self.context.setdefault("_viewer_rank", {})
         if membership.lab_id not in ranks:
-            ranks[membership.lab_id] = lab_role_rank(viewer, membership.lab)
+            # Without org.people.manage the caller acts on nobody, whatever
+            # their rank (a member outranks a viewer but cannot re-role them).
+            ranks[membership.lab_id] = (
+                lab_role_rank(viewer, membership.lab)
+                if has_capability(viewer, membership.lab, PEOPLE_MANAGE)
+                else -1
+            )
         return ranks[membership.lab_id] > membership_rank(membership)
 
     def get_name(self, membership: LabMembership) -> str:

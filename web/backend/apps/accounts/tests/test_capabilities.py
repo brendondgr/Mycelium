@@ -136,9 +136,7 @@ def test_lab_permission_functions_agree_with_capabilities(lab_people) -> None:
     for who, user in people.items():
         held = caps.lab_capabilities(user, lab)
         assert perms.user_has_lab_access(user, lab) == bool(held), who
-        assert perms.user_can_manage_lab(user, lab) == (
-            caps.PEOPLE_MANAGE in held
-        ), who
+        assert perms.user_can_manage_lab(user, lab) == (caps.PEOPLE_MANAGE in held), who
         assert perms.user_can_edit_lab_profile(user, lab) == (
             caps.PROFILE_EDIT in held
         ), who
@@ -192,9 +190,9 @@ def test_discord_gate_levels_are_capabilities(lab_people) -> None:
         assert _has_lab_permission(user, lab, "manage") == (
             caps.SERVERS_MANAGE in held
         ), who
-        assert _has_lab_permission(user, lab, "edit") == (
-            caps.PROFILE_EDIT in held
-        ), who
+        assert _has_lab_permission(user, lab, "edit") == (caps.PROFILE_EDIT in held), (
+            who
+        )
         assert _has_lab_permission(user, lab, "access") == bool(held), who
 
 
@@ -247,9 +245,7 @@ def test_me_carries_capabilities_per_org(lab_people, dept_people) -> None:
     body = client.get("/api/auth/me/").json()
 
     assert set(body["capabilities"]["labs"][lab.slug]) == ADMIN_SET
-    assert body["capabilities"]["departments"][str(department.id)] == [
-        caps.PEOPLE_VIEW
-    ]
+    assert body["capabilities"]["departments"][str(department.id)] == [caps.PEOPLE_VIEW]
     # Lists follow the closed list's order.
     assert body["capabilities"]["labs"][lab.slug] == [
         c for c in caps.CAPABILITIES if c in ADMIN_SET
@@ -273,7 +269,9 @@ def test_my_labs_rows_carry_capabilities_and_grantable_roles(lab_people) -> None
         "owner": ["admin", "member", "viewer"],
         "admin": ["member", "viewer"],
         "lead": ["member", "viewer"],
-        "member": ["viewer"],
+        # A member outranks a viewer but manages nobody: the API refuses
+        # their grants, so the row must not offer any.
+        "member": [],
         "viewer": [],
     }
     for who, roles in expected_roles.items():
@@ -296,7 +294,7 @@ def test_my_departments_rows_carry_capabilities_and_grantable_roles(
         "head": ["admin", "member", "viewer"],
         "admin": ["member", "viewer"],
         "stray": ["member", "viewer"],
-        "member": ["viewer"],
+        "member": [],  # outranks a viewer, manages nobody
         "viewer": [],
     }
     for who, roles in expected_roles.items():
@@ -350,3 +348,26 @@ def test_department_roster_says_which_rows_the_caller_may_act_on(
         "d_viewer": True,
         "lab_pi": False,  # folded in through a lab: no department role
     }
+
+
+@pytest.mark.django_db
+def test_a_member_may_act_on_nobody_though_they_outrank_a_viewer(
+    lab_people, dept_people
+) -> None:
+    """``can_act`` follows what the API allows, not rank alone."""
+    lab, people = lab_people
+    client = APIClient()
+    client.force_authenticate(people["member"])
+    rows = client.get(f"/api/auth/labs/{lab.slug}/members/").json()
+    assert not any(r["can_act"] for r in rows)
+    refused = client.patch(
+        f"/api/auth/labs/{lab.slug}/members/viewer/", {"role": "viewer"}, format="json"
+    )
+    assert refused.status_code == 403
+
+    department, dpeople = dept_people
+    client.force_authenticate(dpeople["member"])
+    rows = client.get(f"/api/auth/departments/{department.id}/members/").json()
+    assert not any(r["can_act"] for r in rows)
+    refused = client.delete(f"/api/auth/departments/{department.id}/members/d_viewer/")
+    assert refused.status_code == 403

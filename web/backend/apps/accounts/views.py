@@ -1957,7 +1957,8 @@ def _department_row(department: Department, user: User) -> dict[str, object]:
         ).first()
         role = membership.role if membership else DeptMembership.Role.MEMBER
     held = caps.dept_capabilities(user, department)
-    mine = dept_role_rank(user, department)
+    # Rank says which roles; org.people.manage says whether they grant any.
+    mine = dept_role_rank(user, department) if caps.PEOPLE_MANAGE in held else -1
     return {
         "id": str(department.id),
         "name": department.name,

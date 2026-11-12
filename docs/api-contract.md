@@ -624,8 +624,9 @@ refuse a role the caller cannot grant (`403`, recorded as
 `dept.member.role.refused`); an admin cannot re-role or remove another admin
 (a refused removal is `403`, recorded as `dept.member.remove.refused`), and the
 head cannot be removed (`409`). Roster rows carry `is_head`, and `can_act`:
-whether the caller may re-role or remove that person (direct members they
-outrank, never themselves; always `false` for someone there through a lab).
+whether the caller may re-role or remove that person (only with
+`org.people.manage`, direct members they outrank, never themselves; always
+`false` for someone there through a lab).
 
 ### `POST /api/auth/departments/<id>/transfer-ownership/`
 
@@ -674,7 +675,7 @@ The caller's lab memberships, for the workspace switcher:
 `role` is `owner | admin | member | viewer`; `is_lead` marks a PI. `logo_version`
 is a cache-busting token (`null` when unset). `capabilities` is the caller's set
 here (see Capabilities); `grantable_roles` the roles they may hand out, highest
-first, never `owner`.
+first, never `owner`, and empty without `org.people.manage`.
 
 ### `POST /api/auth/labs/`
 
@@ -719,8 +720,8 @@ Any member may read. Leads sort first.
    "email": "l@uni.edu", "role": "owner", "is_lead": true, "can_act": false }]
 ```
 
-`can_act` says whether the caller may re-role or remove that member: they
-outrank them and are not them. The add, role-change and transfer responses
+`can_act` says whether the caller may re-role or remove that member: they hold
+`org.people.manage`, outrank them and are not them. The add, role-change and transfer responses
 carry the same row.
 
 ### Lab invitations

@@ -44,6 +44,12 @@ ORG_FROM_REQUEST = {
     "LabMentionTargetsView",
     "LabReminderChannelsView",
     "PolicyView",  # Mylo's policy: /policy/<lab|department>/<ref>/
+    # Personal by default, an org's when the request names one:
+    "ProjectListView",
+    "ReminderListCreateView",
+    "ReminderAccessView",
+    "SaveOpportunityView",
+    "TranscriptUploadView",
 }
 
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")

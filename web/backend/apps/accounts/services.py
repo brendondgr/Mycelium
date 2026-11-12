@@ -825,7 +825,15 @@ def department_members_payload(
             Seat.objects.filter(subscription=sub).values_list("member_id", "status")
         )
 
-    mine = dept_role_rank(viewer, department) if viewer is not None else -1
+    from .capabilities import PEOPLE_MANAGE, has_capability
+
+    # Rank says whom; org.people.manage says whether at all — a direct member
+    # outranks a viewer but manages nobody.
+    mine = (
+        dept_role_rank(viewer, department)
+        if viewer is not None and has_capability(viewer, department, PEOPLE_MANAGE)
+        else -1
+    )
 
     def can_act(user_id: int, rank: int) -> bool:
         return viewer is not None and viewer.pk != user_id and mine > rank

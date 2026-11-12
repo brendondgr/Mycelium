@@ -40,10 +40,10 @@ function samesScope(a: Scope, b: Scope): boolean {
  */
 export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
   const { labs, currentLab, openProject } = usePortal();
-  const managedLabs = React.useMemo(() => labs.filter(holding(CAPABILITY.PROJECTS_OVERSEE)), [labs]);
+  const managedLabs = React.useMemo(() => labs.filter(holding(CAPABILITY.PROFILE_EDIT)), [labs]);
 
   const defaultScope: Scope = React.useMemo(() => {
-    if (currentLab && can(currentLab, CAPABILITY.PROJECTS_OVERSEE)) {
+    if (currentLab && can(currentLab, CAPABILITY.PROFILE_EDIT)) {
       return { kind: "lab", slug: currentLab.slug, name: currentLab.name };
     }
     return { kind: "personal" };
