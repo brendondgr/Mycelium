@@ -38,6 +38,7 @@ from apps.accounts.permissions import (
 from apps.accounts.services import record_audit_event
 from apps.core.people import display_name, initials
 
+from . import visibility as scope
 from .limits import (
     ScopeCap,
     department_scope_cap,
@@ -46,10 +47,11 @@ from .limits import (
     personal_scope_cap,
 )
 from .models import Project, ProjectInvitation, ProjectMember
-from .permissions import user_can_edit_project
+from .permissions import user_can_change_visibility, user_can_edit_project
 from .serializers import (
     ProjectCreateSerializer,
     ProjectInvitationSerializer,
+    ProjectNameOnlySerializer,
     ProjectSerializer,
     ProjectUpdateSerializer,
 )
@@ -143,11 +145,11 @@ class ProjectListView(ListCreateAPIView):
         qs = (
             Project.objects.visible_to(self.request.user)
             .select_related("scope_lab", "scope_department", "scope_user")
-            .prefetch_related("members")
+            .prefetch_related("members", "memberships")
         )
         lab_slug = self.request.query_params.get("lab", "").strip()
         if lab_slug:
-            qs = qs.filter(scope_lab__slug=lab_slug)
+            qs = scope.visible_in_lab_slug(qs, lab_slug)
         return qs
 
     def get_serializer_context(self) -> dict:
@@ -269,10 +271,44 @@ class LabProjectsView(ListAPIView):
         if not user_has_lab_access(self.request.user, lab):
             raise PermissionDenied("You do not have access to this lab.")
         return (
-            Project.objects.visible_to(self.request.user)
-            .filter(scope_lab=lab)
+            scope.visible_in_lab(self.request.user, lab)
             .select_related("scope_lab")
-            .prefetch_related("members")
+            .prefetch_related("members", "memberships")
+        )
+
+
+class DepartmentProjectsView(APIView):
+    """A department's projects and its labs' projects, as the caller may see them.
+
+    ``projects``: full rows for everything the caller may open — for a
+    department head, every department project and every project of a lab that
+    shows its department *Everything*. ``names_only``: for a department head,
+    the reduced row (name, owner, member count, scope) of each project in a lab
+    whose PI set *Names only*. Nobody gets the reduced rows for a lab they can
+    already open.
+    """
+
+    def get(self, request: Request, pk) -> Response:
+        from apps.accounts.permissions import user_has_department_access
+
+        department = get_object_or_404(Department, pk=pk)
+        if not user_has_department_access(request.user, department):
+            raise PermissionDenied("You do not have access to this department.")
+        visible = (
+            scope.department_projects_visible(request.user, department)
+            .select_related("scope_lab", "scope_department", "scope_user")
+            .prefetch_related("members", "memberships")
+        )
+        names_only = scope.names_only_for(request.user, department).select_related(
+            "scope_lab"
+        )
+        return Response(
+            {
+                "projects": ProjectSerializer(
+                    visible, many=True, context={"request": request}
+                ).data,
+                "names_only": ProjectNameOnlySerializer(names_only, many=True).data,
+            }
         )
 
 
@@ -332,6 +368,14 @@ class ProjectDetailView(APIView):
         project = self._get_visible(request, pk)
         if not _user_can_edit(request.user, project):
             raise PermissionDenied("You cannot edit this project.")
+        new_scope = getattr(request.data, "get", lambda _key: None)("visibility")
+        old_scope = project.visibility
+        if (
+            new_scope is not None
+            and new_scope != old_scope
+            and not user_can_change_visibility(request.user, project)
+        ):
+            raise PermissionDenied("Only the project's owner can change who sees it.")
         before = self._search_surface(project)
         serializer = ProjectUpdateSerializer(project, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -343,6 +387,14 @@ class ProjectDetailView(APIView):
             target_id=str(project.id),
             metadata={"name": project.name},
         )
+        if project.visibility != old_scope:
+            record_audit_event(
+                actor=request.user,
+                action="project.visibility",
+                target_type="project",
+                target_id=str(project.id),
+                metadata={"from": old_scope, "to": project.visibility},
+            )
         # A focus / category edit changes what the project should match — re-seed
         # over the existing corpus (best-effort) so the feed reflects the change.
         # A rename or a status change does not, and must not cost a refit.

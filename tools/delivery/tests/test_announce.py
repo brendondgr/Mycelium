@@ -660,7 +660,7 @@ def test_only_shared_live_projects_reach_the_editor() -> None:
         project = Project.objects.create(
             scope_lab=target.obj,
             name=name,
-            share_in_lab_reports=shared,
+            visibility="lab" if shared else "invite_only",
             is_archived=archived,
             goals={"description": f"{name} focus."},
         )

@@ -56,19 +56,19 @@ def test_personal_and_member_projects_are_candidates(ada, lab, guild):
 
 
 def test_a_lab_channel_adds_the_labs_shared_projects(ada, lab, guild):
-    Project.objects.create(name="Shared", scope_lab=lab, share_in_lab_reports=True)
+    Project.objects.create(name="Shared", scope_lab=lab, visibility="lab")
     assert "Shared" in _ids(candidates_for(ada, guild, place_kind="channel"))
 
 
 def test_a_dm_never_attributes_to_a_project_the_speaker_is_not_on(ada, lab, dm):
-    Project.objects.create(name="Shared", scope_lab=lab, share_in_lab_reports=True)
+    Project.objects.create(name="Shared", scope_lab=lab, visibility="lab")
     Project.objects.create(name="Mine", scope_user=ada)
     assert _ids(candidates_for(ada, dm, place_kind="dm")) == {"Mine"}
 
 
 def test_another_labs_shared_project_is_never_a_candidate(ada, guild):
     other = Lab.objects.create(name="Elsewhere", slug="elsewhere")
-    Project.objects.create(name="Theirs", scope_lab=other, share_in_lab_reports=True)
+    Project.objects.create(name="Theirs", scope_lab=other, visibility="lab")
     assert "Theirs" not in _ids(candidates_for(ada, guild, place_kind="channel"))
 
 

@@ -483,15 +483,25 @@ def changes_between(*, since, until, user=None, projects=()):
 
     For a person (``user``): their own changes — personal ones included — and
     the lab-visible ones on ``projects``. For a lab (no ``user``): only the
-    lab-visible changes on ``projects``, which the caller has already limited
-    to the lab's shared projects. A personal change cannot match the lab query,
-    so a lab report cannot carry one (Plan 09 acceptance).
+    lab-visible changes on ``projects`` whose scope still reaches a lab —
+    re-checked here at read, so a project narrowed after the caller listed it
+    drops out. A personal change cannot match the lab query, so a lab report
+    cannot carry one (Plan 09 acceptance).
     """
     from django.db.models import Q
+
+    from apps.research import visibility as scope
+    from apps.research.models import Project
 
     from .models import AppliedChange
 
     project_ids = [getattr(p, "pk", p) for p in projects]
+    if user is None:
+        project_ids = list(
+            Project.objects.filter(pk__in=project_ids)
+            .filter(scope.lab_surface_q())
+            .values_list("pk", flat=True)
+        )
     shared = Q(project_id__in=project_ids, visibility=Visibility.LAB)
     query = (Q(user=user) | shared) if user is not None else shared
     rows = (

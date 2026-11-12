@@ -127,12 +127,15 @@ def heard_channels(source: Source) -> list[dict]:
 
 
 def alternatives(project, viewer) -> list[dict]:
-    """Where an attribution to ``project`` could be corrected to."""
+    """Where an attribution to ``project`` could be corrected to: only
+    projects the editor can see, so the list never names an invite-only
+    project to someone outside it."""
+    from apps.research import visibility
     from apps.research.models import Project
 
     if project.scope_lab_id is not None:
-        rows = Project.objects.filter(
-            scope_lab_id=project.scope_lab_id, is_archived=False
+        rows = visibility.visible_in_lab(viewer, project.scope_lab).filter(
+            is_archived=False
         )
     else:
         rows = Project.objects.filter(scope_user=viewer, is_archived=False)

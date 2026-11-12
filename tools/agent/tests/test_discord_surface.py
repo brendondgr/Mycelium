@@ -54,8 +54,8 @@ def server(world):
     add_route(world.binding, "grants", "forum-1")
     world.member_id = link(world.member, "100")
     world.admin_id = link(world.admin, "101")
-    world.lab_project.share_in_lab_reports = True
-    world.lab_project.save(update_fields=["share_in_lab_reports"])
+    world.lab_project.visibility = "lab"
+    world.lab_project.save(update_fields=["visibility"])
     return world
 
 

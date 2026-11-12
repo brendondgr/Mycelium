@@ -179,16 +179,17 @@ def _still_shown(target_filter: dict) -> dict:
     sharing is re-checked here, at read, rather than trusted from the moment the
     alert was written — an alert never outlives the project leaving the surface.
 
-    * A lab target reads only alerts for the lab's projects that are still
-      shared to its lab surfaces (``share_in_lab_reports``).
+    * A lab target reads only alerts for the lab's projects whose scope still
+      reaches its lab surfaces (:func:`apps.research.visibility.lab_surface_projects`).
     * A person reads only alerts for projects that are still theirs — owned
       personally or held as a member.
     """
+    from apps.research import visibility
     from apps.research.models import Project
 
     if "target_lab" in target_filter:
         lab = target_filter["target_lab"]
-        shown = Project.objects.filter(scope_lab=lab, share_in_lab_reports=True)
+        shown = visibility.lab_surface_projects(lab)
     elif "target_user" in target_filter:
         user = target_filter["target_user"]
         shown = Project.objects.filter(Q(scope_user=user) | Q(members=user))

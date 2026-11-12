@@ -262,10 +262,10 @@ def test_audience_lab_channel_offers_nothing_personal(world):
 def test_mixed_output_is_filtered_in_the_handler(world):
     from tools.agent.functions import projects
 
-    world.lab_project.share_in_lab_reports = False
+    world.lab_project.visibility = "invite_only"
     world.lab_project.save()
     shared = type(world.lab_project).objects.create(
-        scope_lab=world.lab, name="Shared one", share_in_lab_reports=True
+        scope_lab=world.lab, name="Shared one", visibility="lab"
     )
     lab_view = projects.projects_list(
         caller(world.owner, "lab", world.lab, width="lab")

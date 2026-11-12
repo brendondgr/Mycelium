@@ -180,14 +180,14 @@ def check_no_unshared_project_in_a_lab_post(today: date) -> Check:
 
     from apps.accounts.models import Lab
     from apps.integrations.models import DiscordOutboxMessage
-    from apps.research.models import Project
+    from apps.research import visibility
 
     from tools.delivery.models import DailyBriefing
 
     private = {
         str(row["name"]): row["scope_lab_id"]
-        for row in Project.objects.active()
-        .filter(scope_lab__isnull=False, share_in_lab_reports=False)
+        for row in visibility.lab_held_back(Lab.objects.values_list("id", flat=True))
+        .filter(is_archived=False)
         .values("name", "scope_lab_id")
     }
     if not private:

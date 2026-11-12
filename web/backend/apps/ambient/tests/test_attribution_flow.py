@@ -335,7 +335,7 @@ def test_the_nightly_pass_without_an_embedder_changes_nothing_it_cannot(
 def test_a_dm_is_attributed_only_to_the_speakers_own_projects(db, ada, lab):
     mine = Project.objects.create(name="Thesis chapter", scope_user=ada)
     Project.objects.create(
-        name="Shared lab thing", scope_lab=lab, share_in_lab_reports=True
+        name="Shared lab thing", scope_lab=lab, visibility="lab"
     )
     service.heard(
         guild_id="",

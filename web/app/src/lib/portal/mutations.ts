@@ -5,6 +5,7 @@ import { noteDemoRefusal } from "@/lib/demo";
 import { ensureCsrfCookie, readCsrfToken } from "@/lib/auth-client";
 import { announcementQuery } from "@/lib/portal/client";
 import type {
+  DepartmentSees,
   AnnouncementSettings,
   AnnouncementTarget,
   AdminLabDetail,
@@ -832,6 +833,19 @@ export function updateLabProfile(
     buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "profile"),
     payload,
     "Could not save the lab's purpose and goals.",
+  );
+}
+
+/** Set what the department's heads see of a lab's projects (PI / owner / admin). */
+export function setLabDepartmentSees(
+  slug: string,
+  departmentSees: DepartmentSees,
+): Promise<{ department_sees: DepartmentSees; department: string | null }> {
+  return sendJson<{ department_sees: DepartmentSees; department: string | null }>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "department-sees"),
+    { department_sees: departmentSees },
+    "Could not change what the department sees.",
   );
 }
 

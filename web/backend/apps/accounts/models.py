@@ -68,6 +68,22 @@ class Lab(models.Model):
             "explicitly. Only meaningful while the lab belongs to a department."
         ),
     )
+    class DepartmentSees(models.TextChoices):
+        EVERYTHING = "everything", "Everything"
+        NAMES_ONLY = "names_only", "Names only"
+
+    department_sees = models.CharField(
+        max_length=20,
+        choices=DepartmentSees.choices,
+        default=DepartmentSees.EVERYTHING,
+        help_text=(
+            "What the department's heads see of this lab's projects: everything "
+            "(open any project) or names only (name, owner, member count, "
+            "scope). Set by the lab's PI / owner / admin, never the department. "
+            "A project whose own visibility reaches the department is still "
+            "seen in full."
+        ),
+    )
     # Reminder scheduling (Discord reminders R4). Use the IANA zone name, not "EST":
     # the zone handles the DST transition, so a "9am" reminder is 9am local year-round.
     timezone = models.CharField(

@@ -372,17 +372,17 @@ def align(
 
 
 def _project_teams(lab, content_id) -> list[dict]:
-    """The lab's projects whose own score suggested this item — only those the lab
-    shares in its reports and has not archived, since a post is read by everyone in
-    the channel (the same rule as the lab report)."""
+    """The lab's projects whose own score suggested this item — only those whose
+    scope reaches the lab and that are not archived, since a post is read by
+    everyone in the channel (the same rule as the lab report)."""
     from apps.core.people import display_name
+    from apps.research import visibility
 
     from tools.recommendation.targets import project_interests
 
     rows = (
         RelevanceScore.objects.filter(
-            target_project__scope_lab=lab,
-            target_project__share_in_lab_reports=True,
+            target_project__in=visibility.lab_surface_projects(lab),
             target_project__is_archived=False,
             content_id=content_id,
         )

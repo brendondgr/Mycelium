@@ -121,6 +121,7 @@ import {
   createProject,
   createReminder,
   deleteLabLogo,
+  setLabDepartmentSees,
   deleteReminder,
   detachLabFromDept,
   disconnectDiscord,
@@ -184,6 +185,7 @@ import type { OrgKind } from "@/lib/auth-types";
 import type {
   AnnouncementSettings,
   AnnouncementTarget,
+  DepartmentSees,
 } from "@/lib/portal/types";
 
 export type SearchInput = {
@@ -420,6 +422,17 @@ export function useDeleteLabLogo(slug: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
       queryClient.invalidateQueries({ queryKey: ["portal", "lab-profile", slug] });
+    },
+  });
+}
+
+/** Set what the department's heads see of the lab's projects. */
+export function useSetLabDepartmentSees(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: DepartmentSees) => setLabDepartmentSees(slug, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
     },
   });
 }

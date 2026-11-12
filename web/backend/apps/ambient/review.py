@@ -111,15 +111,16 @@ def lab_changes(lab, *, limit: int = 200):
     """A lab's changes: lab-visible ones on the lab's shared projects only.
 
     The rule is the query — a personal change never matches it — so a lab
-    surface cannot show one even by mistake (Plan 07, step 7). "Shared" is the
-    project's own ``share_in_lab_reports`` opt-in, the rule every lab surface
-    uses: a lab project that is not shared is seen by its members and heads
-    only, and its changes reach them through their own "What changed".
+    surface cannot show one even by mistake (Plan 07, step 7). "Shared" is a
+    scope of ``lab`` or wider (:mod:`apps.research.visibility`), the rule every
+    lab surface uses: an ``invite_only`` lab project is seen by its members and
+    overseers only, and its changes reach them through their own "What changed".
     """
+    from apps.research import visibility as scope
+
     return (
         AppliedChange.objects.filter(
-            project__scope_lab=lab,
-            project__share_in_lab_reports=True,
+            project__in=scope.lab_surface_projects(lab),
             visibility=Visibility.LAB,
         )
         .select_related("project", "user")

@@ -55,6 +55,7 @@ routes clients depend on most.
 | `intake/confirm/` | POST | Validate + save interests |
 | `labs/` | GET, POST | The caller's lab memberships; create a lab |
 | `labs/<slug>/profile/` | GET, PATCH | Lab interest profile, plus `institution_type` (`higher_ed` \| `nonprofit` \| `government` \| `company` \| `""`) and `country` (two-letter code, upper-cased; 400 otherwise). The department profile takes the same two fields |
+| `labs/<slug>/department-sees/` | GET, PATCH | What the department's heads see of the lab's projects: `{ "department_sees": "everything" \| "names_only", "department": "<name>" \| null }`. Any lab member reads; only the lab's PI / owner / admin set it (403 for anyone else, the department head included); 400 for another value. Also on each `labs/` row as `department_sees` |
 | `labs/<slug>/watch/` | GET, PATCH | Lab watch preference |
 | `labs/<slug>/intake/synthesize/` | POST | Lab profile synthesis |
 | `labs/<slug>/logo/` | GET, POST, PUT, DELETE | Lab logo, served through the API |
@@ -184,6 +185,23 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `status/` | GET | `{"enabled", "identities", "lab_team"}` |
 | `unlink/` | POST | `{"tenant_id"}` |
 | `lab/` | POST | A lab manager's switches: `{"on"?, "primary"?}` |
+
+### `GET /api/projects/department/<id>/`
+
+A department's projects and its labs' projects as the caller may see them; 403
+without department access.
+
+```json
+{ "projects": [ /* full project rows the caller may open */ ],
+  "names_only": [{ "id": "uuid", "name": "…", "visibility": "invite_only",
+                   "scope_name": "Reyes Lab", "scope_slug": "reyes-lab",
+                   "owner": { "username", "name", "initials" } | null,
+                   "member_count": 3, "names_only": true }] }
+```
+
+`names_only` is filled only for the department's owner / admins, and only with
+projects of labs set to `names_only` that they cannot otherwise open. A reduced row
+never carries goals, state, feed, files or the roster.
 
 ### Ambient attribution — `/api/ambient/`
 
@@ -744,8 +762,15 @@ gate — that guards standing an org up, not being brought into one. `400` with 
 
 ### `GET /api/projects/[?lab=<slug>]`
 
-Projects the caller may see under the org visibility cascade
-(`Project.objects.visible_to`). `lab` narrows and never widens.
+Projects the caller may see (`apps/research/visibility.py`; `visible_to` is its
+queryset form). `lab` narrows and never widens. Each project has one
+`visibility`: `invite_only` (default — its members, plus the lab's PI / owner /
+admins and the department's heads), `lab` (the owning lab's members), `department`
+(also the department's effective members; a lab project needs a lab in a
+department) or `public` (any verified account on the instance). A department head
+sees every project of a lab whose `department_sees` is `everything`, and only the
+reduced row (`GET /api/projects/department/<id>/`) for a lab set to `names_only`.
+Seeing is not belonging: only membership puts a project in someone's own reports.
 
 ```json
 [{ "id": "uuid", "name": "Drought study", "scope": "lab",
@@ -753,6 +778,7 @@ Projects the caller may see under the org visibility cascade
    "description": "…", "status": "Active", "progress": 40,
    "focus": { "clusters": [] },
    "watch_categories": ["papers"], "is_archived": false, "is_over_cap": false,
+   "visibility": "invite_only", "my_role": "owner",
    "can_edit": true, "can_manage_members": true,
    "member_count": 3, "members": [{ "username", "name", "initials" }],
    "updated_at": "…" }]
@@ -763,14 +789,21 @@ Projects the caller may see under the org visibility cascade
 `progress` are optional display fields read out of `goals` — `description` falls
 back to the composed focus statement — and are `null` when unset. `can_edit` /
 `can_manage_members` report the caller's rights on the row (the personal owner, a
-lab owner/admin/PI, or a department owner/admin for a department project) so a client never has to infer them from the active
-workspace. `is_over_cap` marks a project sitting above the plan's allowance after
+lab owner/admin/PI, a department owner/admin for a department project, or a
+member whose `my_role` is `owner` or `editor`) so a client never has to infer them
+from the active workspace. `my_role` is `owner | editor | member`, or `null` when
+the caller is not a member. `is_over_cap` marks a project sitting above the plan's allowance after
 a downgrade.
 
 ### `PATCH /api/projects/<id>/`
 
-`{ "name"?, "description"?, "status"?, "progress"?, "focus"?, "watch_categories"?, "aliases"? }`
-— editors only. `aliases` is a list of other names people use for the project in
+`{ "name"?, "description"?, "status"?, "progress"?, "focus"?, "watch_categories"?, "aliases"?, "visibility"? }`
+— editors only. Changing `visibility` is the owner's alone (the owner-role member,
+a personal project's user, or the lab's PI / owner / admin — the department's
+owner / admin for a department project): 403 for an editor, 400 for a scope the
+project cannot take (`lab` needs a lab project, `department` a lab in a
+department or a department project). The change is audited
+(`project.visibility`). `aliases` is a list of other names people use for the project in
 conversation, read by ambient attribution: each 3–60 characters, at most 20,
 duplicates collapse ignoring case, and one equal to the project's own name is
 dropped. It is returned on every project row. An empty string (or `null` for `progress`) clears a display field

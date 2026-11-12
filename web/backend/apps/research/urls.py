@@ -16,6 +16,18 @@ urlpatterns = [
         views.LabProjectsView.as_view(),
         name="lab-projects-no-slash",
     ),
+    # A department's (and its labs') projects: full rows where the caller may
+    # open them, reduced rows for a head over a lab set to "names only".
+    path(
+        "projects/department/<uuid:pk>/",
+        views.DepartmentProjectsView.as_view(),
+        name="department-projects",
+    ),
+    path(
+        "projects/department/<uuid:pk>",
+        views.DepartmentProjectsView.as_view(),
+        name="department-projects-no-slash",
+    ),
     # Read one project, or PATCH its name / research focus (managers).
     path(
         "projects/<uuid:pk>/",

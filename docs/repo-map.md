@@ -133,6 +133,7 @@ Paths are relative to the repository root.
 | Reading a project's state out of a document | `web/backend/apps/research/state_extract.py` — schema, deterministic grounding checks, one bounded repair; proposes only, never saves |
 | Which buffer and window a project is judged against | `tools/delivery/timeline_settings.py` (`effective_timeline`): project override → the reader's own → the lab's → 14/60 |
 | Per-scope project caps | `web/backend/apps/research/limits.py` |
+| Who sees a project, whose it is, where it may be mentioned (`Project.visibility`, oversight, the lab's *What the department sees*, the names-only row) | `web/backend/apps/research/visibility.py` — the only reader of the scope; `test_visibility_guard.py` fails on a raw `scope_lab=` project query elsewhere. Edit and re-scope rights: `apps/research/permissions.py`. Lab setting: `Lab.department_sees`, `GET/PATCH /api/auth/labs/<slug>/department-sees/`, card in `lab-settings-section.tsx` |
 
 ## Matching & delivery, by task (`tools/delivery`, `tools/recommendation`, `tools/retrieval`)
 

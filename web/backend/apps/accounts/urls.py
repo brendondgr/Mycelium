@@ -111,6 +111,17 @@ urlpatterns = [
         views.LabProfileView.as_view(),
         name="lab-profile-no-slash",
     ),
+    # What the department's heads see of the lab's projects (PI sets it).
+    path(
+        "labs/<slug:slug>/department-sees/",
+        views.LabDepartmentSeesView.as_view(),
+        name="lab-department-sees",
+    ),
+    path(
+        "labs/<slug:slug>/department-sees",
+        views.LabDepartmentSeesView.as_view(),
+        name="lab-department-sees-no-slash",
+    ),
     # Lab logo: any member reads (GET streams it); lead/owner/admin upload/clear.
     path(
         "labs/<slug:slug>/logo/",

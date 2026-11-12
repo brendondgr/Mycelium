@@ -208,7 +208,7 @@ class ReportData:
     personal: ReportPart | None = None
     projects: list[ReportPart] = field(default_factory=list)
     #: How many of the target's projects this surface is holding back — a lab's
-    #: projects whose editors have not turned on ``share_in_lab_reports``. Reported
+    #: projects whose scope is narrower than ``lab`` (``invite_only``). Reported
     #: as a count and never by name, so the document is honest about being partial
     #: without publishing what it is withholding. Always 0 on a personal report,
     #: which is scoped to one reader.

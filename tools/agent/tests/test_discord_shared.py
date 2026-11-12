@@ -83,8 +83,8 @@ def expected_tools(caller, thread) -> set[str]:
 @pytest.fixture
 def place(world):
     """The lab's server: a shared project, a declared member profile."""
-    world.lab_project.share_in_lab_reports = True
-    world.lab_project.save(update_fields=["share_in_lab_reports"])
+    world.lab_project.visibility = "lab"
+    world.lab_project.save(update_fields=["visibility"])
     profile = world.member.profile
     profile.interests = {"clusters": [{"label": "cell imaging", "areas": ["CNN"]}]}
     profile.save(update_fields=["interests"])

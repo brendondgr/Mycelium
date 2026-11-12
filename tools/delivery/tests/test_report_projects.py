@@ -149,7 +149,7 @@ def test_a_quiet_project_keeps_its_row_but_gets_no_section(reader: User) -> None
 def test_a_labs_report_covers_the_labs_projects() -> None:
     lab = Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
     project = Project.objects.create(
-        scope_lab=lab, name="Reef Atlas", share_in_lab_reports=True
+        scope_lab=lab, name="Reef Atlas", visibility="lab"
     )
     _score({"target_project": project}, _content(ContentItem.Type.PAPER, "Reef Paper"))
 
@@ -169,7 +169,7 @@ def test_lab_report_excludes_unshared_projects() -> None:
     """
     lab = Lab.objects.create(name="Reyes Lab", slug="reyes-lab")
     shared = Project.objects.create(
-        scope_lab=lab, name="Reef Atlas", share_in_lab_reports=True
+        scope_lab=lab, name="Reef Atlas", visibility="lab"
     )
     private = Project.objects.create(scope_lab=lab, name="Unpublished Coral Genome")
     _score({"target_project": shared}, _content(ContentItem.Type.PAPER, "Reef Paper"))
@@ -313,3 +313,30 @@ def test_a_reader_with_no_report_yet_gets_an_honest_note(reader: User) -> None:
     briefing = generate_briefing_for_user(reader, complete=boom)
 
     assert "Nothing has reached your top list yet" in briefing.body
+
+
+@pytest.mark.django_db
+def test_every_scope_from_lab_up_reaches_the_lab_report_and_no_overseer_report():
+    """Plan 20261112-project-scoping, Phase 1: the lab report names a project
+    whose scope is ``lab``, ``department`` or ``public`` and holds back an
+    ``invite_only`` one; overseers who may open them all still find none of them
+    in their own report, because seeing is not belonging."""
+    from apps.accounts.models import Department
+
+    from tools.delivery.briefing import hidden_lab_projects, report_projects_for_lab
+
+    head = User.objects.create_user(username="dept-head", password="p")
+    department = Department.objects.create(owner=head, name="Biology")
+    lab = Lab.objects.create(name="Reyes Lab", slug="reyes-lab", department=department)
+    pi = User.objects.create_user(username="pi", password="p")
+    LabMembership.objects.create(user=pi, lab=lab, role="owner", is_lead=True)
+    for scope in ("invite_only", "lab", "department", "public"):
+        Project.objects.create(scope_lab=lab, name=f"P {scope}", visibility=scope)
+
+    names = {p.name for p in report_projects_for_lab(lab)}
+    assert names == {"P lab", "P department", "P public"}
+    assert hidden_lab_projects(lab) == 1
+    assert Project.objects.visible_to(pi).count() == 4
+    assert Project.objects.visible_to(head).count() == 4
+    assert report_projects_for_user(pi) == []
+    assert report_projects_for_user(head) == []

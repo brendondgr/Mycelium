@@ -822,6 +822,58 @@ class LabProfileView(RetrieveUpdateAPIView):
         return lab.profile
 
 
+class LabDepartmentSeesView(APIView):
+    """What a lab's department heads see of its projects (plan "Oversight").
+
+    Any lab member reads it; the lab's PI / owner / admin set it — never the
+    department, whose view it narrows. ``everything`` (default) lets a
+    department head open every project of the lab; ``names_only`` shows them
+    name, owner, member count and scope. A project whose own scope reaches the
+    department is seen in full either way.
+    """
+
+    def _lab(self, slug: str) -> Lab:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_has_lab_access(self.request.user, lab):
+            raise PermissionDenied("You do not have access to this lab.")
+        return lab
+
+    @staticmethod
+    def _payload(lab: Lab) -> dict:
+        return {
+            "department_sees": lab.department_sees,
+            "department": lab.department.name if lab.department_id else None,
+        }
+
+    def get(self, request: Request, slug: str) -> Response:
+        return Response(self._payload(self._lab(slug)))
+
+    def patch(self, request: Request, slug: str) -> Response:
+        lab = self._lab(slug)
+        if not user_can_edit_lab_profile(request.user, lab):
+            raise PermissionDenied(
+                "Only the lab's PI, owner or admin decides what the department sees."
+            )
+        value = str(request.data.get("department_sees", "")).strip()
+        if value not in Lab.DepartmentSees.values:
+            return Response(
+                {"department_sees": ["Choose everything or names_only."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if value != lab.department_sees:
+            before = lab.department_sees
+            lab.department_sees = value
+            lab.save(update_fields=["department_sees", "updated_at"])
+            record_audit_event(
+                actor=request.user,
+                action="lab.department_sees",
+                target_type="lab",
+                target_id=str(lab.id),
+                metadata={"from": before, "to": value},
+            )
+        return Response(self._payload(lab))
+
+
 #: Max lab-logo upload size (2 MB) and the raster/vector types we accept.
 LAB_LOGO_MAX_BYTES = 2 * 1024 * 1024
 

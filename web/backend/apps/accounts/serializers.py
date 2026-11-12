@@ -439,6 +439,8 @@ class MyLabSerializer(serializers.Serializer):
     role = serializers.CharField()
     is_lead = serializers.BooleanField()
     department = serializers.SerializerMethodField()
+    #: What the department's heads see of the lab's projects (the PI sets it).
+    department_sees = serializers.CharField(source="lab.department_sees")
     has_logo = serializers.BooleanField(source="lab.has_logo", read_only=True)
     logo_version = serializers.IntegerField(
         source="lab.logo_version", read_only=True, allow_null=True

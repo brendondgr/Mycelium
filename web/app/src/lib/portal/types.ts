@@ -5,6 +5,15 @@ import type { ClusterGroup, ResearchInterests, WatchCadence } from "@/lib/auth-t
 
 export type LabRole = "owner" | "admin" | "member" | "viewer";
 
+/** What a lab shows its department's heads of its projects. */
+export type DepartmentSees = "everything" | "names_only";
+
+/** A project's one scope: who may see it and where Mylo may mention it. */
+export type ProjectVisibility = "invite_only" | "lab" | "department" | "public";
+
+/** A member's role on a project. */
+export type ProjectRole = "owner" | "editor" | "member";
+
 /**
  * Mylo's four-point judgement — what replaced the percent match everywhere.
  *
@@ -27,6 +36,10 @@ export type MyLab = {
   role: LabRole;
   is_lead: boolean;
   department: string | null;
+  /** What the department's heads see of this lab's projects. The lab's PI /
+   * owner / admin sets it; `names_only` shows them name, owner, member count and
+   * scope instead of the project itself. */
+  department_sees: DepartmentSees;
   /** Whether the lab has an uploaded logo (shown as the workspace brand mark). */
   has_logo: boolean;
   /** Cache-busting token for the logo URL, or null when there's no logo. */
@@ -128,6 +141,10 @@ export type Project = {
   /** Archived projects keep their stored recommendations but stop new search
    * work and free a slot against the owner's plan cap. Never deleted. */
   is_archived: boolean;
+  /** Who may see this project and where Mylo may mention it. */
+  visibility: ProjectVisibility;
+  /** The signed-in user's role on the project; null when not a member. */
+  my_role: ProjectRole | null;
   /** True when a plan downgrade pushed this (active) project past its owner's
    * cap — Mylo pauses new recommendations for it until it's archived or the
    * plan is upgraded. Always false once archived. */

@@ -28,9 +28,10 @@ def search_items(caller, q, limit):
 
 
 def visible_projects(caller):
-    """Projects the caller may see. A guest sees only the projects shared
-    with the place's lab (``share_in_lab_reports``), the rule the lab's own
-    shared surfaces follow; never a personal or unshared one."""
+    """Projects the caller may see. A guest sees only the place's lab projects
+    whose scope reaches the lab (:mod:`apps.research.visibility`), the rule the
+    lab's own shared surfaces follow; never a personal or invite-only one."""
+    from apps.research import visibility
     from apps.research.models import Project
 
     if caller.user is not None:
@@ -38,7 +39,7 @@ def visible_projects(caller):
     lab_ids = common.place_lab_ids(caller)
     if not lab_ids:
         return Project.objects.none()
-    return Project.objects.filter(scope_lab_id__in=lab_ids, share_in_lab_reports=True)
+    return visibility.lab_surface_projects(lab_ids)
 
 
 def resolve_project(caller, key):

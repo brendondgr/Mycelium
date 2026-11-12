@@ -311,20 +311,22 @@ def report_projects_for_lab(lab, *, shared_only: bool = True) -> list:
     people the project itself would not show them to — and once project *state*
     enters a report that becomes unpublished research plans.
 
-    So a project reaches a lab surface only when its editors opted it in
-    (``share_in_lab_reports``, default off). Private lab projects keep appearing in
-    their own members' personal reports through
+    So a project reaches a lab surface only when its scope is at least ``lab``
+    (:mod:`apps.research.visibility`; ``invite_only`` is the default). Invite-only
+    lab projects keep appearing in their own members' personal reports through
     :func:`report_projects_for_user`, which is scoped to one reader.
 
     ``shared_only=False`` is for callers that are not a shared surface — a count of
     what the lab actually owns, or an editor's own project list.
     """
-    from apps.research.models import Project
+    from apps.research import visibility
 
-    queryset = Project.objects.active().filter(scope_lab=lab)
-    if shared_only:
-        queryset = queryset.filter(share_in_lab_reports=True)
-    return list(queryset.order_by("name", "id"))
+    queryset = (
+        visibility.lab_surface_projects(lab)
+        if shared_only
+        else visibility.lab_projects(lab)
+    )
+    return list(queryset.filter(is_archived=False).order_by("name", "id"))
 
 
 def hidden_lab_projects(lab) -> int:
@@ -335,13 +337,9 @@ def hidden_lab_projects(lab) -> int:
     projects and sees one should be told why, and told it is a sharing setting
     rather than a quiet day.
     """
-    from apps.research.models import Project
+    from apps.research import visibility
 
-    return (
-        Project.objects.active()
-        .filter(scope_lab=lab, share_in_lab_reports=False)
-        .count()
-    )
+    return visibility.lab_held_back(lab).filter(is_archived=False).count()
 
 
 def _deadline_rounds(meta: dict) -> list[dict]:

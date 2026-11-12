@@ -118,7 +118,7 @@ def empty_report_body() -> str:
 def hidden_projects_note(count: int) -> str:
     """The one line a shared surface owes a reader it is holding projects back from.
 
-    A lab report lists only projects opted into ``share_in_lab_reports``. A reader
+    A lab report lists only projects scoped to the lab or wider. A reader
     who knows the lab runs six projects and sees one should be told the difference
     is a sharing setting, not a quiet day — and told it without naming what is
     hidden, which would defeat the point.

@@ -372,7 +372,7 @@ def test_a_lab_weekly_covers_shared_projects_only(db) -> None:
 
     lab = Lab.objects.create(name="Pulse", slug="pulse")
     Project.objects.create(
-        scope_lab=lab, name="Ariadne", share_in_lab_reports=True
+        scope_lab=lab, name="Ariadne", visibility="lab"
     )
     Project.objects.create(scope_lab=lab, name="Unpublished Coral Genome")
 

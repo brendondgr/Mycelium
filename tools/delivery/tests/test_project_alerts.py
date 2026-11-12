@@ -369,7 +369,7 @@ def test_a_lab_alert_does_not_ring_every_members_bell(db) -> None:
     """One finding ringing eight times is how a bell gets ignored."""
     lab = Lab.objects.create(name="Pulse", slug="pulse")
     project = Project.objects.create(
-        name="Ariadne", scope_lab=lab, share_in_lab_reports=True
+        name="Ariadne", scope_lab=lab, visibility="lab"
     )
     ProjectAlert.objects.create(
         target_lab=lab,
@@ -388,7 +388,7 @@ def test_an_unshared_project_drops_its_stored_lab_alerts_at_read(db) -> None:
     """An alert never outlives its project leaving the lab's shared surfaces."""
     lab = Lab.objects.create(name="Pulse", slug="pulse")
     project = Project.objects.create(
-        name="Ariadne", scope_lab=lab, share_in_lab_reports=True
+        name="Ariadne", scope_lab=lab, visibility="lab"
     )
     ProjectAlert.objects.create(
         target_lab=lab,
@@ -399,8 +399,8 @@ def test_an_unshared_project_drops_its_stored_lab_alerts_at_read(db) -> None:
     )
     assert [a.project_id for a in open_alerts({"target_lab": lab})] == [project.id]
 
-    project.share_in_lab_reports = False
-    project.save(update_fields=["share_in_lab_reports"])
+    project.visibility = "invite_only"
+    project.save(update_fields=["visibility"])
 
     assert open_alerts({"target_lab": lab}) == []
     assert ProjectAlert.objects.count() == 1  # stored, just no longer shown

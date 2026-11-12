@@ -98,7 +98,7 @@ def test_a_lab_channel_cannot_reach_another_labs_project(world):
     from apps.research.models import Project
 
     other = Project.objects.create(
-        scope_lab=world.other_lab, name="B shared", share_in_lab_reports=True
+        scope_lab=world.other_lab, name="B shared", visibility="lab"
     )
     from apps.research.models import ProjectMember
 

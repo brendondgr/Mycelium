@@ -401,15 +401,19 @@ def candidate_projects(speaker, source, *, place_kind: str):
     """The projects this speaker could plausibly mean, here.
 
     Only projects the speaker is **on** — their personal projects and those
-    they are a member of — plus, in a lab channel only, the lab's projects that
-    are shared into lab reports. A DM never attributes to a project the speaker
-    is not on: that is a hard filter, not a score.
+    they are a member of — plus, in a lab channel only, the lab's projects whose
+    scope reaches the lab (:mod:`apps.research.visibility`). A DM never
+    attributes to a project the speaker is not on: that is a hard filter, not a
+    score.
     """
+    from apps.research import visibility
     from apps.research.models import Project
 
     on = Q(scope_user=speaker) | Q(memberships__user=speaker)
     if place_kind != "dm" and getattr(source, "lab_id", None):
-        on |= Q(scope_lab_id=source.lab_id, share_in_lab_reports=True)
+        on |= Q(
+            id__in=visibility.lab_surface_projects([source.lab_id]).values("id")
+        )
     return (
         Project.objects.filter(is_archived=False)
         .filter(on)
