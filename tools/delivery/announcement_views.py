@@ -27,10 +27,9 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import timedelta
 
+from apps.accounts import capabilities as caps
 from apps.accounts.models import Department, Lab
 from apps.accounts.permissions import (
-    user_can_manage_department,
-    user_can_manage_lab,
     user_has_department_access,
     user_has_lab_access,
 )
@@ -72,10 +71,8 @@ def _target(request, *, manage: bool = False):
     if slug:
         obj = Lab.objects.filter(slug=slug).first()
         kind = "lab"
-        allowed = obj is not None and (
-            user_can_manage_lab(request.user, obj)
-            if manage
-            else user_has_lab_access(request.user, obj)
+        allowed = obj is not None and caps.has_capability(
+            request.user, obj, caps.ANNOUNCEMENTS_MANAGE if manage else caps.MEMBERSHIP
         )
     elif dept_id:
         try:
@@ -83,10 +80,8 @@ def _target(request, *, manage: bool = False):
         except (ValueError, DjangoValidationError):
             obj = None
         kind = "department"
-        allowed = obj is not None and (
-            user_can_manage_department(request.user, obj)
-            if manage
-            else user_has_department_access(request.user, obj)
+        allowed = obj is not None and caps.has_capability(
+            request.user, obj, caps.ANNOUNCEMENTS_MANAGE if manage else caps.MEMBERSHIP
         )
     else:
         return (
@@ -206,6 +201,8 @@ def _announced_row(ann: Announcement, names: dict[str, str]) -> dict:
 
 
 class AnnouncementsView(APIView):
+    capabilities = {"GET": caps.MEMBERSHIP}
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -236,11 +233,7 @@ class AnnouncementsView(APIView):
             }
             for a in rows.filter(state=Announcement.State.SKIPPED)[:LIST_MAX]
         ]
-        manage = (
-            user_can_manage_lab(request.user, obj)
-            if kind == "lab"
-            else user_can_manage_department(request.user, obj)
-        )
+        manage = caps.has_capability(request.user, obj, caps.ANNOUNCEMENTS_MANAGE)
         return Response(
             {
                 "settings": _settings_payload(row),
@@ -298,6 +291,8 @@ class LinkClickView(APIView):
 class DepartmentOpportunitiesView(APIView):
     """Department-level calls on the department's slate (plan "What a department
     sees"). Nothing else is listed: no reason, no department item."""
+
+    capabilities = {"GET": caps.MEMBERSHIP}
 
     permission_classes = [IsAuthenticated]
 
@@ -440,6 +435,8 @@ def _server(binding) -> dict:
 
 
 class AnnouncementSettingsView(APIView):
+    capabilities = {"GET": caps.MEMBERSHIP, "PUT": caps.ANNOUNCEMENTS_MANAGE}
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -514,6 +511,8 @@ class AnnouncementSettingsView(APIView):
 class AnnouncementTestView(APIView):
     """A clearly labelled test thread in each of the target's forums."""
 
+    capabilities = {"POST": caps.ANNOUNCEMENTS_MANAGE}
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -570,6 +569,8 @@ class AnnouncementTestView(APIView):
 
 class AnnouncementCreateChannelsView(APIView):
     """ "Create them for me" for one binding, from the web."""
+
+    capabilities = {"POST": caps.SERVERS_MANAGE}
 
     permission_classes = [IsAuthenticated]
 

@@ -2,8 +2,8 @@ from django.contrib.auth.models import AnonymousUser, User
 from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied
 
+from . import capabilities as caps
 from .models import Department, DeptMembership, Lab, LabMembership
-from .services import effective_member_ids
 
 UserOrAnon = User | AnonymousUser
 
@@ -28,10 +28,14 @@ UserOrAnon = User | AnonymousUser
 #: answer a code with — that is about activation, not about access to data.
 
 
+#: Every function below that answers "may this person do X in this org?" is a
+#: thin call into :mod:`apps.accounts.capabilities`, which alone maps roles to
+#: rights. The names stay because many callers use them; new code may call
+#: :func:`apps.accounts.capabilities.has_capability` directly.
+
+
 def user_has_lab_access(user: UserOrAnon, lab: Lab) -> bool:
-    if not user.is_authenticated:
-        return False
-    return LabMembership.objects.filter(user=user, lab=lab).exists()
+    return caps.has_capability(user, lab, caps.MEMBERSHIP)
 
 
 #: The roles that manage a lab on their own account.
@@ -48,20 +52,12 @@ def lab_manager_q(prefix: str = "") -> Q:
     they agree with :func:`user_can_manage_lab`; ``prefix`` is the relation path
     when filtering from another model (``"lab_memberships__"`` from ``User``).
     """
-    return Q(**{f"{prefix}is_lead": True}) | Q(
-        **{f"{prefix}role__in": LAB_MANAGER_ROLES}
-    )
+    return caps.lab_capability_q(caps.PEOPLE_MANAGE, prefix)
 
 
 def user_can_manage_lab(user: UserOrAnon, lab: Lab) -> bool:
-    """Owner, admin, or the lab's lead PI."""
-    if not user.is_authenticated:
-        return False
-    return (
-        LabMembership.objects.filter(user=user, lab=lab)
-        .filter(lab_manager_q())
-        .exists()
-    )
+    """Owner, admin, or the lab's lead PI: ``org.people.manage``."""
+    return caps.has_capability(user, lab, caps.PEOPLE_MANAGE)
 
 
 #: Lab roles, ranked. Authority runs strictly downward: an actor may only act on
@@ -133,20 +129,17 @@ def user_outranks_lab_member(user: UserOrAnon, lab: Lab, target: User) -> bool:
 
 def user_can_edit_lab_profile(user: UserOrAnon, lab: Lab) -> bool:
     """A lab's interest profile is edited by its lead PI or owner/admin (brief G)."""
-    return user_can_manage_lab(user, lab)
+    return caps.has_capability(user, lab, caps.PROFILE_EDIT)
 
 
 def user_can_invite_to_lab(user: UserOrAnon, lab: Lab) -> bool:
     """A lab's PI (lead) or owner/admin may invite people to it."""
-    return user_can_edit_lab_profile(user, lab)
+    return caps.has_capability(user, lab, caps.INVITES_ISSUE)
 
 
 def user_has_department_access(user: UserOrAnon, department: Department) -> bool:
-    if not user.is_authenticated:
-        return False
-    if department.owner_id == user.id:
-        return True
-    return user.id in effective_member_ids(department)
+    """The head, a direct member, or a member of one of its labs."""
+    return caps.has_capability(user, department, caps.MEMBERSHIP)
 
 
 #: Department roles, ranked — the twin of :data:`LAB_ROLE_RANK`, and for the same
@@ -220,15 +213,7 @@ def user_can_grant_org_role(
 
 def user_can_edit_dept_profile(user: UserOrAnon, department: Department) -> bool:
     """A department's interest profile is edited by its owner or an admin (brief G)."""
-    if not user.is_authenticated:
-        return False
-    if department.owner_id == user.id:
-        return True
-    return DeptMembership.objects.filter(
-        user=user,
-        department=department,
-        role__in=[DeptMembership.Role.OWNER, DeptMembership.Role.ADMIN],
-    ).exists()
+    return caps.has_capability(user, department, caps.PROFILE_EDIT)
 
 
 def user_can_manage_department(user: UserOrAnon, department: Department) -> bool:
@@ -238,7 +223,7 @@ def user_can_manage_department(user: UserOrAnon, department: Department) -> bool
     ``DeptMembership`` with an OWNER/ADMIN role — surfaced under a management-intent
     name so the member/lab/billing endpoints read clearly.
     """
-    return user_can_edit_dept_profile(user, department)
+    return caps.has_capability(user, department, caps.PEOPLE_MANAGE)
 
 
 #: Message every organization endpoint gives an account that has not verified.
@@ -289,4 +274,4 @@ def user_can_invite_to_department(user: UserOrAnon, department: Department) -> b
     invitation views read the same for both org types even though the underlying
     authority differs (a lab also lets its lead PI invite).
     """
-    return user_can_manage_department(user, department)
+    return caps.has_capability(user, department, caps.INVITES_ISSUE)

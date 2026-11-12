@@ -13,7 +13,7 @@ import { LabPlanCard } from "@/components/portal/sections/org-plan-card";
 import { PlansCard } from "@/components/portal/sections/plans-card";
 import { useEntitlements, useLabBilling } from "@/lib/portal/hooks";
 import type { Entitlements, MyLab } from "@/lib/portal/types";
-import { canManageLab } from "@/lib/portal/nav";
+import { CAPABILITY, can, holding } from "@/lib/portal/capabilities";
 
 const TIER_LABEL: Record<Entitlements["tier"], string> = {
   free: "Free",
@@ -149,7 +149,7 @@ function PersonalBilling() {
 function TeamPlanCard() {
   const appHref = useAppHref();
   const { labs } = usePortal();
-  const managed = (labs ?? []).filter(canManageLab);
+  const managed = (labs ?? []).filter(holding(CAPABILITY.BILLING_MANAGE));
 
   return (
     <Card className="p-[22px]">
@@ -256,7 +256,7 @@ function CurrentPlanCard() {
 // -- lab ----------------------------------------------------------------------
 
 function LabBilling({ lab }: { lab: MyLab }) {
-  if (!canManageLab(lab)) {
+  if (!can(lab, CAPABILITY.BILLING_MANAGE)) {
     return (
       <div>
         <SubsectionHeader title="Subscription management" />

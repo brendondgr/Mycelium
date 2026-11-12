@@ -28,6 +28,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts import capabilities as caps
+
 from .services import slack_events, slack_link, slack_resolve
 
 _SCOPES = ",".join(
@@ -194,6 +196,8 @@ def _managed_lab(request):
 
 class SlackLabCodeView(APIView):
     """A lab manager's code: mention Mylo with it in the channel for reports."""
+
+    capabilities = {"POST": caps.SERVERS_MANAGE}
 
     permission_classes = [IsAuthenticated]
 

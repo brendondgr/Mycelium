@@ -801,16 +801,22 @@ def cancel_invitation(
     return invitation
 
 
-def department_members_payload(department: Department) -> list[dict]:
+def department_members_payload(
+    department: Department, viewer: User | None = None
+) -> list[dict]:
     """The department's effective-membership roster with role, source, and seat state.
 
     Direct department members are listed first, then members who belong only through a
     lab under the department. ``seat_status`` reflects each person's seat on the active
-    department plan (``None`` while the plan is inactive).
+    department plan (``None`` while the plan is inactive). ``can_act`` says whether
+    ``viewer`` may re-role or remove that person — only direct members they outrank,
+    never themselves; it is ``false`` throughout without a viewer.
     """
     from apps.billing.models import Seat
     from apps.billing.seats import _active_subscription_for_department
     from apps.core.people import display_name, initials
+
+    from .permissions import dept_role_rank
 
     sub = _active_subscription_for_department(department)
     seat_status: dict[int, str] = {}
@@ -818,6 +824,11 @@ def department_members_payload(department: Department) -> list[dict]:
         seat_status = dict(
             Seat.objects.filter(subscription=sub).values_list("member_id", "status")
         )
+
+    mine = dept_role_rank(viewer, department) if viewer is not None else -1
+
+    def can_act(user_id: int, rank: int) -> bool:
+        return viewer is not None and viewer.pk != user_id and mine > rank
 
     rows: dict[int, dict] = {}
     for membership in DeptMembership.objects.filter(
@@ -833,6 +844,10 @@ def department_members_payload(department: Department) -> list[dict]:
             "source": "direct",
             "lab": None,
             "seat_status": seat_status.get(membership.user_id),
+            "can_act": can_act(
+                membership.user_id,
+                _direct_dept_rank(department, membership),
+            ),
         }
     for lm in LabMembership.objects.filter(
         lab__department=department
@@ -849,10 +864,22 @@ def department_members_payload(department: Department) -> list[dict]:
             "source": "lab",
             "lab": lm.lab.name,
             "seat_status": seat_status.get(lm.user_id),
+            # Folded in through a lab: no department role to change or remove.
+            "can_act": False,
         }
     return sorted(
         rows.values(), key=lambda r: (r["source"] != "direct", r["name"].lower())
     )
+
+
+def _direct_dept_rank(department: Department, membership: DeptMembership) -> int:
+    """A direct row's rank, read the way ``dept_role_rank`` reads it."""
+    from .permissions import DEPT_ROLE_RANK
+
+    if membership.user_id == department.owner_id:
+        return DEPT_ROLE_RANK[DeptMembership.Role.OWNER]
+    rank = DEPT_ROLE_RANK.get(membership.role, 0)
+    return min(rank, DEPT_ROLE_RANK[DeptMembership.Role.ADMIN])
 
 
 def department_labs_payload(department: Department) -> list[dict]:

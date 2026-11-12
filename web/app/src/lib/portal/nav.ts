@@ -17,13 +17,8 @@
  */
 
 import type { SectionKey } from "@/lib/portal/routes";
-import {
-  FEATURE,
-  type LabMember,
-  type LabRole,
-  type MyDepartment,
-  type MyLab,
-} from "@/lib/portal/types";
+import { CAPABILITY, can } from "@/lib/portal/capabilities";
+import { FEATURE, type MyDepartment, type MyLab } from "@/lib/portal/types";
 import type { WorkspaceScope } from "@/lib/portal/workspace";
 
 export type NavItem = {
@@ -50,105 +45,6 @@ export type NavIcon =
   | "account";
 
 export type NavGroup = { label: string; items: NavItem[] };
-
-/** A member with owner/admin/PI rights may edit the lab configuration. */
-export function canManageLab(lab: Pick<MyLab, "is_lead" | "role">): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
-
-/**
- * Lab roles ranked, mirroring ``apps.accounts.permissions.LAB_ROLE_RANK``.
- *
- * The server is the authority; this exists so the UI can hide a control it
- * knows will be refused rather than offer it and show a 403. Keep the two in
- * step — a drift here is a button that lies, not a security hole.
- */
-export const LAB_ROLE_RANK: Record<LabRole, number> = {
-  owner: 3,
-  admin: 2,
-  member: 1,
-  viewer: 0,
-};
-
-/**
- * A membership's rank: its role, raised to admin for a lead PI.
- *
- * Mirrors ``apps.accounts.permissions.membership_rank``. A lead PI holds every
- * right an admin does — grants the roles below admin and acts on members and
- * viewers — without outranking an admin.
- */
-export function labRank(m: Pick<MyLab, "is_lead" | "role">): number {
-  const rank = LAB_ROLE_RANK[m.role] ?? 0;
-  return m.is_lead ? Math.max(rank, LAB_ROLE_RANK.admin) : rank;
-}
-
-/** Whether the caller may hand out `role` — strictly below their own. */
-export function canGrantLabRole(
-  lab: Pick<MyLab, "is_lead" | "role">,
-  role: LabRole,
-): boolean {
-  return labRank(lab) > LAB_ROLE_RANK[role];
-}
-
-/** The roles the caller may assign, highest first. */
-export function grantableLabRoles(
-  lab: Pick<MyLab, "is_lead" | "role">,
-): LabRole[] {
-  return (["admin", "member", "viewer"] as LabRole[]).filter((role) =>
-    canGrantLabRole(lab, role),
-  );
-}
-
-/** Whether the caller may act on this member at all — re-role or remove them. */
-export function outranksLabMember(
-  lab: Pick<MyLab, "is_lead" | "role">,
-  member: Pick<LabMember, "role"> & { is_lead?: boolean },
-): boolean {
-  return labRank(lab) > labRank({ role: member.role, is_lead: Boolean(member.is_lead) });
-}
-
-/**
- * Department roles ranked, mirroring ``apps.accounts.permissions.DEPT_ROLE_RANK``.
- *
- * The head is the department's owner; anyone else's role tops out at admin.
- * Like the lab table, this only decides which controls to draw.
- */
-export const DEPT_ROLE_RANK: Record<LabRole, number> = LAB_ROLE_RANK;
-
-/** The caller's rank in a department: 3 for the head, else their direct role. */
-export function deptRank(dept: Pick<MyDepartment, "is_owner" | "role">): number {
-  if (dept.is_owner) return DEPT_ROLE_RANK.owner;
-  const rank = DEPT_ROLE_RANK[dept.role as LabRole] ?? -1;
-  return Math.min(rank, DEPT_ROLE_RANK.admin);
-}
-
-/** The department roles the caller may assign, highest first (never owner). */
-export function grantableDeptRoles(
-  dept: Pick<MyDepartment, "is_owner" | "role">,
-): LabRole[] {
-  const mine = deptRank(dept);
-  return (["admin", "member", "viewer"] as LabRole[]).filter(
-    (role) => mine > DEPT_ROLE_RANK[role],
-  );
-}
-
-/** Whether the caller may re-role or remove a direct department member. */
-export function outranksDeptMember(
-  dept: Pick<MyDepartment, "is_owner" | "role">,
-  member: { role: LabRole; is_head?: boolean },
-): boolean {
-  const theirs = member.is_head
-    ? DEPT_ROLE_RANK.owner
-    : Math.min(DEPT_ROLE_RANK[member.role] ?? 0, DEPT_ROLE_RANK.admin);
-  return deptRank(dept) > theirs;
-}
-
-/** Whether the caller may administer a department. */
-export function canManageDepartment(
-  dept: Pick<MyDepartment, "can_manage" | "is_owner">,
-): boolean {
-  return Boolean(dept.can_manage || dept.is_owner);
-}
 
 /** What the caller's rights and plan allow, passed in rather than read here. */
 export type NavContext = {
@@ -197,9 +93,7 @@ export function navGroupsFor(ctx: NavContext): NavGroup[] {
   const groups: NavGroup[] = [];
 
   if (scope.kind === "department") {
-    const manage = currentDepartment
-      ? canManageDepartment(currentDepartment)
-      : false;
+    const manage = can(currentDepartment, CAPABILITY.PROFILE_EDIT);
     groups.push({
       label: "Workspace",
       items: [
@@ -231,7 +125,7 @@ export function navGroupsFor(ctx: NavContext): NavGroup[] {
   }
 
   if (scope.kind === "lab") {
-    const manage = currentLab ? canManageLab(currentLab) : false;
+    const manage = can(currentLab, CAPABILITY.PROFILE_EDIT);
     groups.push({
       label: "Workspace",
       items: [

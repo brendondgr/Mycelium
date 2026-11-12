@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from apps.accounts import capabilities as caps
 from apps.accounts.models import Lab, LabMembership
 from apps.accounts.permissions import (
     user_can_edit_lab_profile,
@@ -576,6 +577,8 @@ class LabMentionTargetsView(APIView):
     is a far better outcome than refusing to offer the option.
     """
 
+    capabilities = {"GET": caps.PROFILE_EDIT}
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -635,6 +638,8 @@ class LabReminderChannelsView(APIView):
     hiccup all return HTTP 200 with an empty ``channels`` list, so the composer can
     still submit a "lab default" reminder without a live channel roster.
     """
+
+    capabilities = {"GET": caps.PROFILE_EDIT}
 
     permission_classes = [IsAuthenticated]
 

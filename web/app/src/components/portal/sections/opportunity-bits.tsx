@@ -27,7 +27,7 @@ import { formatIsoDate } from "@/lib/portal/dates";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 import type { DeadlineOption } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
-import { canManageLab } from "@/lib/portal/nav";
+import { CAPABILITY, holding } from "@/lib/portal/capabilities";
 
 
 /**
@@ -418,7 +418,7 @@ export function SaveButton({
   const { save, unsave } = useSaveOpportunity();
   const labsQuery = useMyLabs();
   const managedLabs = React.useMemo(
-    () => (labsQuery.data ?? []).filter(canManageLab),
+    () => (labsQuery.data ?? []).filter(holding(CAPABILITY.PROFILE_EDIT)),
     [labsQuery.data],
   );
   const { open, setOpen, ref } = useDismissable<HTMLDivElement>();

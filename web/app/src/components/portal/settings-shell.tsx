@@ -7,7 +7,7 @@ import { Building2, IdCard, Palette, Sparkles, UserRound, Users, type LucideIcon
 
 import { usePortal } from "@/components/portal/portal-context";
 import { useAppearance, type Density, type Motion } from "@/lib/portal/appearance";
-import { canManageDepartment, canManageLab } from "@/lib/portal/nav";
+import { CAPABILITY, can } from "@/lib/portal/capabilities";
 import { SECTION_ROUTES, routeWithScope, type SectionKey } from "@/lib/portal/routes";
 import { scopeKey } from "@/lib/portal/workspace";
 
@@ -33,8 +33,8 @@ export function useSettingsEntries(): SettingsEntry[] {
   }
   const group = scope.kind === "department" ? "Department" : "Lab";
   const manage =
-    (scope.kind === "lab" && currentLab && canManageLab(currentLab)) ||
-    (scope.kind === "department" && currentDepartment && canManageDepartment(currentDepartment));
+    (scope.kind === "lab" && can(currentLab, CAPABILITY.PROFILE_EDIT)) ||
+    (scope.kind === "department" && can(currentDepartment, CAPABILITY.PROFILE_EDIT));
   if (manage) {
     entries.push({
       key: "profile",

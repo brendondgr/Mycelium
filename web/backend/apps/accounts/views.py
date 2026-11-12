@@ -38,6 +38,7 @@ from apps.billing.services import (
     signup_grant_tier,
 )
 
+from . import capabilities as caps
 from . import (
     email_verification,
     institution,
@@ -391,6 +392,9 @@ def me(request: Request) -> Response:
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
     data = user_to_dict(user)
+    # What the caller may do in each lab and department they act in, keyed by
+    # lab slug and department id. The app reads this, never the role.
+    data["capabilities"] = caps.capabilities_for_user(user)
     demo = getattr(request, "demo", None)
     if demo is not None:
         # The public demo (apps/demo): the app shows its banner and Mylo's
@@ -810,6 +814,12 @@ class MyProfileView(RetrieveUpdateAPIView):
 class LabProfileView(RetrieveUpdateAPIView):
     """Lab members read the lab profile; the lead PI / owner / admin edit it."""
 
+    capabilities = {
+        "GET": caps.MEMBERSHIP,
+        "PUT": caps.PROFILE_EDIT,
+        "PATCH": caps.PROFILE_EDIT,
+    }
+
     serializer_class = LabProfileSerializer
 
     def get_object(self):
@@ -869,6 +879,13 @@ class LabLogoView(APIView):
     media route or nginx location is needed — the existing ``/api`` gateway
     already reaches the backend.
     """
+
+    capabilities = {
+        "GET": caps.MEMBERSHIP,
+        "POST": caps.PROFILE_EDIT,
+        "PUT": caps.PROFILE_EDIT,
+        "DELETE": caps.PROFILE_EDIT,
+    }
 
     parser_classes = [MultiPartParser, FormParser]
 
@@ -957,6 +974,12 @@ class LabWatchView(RetrieveUpdateAPIView):
     predate the watch model so an old lab still gets sensible defaults.
     """
 
+    capabilities = {
+        "GET": caps.MEMBERSHIP,
+        "PUT": caps.PROFILE_EDIT,
+        "PATCH": caps.PROFILE_EDIT,
+    }
+
     serializer_class = LabWatchPreferenceSerializer
 
     def get_object(self) -> LabWatchPreference:
@@ -973,6 +996,12 @@ class LabWatchView(RetrieveUpdateAPIView):
 
 class DeptProfileView(RetrieveUpdateAPIView):
     """Department members read the dept profile; the owner / admin edit it."""
+
+    capabilities = {
+        "GET": caps.MEMBERSHIP,
+        "PUT": caps.PROFILE_EDIT,
+        "PATCH": caps.PROFILE_EDIT,
+    }
 
     serializer_class = DeptProfileSerializer
 
@@ -1059,7 +1088,12 @@ class LabMembersView(ListAPIView):
     seat-ceiling breach returns 400.
     """
 
+    capabilities = {"GET": caps.PEOPLE_VIEW, "POST": caps.PEOPLE_MANAGE}
+
     serializer_class = LabMemberSerializer
+
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), "viewer": self.request.user}
 
     def get_queryset(self):
         lab = get_object_or_404(Lab, slug=self.kwargs["slug"])
@@ -1089,12 +1123,15 @@ class LabMembersView(ListAPIView):
         )
         membership = add_lab_member(lab, target, role=role, actor=request.user)
         return Response(
-            LabMemberSerializer(membership).data, status=status.HTTP_201_CREATED
+            LabMemberSerializer(membership, context={"viewer": request.user}).data,
+            status=status.HTTP_201_CREATED,
         )
 
 
 class LabMemberDetailView(APIView):
     """A lab manager changes a member's role or removes them (deferred seat removal)."""
+
+    capabilities = {"PATCH": caps.PEOPLE_MANAGE, "DELETE": caps.PEOPLE_MANAGE}
 
     def _managed_lab(self, slug: str) -> Lab:
         lab = get_object_or_404(Lab, slug=slug)
@@ -1107,7 +1144,9 @@ class LabMemberDetailView(APIView):
         target = get_object_or_404(User, username=username)
         role = str(request.data.get("role", "")).strip()
         membership = set_lab_member_role(lab, target, role, actor=request.user)
-        return Response(LabMemberSerializer(membership).data)
+        return Response(
+            LabMemberSerializer(membership, context={"viewer": request.user}).data
+        )
 
     def delete(self, request: Request, slug: str, username: str) -> Response:
         lab = self._managed_lab(slug)
@@ -1143,6 +1182,8 @@ class LabTransferOwnershipView(APIView):
     can hand it back.
     """
 
+    capabilities = {"POST": caps.TRANSFER}
+
     def post(self, request: Request, slug: str) -> Response:
         lab = get_object_or_404(Lab, slug=slug)
         # The service re-checks that the actor owns the lab; this is the cheap
@@ -1157,7 +1198,9 @@ class LabTransferOwnershipView(APIView):
             )
         target = get_object_or_404(User, username=username)
         membership = transfer_lab_ownership(lab, target, actor=request.user)
-        return Response(LabMemberSerializer(membership).data)
+        return Response(
+            LabMemberSerializer(membership, context={"viewer": request.user}).data
+        )
 
 
 # -- Lab invitations -----------------------------------------------------------
@@ -1169,6 +1212,8 @@ class LabInvitationsView(APIView):
     Only a PI (lead) or owner/admin may invite or see the invitation roster.
     Invite by email (matched to an account, else kept pending) or by username.
     """
+
+    capabilities = {"GET": caps.INVITES_ISSUE, "POST": caps.INVITES_ISSUE}
 
     def _get_lab(self) -> Lab:
         lab = get_object_or_404(Lab, slug=self.kwargs["slug"])
@@ -1256,6 +1301,8 @@ class InvitationRespondView(APIView):
 class LabInvitationCancelView(APIView):
     """A lab manager withdraws a pending invitation they sent."""
 
+    capabilities = {"POST": caps.INVITES_ISSUE}
+
     def post(self, request: Request, slug: str, pk) -> Response:
         lab = get_object_or_404(Lab, slug=slug)
         if not user_can_invite_to_lab(request.user, lab):
@@ -1314,11 +1361,13 @@ class DeptMembersView(APIView):
     nobody adds an owner — the head changes only by transfer.
     """
 
+    capabilities = {"GET": caps.PEOPLE_VIEW, "POST": caps.PEOPLE_MANAGE}
+
     def get(self, request: Request, pk) -> Response:
         department = get_object_or_404(Department, id=pk)
         if not user_has_department_access(request.user, department):
             raise PermissionDenied("You do not have access to this department.")
-        return Response(department_members_payload(department))
+        return Response(department_members_payload(department, request.user))
 
     def post(self, request: Request, pk) -> Response:
         department = get_object_or_404(Department, id=pk)
@@ -1338,12 +1387,15 @@ class DeptMembersView(APIView):
         )
         add_dept_member(department, target, role=role, actor=request.user)
         return Response(
-            department_members_payload(department), status=status.HTTP_201_CREATED
+            department_members_payload(department, request.user),
+            status=status.HTTP_201_CREATED,
         )
 
 
 class DeptMemberDetailView(APIView):
     """A department manager re-roles or removes a direct member, strictly downward."""
+
+    capabilities = {"PATCH": caps.PEOPLE_MANAGE, "DELETE": caps.PEOPLE_MANAGE}
 
     def _managed(self, pk) -> Department:
         department = get_object_or_404(Department, id=pk)
@@ -1356,7 +1408,7 @@ class DeptMemberDetailView(APIView):
         target = get_object_or_404(User, username=username)
         role = str(request.data.get("role", "")).strip()
         set_dept_member_role(department, target, role, actor=request.user)
-        return Response(department_members_payload(department))
+        return Response(department_members_payload(department, request.user))
 
     def delete(self, request: Request, pk, username: str) -> Response:
         department = self._managed(pk)
@@ -1392,6 +1444,8 @@ class DeptTransferOwnershipView(APIView):
     it cannot be undone from the outgoing side.
     """
 
+    capabilities = {"POST": caps.TRANSFER}
+
     def post(self, request: Request, pk) -> Response:
         department = get_object_or_404(Department, id=pk)
         if not user_has_department_access(request.user, department):
@@ -1405,11 +1459,13 @@ class DeptTransferOwnershipView(APIView):
         target = get_object_or_404(User, username=username)
         transfer_department_ownership(department, target, actor=request.user)
         department.refresh_from_db()
-        return Response(department_members_payload(department))
+        return Response(department_members_payload(department, request.user))
 
 
 class DeptLabsView(APIView):
     """Labs under a department (any member reads); a manager attaches or creates one."""
+
+    capabilities = {"GET": caps.MEMBERSHIP, "POST": caps.PEOPLE_MANAGE}
 
     def get(self, request: Request, pk) -> Response:
         department = get_object_or_404(Department, id=pk)
@@ -1442,9 +1498,11 @@ class DeptLabsView(APIView):
 class DeptLabDetailView(APIView):
     """A department manager detaches a lab, or toggles its inclusion in the plan."""
 
+    capabilities = {"PATCH": caps.BILLING_MANAGE, "DELETE": caps.PEOPLE_MANAGE}
+
     def patch(self, request: Request, pk, slug: str) -> Response:
         department = get_object_or_404(Department, id=pk)
-        if not user_can_manage_department(request.user, department):
+        if not caps.has_capability(request.user, department, caps.BILLING_MANAGE):
             raise PermissionDenied("Only an owner or admin can change a lab's plan.")
         lab = get_object_or_404(Lab, slug=slug)
         if "included_in_plan" not in request.data:
@@ -1770,6 +1828,8 @@ class LabIntakeSynthesizeView(APIView):
     working with no model. Nothing is saved — the client reviews, then PATCHes.
     """
 
+    capabilities = {"POST": caps.PROFILE_EDIT}
+
     def post(self, request: Request, slug: str) -> Response:
         lab = get_object_or_404(Lab, slug=slug)
         if not user_can_edit_lab_profile(request.user, lab):
@@ -1882,20 +1942,39 @@ class MyDepartmentsView(APIView):
 
 
 def _department_row(department: Department, user: User) -> dict[str, object]:
-    """One department as the app's department list wants it."""
+    """One department as the app's department list wants it.
+
+    ``capabilities`` is what the caller may do here and ``grantable_roles`` the
+    roles they may hand out, highest first; the app reads both rather than
+    re-deriving them from ``role``.
+    """
+    from .permissions import DEPT_ROLE_RANK, dept_role_rank
+
     role = DeptMembership.Role.OWNER if department.owner_id == user.id else None
     if role is None:
         membership = DeptMembership.objects.filter(
             department=department, user=user
         ).first()
         role = membership.role if membership else DeptMembership.Role.MEMBER
+    held = caps.dept_capabilities(user, department)
+    mine = dept_role_rank(user, department)
     return {
         "id": str(department.id),
         "name": department.name,
         "institution": department.institution,
         "role": role,
         "is_owner": department.owner_id == user.id,
-        "can_manage": user_can_manage_department(user, department),
+        "can_manage": caps.PEOPLE_MANAGE in held,
+        "capabilities": [c for c in caps.CAPABILITIES if c in held],
+        "grantable_roles": [
+            r
+            for r in (
+                DeptMembership.Role.ADMIN,
+                DeptMembership.Role.MEMBER,
+                DeptMembership.Role.VIEWER,
+            )
+            if mine > DEPT_ROLE_RANK[r]
+        ],
     }
 
 
@@ -1972,6 +2051,8 @@ class _OrgInvitesView(APIView):
 class LabInvitesView(_OrgInvitesView):
     """A lab's join invitations: `GET` lists them, `POST` creates one."""
 
+    capabilities = {"GET": caps.INVITES_ISSUE, "POST": caps.INVITES_ISSUE}
+
     def _resolve(self, slug: str, **kwargs) -> Lab:
         lab = get_object_or_404(Lab, slug=slug)
         if not user_can_invite_to_lab(self.request.user, lab):
@@ -1984,6 +2065,8 @@ class LabInvitesView(_OrgInvitesView):
 
 class DeptInvitesView(_OrgInvitesView):
     """A department's join invitations: `GET` lists them, `POST` creates one."""
+
+    capabilities = {"GET": caps.INVITES_ISSUE, "POST": caps.INVITES_ISSUE}
 
     def _resolve(self, pk, **kwargs) -> Department:
         department = get_object_or_404(Department, id=pk)
@@ -2000,6 +2083,8 @@ class DeptInvitesView(_OrgInvitesView):
 class LabInviteRevokeView(APIView):
     """Withdraw one of a lab's join invitations."""
 
+    capabilities = {"POST": caps.INVITES_ISSUE}
+
     def post(self, request: Request, slug: str, pk) -> Response:
         lab = get_object_or_404(Lab, slug=slug)
         if not user_can_invite_to_lab(request.user, lab):
@@ -2011,6 +2096,8 @@ class LabInviteRevokeView(APIView):
 
 class DeptInviteRevokeView(APIView):
     """Withdraw one of a department's join invitations."""
+
+    capabilities = {"POST": caps.INVITES_ISSUE}
 
     def post(self, request: Request, pk, invite_id) -> Response:
         department = get_object_or_404(Department, id=pk)

@@ -72,7 +72,9 @@ class _Action:
     know exactly who can do what.
     """
 
-    #: "manage" → owner/admin, "edit" → +PI/lead, "access" → any member, "" → personal.
+    #: A level from ``apps.accounts.capabilities.GATE_LEVELS``: "manage" →
+    #: org.servers.manage, "edit" → org.profile.edit, "access" → any member,
+    #: "" → personal.
     lab_permission: str = ""
     #: A ``billing.entitlements.Feature`` required of the *lab*, if any.
     lab_feature: str = ""
@@ -331,17 +333,7 @@ def _resolve_binding(binding_id, *, guild_id: str):
 def _has_binding_permission(user, binding, level: str) -> bool:
     if binding.lab_id:
         return _has_lab_permission(user, binding.lab, level)
-    from apps.accounts.permissions import (
-        user_can_edit_dept_profile,
-        user_can_manage_department,
-        user_has_department_access,
-    )
-
-    if level == "manage":
-        return user_can_manage_department(user, binding.department)
-    if level == "edit":
-        return user_can_edit_dept_profile(user, binding.department)
-    return user_has_department_access(user, binding.department)
+    return _has_org_permission(user, binding.department, level)
 
 
 def _department_entitled(department, feature: str) -> tuple[bool, str]:
@@ -356,18 +348,18 @@ def _department_entitled(department, feature: str) -> tuple[bool, str]:
 
 
 def _has_lab_permission(user, lab, level: str) -> bool:
-    """Terminate in Mycelium's own permission functions — never a Discord-side rule."""
-    from apps.accounts.permissions import (
-        user_can_edit_lab_profile,
-        user_can_manage_lab,
-        user_has_lab_access,
-    )
+    """Terminate in Mycelium's own capabilities — never a Discord-side rule."""
+    return _has_org_permission(user, lab, level)
 
-    if level == "manage":
-        return user_can_manage_lab(user, lab)
-    if level == "edit":
-        return user_can_edit_lab_profile(user, lab)
-    return user_has_lab_access(user, lab)
+
+def _has_org_permission(user, org, level: str) -> bool:
+    """A gate level is a capability (``capabilities.GATE_LEVELS``), so the bot
+    and the web app answer "may they?" from the same table. An unknown level is
+    read as plain membership, the narrowest thing the gate ever asks."""
+    from apps.accounts import capabilities as caps
+
+    capability = caps.GATE_LEVELS.get(level, caps.MEMBERSHIP)
+    return caps.has_capability(user, org, capability)
 
 
 def _lab_entitled(lab, feature: str) -> tuple[bool, str]:

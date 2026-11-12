@@ -9,7 +9,7 @@ import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { MembersIcon, PlusIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import { useLabMembers } from "@/lib/portal/hooks";
-import { canManageLab } from "@/lib/portal/nav";
+import { CAPABILITY, can } from "@/lib/portal/capabilities";
 import { MemberRow } from "@/components/portal/sections/member-row";
 import { OrgInvitePanel } from "@/components/portal/sections/org-invite-card";
 
@@ -45,7 +45,7 @@ export function MembersSection() {
   // No lab in scope means no roster and nothing to invite to; a plain member has
   // a roster but no authority over it. Either way the control is absent rather
   // than present-and-refusing, because there is no error worth explaining.
-  const canInvite = Boolean(currentLab && canManageLab(currentLab));
+  const canInvite = can(currentLab, CAPABILITY.INVITES_ISSUE);
 
   // Subtitle varies: unscoped vs. loaded vs. loading
   const subtitle: React.ReactNode = (() => {

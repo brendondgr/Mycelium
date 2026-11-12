@@ -444,13 +444,45 @@ class MyLabSerializer(serializers.Serializer):
         source="lab.logo_version", read_only=True, allow_null=True
     )
 
+    #: What the caller may do here (``apps.accounts.capabilities``). The app
+    #: asks ``can(lab, capability)`` of this list rather than reading the role.
+    capabilities = serializers.SerializerMethodField()
+    #: The roles the caller may hand out here, highest first — never owner.
+    grantable_roles = serializers.SerializerMethodField()
+
     def get_department(self, membership: LabMembership):
         dept = membership.lab.department
         return dept.name if dept else None
 
+    def get_capabilities(self, membership: LabMembership) -> list[str]:
+        from .capabilities import CAPABILITIES, membership_capabilities
+
+        held = membership_capabilities(membership)
+        return [c for c in CAPABILITIES if c in held]
+
+    def get_grantable_roles(self, membership: LabMembership) -> list[str]:
+        from .permissions import LAB_ROLE_RANK, membership_rank
+
+        mine = membership_rank(membership)
+        return [r for r in GRANTABLE_ROLES if mine > LAB_ROLE_RANK[r]]
+
+
+#: The roles an ordinary grant can hand out, highest first. Owner moves only by
+#: a transfer route, never by a grant.
+GRANTABLE_ROLES = (
+    LabMembership.Role.ADMIN,
+    LabMembership.Role.MEMBER,
+    LabMembership.Role.VIEWER,
+)
+
 
 class LabMemberSerializer(serializers.Serializer):
-    """A lab member as a read-only display row (from a ``LabMembership``)."""
+    """A lab member as a read-only display row (from a ``LabMembership``).
+
+    ``can_act`` says whether the *caller* may re-role or remove this member —
+    they outrank them and are not them. It needs ``viewer`` (a ``User``) in the
+    serializer context and is ``false`` without it.
+    """
 
     username = serializers.CharField(source="user.username")
     name = serializers.SerializerMethodField()
@@ -458,6 +490,18 @@ class LabMemberSerializer(serializers.Serializer):
     email = serializers.CharField(source="user.email")
     role = serializers.CharField()
     is_lead = serializers.BooleanField()
+    can_act = serializers.SerializerMethodField()
+
+    def get_can_act(self, membership: LabMembership) -> bool:
+        from .permissions import lab_role_rank, membership_rank
+
+        viewer = self.context.get("viewer")
+        if viewer is None or viewer.pk == membership.user_id:
+            return False
+        ranks = self.context.setdefault("_viewer_rank", {})
+        if membership.lab_id not in ranks:
+            ranks[membership.lab_id] = lab_role_rank(viewer, membership.lab)
+        return ranks[membership.lab_id] > membership_rank(membership)
 
     def get_name(self, membership: LabMembership) -> str:
         return display_name(membership.user)

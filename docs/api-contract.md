@@ -394,6 +394,38 @@ CSRF failure or a failed/locked-out access code.
 ### `POST /api/auth/logout/` · `GET /api/auth/me/`
 
 `logout` returns `204`. `me` returns the user summary, `401` when anonymous.
+It also carries the caller's **capabilities** in every lab and department they
+act in, keyed by lab slug and department id:
+
+```json
+"capabilities": {
+  "labs": { "reyes-lab": ["org.profile.edit", "org.people.view", "..."] },
+  "departments": { "uuid": ["org.people.view"] }
+}
+```
+
+### Capabilities
+
+What a person may do in an org is a closed list, resolved on the server from
+fixed role presets (`apps/accounts/capabilities.py`) and read — never
+recomputed — by the app, which asks `can(org, capability)`:
+
+`org.profile.edit`, `org.people.view`, `org.people.manage`,
+`org.invites.issue`, `org.projects.policy`, `org.projects.oversee`,
+`org.servers.manage`, `org.announcements.manage`, `org.mylo.policy`,
+`org.billing.manage`, `org.transfer`.
+
+| Role | Capabilities |
+|---|---|
+| Lab owner · department head | all |
+| Admin · lab lead PI · a non-head `owner` department row | all but `org.transfer` |
+| Member · viewer · someone in a department only through one of its labs | `org.people.view` |
+
+Departments listed are the ones the caller heads or holds a direct role in.
+Each org-scoped view declares the capability each of its methods needs; plain
+membership reads are declared as `org.membership`, which is not a capability.
+The Discord gate's levels map onto the same list: `manage` →
+`org.servers.manage`, `edit` → `org.profile.edit`, `access` → membership.
 
 ## Account, email verification & password
 
@@ -591,7 +623,9 @@ other `owner` row counts as an admin. `POST departments/<id>/members/`,
 refuse a role the caller cannot grant (`403`, recorded as
 `dept.member.role.refused`); an admin cannot re-role or remove another admin
 (a refused removal is `403`, recorded as `dept.member.remove.refused`), and the
-head cannot be removed (`409`). Roster rows carry `is_head`.
+head cannot be removed (`409`). Roster rows carry `is_head`, and `can_act`:
+whether the caller may re-role or remove that person (direct members they
+outrank, never themselves; always `false` for someone there through a lab).
 
 ### `POST /api/auth/departments/<id>/transfer-ownership/`
 
@@ -631,12 +665,16 @@ The caller's lab memberships, for the workspace switcher:
 ```json
 [
   { "slug": "reyes-lab", "name": "Reyes Lab", "role": "owner", "is_lead": true,
-    "department": "Biology", "has_logo": true, "logo_version": 1752719700 }
+    "department": "Biology", "has_logo": true, "logo_version": 1752719700,
+    "capabilities": ["org.profile.edit", "..."],
+    "grantable_roles": ["admin", "member", "viewer"] }
 ]
 ```
 
 `role` is `owner | admin | member | viewer`; `is_lead` marks a PI. `logo_version`
-is a cache-busting token (`null` when unset).
+is a cache-busting token (`null` when unset). `capabilities` is the caller's set
+here (see Capabilities); `grantable_roles` the roles they may hand out, highest
+first, never `owner`.
 
 ### `POST /api/auth/labs/`
 
@@ -651,8 +689,12 @@ they can act on, not those they are folded into through a lab:
 
 ```json
 [{ "id": "uuid", "name": "Biology", "institution": "Northgate University",
-   "role": "owner", "is_owner": true, "can_manage": true }]
+   "role": "owner", "is_owner": true, "can_manage": true,
+   "capabilities": ["org.profile.edit", "..."],
+   "grantable_roles": ["admin", "member", "viewer"] }]
 ```
+
+`can_manage` is `org.people.manage`, kept for older readers.
 
 `POST { "name" }` creates one with the caller as head, a CANOPY plan that starts
 **inactive**, and a pending founder seat. Its `institution` is the caller's
@@ -674,8 +716,12 @@ Any member may read. Leads sort first.
 
 ```json
 [{ "username": "lena", "name": "Lena Reyes", "initials": "LR",
-   "email": "l@uni.edu", "role": "owner", "is_lead": true }]
+   "email": "l@uni.edu", "role": "owner", "is_lead": true, "can_act": false }]
 ```
+
+`can_act` says whether the caller may re-role or remove that member: they
+outrank them and are not them. The add, role-change and transfer responses
+carry the same row.
 
 ### Lab invitations
 

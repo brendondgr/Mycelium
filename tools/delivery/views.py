@@ -1,6 +1,7 @@
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 
+from apps.accounts import capabilities as caps
 from apps.accounts.models import Lab, LabMembership
 from apps.accounts.permissions import (
     lab_manager_q,
@@ -383,6 +384,8 @@ class BriefingDetailView(APIView):
 class LabBriefingHistoryView(APIView):
     """A lab's retained briefings, newest first. Any lab member may read them."""
 
+    capabilities = {"GET": caps.MEMBERSHIP}
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, slug):
@@ -395,6 +398,8 @@ class LabBriefingHistoryView(APIView):
 
 class LabBriefingDetailView(APIView):
     """One dated briefing for a lab, in the same envelope as the lab's current one."""
+
+    capabilities = {"GET": caps.MEMBERSHIP}
 
     permission_classes = [IsAuthenticated]
 
@@ -415,6 +420,8 @@ class LabDailyBriefingView(APIView):
     briefing stage also fans out to entitled labs). Any lab member may read it; an
     honest empty envelope is the "no run yet" state, same as the personal view.
     """
+
+    capabilities = {"GET": caps.MEMBERSHIP}
 
     permission_classes = [IsAuthenticated]
 
@@ -1229,6 +1236,8 @@ class LabRecommendationsView(APIView):
     reads ``counts`` and a lab feed reads the lists.
     """
 
+    capabilities = {"GET": caps.MEMBERSHIP}
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, slug):
@@ -1644,6 +1653,8 @@ class LabSavedItemsView(APIView):
     envelope carries ``can_manage`` so the client can gate the save/remind/remove
     affordances to managers (who alone may mutate a lab save).
     """
+
+    capabilities = {"GET": caps.MEMBERSHIP}
 
     permission_classes = [IsAuthenticated]
 

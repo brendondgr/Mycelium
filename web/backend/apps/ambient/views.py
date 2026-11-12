@@ -14,6 +14,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts import capabilities as caps
+
 from . import editing
 
 
@@ -350,6 +352,8 @@ class ProjectDevelopmentsView(APIView):
 
 class LabChangesView(APIView):
     """``GET`` — a lab's "What changed": shared projects only, lab members only."""
+
+    capabilities = {"GET": caps.MEMBERSHIP}
 
     def get(self, request: Request, slug: str) -> Response:
         from apps.accounts.models import Lab, LabMembership

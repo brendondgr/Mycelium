@@ -12,7 +12,7 @@ import { updateProjectState } from "@/lib/portal/mutations";
 import { ProjectCapReachedError } from "@/lib/portal/mutations";
 import type { MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
-import { canManageLab } from "@/lib/portal/nav";
+import { CAPABILITY, can, holding } from "@/lib/portal/capabilities";
 
 
 type Scope = { kind: "personal" } | { kind: "lab"; slug: string; name: string };
@@ -40,10 +40,10 @@ function samesScope(a: Scope, b: Scope): boolean {
  */
 export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
   const { labs, currentLab, openProject } = usePortal();
-  const managedLabs = React.useMemo(() => labs.filter(canManageLab), [labs]);
+  const managedLabs = React.useMemo(() => labs.filter(holding(CAPABILITY.PROJECTS_OVERSEE)), [labs]);
 
   const defaultScope: Scope = React.useMemo(() => {
-    if (currentLab && canManageLab(currentLab)) {
+    if (currentLab && can(currentLab, CAPABILITY.PROJECTS_OVERSEE)) {
       return { kind: "lab", slug: currentLab.slug, name: currentLab.name };
     }
     return { kind: "personal" };

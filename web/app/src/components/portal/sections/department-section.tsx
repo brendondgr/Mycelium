@@ -23,7 +23,7 @@ import {
   useDeptMembers,
   useMyDepartments,
 } from "@/lib/portal/hooks";
-import { grantableDeptRoles, outranksDeptMember } from "@/lib/portal/nav";
+import { CAPABILITY, can } from "@/lib/portal/capabilities";
 import type {
   DeptLabRow,
   DeptMemberRow,
@@ -49,7 +49,7 @@ export function DepartmentSection() {
   // server re-checks every one of them.
   const departments = useMyDepartments();
   const mine = (departments.data ?? []).find((d) => d.id === deptId) ?? null;
-  const canManage = Boolean(billing.data?.can_manage);
+  const canManage = can(mine, CAPABILITY.PEOPLE_MANAGE);
   const deptName = billing.data?.scope_name ?? "Department";
   // No plan to show when the instance runs without billing (mycelium.toml).
   const { data: entitlements } = useEntitlements();
@@ -68,7 +68,7 @@ export function DepartmentSection() {
       />
       <div className="grid items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-4">
-          {canManage ? (
+          {can(mine, CAPABILITY.INVITES_ISSUE) ? (
             <OrgInviteCard
               kind="department"
               id={deptId}
@@ -85,14 +85,16 @@ export function DepartmentSection() {
           <DeptLabsCard deptId={deptId} canManage={canManage} />
         </div>
         <div className="space-y-4">
-          {canManage && deptId ? <DeptDiscordCard deptId={deptId} /> : null}
+          {can(mine, CAPABILITY.SERVERS_MANAGE) && deptId ? (
+            <DeptDiscordCard deptId={deptId} />
+          ) : null}
           {billingOn ? <DeptPlanCard deptId={deptId} /> : null}
-          {canManage && deptId ? (
+          {can(mine, CAPABILITY.MYLO_POLICY) && deptId ? (
             <AgentPolicyCard kind="department" orgRef={deptId} name={deptName} />
           ) : null}
         </div>
       </div>
-      {canManage ? (
+      {can(mine, CAPABILITY.ANNOUNCEMENTS_MANAGE) ? (
         <div className="mt-4">
           <AnnouncementsCard target={{ department: deptId }} name={deptName} />
         </div>
@@ -213,9 +215,11 @@ function capitalize(s: string): string {
 /**
  * Role, remove and hand-over controls for one direct department member.
  *
- * Authority runs strictly downward (``DEPT_ROLE_RANK``): an admin re-roles and
- * removes members and viewers, only the head grants admin, and the head
- * changes only by transfer. A control the caller cannot use is not drawn.
+ * Authority runs strictly downward (``DEPT_ROLE_RANK`` on the server): an admin
+ * re-roles and removes members and viewers, only the head grants admin, and
+ * the head changes only by transfer. The server says which rows the caller may
+ * act on (`can_act`) and which roles they may grant; a control the caller cannot
+ * use is not drawn.
  */
 function DeptMemberControls({
   deptId,
@@ -232,9 +236,9 @@ function DeptMemberControls({
   const [confirming, setConfirming] = React.useState<null | "remove" | "hand">(
     null,
   );
-  const canAct = !isSelf && outranksDeptMember(mine, member);
-  const roles = grantableDeptRoles(mine);
-  const canTransfer = mine.is_owner && !isSelf && !member.is_head;
+  const canAct = !isSelf && member.can_act;
+  const roles = mine.grantable_roles;
+  const canTransfer = can(mine, CAPABILITY.TRANSFER) && !isSelf && !member.is_head;
   const busy =
     removeMember.isPending || setMemberRole.isPending || transfer.isPending;
   const error =

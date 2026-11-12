@@ -51,7 +51,7 @@ import type {
   MyLab,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
-import { canManageLab } from "@/lib/portal/nav";
+import { CAPABILITY, can } from "@/lib/portal/capabilities";
 
 /** Pull the (untyped) `clusters` array off a lab's stored `interests` blob. */
 function readClusters(interests: Record<string, unknown> | undefined | null): ClusterGroup[] {
@@ -150,7 +150,7 @@ export function LabsSection() {
   // When a lab is the active workspace, this page is that lab's management —
   // no list of other labs (switch labs from the workspace switcher instead).
   if (currentLab) {
-    const canManage = canManageLab(currentLab);
+    const canManage = can(currentLab, CAPABILITY.PROFILE_EDIT);
     return (
       <div>
         <SectionHeader
@@ -393,12 +393,12 @@ export function LabDetail({
   onEditProfile?: () => void;
 }) {
   const { user } = usePortal();
-  const canManage = canManageLab(lab);
+  const canManage = can(lab, CAPABILITY.PROFILE_EDIT);
 
   return (
     <div className="space-y-4">
       <LabPurposeCard lab={lab} canManage={canManage} onEdit={onEditProfile} />
-      {canManage ? (
+      {can(lab, CAPABILITY.INVITES_ISSUE) ? (
         <OrgInviteCard
           kind="lab"
           id={lab.slug}
@@ -406,7 +406,7 @@ export function LabDetail({
           isVerified={user.isVerified}
         />
       ) : null}
-      {canManage ? <DiscordSyncCard lab={lab} /> : null}
+      {can(lab, CAPABILITY.SERVERS_MANAGE) ? <DiscordSyncCard lab={lab} /> : null}
       <MembersCard lab={lab} />
       <ProjectsCard lab={lab} canManage={canManage} />
     </div>

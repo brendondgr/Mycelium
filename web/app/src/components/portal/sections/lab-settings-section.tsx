@@ -26,7 +26,7 @@ import { SlackLabCard, TeamsLabCard } from "@/components/portal/ambient/slack-ca
 import { useDeleteLabLogo, useUploadLabLogo } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
-import { canManageLab } from "@/lib/portal/nav";
+import { CAPABILITY, can } from "@/lib/portal/capabilities";
 
 
 const GHOST_BUTTON =
@@ -58,7 +58,7 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
   const { user } = usePortal();
   const [editorTab, setEditorTab] = React.useState<LabEditorTab | null>(null);
 
-  if (!canManageLab(lab)) {
+  if (!can(lab, CAPABILITY.PROFILE_EDIT)) {
     return (
       <div>
         <SectionHeader eyebrow="Workspace" title="Lab settings" />

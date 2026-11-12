@@ -31,7 +31,7 @@ import {
   useLabRecommendations,
 } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
-import { canManageLab as canManage } from "@/lib/portal/nav";
+import { CAPABILITY, can } from "@/lib/portal/capabilities";
 
 
 /**
@@ -52,7 +52,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
   const [editing, setEditing] = React.useState(false);
 
   const profile = profileQuery.data;
-  const manage = canManage(lab);
+  const manage = can(lab, CAPABILITY.PROFILE_EDIT);
 
   const profileEmpty =
     !profileQuery.isLoading &&
