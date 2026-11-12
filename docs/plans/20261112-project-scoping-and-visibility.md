@@ -1,7 +1,7 @@
 # Project Scoping and Visibility — Implementation Plan
 
 **Status:** decisions answered on 2026-11-12 and folded in; nothing built.
-Three points are still open (last section). Nothing ships ahead of the rest:
+Two assumptions are still marked in the last section. Nothing ships ahead of the rest:
 the phases are an order of work inside one build, not separate releases.
 **Correlation ID:** `20261112-project-scoping`
 **Companion plan:** `20261112-settings-and-workspace-gating.md`
@@ -121,7 +121,7 @@ Both see everything, whatever a project's scope:
   and every department project, as they can today. This is adjustable per lab:
   a lab setting, *What the department sees of this lab's projects* —
   **Everything** (default) or **Names only** (name, owner, member count,
-  scope). See open point 1 for who holds that switch.
+  scope). The lab's PI sets it.
 - **Seeing is not belonging.** An overseer who is not a member does not get
   the project in "My projects", their personal report, or their attention
   shares, and oversight never widens where Mylo may mention it.
@@ -325,9 +325,8 @@ Validation: `uv run --project web/backend pytest apps/research tools/delivery/te
 
 ## Still open
 
-1. **Who holds the *What the department sees* switch.** This plan assumes the
-   lab's PI sets it. If the department head should hold it instead, it is a
-   department setting per lab and a PI cannot narrow it.
+1. *Settled 2026-11-12:* the lab's PI holds the *What the department sees*
+   switch, as the lab's admin.
 2. **Decision 7.** Assumed: themes learned from an `invite_only` project stay
    on the project and never name a person in a wider announcement. The cost
    is that a well-matched person may not be flagged for a call.
