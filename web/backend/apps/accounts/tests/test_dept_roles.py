@@ -218,6 +218,7 @@ def test_an_admin_may_not_remove_another_admin(client: APIClient) -> None:
 
     assert _remove(client, department, "other").status_code == 403
     assert DeptMembership.objects.filter(user__username="other").exists()
+    assert AuditEvent.objects.filter(action="dept.member.remove.refused").exists()
 
 
 @pytest.mark.django_db
@@ -251,6 +252,9 @@ def test_an_admin_cannot_invite_an_admin(client: APIClient) -> None:
     )
     assert response.status_code == 403
     assert not OrgInvite.objects.filter(department=department).exists()
+    assert AuditEvent.objects.filter(
+        action="dept.member.role.refused", target_id=str(department.id)
+    ).exists()
 
 
 @pytest.mark.django_db

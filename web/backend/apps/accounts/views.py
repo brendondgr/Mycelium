@@ -1371,6 +1371,13 @@ class DeptMemberDetailView(APIView):
         if request.user != target and not user_outranks_dept_member(
             request.user, department, target
         ):
+            record_audit_event(
+                actor=request.user,
+                action="dept.member.remove.refused",
+                target_type="department",
+                target_id=str(department.id),
+                metadata={"user_id": target.id},
+            )
             raise PermissionDenied(
                 "You cannot remove someone at or above your own role."
             )

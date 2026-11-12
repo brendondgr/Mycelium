@@ -636,6 +636,16 @@ def _require_grantable(
 
     if user_can_grant_org_role(creator, role, lab=lab, department=department):
         return
+    from .services import record_audit_event
+
+    org = lab if lab is not None else department
+    record_audit_event(
+        actor=creator,
+        action=f"{'lab' if lab is not None else 'dept'}.member.role.refused",
+        target_type="lab" if lab is not None else "department",
+        target_id=str(org.id),
+        metadata={"user_id": None, "role": role, "via": "invite"},
+    )
     head = "lab's PI" if lab is not None else "department head"
     raise PermissionDenied(f"Only the {head} can invite someone as {role}.")
 

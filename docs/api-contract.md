@@ -570,7 +570,7 @@ rule, ranked `owner > admin > member > viewer`: an actor may only act on a
 target **below** them, and may only grant a role **below** their own. So the PI
 alone creates admins, the PI alone creates owners (and only through the transfer
 route), and an admin can neither re-role nor remove another admin or the owner.
-A refusal is `403` with `reason` `role_above_you`, and is recorded as
+A refusal is `403` with a plain `detail` message, and is recorded as
 `lab.member.role.refused`.
 
 Adding a member (`POST labs/<slug>/members/`) and issuing an invitation (both
@@ -589,8 +589,9 @@ head is `Department.owner`, with an `owner` membership row kept in step; any
 other `owner` row counts as an admin. `POST departments/<id>/members/`,
 `PATCH`/`DELETE …/members/<username>/` and `POST departments/<id>/invites/`
 refuse a role the caller cannot grant (`403`, recorded as
-`dept.member.role.refused`); an admin cannot re-role or remove another admin,
-and the head cannot be removed (`409`). Roster rows carry `is_head`.
+`dept.member.role.refused`); an admin cannot re-role or remove another admin
+(a refused removal is `403`, recorded as `dept.member.remove.refused`), and the
+head cannot be removed (`409`). Roster rows carry `is_head`.
 
 ### `POST /api/auth/departments/<id>/transfer-ownership/`
 
