@@ -199,8 +199,10 @@ without department access.
                    "member_count": 3, "names_only": true }] }
 ```
 
-`names_only` is filled only for the department's owner / admins, and only with
-projects of labs set to `names_only` that they cannot otherwise open. A reduced row
+`projects` holds what the caller may open (member, or an overseer). `names_only` is
+filled only for the department's owner / admins, and only with projects of labs
+set to `names_only` that they cannot otherwise open, whatever those projects'
+scope. A reduced row
 never carries goals, state, feed, files or the roster.
 
 ### Ambient attribution — `/api/ambient/`
@@ -762,8 +764,11 @@ gate — that guards standing an org up, not being brought into one. `400` with 
 
 ### `GET /api/projects/[?lab=<slug>]`
 
-Projects the caller may see (`apps/research/visibility.py`; `visible_to` is its
-queryset form). `lab` narrows and never widens. Each project has one
+Projects the caller may open (`apps/research/visibility.py`; `visible_to` is the
+queryset form of `can_open`): those they are a member of, their personal ones,
+and, for overseers, the projects they oversee. Being inside a project's scope only
+shows that it exists (`can_see`, a directory row in Phase 2) and never returns a
+full row here. `lab` narrows and never widens. Each project has one
 `visibility`: `invite_only` (default — its members, plus the lab's PI / owner /
 admins and the department's heads), `lab` (the owning lab's members), `department`
 (also the department's effective members; a lab project needs a lab in a

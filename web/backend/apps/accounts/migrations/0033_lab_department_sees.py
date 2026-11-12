@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='lab',
             name='department_sees',
-            field=models.CharField(choices=[('everything', 'Everything'), ('names_only', 'Names only')], default='everything', help_text="What the department's heads see of this lab's projects: everything (open any project) or names only (name, owner, member count, scope). Set by the lab's PI / owner / admin, never the department. A project whose own visibility reaches the department is still seen in full.", max_length=20),
+            field=models.CharField(choices=[('everything', 'Everything'), ('names_only', 'Names only')], default='everything', help_text="What the department's heads see of this lab's projects: everything (open any project) or names only (name, owner, member count, scope). Set by the lab's PI / owner / admin, never the department. Projects the head is a member of open in full either way.", max_length=20),
         ),
     ]

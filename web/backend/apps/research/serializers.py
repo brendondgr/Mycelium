@@ -10,7 +10,7 @@ from apps.core.people import display_name, initials
 
 from . import visibility as rules
 from .models import Project, ProjectInvitation, ProjectMember, Visibility
-from .permissions import EDIT_ROLES, user_can_edit_project
+from .permissions import EDIT_ROLES, user_manages_project_scope
 
 
 def _clean_list(value) -> list[str]:
@@ -307,7 +307,9 @@ class ProjectSerializer(serializers.ModelSerializer):
             cache = {}
             self._editable_scopes = cache
         if key not in cache:
-            cache[key] = user_can_edit_project(user, project)
+            # Only the scope's managers are the same across a lab's projects;
+            # a role is per project and was checked above.
+            cache[key] = user_manages_project_scope(user, project)
         return cache[key]
 
     def get_my_role(self, project: Project) -> str | None:

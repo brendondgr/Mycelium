@@ -260,8 +260,8 @@ const DEPARTMENT_SEES_OPTIONS: {
 ];
 
 /** What the lab's department heads see of its projects. Set here, by the lab's
- * PI / owner / admin — never by the department. A project scoped to the
- * department is seen in full either way. */
+ * PI / owner / admin — never by the department. A project the head is a
+ * member of opens in full either way. */
 function DepartmentSeesCard({ lab }: { lab: MyLab }) {
   const save = useSetLabDepartmentSees(lab.slug);
   const [error, setError] = React.useState<string | null>(null);
@@ -272,8 +272,8 @@ function DepartmentSeesCard({ lab }: { lab: MyLab }) {
         What {lab.department} sees
       </h3>
       <p className="mb-3 text-[12.5px] text-[var(--text-secondary)]">
-        Of this lab&apos;s projects, for the department&apos;s heads. Projects
-        scoped to the department are always shown in full.
+        Of this lab&apos;s projects, for the department&apos;s heads. A
+        project they are a member of always opens in full.
       </p>
       <fieldset className="space-y-2" disabled={save.isPending}>
         <legend className="sr-only">What the department sees</legend>

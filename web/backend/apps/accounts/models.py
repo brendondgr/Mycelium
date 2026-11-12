@@ -80,8 +80,7 @@ class Lab(models.Model):
             "What the department's heads see of this lab's projects: everything "
             "(open any project) or names only (name, owner, member count, "
             "scope). Set by the lab's PI / owner / admin, never the department. "
-            "A project whose own visibility reaches the department is still "
-            "seen in full."
+            "Projects the head is a member of open in full either way."
         ),
     )
     # Reminder scheduling (Discord reminders R4). Use the IANA zone name, not "EST":

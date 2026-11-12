@@ -4,9 +4,12 @@ A project carries one scope, ``Project.visibility``, and this module is the only
 place that reads it. It answers three questions that used to be answered in a
 dozen places, each slightly differently:
 
-1. **Can this person see the project exists?** :func:`can_see` (and its queryset
-   form :func:`visible_q`, behind ``Project.objects.visible_to``): a member, the
-   personal owner, anyone inside the scope, or an overseer.
+1. **Can this person see the project exists?** :func:`can_see` (queryset form
+   :func:`visible_q`): a member, the personal owner, anyone inside the scope, or
+   an overseer. Knowing it exists is a directory row, not the project: only a
+   member, the personal owner or an overseer may **open** it (:func:`can_open`,
+   queryset form :func:`open_q`, behind ``Project.objects.visible_to``), which
+   is what every route returning a full project row checks.
 2. **Is it one of this person's projects?** :func:`is_participant`: only a member
    or the personal owner. Visibility and oversight never put a project in
    someone's project list, personal report or attention shares.
@@ -105,19 +108,43 @@ def _user_scopes(user) -> dict:
     }
 
 
-def visible_q(user) -> Q | None:
-    """The filter for projects ``user`` can see, or ``None`` for nobody."""
-    if not getattr(user, "is_authenticated", False):
-        return None
-    s = _user_scopes(user)
+def _open_q(user, s: dict) -> Q:
+    """Members, the personal owner, and the overseers."""
     member_of = ProjectMember.objects.filter(user=user).values("project_id")
-    query = (
+    return (
         Q(id__in=member_of)
         | Q(scope_user=user)
         # Oversight: the lab's PI / owner / admins, and department heads over a
         # lab that shows its department everything, or over a department project.
         | Q(scope_lab_id__in=s["head_labs"] | s["overseen_labs"])
         | Q(scope_department_id__in=s["head_depts"])
+    )
+
+
+def open_q(user) -> Q | None:
+    """The filter for projects ``user`` may **open** — the full row, goals,
+    roster, feed and files: a member, the personal owner, or an overseer.
+    ``None`` for nobody. This is what ``Project.objects.visible_to`` returns.
+
+    Being inside a project's scope is not enough to open it: the scope's people
+    see the project *exists* (:func:`visible_q`), which Phase 2's directory
+    shows as a reduced row (name, focus, owner, member count) with a request to
+    join. Otherwise a ``public`` project would land, goals and files included,
+    in every verified account's project list."""
+    if not getattr(user, "is_authenticated", False):
+        return None
+    return _open_q(user, _user_scopes(user))
+
+
+def visible_q(user) -> Q | None:
+    """The filter for projects ``user`` can see **exist**: everything they may
+    open, plus every project whose scope includes them. ``None`` for nobody.
+    For directory rows only — never a reason to return a full project row."""
+    if not getattr(user, "is_authenticated", False):
+        return None
+    s = _user_scopes(user)
+    query = (
+        _open_q(user, s)
         # Scope: the lab's members, the department's effective members.
         | Q(scope_lab_id__in=s["member_labs"], visibility__in=LAB_WIDE)
         | Q(
@@ -135,8 +162,16 @@ def visible_q(user) -> Q | None:
 
 
 def can_see(user, project: Project) -> bool:
-    """Whether ``user`` may open ``project``."""
+    """Whether ``user`` may know ``project`` exists (a directory row)."""
     query = visible_q(user)
+    if query is None:
+        return False
+    return Project.objects.filter(query, pk=project.pk).exists()
+
+
+def can_open(user, project: Project) -> bool:
+    """Whether ``user`` may open ``project`` (the full row)."""
+    query = open_q(user)
     if query is None:
         return False
     return Project.objects.filter(query, pk=project.pk).exists()

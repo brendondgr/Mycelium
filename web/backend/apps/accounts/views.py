@@ -828,8 +828,8 @@ class LabDepartmentSeesView(APIView):
     Any lab member reads it; the lab's PI / owner / admin set it — never the
     department, whose view it narrows. ``everything`` (default) lets a
     department head open every project of the lab; ``names_only`` shows them
-    name, owner, member count and scope. A project whose own scope reaches the
-    department is seen in full either way.
+    name, owner, member count and scope. A project the head is a member of
+    opens in full either way.
     """
 
     def _lab(self, slug: str) -> Lab:

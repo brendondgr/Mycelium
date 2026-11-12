@@ -39,11 +39,13 @@ class ProjectQuerySet(models.QuerySet):
         return self.filter(is_archived=False)
 
     def visible_to(self, user) -> "ProjectQuerySet":
-        """The projects ``user`` can see — the queryset form of
-        :func:`apps.research.visibility.can_see`, where the rule lives."""
-        from .visibility import visible_q
+        """The projects ``user`` may open (full row) — the queryset form of
+        :func:`apps.research.visibility.can_open`, where the rule lives. Being
+        inside a project's scope only shows that it exists
+        (:func:`~apps.research.visibility.can_see`, a directory row)."""
+        from .visibility import open_q
 
-        query = visible_q(user)
+        query = open_q(user)
         if query is None:
             return self.none()
         return self.filter(query).distinct()
@@ -146,10 +148,10 @@ class Project(models.Model):
         validate_exactly_one(self, *SCOPE_FIELDS)
 
     def is_visible_to(self, user) -> bool:
-        """Whether ``user`` can see this project (:func:`visibility.can_see`)."""
-        from .visibility import can_see
+        """Whether ``user`` may open this project (:func:`visibility.can_open`)."""
+        from .visibility import can_open
 
-        return can_see(user, self)
+        return can_open(user, self)
 
     @property
     def scope(self) -> str:

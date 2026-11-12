@@ -65,6 +65,13 @@ def world():
 
 
 def _seen(user) -> set[str]:
+    """Projects ``user`` may know exist (a directory row)."""
+    query = visibility.visible_q(user)
+    return set(Project.objects.filter(query).values_list("name", flat=True))
+
+
+def _opened(user) -> set[str]:
+    """Projects ``user`` may open (the full row)."""
     return set(Project.objects.visible_to(user).values_list("name", flat=True))
 
 
@@ -86,6 +93,26 @@ def test_each_scope_reaches_exactly_its_audience(world):
     assert _seen(w.stranger) == {"Reef public"}
 
 
+def test_being_inside_a_scope_does_not_open_the_project(world):
+    """Seeing a project exists is a directory row; only members and overseers
+    get the full row, so a public project never fills everyone's list."""
+    w = world
+    profile = w.stranger.profile
+    profile.is_verified = True
+    profile.save(update_fields=["is_verified"])
+    for reader in (w.member, w.sibling_member, w.dept_member, w.stranger):
+        assert _opened(reader) == set()
+        assert not any(visibility.can_open(reader, p) for p in w.p.values())
+    client = APIClient()
+    client.force_authenticate(w.member)
+    assert client.get("/api/projects/").json() == []
+    assert client.get("/api/projects/lab/reef/").json() == []
+    assert client.get(f"/api/projects/{w.p['lab'].id}/").status_code == 403
+    client.force_authenticate(w.stranger)
+    assert client.get("/api/projects/").json() == []
+    assert client.get(f"/api/projects/{w.p['public'].id}/").status_code == 403
+
+
 def test_an_ordinary_lab_member_finds_no_invite_only_project_by_any_route(world):
     w = world
     hidden = w.p["invite_only"]
@@ -96,7 +123,6 @@ def test_an_ordinary_lab_member_finds_no_invite_only_project_by_any_route(world)
     assert hidden.name not in listed
     lab_rows = {row["name"] for row in client.get("/api/projects/lab/reef/").json()}
     assert hidden.name not in lab_rows
-    assert lab_rows == {"Reef lab", "Reef department", "Reef public"}
     assert client.get(f"/api/projects/{hidden.id}/").status_code == 403
     assert client.post(f"/api/projects/{hidden.id}/leave/").status_code == 404
     assert not visibility.can_see(w.member, hidden)
@@ -104,8 +130,8 @@ def test_an_ordinary_lab_member_finds_no_invite_only_project_by_any_route(world)
 
 def test_the_lab_pi_opens_every_project_but_none_is_theirs(world):
     w = world
-    assert _seen(w.pi) == {p.name for p in w.p.values()}
-    assert all(visibility.can_see(w.pi, p) for p in w.p.values())
+    assert _opened(w.pi) == {p.name for p in w.p.values()}
+    assert all(visibility.can_open(w.pi, p) for p in w.p.values())
     assert not any(visibility.is_participant(w.pi, p) for p in w.p.values())
     assert not Project.objects.filter(members=w.pi).exists()
 
@@ -113,7 +139,7 @@ def test_the_lab_pi_opens_every_project_but_none_is_theirs(world):
 def test_a_department_head_sees_everything_by_default(world):
     w = world
     assert w.lab.department_sees == Lab.DepartmentSees.EVERYTHING
-    assert visibility.can_see(w.dept_head, w.p["invite_only"])
+    assert visibility.can_open(w.dept_head, w.p["invite_only"])
     assert not visibility.is_participant(w.dept_head, w.p["invite_only"])
     assert visibility.names_only_for(w.dept_head, w.department).count() == 0
 
@@ -124,19 +150,20 @@ def test_names_only_narrows_the_department_head_to_reduced_rows(world):
     w.lab.save()
 
     # Can no longer open what its scope keeps from the department...
-    assert not visibility.can_see(w.dept_head, w.p["invite_only"])
-    assert not visibility.can_see(w.dept_head, w.p["lab"])
-    # ...but a project scoped to the department is still seen in full.
+    assert not visibility.can_open(w.dept_head, w.p["invite_only"])
+    assert not visibility.can_open(w.dept_head, w.p["lab"])
+    # ...a project scoped to the department is one they know of, as any
+    # department member does; its full row waits on membership.
     assert visibility.can_see(w.dept_head, w.p["department"])
+    assert not visibility.can_open(w.dept_head, w.p["department"])
 
     client = APIClient()
     client.force_authenticate(w.dept_head)
     assert client.get(f"/api/projects/{w.p['invite_only'].id}/").status_code == 403
     body = client.get(f"/api/projects/department/{w.department.id}/").json()
-    full = {row["name"] for row in body["projects"]}
-    assert full == {"Reef department", "Reef public"}
+    assert body["projects"] == []
     reduced = {row["name"]: row for row in body["names_only"]}
-    assert set(reduced) == {"Reef invite_only", "Reef lab"}
+    assert set(reduced) == {p.name for p in w.p.values()}
     row = reduced["Reef invite_only"]
     assert row["owner"]["username"] == "on-project"
     assert row["member_count"] == 1
@@ -152,11 +179,10 @@ def test_only_department_heads_get_reduced_rows(world):
     client = APIClient()
     client.force_authenticate(w.dept_member)
     body = client.get(f"/api/projects/department/{w.department.id}/").json()
-    assert body["names_only"] == []
-    assert {row["name"] for row in body["projects"]} == {
-        "Reef department",
-        "Reef public",
-    }
+    assert body == {"projects": [], "names_only": []}
+    ProjectMember.objects.create(project=w.p["department"], user=w.dept_member)
+    body = client.get(f"/api/projects/department/{w.department.id}/").json()
+    assert [row["name"] for row in body["projects"]] == ["Reef department"]
     client.force_authenticate(w.stranger)
     assert (
         client.get(f"/api/projects/department/{w.department.id}/").status_code == 403
@@ -294,6 +320,22 @@ def test_a_scope_the_project_cannot_take_is_refused(world):
     assert response.status_code == 200
 
 
+def test_scope_managers_see_can_edit_per_project_not_per_lab(world):
+    """An editor on one lab project must not read as an editor of its siblings
+    (the serializer memoizes per lab, which must hold managers only)."""
+    w = world
+    ProjectMember.objects.create(
+        project=w.p["invite_only"], user=w.member, role=ProjectMember.Role.EDITOR
+    )
+    ProjectMember.objects.create(project=w.p["lab"], user=w.member)
+    client = APIClient()
+    client.force_authenticate(w.member)
+    rows = {row["name"]: row for row in client.get("/api/projects/").json()}
+    assert rows["Reef invite_only"]["can_edit"] is True
+    assert rows["Reef lab"]["can_edit"] is False
+    assert rows["Reef lab"]["my_role"] == "member"
+
+
 def test_narrowing_drops_a_project_from_lab_surfaces_at_once(world):
     w = world
     project = w.p["lab"]
@@ -302,3 +344,4 @@ def test_narrowing_drops_a_project_from_lab_surfaces_at_once(world):
     project.save()
     assert project not in visibility.lab_surface_projects(w.lab)
     assert not visibility.can_see(w.member, project)
+    assert not visibility.can_open(w.member, project)
