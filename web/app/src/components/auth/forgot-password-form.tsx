@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { requestPasswordReset } from "@/lib/auth-client";
+import { useHydrated } from "@/lib/use-hydrated";
 
 const fieldClass =
   "w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-[var(--text-muted)] focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
@@ -23,6 +24,7 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "sent">("idle");
+  const hydrated = useHydrated();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,7 +72,13 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form className="space-y-4" onSubmit={submit} noValidate>
+    <form
+      method="post"
+      action="/forgot-password/fallback"
+      className="space-y-4"
+      onSubmit={submit}
+      noValidate
+    >
       {error ? (
         <p
           className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
@@ -100,7 +108,7 @@ export function ForgotPasswordForm() {
 
       <Button
         className="mt-2 w-full rounded-full"
-        disabled={status === "loading"}
+        disabled={!hydrated || status === "loading"}
         size="lg"
         type="submit"
       >

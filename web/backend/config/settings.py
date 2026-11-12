@@ -145,7 +145,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "config.debug_middleware.CsrfDebugMiddleware",
     # The public demo's door: /api/demo/<x> is /api/<x> as the demo viewer,
     # read-only. Inert unless demo.enabled (apps/demo/middleware.py).
     "apps.demo.middleware.DemoMiddleware",
@@ -1368,21 +1367,18 @@ LOGGING = {
             "class": "logging.StreamHandler",
         },
     },
+    # INFO, not DEBUG: request and CSRF debug records repeat headers, Referers
+    # and query strings, which can carry reset and invitation tokens.
     "loggers": {
         "django.security.csrf": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": True,
         },
         "django.request": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": True,
-        },
-        "mycelium.csrf_debug": {
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
         },
     },
 }

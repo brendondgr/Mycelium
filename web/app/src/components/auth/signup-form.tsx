@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { checkEmailAvailable, previewInvite, register } from "@/lib/auth-client";
 import type { InvitePreview, SignupPolicy } from "@/lib/auth-types";
 import { institutionForEmail, loadInstitutions } from "@/lib/institutions";
+import { useHydrated } from "@/lib/use-hydrated";
 
 const fieldClass =
   "w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-[var(--text-muted)] focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
@@ -31,6 +32,7 @@ export function SignupForm({ policy }: { policy: SignupPolicy }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite")?.trim() ?? "";
+  const hydrated = useHydrated();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -256,7 +258,14 @@ export function SignupForm({ policy }: { policy: SignupPolicy }) {
   }
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit} noValidate aria-busy={isBusy}>
+    <form
+      method="post"
+      action="/signup/fallback"
+      className="space-y-4"
+      onSubmit={handleSubmit}
+      noValidate
+      aria-busy={isBusy}
+    >
       {formError ? (
         <p
           className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
@@ -527,7 +536,7 @@ export function SignupForm({ policy }: { policy: SignupPolicy }) {
 
       <Button
         className="mt-2 w-full rounded-full"
-        disabled={isBusy}
+        disabled={!hydrated || isBusy}
         size="lg"
         type="submit"
       >

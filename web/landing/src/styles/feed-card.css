@@ -9,7 +9,7 @@
   The app's workspace-only tokens are mapped onto the shared theme: its `--gold`
   is `--accent` here, `--card` is `--surface`, `--raise` is `--surface-alt`.
 
-  Global, not scoped: imported by `FeedTabs.astro` and `ShowsItsWork.astro` and
+  Global, not scoped: imported by `FeedDeck.astro` and `ShowsItsWork.astro` and
   shared by the card components, which Astro's scoped styles cannot span.
 */
 

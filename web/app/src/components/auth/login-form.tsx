@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { login } from "@/lib/auth-client";
+import { useHydrated } from "@/lib/use-hydrated";
 
 const fieldClass =
   "w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-[var(--text-muted)] focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60";
@@ -87,9 +88,12 @@ export function LoginForm() {
   }
 
   const isBusy = status === "loading" || status === "success";
+  const hydrated = useHydrated();
 
   return (
     <form
+      method="post"
+      action="/login/fallback"
       className="space-y-4"
       onSubmit={handleSubmit}
       noValidate
@@ -177,7 +181,7 @@ export function LoginForm() {
 
       <Button
         className="mt-2 w-full rounded-full"
-        disabled={isBusy}
+        disabled={!hydrated || isBusy}
         size="lg"
         type="submit"
       >

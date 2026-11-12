@@ -129,7 +129,13 @@ export function ResetPasswordForm() {
   const busy = status === "loading";
 
   return (
-    <form className="space-y-4" onSubmit={submit} noValidate>
+    <form
+      method="post"
+      action="/reset-password/fallback"
+      className="space-y-4"
+      onSubmit={submit}
+      noValidate
+    >
       {error ? (
         <p
           className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
