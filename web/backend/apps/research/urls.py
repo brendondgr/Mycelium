@@ -5,7 +5,7 @@ from . import views
 urlpatterns = [
     path("projects/", views.ProjectListView.as_view(), name="project-list"),
     path("projects", views.ProjectListView.as_view(), name="project-list-no-slash"),
-    # Every project of one lab (any lab member may browse them to join).
+    # The projects of one lab the caller may see (visible_to, narrowed).
     path(
         "projects/lab/<slug:slug>/",
         views.LabProjectsView.as_view(),
@@ -72,19 +72,10 @@ urlpatterns = [
         views.ProjectArchiveView.as_view(),
         name="project-archive-no-slash",
     ),
-    # Self-join / leave a project; managers add another member. Both slash and
-    # no-slash variants — the Next `/api` proxy strips the trailing slash and
-    # Django's APPEND_SLASH cannot redirect a POST (it would 500).
-    path(
-        "projects/<uuid:pk>/join/",
-        views.ProjectJoinView.as_view(),
-        name="project-join",
-    ),
-    path(
-        "projects/<uuid:pk>/join",
-        views.ProjectJoinView.as_view(),
-        name="project-join-no-slash",
-    ),
+    # Leave a project; managers add another member. There is no self-join: a
+    # project is joined by invitation. Both slash and no-slash variants — the
+    # Next `/api` proxy strips the trailing slash and Django's APPEND_SLASH cannot
+    # redirect a POST (it would 500).
     path(
         "projects/<uuid:pk>/leave/",
         views.ProjectLeaveView.as_view(),

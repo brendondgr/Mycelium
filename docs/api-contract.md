@@ -122,13 +122,13 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | Route | Methods | Purpose |
 |---|---|---|
 | `/` | GET, POST | Visible projects; create (plan-capped) |
-| `lab/<slug>/` | GET | Every project of one lab, to browse and join |
+| `lab/<slug>/` | GET | The lab's projects the caller may see: their own, or every one for the lab's PI/owner/admin and a department head over it |
 | `<id>/` | GET, PATCH | Detail; edit name / description / status / progress / focus / watch categories / aliases |
 | `<id>/archive/` | POST, DELETE | Archive / unarchive (never deletes) |
 | `<id>/state/` | GET, PATCH | What the project claims, blocks on, and aims at |
 | `<id>/state/confirm/` | POST | "Still true" — the date only |
 | `<id>/state/extract/` | POST | Read a state **proposal** out of a document (saves nothing) |
-| `<id>/join/` `<id>/leave/` | POST | Self-join / leave |
+| `<id>/leave/` | POST | Leave (there is no self-join; a project is joined by invitation) |
 | `<id>/members/` | GET, POST | Roster; add a lab member directly |
 | `<id>/members/<username>/` | DELETE | Remove a member |
 | `<id>/invitations/` | GET, POST | Pending invitations; invite by username or email |
@@ -762,8 +762,8 @@ Projects the caller may see under the org visibility cascade
 `null` for a personal or department project. `description`, `status`, and
 `progress` are optional display fields read out of `goals` — `description` falls
 back to the composed focus statement — and are `null` when unset. `can_edit` /
-`can_manage_members` report the caller's rights on the row (the personal owner, or
-a lab owner/admin/PI) so a client never has to infer them from the active
+`can_manage_members` report the caller's rights on the row (the personal owner, a
+lab owner/admin/PI, or a department owner/admin for a department project) so a client never has to infer them from the active
 workspace. `is_over_cap` marks a project sitting above the plan's allowance after
 a downgrade.
 

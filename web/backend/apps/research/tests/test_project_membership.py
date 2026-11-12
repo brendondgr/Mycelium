@@ -1,4 +1,4 @@
-"""Lab project browsing + self-join / leave / manager-add endpoints."""
+"""Lab project listing (narrowed), no self-join, leave and manager-add."""
 
 import pytest
 from django.contrib.auth.models import User
@@ -40,17 +40,40 @@ def project(db, lab: Lab) -> Project:
 
 
 @pytest.mark.django_db
-def test_member_browses_all_lab_projects(
+def test_member_sees_only_their_own_lab_projects(
     client: APIClient, lab: Lab, member: User, project: Project
 ) -> None:
-    # A second project the member is NOT part of is still listed for browsing.
-    Project.objects.create(name="Second", scope_lab=lab)
+    """Belonging to the lab no longer exposes its projects (plan Phase 0)."""
+    mine = Project.objects.create(name="Mine", scope_lab=lab)
+    ProjectMember.objects.create(project=mine, user=member)
     client.force_authenticate(member)
     resp = client.get(f"/api/projects/lab/{lab.slug}/")
     assert resp.status_code == 200
-    names = {row["name"] for row in resp.data}
-    assert names == {"Reef Mapping", "Second"}
-    assert all(row["is_member"] is False for row in resp.data)
+    assert [row["name"] for row in resp.data] == ["Mine"]
+    assert resp.data[0]["is_member"] is True
+
+
+@pytest.mark.django_db
+def test_lab_head_sees_every_lab_project(
+    client: APIClient, lab: Lab, pi: User, project: Project
+) -> None:
+    Project.objects.create(name="Second", scope_lab=lab)
+    client.force_authenticate(pi)
+    resp = client.get(f"/api/projects/lab/{lab.slug}/")
+    assert resp.status_code == 200
+    assert {row["name"] for row in resp.data} == {"Reef Mapping", "Second"}
+
+
+@pytest.mark.django_db
+def test_lab_endpoint_never_returns_another_labs_projects(
+    client: APIClient, lab: Lab, pi: User, project: Project
+) -> None:
+    other = Lab.objects.create(name="Other", slug="other")
+    elsewhere = Project.objects.create(name="Elsewhere", scope_lab=other)
+    ProjectMember.objects.create(project=elsewhere, user=pi)
+    client.force_authenticate(pi)
+    names = {row["name"] for row in client.get(f"/api/projects/lab/{lab.slug}/").data}
+    assert "Elsewhere" not in names
 
 
 @pytest.mark.django_db
@@ -63,37 +86,36 @@ def test_non_member_cannot_browse_lab_projects(
 
 
 @pytest.mark.django_db
-def test_member_self_joins_and_leaves(
+def test_self_join_route_is_gone(
     client: APIClient, member: User, project: Project
 ) -> None:
+    """A project is joined by invitation; there is no self-join by id."""
     client.force_authenticate(member)
-    join = client.post(f"/api/projects/{project.id}/join/")
-    assert join.status_code == 200
-    assert join.data["is_member"] is True
-    assert ProjectMember.objects.filter(project=project, user=member).exists()
-    # Now it shows up in their personal visible list.
-    assert any(
-        row["id"] == str(project.id) for row in client.get("/api/projects/").data
-    )
-    leave = client.post(f"/api/projects/{project.id}/leave/")
-    assert leave.status_code == 200
+    for path in (
+        f"/api/projects/{project.id}/join/",
+        f"/api/projects/{project.id}/join",
+    ):
+        assert client.post(path).status_code == 404
     assert not ProjectMember.objects.filter(project=project, user=member).exists()
 
 
 @pytest.mark.django_db
-def test_outsider_cannot_join(client: APIClient, project: Project) -> None:
-    outsider = User.objects.create_user(username="nope", password="p")
-    client.force_authenticate(outsider)
-    assert client.post(f"/api/projects/{project.id}/join/").status_code == 403
+def test_member_cannot_open_an_unjoined_lab_project_by_id(
+    client: APIClient, member: User, project: Project
+) -> None:
+    client.force_authenticate(member)
+    assert client.get(f"/api/projects/{project.id}/").status_code == 403
 
 
 @pytest.mark.django_db
-def test_cannot_join_personal_project(client: APIClient) -> None:
-    owner = User.objects.create_user(username="solo", password="p")
-    personal = Project.objects.create(name="Mine", scope_user=owner)
-    other = User.objects.create_user(username="other", password="p")
-    client.force_authenticate(other)
-    assert client.post(f"/api/projects/{personal.id}/join/").status_code in (403, 404)
+def test_member_leaves_a_project(
+    client: APIClient, member: User, project: Project
+) -> None:
+    ProjectMember.objects.create(project=project, user=member)
+    client.force_authenticate(member)
+    leave = client.post(f"/api/projects/{project.id}/leave/")
+    assert leave.status_code == 200
+    assert not ProjectMember.objects.filter(project=project, user=member).exists()
 
 
 @pytest.mark.django_db

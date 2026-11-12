@@ -33,7 +33,6 @@ from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
-    user_has_department_access,
     user_has_lab_access,
 )
 from apps.accounts.services import record_audit_event
@@ -253,12 +252,14 @@ def _seed_project(project: "Project") -> None:
 
 
 class LabProjectsView(ListAPIView):
-    """Every project of one lab, for any member of that lab.
+    """The projects of one lab that the caller may see.
 
-    Unlike the personal project list (``visible_to``, which only shows a
-    rank-and-file member the projects they already belong to), this lets any lab
-    member browse *all* of the lab's projects so they can decide to join one.
-    Each row carries ``is_member`` so the UI can offer Join vs Leave.
+    Narrowed to :meth:`ProjectQuerySet.visible_to`: a rank-and-file member gets
+    only the projects they belong to, while the lab's PI, owner and admins (and a
+    department head over the lab) get every project, as they do everywhere else.
+    It used to return every project — goals and full roster — to any lab member,
+    which made each project's own visibility rule meaningless. Each row carries
+    ``is_member`` so the UI can offer Leave.
     """
 
     serializer_class = ProjectSerializer
@@ -268,7 +269,8 @@ class LabProjectsView(ListAPIView):
         if not user_has_lab_access(self.request.user, lab):
             raise PermissionDenied("You do not have access to this lab.")
         return (
-            Project.objects.filter(scope_lab=lab)
+            Project.objects.visible_to(self.request.user)
+            .filter(scope_lab=lab)
             .select_related("scope_lab")
             .prefetch_related("members")
         )
@@ -448,43 +450,6 @@ def _scope_cap_for_project(project: Project, *, lock: bool = False) -> ScopeCap:
     if lock:
         Department.objects.select_for_update().get(pk=department.pk)
     return department_scope_cap(department)
-
-
-def _user_can_join(user, project: Project) -> bool:
-    """A lab/department member may self-join that org's projects."""
-    if project.scope_lab_id is not None:
-        return user_has_lab_access(user, project.scope_lab)
-    if project.scope_department_id is not None:
-        return user_has_department_access(user, project.scope_department)
-    return False  # personal projects have no self-join
-
-
-class ProjectJoinView(APIView):
-    """The caller joins a lab/department project they are eligible for."""
-
-    def post(self, request: Request, pk) -> Response:
-        project = get_object_or_404(
-            Project.objects.select_related("scope_lab", "scope_department"), pk=pk
-        )
-        if not _user_can_join(request.user, project):
-            raise PermissionDenied(
-                "Only members of this project's lab or department can join it."
-            )
-        _, created = ProjectMember.objects.get_or_create(
-            project=project, user=request.user
-        )
-        if created:
-            record_audit_event(
-                actor=request.user,
-                action="project.join",
-                target_type="project",
-                target_id=str(project.id),
-                metadata={"name": project.name},
-            )
-            _maybe_recompute_team(project)
-        return Response(
-            ProjectSerializer(project, context={"request": request}).data
-        )
 
 
 class ProjectLeaveView(APIView):
@@ -792,7 +757,8 @@ def _close_invitation(
 def _user_is_project_participant(user, project: Project) -> bool:
     """Who may write into a project's feed.
 
-    A project member, the personal owner, or a lab owner/admin of a lab project.
+    A project member, the personal owner, or a manager of the owning lab (owner,
+    admin, PI) or department (owner, admin).
     Anyone else who can merely *see* the project must join it first before sharing —
     so the feed stays the shared workspace of people actually on the project.
     """
@@ -802,11 +768,8 @@ def _user_is_project_participant(user, project: Project) -> bool:
         return True
     if ProjectMember.objects.filter(project=project, user=user).exists():
         return True
-    if project.scope_lab_id is not None and user_can_edit_lab_profile(
-        user, project.scope_lab
-    ):
-        return True
-    return False
+    # The managers of the owning lab or department — the same people who edit it.
+    return user_can_edit_project(user, project)
 
 
 def _member_brief(user) -> dict:

@@ -6,10 +6,10 @@ from tools.recommendation.targets import (
 )
 
 from apps.accounts.interests import validate_interests
-from apps.accounts.permissions import user_can_edit_lab_profile
 from apps.core.people import display_name, initials
 
 from .models import Project, ProjectInvitation
+from .permissions import user_can_edit_project
 
 
 def _clean_list(value) -> list[str]:
@@ -291,24 +291,27 @@ class ProjectSerializer(serializers.ModelSerializer):
             return False
         if project.scope_user_id is not None:
             return project.scope_user_id == user.id
-        if project.scope_lab_id is None:
+        if project.scope_lab_id is not None:
+            key = ("lab", project.scope_lab_id)
+        elif project.scope_department_id is not None:
+            key = ("department", project.scope_department_id)
+        else:
             return False
-        cache = getattr(self, "_editable_labs", None)
+        cache = getattr(self, "_editable_scopes", None)
         if cache is None:
             cache = {}
-            self._editable_labs = cache
-        if project.scope_lab_id not in cache:
-            cache[project.scope_lab_id] = user_can_edit_lab_profile(
-                user, project.scope_lab
-            )
-        return cache[project.scope_lab_id]
+            self._editable_scopes = cache
+        if key not in cache:
+            cache[key] = user_can_edit_project(user, project)
+        return cache[key]
 
     def get_can_manage_members(self, project: Project) -> bool:
         """Whether the caller may add or remove this project's members.
 
-        Same authority as editing: a personal project's owner, or a lab project's
-        owner / admin / PI. A lab manager adds lab members directly; anyone else
-        joins through an invitation.
+        Same authority as editing: a personal project's owner, a lab project's
+        owner / admin / PI, or a department project's owner / admin. A lab
+        manager adds lab members directly; anyone else joins through an
+        invitation.
         """
         return self.get_can_edit(project)
 

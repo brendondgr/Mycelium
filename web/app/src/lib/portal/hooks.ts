@@ -140,7 +140,6 @@ import {
   setLabPlanInclusion,
   testDiscordDm,
   inviteToLab,
-  joinProject,
   leaveProject,
   removeProjectMember,
   respondProjectInvitation,
@@ -926,7 +925,8 @@ export function useUpdateProjectFocus() {
   });
 }
 
-/** Every project of a lab (any lab member may browse them to join). */
+/** The projects of a lab the caller may see: their own, or all of them for a
+ * lab manager or a department head. There is no self-join. */
 export function useLabProjects(slug?: string) {
   const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
   return useQuery({
@@ -937,7 +937,7 @@ export function useLabProjects(slug?: string) {
   });
 }
 
-/** Join / leave / add / remove members on a project, refreshing the project
+/** Leave / add / remove members on a project, refreshing the project
  * itself (its roster is serialized on the row) and both project lists. */
 export function useProjectMembership() {
   const queryClient = useQueryClient();
@@ -946,10 +946,6 @@ export function useProjectMembership() {
     queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
     queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
   };
-  const join = useMutation({
-    mutationFn: (id: string) => joinProject(id),
-    onSuccess: invalidate,
-  });
   const leave = useMutation({
     mutationFn: (id: string) => leaveProject(id),
     onSuccess: invalidate,
@@ -964,7 +960,7 @@ export function useProjectMembership() {
       removeProjectMember(input.id, input.username),
     onSuccess: invalidate,
   });
-  return { join, leave, addMember, removeMember };
+  return { leave, addMember, removeMember };
 }
 
 /** Save a lab's purpose & goals, updating the cached copy in place. */

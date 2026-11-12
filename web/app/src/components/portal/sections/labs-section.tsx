@@ -849,11 +849,11 @@ export function ProjectsCard({
   lab: MyLab;
   canManage: boolean;
 }) {
-  // Every lab member sees all of the lab's projects here so they can decide to
-  // join — members are not auto-added to projects.
+  // A member sees the lab projects they belong to; the lab's PI, owner and
+  // admins see every one. Projects are joined by invitation, never self-joined.
   const { data: projects, isLoading } = useLabProjects(lab.slug);
   const create = useCreateProject();
-  const { join, leave } = useProjectMembership();
+  const { leave } = useProjectMembership();
   const [name, setName] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
@@ -873,7 +873,7 @@ export function ProjectsCard({
     );
   };
 
-  const busy = join.isPending || leave.isPending;
+  const busy = leave.isPending;
 
   return (
     <DetailCard title="Projects">
@@ -881,7 +881,8 @@ export function ProjectsCard({
         <div className="h-10 animate-pulse rounded-xl bg-surface-alt" />
       ) : !projects || projects.length === 0 ? (
         <p className="text-sm text-[var(--text-secondary)]">
-          No projects yet. Each project can represent a distinct focus area.
+          No projects to show. You see the lab projects you have been invited
+          to; each project can represent a distinct focus area.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -908,14 +909,9 @@ export function ProjectsCard({
                   Leave
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => join.mutate(project.id)}
-                  disabled={busy}
-                  className={cn(PRIMARY_BUTTON, "shrink-0")}
-                >
-                  Join
-                </button>
+                <span className="shrink-0 text-[12px] text-[var(--text-secondary)]">
+                  Not a member
+                </span>
               )}
             </li>
           ))}

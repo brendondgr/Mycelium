@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
+from django.db.models import Q
 from django.utils import timezone
 
 from tools.delivery.models import ProjectAlert
@@ -170,12 +171,45 @@ def block_for(alert: ProjectAlert) -> AlertBlock:
     )
 
 
+def _still_shown(target_filter: dict) -> dict:
+    """The project filter a stored alert must still pass to be read.
+
+    An alert is stored when it fires, but who may see its project can change
+    afterwards: a lab project can be un-shared, a person can leave a project. So
+    sharing is re-checked here, at read, rather than trusted from the moment the
+    alert was written — an alert never outlives the project leaving the surface.
+
+    * A lab target reads only alerts for the lab's projects that are still
+      shared to its lab surfaces (``share_in_lab_reports``).
+    * A person reads only alerts for projects that are still theirs — owned
+      personally or held as a member.
+    """
+    from apps.research.models import Project
+
+    if "target_lab" in target_filter:
+        lab = target_filter["target_lab"]
+        shown = Project.objects.filter(scope_lab=lab, share_in_lab_reports=True)
+    elif "target_user" in target_filter:
+        user = target_filter["target_user"]
+        shown = Project.objects.filter(Q(scope_user=user) | Q(members=user))
+    else:
+        return {}
+    return {"project_id__in": shown.values("id")}
+
+
 def open_alerts(target_filter: dict, day: date | None = None) -> list[ProjectAlert]:
-    """Today's open alerts for one target, in the order the report shows them."""
+    """Today's open alerts for one target, in the order the report shows them.
+
+    Filtered through :func:`_still_shown`, so a project un-shared (or left) after
+    its alert fired drops out of every surface that reads it.
+    """
     day = day or timezone.localdate()
     return list(
         ProjectAlert.objects.filter(
-            **target_filter, fired_on=day, status=ProjectAlert.Status.OPEN
+            **target_filter,
+            **_still_shown(target_filter),
+            fired_on=day,
+            status=ProjectAlert.Status.OPEN,
         )
         .select_related("project", "content")
         .order_by("project__name", "trigger")

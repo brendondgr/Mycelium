@@ -546,16 +546,6 @@ export function updateProjectFocus(
   );
 }
 
-/** The caller joins a lab/department project they are eligible for. */
-export function joinProject(id: string): Promise<unknown> {
-  return sendJson(
-    "POST",
-    buildApiUrl(getPublicApiBase(), "projects", id, "join"),
-    undefined,
-    "Could not join the project.",
-  );
-}
-
 /** The caller leaves a project they belong to. */
 export function leaveProject(id: string): Promise<unknown> {
   return sendJson(
