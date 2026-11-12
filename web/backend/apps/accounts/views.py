@@ -22,7 +22,7 @@ from rest_framework.decorators import (
     permission_classes,
     throttle_classes,
 )
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import SAFE_METHODS, AllowAny
@@ -73,12 +73,15 @@ from .permissions import (
     require_verified_email,
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
+    user_can_grant_dept_role,
+    user_can_grant_lab_role,
     user_can_invite_to_department,
     user_can_invite_to_lab,
     user_can_manage_department,
     user_can_manage_lab,
     user_has_department_access,
     user_has_lab_access,
+    user_outranks_dept_member,
     user_outranks_lab_member,
 )
 from .serializers import (
@@ -115,8 +118,10 @@ from .services import (
     record_audit_event,
     remove_dept_member,
     remove_lab_member,
+    set_dept_member_role,
     set_lab_department_inclusion,
     set_lab_member_role,
+    transfer_department_ownership,
     transfer_lab_ownership,
 )
 
@@ -1073,6 +1078,15 @@ class LabMembersView(ListAPIView):
         username = str(request.data.get("username", "")).strip()
         target = get_object_or_404(User, username=username)
         role = str(request.data.get("role", "") or LabMembership.Role.MEMBER)
+        _refuse_ungrantable(
+            request.user,
+            role,
+            choices=LabMembership.Role.values,
+            granted=user_can_grant_lab_role(request.user, lab, role),
+            org_kind="lab",
+            org_id=str(lab.id),
+            target=target,
+        )
         membership = add_lab_member(lab, target, role=role, actor=request.user)
         return Response(
             LabMemberSerializer(membership).data, status=status.HTTP_201_CREATED
@@ -1174,11 +1188,20 @@ class LabInvitationsView(APIView):
         # Sending an invitation puts Mycelium's name in a stranger's inbox on
         # this account's behalf. Answer your own mail first.
         require_verified_email(request.user)
+        role = str(request.data.get("role", "") or LabMembership.Role.MEMBER)
+        _refuse_ungrantable(
+            request.user,
+            role,
+            choices=LabMembership.Role.values,
+            granted=user_can_grant_lab_role(request.user, lab, role),
+            org_kind="lab",
+            org_id=str(lab.id),
+        )
         invitation = invite_to_lab(
             lab=lab,
             inviter=request.user,
             identifier=str(request.data.get("identifier", "")),
-            role=str(request.data.get("role", "") or LabMembership.Role.MEMBER),
+            role=role,
         )  # raises ValidationError -> 400 on bad input / duplicate / member
         return Response(
             LabInvitationSerializer(invitation).data,
@@ -1245,8 +1268,51 @@ class LabInvitationCancelView(APIView):
 # -- Department members & labs -------------------------------------------------
 
 
+def _refuse_ungrantable(
+    actor: User,
+    role: str,
+    *,
+    choices,
+    granted: bool,
+    org_kind: str,
+    org_id: str,
+    target: User | None = None,
+) -> None:
+    """Refuse adding someone at a role the actor may not hand out.
+
+    Adding a member with a role is granting that role, so it obeys the same
+    downward rule as a role edit. An unknown role is a 400; a known one above
+    the actor's reach is a 403, audited like a refused role edit.
+    """
+    if role not in choices:
+        raise ValidationError({"role": ["Unknown role."]})
+    if granted:
+        return
+    prefix = "dept" if org_kind == "department" else "lab"
+    record_audit_event(
+        actor=actor,
+        action=f"{prefix}.member.role.refused",
+        target_type=org_kind,
+        target_id=org_id,
+        metadata={"user_id": target.id if target else None, "role": role},
+    )
+    head = "department head" if org_kind == "department" else "lab's PI"
+    raise PermissionDenied(
+        f"Only the {head} can grant that role."
+        if role == "admin"
+        else "Ownership is handed over by transfer, not granted."
+        if role == "owner"
+        else "You cannot grant that role."
+    )
+
+
 class DeptMembersView(APIView):
-    """Effective dept roster (any member reads); a manager adds a direct member."""
+    """Effective dept roster (any member reads); a manager adds a direct member.
+
+    The role on an added member obeys ``permissions.DEPT_ROLE_RANK``: a
+    department admin adds members and viewers, only the head adds admins, and
+    nobody adds an owner — the head changes only by transfer.
+    """
 
     def get(self, request: Request, pk) -> Response:
         department = get_object_or_404(Department, id=pk)
@@ -1261,6 +1327,15 @@ class DeptMembersView(APIView):
         username = str(request.data.get("username", "")).strip()
         target = get_object_or_404(User, username=username)
         role = str(request.data.get("role", "") or DeptMembership.Role.MEMBER)
+        _refuse_ungrantable(
+            request.user,
+            role,
+            choices=DeptMembership.Role.values,
+            granted=user_can_grant_dept_role(request.user, department, role),
+            org_kind="department",
+            org_id=str(department.id),
+            target=target,
+        )
         add_dept_member(department, target, role=role, actor=request.user)
         return Response(
             department_members_payload(department), status=status.HTTP_201_CREATED
@@ -1268,20 +1343,62 @@ class DeptMembersView(APIView):
 
 
 class DeptMemberDetailView(APIView):
-    """A department manager removes a direct member (deferred seat removal)."""
+    """A department manager re-roles or removes a direct member, strictly downward."""
+
+    def _managed(self, pk) -> Department:
+        department = get_object_or_404(Department, id=pk)
+        if not user_can_manage_department(self.request.user, department):
+            raise PermissionDenied("Only an owner or admin can manage members.")
+        return department
+
+    def patch(self, request: Request, pk, username: str) -> Response:
+        department = self._managed(pk)
+        target = get_object_or_404(User, username=username)
+        role = str(request.data.get("role", "")).strip()
+        set_dept_member_role(department, target, role, actor=request.user)
+        return Response(department_members_payload(department))
 
     def delete(self, request: Request, pk, username: str) -> Response:
-        department = get_object_or_404(Department, id=pk)
-        if not user_can_manage_department(request.user, department):
-            raise PermissionDenied("Only an owner or admin can remove members.")
+        department = self._managed(pk)
         target = get_object_or_404(User, username=username)
         if department.owner_id == target.id:
             return Response(
                 {"detail": "The department owner cannot be removed."},
                 status=status.HTTP_409_CONFLICT,
             )
+        # Removing someone is authority over them: an admin drops members and
+        # viewers, never another admin. Leaving yourself is always allowed.
+        if request.user != target and not user_outranks_dept_member(
+            request.user, department, target
+        ):
+            raise PermissionDenied(
+                "You cannot remove someone at or above your own role."
+            )
         remove_dept_member(department, target, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DeptTransferOwnershipView(APIView):
+    """The department head hands the department to a direct member.
+
+    The head steps down to admin and keeps their place. Like the lab transfer,
+    it cannot be undone from the outgoing side.
+    """
+
+    def post(self, request: Request, pk) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_has_department_access(request.user, department):
+            raise PermissionDenied("You do not have access to this department.")
+        username = str(request.data.get("username", "")).strip()
+        if not username:
+            return Response(
+                {"username": ["Name the member who should run the department."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        target = get_object_or_404(User, username=username)
+        transfer_department_ownership(department, target, actor=request.user)
+        department.refresh_from_db()
+        return Response(department_members_payload(department))
 
 
 class DeptLabsView(APIView):

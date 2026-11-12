@@ -66,7 +66,8 @@ routes clients depend on most.
 | `invitations/<id>/respond/` | POST | Accept / reject / ignore |
 | `departments/<id>/profile/` | GET, PATCH | Department interest profile |
 | `departments/<id>/labs/` `…/labs/<slug>/` | GET, POST / DELETE | Labs under a department |
-| `departments/<id>/members/` `…/members/<username>/` | GET, POST / PATCH, DELETE | Department roster |
+| `departments/<id>/members/` `…/members/<username>/` | GET, POST / PATCH, DELETE | Department roster; add, re-role, remove (downward only) |
+| `departments/<id>/transfer-ownership/` | POST | Hand the department to a direct member |
 
 ### Recommendations & content — `/api/`
 
@@ -571,6 +572,35 @@ alone creates admins, the PI alone creates owners (and only through the transfer
 route), and an admin can neither re-role nor remove another admin or the owner.
 A refusal is `403` with `reason` `role_above_you`, and is recorded as
 `lab.member.role.refused`.
+
+Adding a member (`POST labs/<slug>/members/`) and issuing an invitation (both
+invitation routes) grant their `role`, so they obey the same rule: a `403` for a
+role at or above the caller's, a `400` for an unknown one.
+
+A **lead PI** (`is_lead`) holds every right an admin does, whatever their
+`role`: they manage the lab on every endpoint an owner or admin can, grant
+`member` and `viewer`, and act on members and viewers. They do not outrank an
+admin, and only the owner creates admins.
+
+### Department roles: authority runs downward
+
+The same rule for a department, ranked `head > admin > member > viewer`. The
+head is `Department.owner`, with an `owner` membership row kept in step; any
+other `owner` row counts as an admin. `POST departments/<id>/members/`,
+`PATCH`/`DELETE …/members/<username>/` and `POST departments/<id>/invites/`
+refuse a role the caller cannot grant (`403`, recorded as
+`dept.member.role.refused`); an admin cannot re-role or remove another admin,
+and the head cannot be removed (`409`). Roster rows carry `is_head`.
+
+### `POST /api/auth/departments/<id>/transfer-ownership/`
+
+Hand a department to a direct member: `{ "username": "..." }`. Only the head
+may; the target must be a direct member with a verified email. `Department.owner`
+moves, the new head's row becomes `owner`, the outgoing head's becomes `admin`
+(created if it was missing), and any other `owner` row drops to `admin`. Audited
+as `department.ownership.transfer`. Returns the department roster. Irreversible
+from the caller's side; `400` for a non-member, unverified target or the caller
+themselves, `403` for anyone but the head. Both slash forms.
 
 ### `GET` / `PATCH` `/api/auth/watch/me/`
 

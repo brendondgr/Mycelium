@@ -13,6 +13,7 @@ import { LabPlanCard } from "@/components/portal/sections/org-plan-card";
 import { PlansCard } from "@/components/portal/sections/plans-card";
 import { useEntitlements, useLabBilling } from "@/lib/portal/hooks";
 import type { Entitlements, MyLab } from "@/lib/portal/types";
+import { canManageLab } from "@/lib/portal/nav";
 
 const TIER_LABEL: Record<Entitlements["tier"], string> = {
   free: "Free",
@@ -21,10 +22,6 @@ const TIER_LABEL: Record<Entitlements["tier"], string> = {
   canopy: "Canopy",
 };
 
-/** Owner/admin/PI — the roles that may see and act on a lab's money. */
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 /**
  * The Account page's money half, so it heads itself as a subsection rather than

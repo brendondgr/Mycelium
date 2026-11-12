@@ -2,7 +2,11 @@ from collections import Counter, defaultdict
 from datetime import date, timedelta
 
 from apps.accounts.models import Lab, LabMembership
-from apps.accounts.permissions import user_can_manage_lab, user_has_lab_access
+from apps.accounts.permissions import (
+    lab_manager_q,
+    user_can_manage_lab,
+    user_has_lab_access,
+)
 from apps.core.people import display_name, initials
 from apps.research.models import Project
 from django.conf import settings
@@ -461,10 +465,9 @@ def _saved_lab_slugs_by_content(user) -> dict[str, list[str]]:
     caller's managed labs already hold each item. One query; grouped in Python.
     """
     managed_lab_ids = list(
-        LabMembership.objects.filter(
-            user=user,
-            role__in=[LabMembership.Role.OWNER, LabMembership.Role.ADMIN],
-        ).values_list("lab_id", flat=True)
+        LabMembership.objects.filter(user=user)
+        .filter(lab_manager_q())
+        .values_list("lab_id", flat=True)
     )
     if not managed_lab_ids:
         return {}

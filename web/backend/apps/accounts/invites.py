@@ -34,7 +34,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, models, transaction
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.core.mail import app_url, send_email
 
@@ -155,6 +155,7 @@ def create_invite(
         raise ValidationError({"kind": ["Choose an email invite or a share link."]})
 
     role = _clean_role(role)
+    _require_grantable(creator, role, lab=lab, department=department)
     address = str(email or "").strip().lower()
 
     if kind == OrgInvite.Kind.EMAIL:
@@ -273,6 +274,7 @@ def create_invites(
     if (lab is None) == (department is None):
         raise ValueError("Pass exactly one of lab / department.")
 
+    _require_grantable(creator, _clean_role(role), lab=lab, department=department)
     addresses = normalize_addresses(emails)
     if not addresses:
         raise ValidationError({"emails": ["Add at least one email address."]})
@@ -616,6 +618,26 @@ def is_live(invite: OrgInvite) -> bool:
 # --------------------------------------------------------------------------- #
 # Input cleaning
 # --------------------------------------------------------------------------- #
+
+
+def _require_grantable(
+    creator: User,
+    role: str,
+    *,
+    lab: Lab | None,
+    department: Department | None,
+) -> None:
+    """An invitation grants its role on redemption, so its creator must be able to.
+
+    Without this a department or lab admin could mint another admin by link —
+    the same escalation the role edit was closed against, by a different door.
+    """
+    from .permissions import user_can_grant_org_role
+
+    if user_can_grant_org_role(creator, role, lab=lab, department=department):
+        return
+    head = "lab's PI" if lab is not None else "department head"
+    raise PermissionDenied(f"Only the {head} can invite someone as {role}.")
 
 
 def _clean_role(role: str) -> str:

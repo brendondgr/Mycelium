@@ -13,6 +13,7 @@ import { AgentPolicyCard } from "@/components/portal/mylo/settings-cards";
 import { DeptDiscordCard } from "@/components/portal/sections/labs-section";
 import { DeptPlanCard } from "@/components/portal/sections/org-plan-card";
 import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
+import { ConfirmModal } from "@/components/portal/sections/member-row";
 import { usePortal } from "@/components/portal/portal-context";
 import {
   useDeptBilling,
@@ -20,8 +21,15 @@ import {
   useEntitlements,
   useDeptManagement,
   useDeptMembers,
+  useMyDepartments,
 } from "@/lib/portal/hooks";
-import type { DeptLabRow, DeptMemberRow } from "@/lib/portal/types";
+import { grantableDeptRoles, outranksDeptMember } from "@/lib/portal/nav";
+import type {
+  DeptLabRow,
+  DeptMemberRow,
+  LabRole,
+  MyDepartment,
+} from "@/lib/portal/types";
 
 const PRIMARY_BUTTON =
   "inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
@@ -37,6 +45,10 @@ export function DepartmentSection() {
 
   const { user } = usePortal();
   const billing = useDeptBilling(deptId);
+  // The caller's own standing here decides which roster controls to draw; the
+  // server re-checks every one of them.
+  const departments = useMyDepartments();
+  const mine = (departments.data ?? []).find((d) => d.id === deptId) ?? null;
   const canManage = Boolean(billing.data?.can_manage);
   const deptName = billing.data?.scope_name ?? "Department";
   // No plan to show when the instance runs without billing (mycelium.toml).
@@ -64,13 +76,20 @@ export function DepartmentSection() {
               isVerified={user.isVerified}
             />
           ) : null}
-          <DeptMembersCard deptId={deptId} canManage={canManage} />
+          <DeptMembersCard
+            deptId={deptId}
+            canManage={canManage}
+            mine={mine}
+            viewer={user.username}
+          />
           <DeptLabsCard deptId={deptId} canManage={canManage} />
         </div>
         <div className="space-y-4">
           {canManage && deptId ? <DeptDiscordCard deptId={deptId} /> : null}
           {billingOn ? <DeptPlanCard deptId={deptId} /> : null}
-          {deptId ? <AgentPolicyCard kind="department" orgRef={deptId} name={deptName} /> : null}
+          {canManage && deptId ? (
+            <AgentPolicyCard kind="department" orgRef={deptId} name={deptName} />
+          ) : null}
         </div>
       </div>
       {canManage ? (
@@ -91,12 +110,16 @@ function seatPill(status: string | null): React.ReactNode {
 function DeptMembersCard({
   deptId,
   canManage,
+  mine,
+  viewer,
 }: {
   deptId: string;
   canManage: boolean;
+  mine: MyDepartment | null;
+  viewer: string;
 }) {
   const { data, isLoading, isError } = useDeptMembers(deptId);
-  const { addMember, removeMember } = useDeptManagement(deptId);
+  const { addMember } = useDeptManagement(deptId);
   const [username, setUsername] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
@@ -148,7 +171,7 @@ function DeptMembersCard({
       ) : (
         <ul className="divide-y divide-border">
           {data.map((m: DeptMemberRow) => (
-            <li key={m.username} className="flex items-center gap-3 py-2.5">
+            <li key={m.username} className="flex flex-wrap items-center gap-3 py-2.5">
               <Avatar initials={m.initials} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -165,22 +188,153 @@ function DeptMembersCard({
                   {m.email || m.username}
                 </span>
               </div>
+              {m.is_head ? <Pill tone="primary">Head</Pill> : null}
               {seatPill(m.seat_status)}
-              {canManage && m.source === "direct" ? (
-                <button
-                  type="button"
-                  className={GHOST_BUTTON}
-                  onClick={() => removeMember.mutate(m.username)}
-                  disabled={removeMember.isPending}
-                >
-                  Remove
-                </button>
+              {canManage && mine && m.source === "direct" ? (
+                <DeptMemberControls
+                  deptId={deptId}
+                  member={m}
+                  mine={mine}
+                  isSelf={m.username === viewer}
+                />
               ) : null}
             </li>
           ))}
         </ul>
       )}
     </Card>
+  );
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Role, remove and hand-over controls for one direct department member.
+ *
+ * Authority runs strictly downward (``DEPT_ROLE_RANK``): an admin re-roles and
+ * removes members and viewers, only the head grants admin, and the head
+ * changes only by transfer. A control the caller cannot use is not drawn.
+ */
+function DeptMemberControls({
+  deptId,
+  member,
+  mine,
+  isSelf,
+}: {
+  deptId: string;
+  member: DeptMemberRow;
+  mine: MyDepartment;
+  isSelf: boolean;
+}) {
+  const { removeMember, setMemberRole, transfer } = useDeptManagement(deptId);
+  const [confirming, setConfirming] = React.useState<null | "remove" | "hand">(
+    null,
+  );
+  const canAct = !isSelf && outranksDeptMember(mine, member);
+  const roles = grantableDeptRoles(mine);
+  const canTransfer = mine.is_owner && !isSelf && !member.is_head;
+  const busy =
+    removeMember.isPending || setMemberRole.isPending || transfer.isPending;
+  const error =
+    (removeMember.error as Error | null)?.message ??
+    (setMemberRole.error as Error | null)?.message ??
+    (transfer.error as Error | null)?.message ??
+    null;
+
+  if (!canAct && !canTransfer) return null;
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {error ? (
+        <span role="alert" className="max-w-[14rem] truncate text-xs text-clay" title={error}>
+          {error}
+        </span>
+      ) : null}
+      {canAct && roles.length > 0 ? (
+        <>
+          <label className="sr-only" htmlFor={`dept-role-${member.username}`}>
+            Role for {member.name}
+          </label>
+          <select
+            id={`dept-role-${member.username}`}
+            value={roles.includes(member.role) ? member.role : ""}
+            disabled={busy}
+            onChange={(event) =>
+              setMemberRole.mutate({
+                username: member.username,
+                role: event.target.value as LabRole,
+              })
+            }
+            className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            {roles.includes(member.role) ? null : (
+              <option value="">{capitalize(member.role)}</option>
+            )}
+            {roles.map((role) => (
+              <option key={role} value={role}>
+                {capitalize(role)}
+              </option>
+            ))}
+          </select>
+        </>
+      ) : null}
+      {canTransfer ? (
+        <button
+          type="button"
+          className={GHOST_BUTTON}
+          disabled={busy}
+          onClick={() => setConfirming("hand")}
+        >
+          Make head
+        </button>
+      ) : null}
+      {canAct ? (
+        <button
+          type="button"
+          className={GHOST_BUTTON}
+          disabled={busy}
+          onClick={() => setConfirming("remove")}
+        >
+          Remove
+        </button>
+      ) : null}
+
+      {confirming === "remove" ? (
+        <ConfirmModal
+          title={`Remove ${member.name}?`}
+          body="They lose their direct place in the department. Anyone who belongs through a lab keeps that."
+          confirmLabel="Remove"
+          danger
+          busy={busy}
+          onClose={() => setConfirming(null)}
+          onConfirm={() =>
+            removeMember.mutate(member.username, {
+              onSuccess: () => setConfirming(null),
+            })
+          }
+        />
+      ) : null}
+      {confirming === "hand" ? (
+        <ConfirmModal
+          title={`Hand the department to ${member.name}?`}
+          body={
+            `${member.name} becomes the department head. You become an admin, ` +
+            `and you will not be able to take it back — only they can hand it ` +
+            `over again. This cannot be undone.`
+          }
+          confirmLabel="Transfer department"
+          danger
+          busy={busy}
+          onClose={() => setConfirming(null)}
+          onConfirm={() =>
+            transfer.mutate(member.username, {
+              onSuccess: () => setConfirming(null),
+            })
+          }
+        />
+      ) : null}
+    </div>
   );
 }
 

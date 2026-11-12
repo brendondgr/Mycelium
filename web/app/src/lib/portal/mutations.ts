@@ -267,6 +267,33 @@ export function addDeptMember(
   );
 }
 
+/** Change a direct department member's role (strictly below the caller's). */
+export function setDeptMemberRole(
+  id: string,
+  username: string,
+  role: string,
+): Promise<unknown> {
+  return sendJson(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "members", username),
+    { role },
+    "Could not change the member's role.",
+  );
+}
+
+/**
+ * Hand the department to a direct member. The caller steps down to admin and
+ * cannot take it back — only the new head can hand it over again.
+ */
+export function transferDeptOwnership(id: string, username: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "transfer-ownership"),
+    { username },
+    "Could not transfer the department.",
+  );
+}
+
 /** Remove a direct department member (their seat defers to period end). */
 export function removeDeptMember(id: string, username: string): Promise<unknown> {
   return sendJson(

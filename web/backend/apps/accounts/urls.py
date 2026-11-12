@@ -211,6 +211,18 @@ urlpatterns = [
         views.DeptMemberDetailView.as_view(),
         name="dept-member-detail-no-slash",
     ),
+    # Handing a department to a new head moves Department.owner and both
+    # membership rows at once — its own route, as for a lab.
+    path(
+        "departments/<uuid:pk>/transfer-ownership/",
+        views.DeptTransferOwnershipView.as_view(),
+        name="dept-transfer-ownership",
+    ),
+    path(
+        "departments/<uuid:pk>/transfer-ownership",
+        views.DeptTransferOwnershipView.as_view(),
+        name="dept-transfer-ownership-no-slash",
+    ),
     # Labs under a department: list, attach an existing lab / create one, detach.
     path(
         "departments/<uuid:pk>/labs/",

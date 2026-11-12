@@ -70,12 +70,24 @@ export const LAB_ROLE_RANK: Record<LabRole, number> = {
   viewer: 0,
 };
 
+/**
+ * A membership's rank: its role, raised to admin for a lead PI.
+ *
+ * Mirrors ``apps.accounts.permissions.membership_rank``. A lead PI holds every
+ * right an admin does — grants the roles below admin and acts on members and
+ * viewers — without outranking an admin.
+ */
+export function labRank(m: Pick<MyLab, "is_lead" | "role">): number {
+  const rank = LAB_ROLE_RANK[m.role] ?? 0;
+  return m.is_lead ? Math.max(rank, LAB_ROLE_RANK.admin) : rank;
+}
+
 /** Whether the caller may hand out `role` — strictly below their own. */
 export function canGrantLabRole(
   lab: Pick<MyLab, "is_lead" | "role">,
   role: LabRole,
 ): boolean {
-  return LAB_ROLE_RANK[lab.role] > LAB_ROLE_RANK[role];
+  return labRank(lab) > LAB_ROLE_RANK[role];
 }
 
 /** The roles the caller may assign, highest first. */
@@ -90,9 +102,45 @@ export function grantableLabRoles(
 /** Whether the caller may act on this member at all — re-role or remove them. */
 export function outranksLabMember(
   lab: Pick<MyLab, "is_lead" | "role">,
-  member: Pick<LabMember, "role">,
+  member: Pick<LabMember, "role"> & { is_lead?: boolean },
 ): boolean {
-  return LAB_ROLE_RANK[lab.role] > LAB_ROLE_RANK[member.role];
+  return labRank(lab) > labRank({ role: member.role, is_lead: Boolean(member.is_lead) });
+}
+
+/**
+ * Department roles ranked, mirroring ``apps.accounts.permissions.DEPT_ROLE_RANK``.
+ *
+ * The head is the department's owner; anyone else's role tops out at admin.
+ * Like the lab table, this only decides which controls to draw.
+ */
+export const DEPT_ROLE_RANK: Record<LabRole, number> = LAB_ROLE_RANK;
+
+/** The caller's rank in a department: 3 for the head, else their direct role. */
+export function deptRank(dept: Pick<MyDepartment, "is_owner" | "role">): number {
+  if (dept.is_owner) return DEPT_ROLE_RANK.owner;
+  const rank = DEPT_ROLE_RANK[dept.role as LabRole] ?? -1;
+  return Math.min(rank, DEPT_ROLE_RANK.admin);
+}
+
+/** The department roles the caller may assign, highest first (never owner). */
+export function grantableDeptRoles(
+  dept: Pick<MyDepartment, "is_owner" | "role">,
+): LabRole[] {
+  const mine = deptRank(dept);
+  return (["admin", "member", "viewer"] as LabRole[]).filter(
+    (role) => mine > DEPT_ROLE_RANK[role],
+  );
+}
+
+/** Whether the caller may re-role or remove a direct department member. */
+export function outranksDeptMember(
+  dept: Pick<MyDepartment, "is_owner" | "role">,
+  member: { role: LabRole; is_head?: boolean },
+): boolean {
+  const theirs = member.is_head
+    ? DEPT_ROLE_RANK.owner
+    : Math.min(DEPT_ROLE_RANK[member.role] ?? 0, DEPT_ROLE_RANK.admin);
+  return deptRank(dept) > theirs;
 }
 
 /** Whether the caller may administer a department. */

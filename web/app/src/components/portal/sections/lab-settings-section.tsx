@@ -26,11 +26,8 @@ import { SlackLabCard, TeamsLabCard } from "@/components/portal/ambient/slack-ca
 import { useDeleteLabLogo, useUploadLabLogo } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
+import { canManageLab } from "@/lib/portal/nav";
 
-/** Owner/admin/PI may edit the lab configuration. */
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 const GHOST_BUTTON =
   "rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";

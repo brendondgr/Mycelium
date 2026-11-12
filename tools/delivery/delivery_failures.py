@@ -110,8 +110,11 @@ def _recipients(*, target_type: str, user, lab) -> list:
         return []
     # Only owners and admins can rebind a channel or fix permissions — the same set
     # `accounts.permissions.user_can_manage_lab` recognises, resolved in bulk.
-    memberships = LabMembership.objects.filter(
-        lab=lab,
-        role__in=[LabMembership.Role.OWNER, LabMembership.Role.ADMIN],
-    ).select_related("user")
+    from apps.accounts.permissions import lab_manager_q
+
+    memberships = (
+        LabMembership.objects.filter(lab=lab)
+        .filter(lab_manager_q())
+        .select_related("user")
+    )
     return [m.user for m in memberships]

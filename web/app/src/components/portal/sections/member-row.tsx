@@ -223,7 +223,7 @@ function MemberControls({
   );
 }
 
-function ConfirmModal({
+export function ConfirmModal({
   title,
   body,
   confirmLabel,

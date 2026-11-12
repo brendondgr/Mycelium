@@ -51,6 +51,7 @@ import type {
   MyLab,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
+import { canManageLab } from "@/lib/portal/nav";
 
 /** Pull the (untyped) `clusters` array off a lab's stored `interests` blob. */
 function readClusters(interests: Record<string, unknown> | undefined | null): ClusterGroup[] {
@@ -100,9 +101,6 @@ function ClusterGroupHeading({ cluster }: { cluster: ClusterGroup }) {
   );
 }
 
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 const PRIMARY_BUTTON =
   "inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";

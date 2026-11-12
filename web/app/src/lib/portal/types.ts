@@ -1496,6 +1496,8 @@ export type DeptMemberRow = {
   initials: string;
   email: string;
   role: LabRole;
+  /** The department head (``Department.owner``). */
+  is_head: boolean;
   source: "direct" | "lab";
   lab: string | null;
   seat_status: string | null;

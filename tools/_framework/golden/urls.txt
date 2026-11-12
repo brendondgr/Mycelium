@@ -362,6 +362,8 @@ api/auth/departments/<uuid:pk>/members/	dept-members	DeptMembersView
 api/auth/departments/<uuid:pk>/members	dept-members-no-slash	DeptMembersView
 api/auth/departments/<uuid:pk>/members/<str:username>/	dept-member-detail	DeptMemberDetailView
 api/auth/departments/<uuid:pk>/members/<str:username>	dept-member-detail-no-slash	DeptMemberDetailView
+api/auth/departments/<uuid:pk>/transfer-ownership/	dept-transfer-ownership	DeptTransferOwnershipView
+api/auth/departments/<uuid:pk>/transfer-ownership	dept-transfer-ownership-no-slash	DeptTransferOwnershipView
 api/auth/departments/<uuid:pk>/labs/	dept-labs	DeptLabsView
 api/auth/departments/<uuid:pk>/labs	dept-labs-no-slash	DeptLabsView
 api/auth/departments/<uuid:pk>/labs/<slug:slug>/	dept-lab-detail	DeptLabDetailView

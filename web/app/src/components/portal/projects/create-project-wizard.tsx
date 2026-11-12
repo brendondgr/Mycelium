@@ -12,13 +12,8 @@ import { updateProjectState } from "@/lib/portal/mutations";
 import { ProjectCapReachedError } from "@/lib/portal/mutations";
 import type { MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
+import { canManageLab } from "@/lib/portal/nav";
 
-/** A member with owner/admin/PI rights may create/manage projects for that lab
- * (mirrors the backend's create-permission check and the Save-button scope
- * picker's `canManageLab`). */
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 type Scope = { kind: "personal" } | { kind: "lab"; slug: string; name: string };
 

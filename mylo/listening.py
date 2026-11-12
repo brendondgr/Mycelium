@@ -303,7 +303,7 @@ def _manager_gate(guild_id: str, discord_user_id: str):
     )
     if not verdict.ok:
         return (None, (str(verdict.denial), {"message": verdict.message}))
-    return (link.lab, None)
+    return (verdict.lab, None)
 
 
 def _set_listening_sync(

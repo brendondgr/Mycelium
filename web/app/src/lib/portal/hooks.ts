@@ -131,6 +131,8 @@ import {
   issueDeptActivationCode,
   issueLabActivationCode,
   removeDeptMember,
+  setDeptMemberRole,
+  transferDeptOwnership,
   removeLabMember,
   revokeDeptInvite,
   revokeLabInvite,
@@ -1348,6 +1350,20 @@ export function useDeptManagement(id: string) {
     mutationFn: (username: string) => removeDeptMember(id, username),
     onSuccess: invalidate,
   });
+  const setMemberRole = useMutation({
+    mutationFn: (input: { username: string; role: string }) =>
+      setDeptMemberRole(id, input.username, input.role),
+    onSuccess: invalidate,
+  });
+  // Handing the department over changes the caller's own role, so the
+  // department list's copy is stale the moment it succeeds.
+  const transfer = useMutation({
+    mutationFn: (username: string) => transferDeptOwnership(id, username),
+    onSuccess: () => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ["portal", "departments"] });
+    },
+  });
   const attachLab = useMutation({
     mutationFn: (slug: string) => attachLabToDept(id, slug),
     onSuccess: invalidate,
@@ -1371,6 +1387,8 @@ export function useDeptManagement(id: string) {
   return {
     addMember,
     removeMember,
+    setMemberRole,
+    transfer,
     attachLab,
     createLab,
     detachLab,

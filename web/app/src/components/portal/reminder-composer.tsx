@@ -25,6 +25,7 @@ import type {
   ReminderOffset,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
+import { canManageLab } from "@/lib/portal/nav";
 
 const KIND_LABELS: Record<string, string> = {
   application: "Application",
@@ -139,9 +140,7 @@ export function ReminderComposer({
   const labs = useMyLabs();
   // Only labs the caller manages (PI / owner / admin) can receive a lab reminder,
   // mirroring the backend rule — so a plain member is never offered the lab option.
-  const labOptions = (labs.data ?? []).filter(
-    (lab) => lab.is_lead || lab.role === "owner" || lab.role === "admin",
-  );
+  const labOptions = (labs.data ?? []).filter(canManageLab);
   const { create } = useReminderMutations();
 
   // Derive the effective lab (no state-syncing effect): the chosen slug, else the

@@ -31,10 +31,8 @@ import {
   useLabRecommendations,
 } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
+import { canManageLab as canManage } from "@/lib/portal/nav";
 
-function canManage(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 /**
  * The lab's front page — the landing view when a lab is the active workspace. It
