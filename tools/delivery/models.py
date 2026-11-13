@@ -1040,6 +1040,9 @@ class Notification(models.Model):
         SUGGESTION_PENDING = "suggestion_pending", "Mylo has a question"
         CHANGE_APPLIED = "change_applied", "A change you confirmed took effect"
         CHANGE_UNDONE = "change_undone", "A change was undone"
+        # Project membership (scoping plan, Phase 2): a join request was
+        # decided. Told to the requester alone — a refusal is never announced.
+        PROJECT_JOIN = "project_join", "Project join request"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

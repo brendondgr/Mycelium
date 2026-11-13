@@ -244,6 +244,69 @@ class ProjectInvitation(models.Model):
         return f"Invite<{self.invitee} -> {self.project} ({self.status})>"
 
 
+class ProjectJoinRequest(models.Model):
+    """Someone inside a project's scope asks to join it (plan "Membership").
+
+    Possible only when the project is not ``invite_only`` and the requester can
+    see it exists (:func:`apps.research.visibility.can_see`). The owner and
+    editors decide; approval creates a ``member`` :class:`ProjectMember`. One
+    open request per person per project. A refusal is told to the requester
+    alone, never announced to the lab.
+    """
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REFUSED = "refused", "Refused"
+        WITHDRAWN = "withdrawn", "Withdrawn"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="join_requests",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="project_join_requests",
+    )
+    note = models.TextField(
+        blank=True,
+        default="",
+        help_text="Optional note from the requester, shown to the deciders.",
+    )
+    state = models.CharField(
+        max_length=20,
+        choices=State.choices,
+        default=State.PENDING,
+        db_index=True,
+    )
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="decided_project_join_requests",
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # One open request per person per project.
+            models.UniqueConstraint(
+                fields=["project", "user"],
+                condition=Q(state="pending"),
+                name="research_unique_pending_join_request",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"JoinRequest<{self.user} -> {self.project} ({self.state})>"
+
+
 class ProjectMember(models.Model):
     """Join between users and the projects they participate in (briefing §3).
 

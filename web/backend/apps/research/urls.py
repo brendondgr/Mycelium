@@ -5,6 +5,37 @@ from . import views
 urlpatterns = [
     path("projects/", views.ProjectListView.as_view(), name="project-list"),
     path("projects", views.ProjectListView.as_view(), name="project-list-no-slash"),
+    # The directory: projects the caller can see exist but is not on (reduced rows).
+    path(
+        "projects/directory/",
+        views.ProjectDirectoryView.as_view(),
+        name="project-directory",
+    ),
+    path(
+        "projects/directory",
+        views.ProjectDirectoryView.as_view(),
+        name="project-directory-no-slash",
+    ),
+    path(
+        "projects/lab/<slug:slug>/directory/",
+        views.LabProjectDirectoryView.as_view(),
+        name="lab-project-directory",
+    ),
+    path(
+        "projects/lab/<slug:slug>/directory",
+        views.LabProjectDirectoryView.as_view(),
+        name="lab-project-directory-no-slash",
+    ),
+    path(
+        "projects/department/<uuid:pk>/directory/",
+        views.DepartmentProjectDirectoryView.as_view(),
+        name="department-project-directory",
+    ),
+    path(
+        "projects/department/<uuid:pk>/directory",
+        views.DepartmentProjectDirectoryView.as_view(),
+        name="department-project-directory-no-slash",
+    ),
     # The projects of one lab the caller may see (visible_to, narrowed).
     path(
         "projects/lab/<slug:slug>/",
@@ -160,6 +191,49 @@ urlpatterns = [
         "project-invitations/<uuid:pk>/respond",
         views.ProjectInvitationRespondView.as_view(),
         name="project-invitation-respond-no-slash",
+    ),
+    # Join requests: ask to join a non-invite-only project you can see; the owner
+    # and editors list and decide. The requester's own rows sit outside the
+    # project namespace because they cannot open the project yet.
+    path(
+        "projects/<uuid:pk>/join-requests/",
+        views.ProjectJoinRequestsView.as_view(),
+        name="project-join-requests",
+    ),
+    path(
+        "projects/<uuid:pk>/join-requests",
+        views.ProjectJoinRequestsView.as_view(),
+        name="project-join-requests-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/join-requests/<uuid:rid>/decide/",
+        views.ProjectJoinRequestDecideView.as_view(),
+        name="project-join-request-decide",
+    ),
+    path(
+        "projects/<uuid:pk>/join-requests/<uuid:rid>/decide",
+        views.ProjectJoinRequestDecideView.as_view(),
+        name="project-join-request-decide-no-slash",
+    ),
+    path(
+        "project-join-requests/",
+        views.MyProjectJoinRequestsView.as_view(),
+        name="my-project-join-requests",
+    ),
+    path(
+        "project-join-requests",
+        views.MyProjectJoinRequestsView.as_view(),
+        name="my-project-join-requests-no-slash",
+    ),
+    path(
+        "project-join-requests/<uuid:rid>/withdraw/",
+        views.ProjectJoinRequestWithdrawView.as_view(),
+        name="project-join-request-withdraw",
+    ),
+    path(
+        "project-join-requests/<uuid:rid>/withdraw",
+        views.ProjectJoinRequestWithdrawView.as_view(),
+        name="project-join-request-withdraw-no-slash",
     ),
     # Collaboration surface: share into the feed, read the feed, paste-a-link
     # ingest, mark-seen, and engagement events. Slash + no-slash for the proxy.

@@ -104,7 +104,7 @@ def test_member_cannot_open_an_unjoined_lab_project_by_id(
     client: APIClient, member: User, project: Project
 ) -> None:
     client.force_authenticate(member)
-    assert client.get(f"/api/projects/{project.id}/").status_code == 403
+    assert client.get(f"/api/projects/{project.id}/").status_code == 404
 
 
 @pytest.mark.django_db
@@ -138,7 +138,7 @@ def test_plain_member_cannot_add_others(
     resp = client.post(
         f"/api/projects/{project.id}/members/", {"username": "someone"}
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 @pytest.mark.django_db

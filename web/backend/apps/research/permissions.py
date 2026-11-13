@@ -4,6 +4,8 @@ agent's permission gate, so the two can never disagree."""
 from __future__ import annotations
 
 from apps.accounts.permissions import (
+    user_can_create_department_project,
+    user_can_create_lab_project,
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
 )
@@ -67,3 +69,40 @@ def user_can_change_visibility(user, project: Project) -> bool:
     ).exists():
         return True
     return user_manages_project_scope(user, project)
+
+
+def user_can_create_in_scope(user, *, lab=None, department=None) -> bool:
+    """Who may start a project in a lab or department — its *Who can create
+    projects* setting (any member by default, or managers only). A personal
+    project needs only an account."""
+    if lab is not None:
+        return user_can_create_lab_project(user, lab)
+    if department is not None:
+        return user_can_create_department_project(user, department)
+    return bool(getattr(user, "is_authenticated", False))
+
+
+def user_can_request_to_join(user, project: Project) -> bool:
+    """Whether ``user`` may ask to join ``project``: it is not ``invite_only``,
+    not archived, the requester can see it exists (inside its scope, or an
+    overseer), and they are not already on it."""
+    from . import visibility
+
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if project.is_archived or not visibility.admits_requests(project):
+        return False
+    if visibility.is_participant(user, project):
+        return False
+    return visibility.can_see(user, project)
+
+
+def user_can_invite_outside(user, project: Project) -> bool:
+    """Who may invite someone from outside a project's lab (or department):
+    the owner — its owner-role member, or the scope's managers acting as owner
+    (plan "Outside collaborators"). Editors invite people already in the lab.
+    A personal project has no lab to be outside of, so its editors may invite
+    anyone."""
+    if project.scope_user_id is not None:
+        return user_can_edit_project(user, project)
+    return user_can_change_visibility(user, project)

@@ -301,7 +301,7 @@ def test_an_outsider_cannot_read_project_state_at_all(
     LabMembership.objects.create(user=stranger, lab=lab)
     client.force_authenticate(stranger)
 
-    assert client.get(f"/api/projects/{project.id}/state/").status_code == 403
+    assert client.get(f"/api/projects/{project.id}/state/").status_code == 404
 
 
 @pytest.mark.django_db

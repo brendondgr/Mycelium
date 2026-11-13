@@ -343,6 +343,8 @@ api/auth/labs/<slug:slug>/profile/	lab-profile	LabProfileView
 api/auth/labs/<slug:slug>/profile	lab-profile-no-slash	LabProfileView
 api/auth/labs/<slug:slug>/department-sees/	lab-department-sees	LabDepartmentSeesView
 api/auth/labs/<slug:slug>/department-sees	lab-department-sees-no-slash	LabDepartmentSeesView
+api/auth/labs/<slug:slug>/project-creation/	lab-project-creation	LabProjectCreationView
+api/auth/labs/<slug:slug>/project-creation	lab-project-creation-no-slash	LabProjectCreationView
 api/auth/labs/<slug:slug>/logo/	lab-logo	LabLogoView
 api/auth/labs/<slug:slug>/logo	lab-logo-no-slash	LabLogoView
 api/auth/labs/<slug:slug>/watch/	lab-watch	LabWatchView
@@ -360,6 +362,8 @@ api/auth/invitations/<uuid:pk>/respond	invitation-respond-no-slash	InvitationRes
 api/auth/departments/	my-departments	MyDepartmentsView
 api/auth/departments	-	MyDepartmentsView
 api/auth/departments/<uuid:pk>/profile/	dept-profile	DeptProfileView
+api/auth/departments/<uuid:pk>/project-creation/	department-project-creation	DepartmentProjectCreationView
+api/auth/departments/<uuid:pk>/project-creation	department-project-creation-no-slash	DepartmentProjectCreationView
 api/auth/departments/<uuid:pk>/members/	dept-members	DeptMembersView
 api/auth/departments/<uuid:pk>/members	dept-members-no-slash	DeptMembersView
 api/auth/departments/<uuid:pk>/members/<str:username>/	dept-member-detail	DeptMemberDetailView
@@ -394,6 +398,12 @@ api/auth/invites/<str:token>/accept/	invite-accept	InviteAcceptView
 api/auth/invites/<str:token>/accept	-	InviteAcceptView
 api/projects/	project-list	ProjectListView
 api/projects	project-list-no-slash	ProjectListView
+api/projects/directory/	project-directory	ProjectDirectoryView
+api/projects/directory	project-directory-no-slash	ProjectDirectoryView
+api/projects/lab/<slug:slug>/directory/	lab-project-directory	LabProjectDirectoryView
+api/projects/lab/<slug:slug>/directory	lab-project-directory-no-slash	LabProjectDirectoryView
+api/projects/department/<uuid:pk>/directory/	department-project-directory	DepartmentProjectDirectoryView
+api/projects/department/<uuid:pk>/directory	department-project-directory-no-slash	DepartmentProjectDirectoryView
 api/projects/lab/<slug:slug>/	lab-projects	LabProjectsView
 api/projects/lab/<slug:slug>	lab-projects-no-slash	LabProjectsView
 api/projects/department/<uuid:pk>/	department-projects	DepartmentProjectsView
@@ -422,6 +432,14 @@ api/project-invitations/	my-project-invitations	MyProjectInvitationsView
 api/project-invitations	my-project-invitations-no-slash	MyProjectInvitationsView
 api/project-invitations/<uuid:pk>/respond/	project-invitation-respond	ProjectInvitationRespondView
 api/project-invitations/<uuid:pk>/respond	project-invitation-respond-no-slash	ProjectInvitationRespondView
+api/projects/<uuid:pk>/join-requests/	project-join-requests	ProjectJoinRequestsView
+api/projects/<uuid:pk>/join-requests	project-join-requests-no-slash	ProjectJoinRequestsView
+api/projects/<uuid:pk>/join-requests/<uuid:rid>/decide/	project-join-request-decide	ProjectJoinRequestDecideView
+api/projects/<uuid:pk>/join-requests/<uuid:rid>/decide	project-join-request-decide-no-slash	ProjectJoinRequestDecideView
+api/project-join-requests/	my-project-join-requests	MyProjectJoinRequestsView
+api/project-join-requests	my-project-join-requests-no-slash	MyProjectJoinRequestsView
+api/project-join-requests/<uuid:rid>/withdraw/	project-join-request-withdraw	ProjectJoinRequestWithdrawView
+api/project-join-requests/<uuid:rid>/withdraw	project-join-request-withdraw-no-slash	ProjectJoinRequestWithdrawView
 api/projects/<uuid:pk>/shares/	project-share	ProjectShareView
 api/projects/<uuid:pk>/shares	project-share-no-slash	ProjectShareView
 api/projects/<uuid:pk>/feed/	project-feed	ProjectFeedView

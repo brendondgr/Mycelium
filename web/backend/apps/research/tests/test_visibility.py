@@ -123,7 +123,7 @@ def test_an_ordinary_lab_member_finds_no_invite_only_project_by_any_route(world)
     assert hidden.name not in listed
     lab_rows = {row["name"] for row in client.get("/api/projects/lab/reef/").json()}
     assert hidden.name not in lab_rows
-    assert client.get(f"/api/projects/{hidden.id}/").status_code == 403
+    assert client.get(f"/api/projects/{hidden.id}/").status_code == 404
     assert client.post(f"/api/projects/{hidden.id}/leave/").status_code == 404
     assert not visibility.can_see(w.member, hidden)
 
@@ -159,7 +159,7 @@ def test_names_only_narrows_the_department_head_to_reduced_rows(world):
 
     client = APIClient()
     client.force_authenticate(w.dept_head)
-    assert client.get(f"/api/projects/{w.p['invite_only'].id}/").status_code == 403
+    assert client.get(f"/api/projects/{w.p['invite_only'].id}/").status_code == 404
     body = client.get(f"/api/projects/department/{w.department.id}/").json()
     assert body["projects"] == []
     reduced = {row["name"]: row for row in body["names_only"]}

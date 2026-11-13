@@ -441,10 +441,26 @@ class MyLabSerializer(serializers.Serializer):
     department = serializers.SerializerMethodField()
     #: What the department's heads see of the lab's projects (the PI sets it).
     department_sees = serializers.CharField(source="lab.department_sees")
+    #: Who may start a project in the lab, and whether this member may.
+    project_creation = serializers.CharField(source="lab.project_creation")
+    can_create_projects = serializers.SerializerMethodField()
     has_logo = serializers.BooleanField(source="lab.has_logo", read_only=True)
     logo_version = serializers.IntegerField(
         source="lab.logo_version", read_only=True, allow_null=True
     )
+
+    def get_can_create_projects(self, membership: LabMembership) -> bool:
+        """Mirrors :func:`permissions.user_can_create_lab_project` from the
+        membership row already in hand."""
+        if membership.is_lead or membership.role in (
+            LabMembership.Role.OWNER,
+            LabMembership.Role.ADMIN,
+        ):
+            return True
+        return (
+            membership.lab.project_creation == "members"
+            and membership.role != LabMembership.Role.VIEWER
+        )
 
     def get_department(self, membership: LabMembership):
         dept = membership.lab.department

@@ -126,7 +126,7 @@ def test_lab_member_not_on_project_cannot_share(client, lab, project):
     resp = client.post(
         f"/api/projects/{project.id}/shares/", {"content_item": str(paper.id)}
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 404
     assert ProjectShare.objects.count() == 0
 
 
@@ -139,9 +139,9 @@ def test_non_visible_outsider_blocked_from_share_and_feed(client, project):
         client.post(
             f"/api/projects/{project.id}/shares/", {"content_item": str(paper.id)}
         ).status_code
-        == 403
+        == 404
     )
-    assert client.get(f"/api/projects/{project.id}/feed/").status_code == 403
+    assert client.get(f"/api/projects/{project.id}/feed/").status_code == 404
 
 
 @pytest.mark.django_db
@@ -261,7 +261,7 @@ def test_non_participant_cannot_ingest(client, project):
         client.post(
             f"/api/projects/{project.id}/ingest-link/", {"raw_input": "10.1/x"}
         ).status_code
-        == 403
+        == 404
     )
 
 

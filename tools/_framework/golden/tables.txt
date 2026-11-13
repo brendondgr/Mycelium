@@ -120,5 +120,6 @@ knowledge_edge	Edge
 knowledge_workfacets	WorkFacets
 research_project	Project
 research_projectinvitation	ProjectInvitation
+research_projectjoinrequest	ProjectJoinRequest
 research_projectmember	ProjectMember
 research_projectstate	ProjectState

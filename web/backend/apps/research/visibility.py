@@ -177,6 +177,71 @@ def can_open(user, project: Project) -> bool:
     return Project.objects.filter(query, pk=project.pk).exists()
 
 
+def openable_ids(user, ids) -> set:
+    """The ids among ``ids`` that ``user`` may open (one query)."""
+    query = open_q(user)
+    if query is None:
+        return set()
+    return set(
+        Project.objects.filter(query, id__in=list(ids)).values_list("id", flat=True)
+    )
+
+
+def admits_requests(project: Project) -> bool:
+    """Whether the project's scope lets someone ask to join it. An
+    ``invite_only`` project is joined by invitation only."""
+    return project.visibility != INVITE_ONLY
+
+
+# -- the directory -------------------------------------------------------------
+
+
+def directory(user, *, lab=None, department=None):
+    """Projects ``user`` can see exist but is not on: the directory ("Projects
+    in this lab" / "…in this department" / everything public on the instance).
+
+    Built on :func:`visible_q`, so an ``invite_only`` project shows only to its
+    overseers, never to an ordinary member of the lab. A directory row is the
+    reduced one (name, focus line, owner, member count) — never goals, state,
+    feed, files or roster. Projects the caller is on are their own list
+    ("My projects"), not the directory; archived projects are left out.
+    """
+    query = visible_q(user)
+    if query is None:
+        return Project.objects.none()
+    qs = Project.objects.filter(query, is_archived=False)
+    if lab is not None:
+        qs = qs.filter(scope_lab=lab)
+    elif department is not None:
+        qs = qs.filter(
+            Q(scope_department=department) | Q(scope_lab__department=department)
+        )
+    mine = ProjectMember.objects.filter(user=user).values("project_id")
+    return qs.exclude(id__in=mine).exclude(scope_user=user).distinct()
+
+
+def scope_people_ids(project: Project) -> set | None:
+    """The user ids who belong to the project's home: the lab's members for a
+    lab project, the department's effective members for a department project.
+    ``None`` for a personal project, which has no home to be outside of.
+
+    A project member not in this set is an **outside collaborator**: they see
+    that one project and gain nothing else in the lab."""
+    from apps.accounts.models import LabMembership
+    from apps.accounts.services import effective_member_ids
+
+    if project.scope_lab_id is not None:
+        return set(
+            LabMembership.objects.filter(lab_id=project.scope_lab_id).values_list(
+                "user_id", flat=True
+            )
+        )
+    if project.scope_department_id is not None:
+        department = project.scope_department
+        return set(effective_member_ids(department)) | {department.owner_id}
+    return None
+
+
 def visible_in_lab(user, lab):
     """The projects of ``lab`` that ``user`` may open."""
     return Project.objects.visible_to(user).filter(scope_lab=lab)

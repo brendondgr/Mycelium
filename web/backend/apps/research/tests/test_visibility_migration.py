@@ -7,9 +7,19 @@ import pytest
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
-BEFORE = [("research", "0006_project_aliases")]
 ACCOUNTS = [("accounts", "0033_lab_department_sees")]
+# Accounts is held at 0033 too, so the historical Lab matches its table.
+BEFORE = [("research", "0006_project_aliases"), *ACCOUNTS]
 AFTER = [("research", "0008_remove_project_share_in_lab_reports")]
+
+
+@pytest.fixture
+def back_to_latest():
+    """Leave the database fully migrated for the tests that run after."""
+    yield
+    executor = MigrationExecutor(connection)
+    executor.loader.build_graph()
+    executor.migrate(executor.loader.graph.leaf_nodes())
 
 
 def _migrate(targets):
@@ -22,7 +32,7 @@ def _migrate(targets):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_backfill_maps_sharing_to_scope_and_assigns_owners():
+def test_backfill_maps_sharing_to_scope_and_assigns_owners(back_to_latest):
     old = _migrate(BEFORE)
     User = old.get_model("auth", "User")
     Lab = old.get_model("accounts", "Lab")

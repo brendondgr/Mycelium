@@ -31,8 +31,7 @@ from tools.retrieval.models import ContentItem
 
 from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
-    user_can_edit_dept_profile,
-    user_can_edit_lab_profile,
+    user_has_department_access,
     user_has_lab_access,
 )
 from apps.accounts.services import record_audit_event
@@ -46,11 +45,19 @@ from .limits import (
     lab_scope_cap,
     personal_scope_cap,
 )
-from .models import Project, ProjectInvitation, ProjectMember
-from .permissions import user_can_change_visibility, user_can_edit_project
+from .models import Project, ProjectInvitation, ProjectJoinRequest, ProjectMember
+from .permissions import (
+    user_can_change_visibility,
+    user_can_create_in_scope,
+    user_can_edit_project,
+    user_can_invite_outside,
+    user_can_request_to_join,
+)
 from .serializers import (
     ProjectCreateSerializer,
+    ProjectDirectorySerializer,
     ProjectInvitationSerializer,
+    ProjectJoinRequestSerializer,
     ProjectNameOnlySerializer,
     ProjectSerializer,
     ProjectUpdateSerializer,
@@ -132,8 +139,12 @@ class ProjectListView(ListCreateAPIView):
     narrows to a single lab's projects — the switcher's scope — and never widens
     visibility beyond what the caller could already see.
 
-    ``POST`` creates a project scoped to a lab (``lab`` slug, requires manage
-    rights on that lab) or, with no lab, a personal project scoped to the caller.
+    ``POST`` creates a project scoped to a lab (``lab`` slug) or a department
+    (``department`` id) — allowed by that scope's *Who can create projects*
+    setting, any member by default — or, with neither, a personal project
+    scoped to the caller. The creator of a lab or department project becomes
+    its owner; ``visibility`` (default ``invite_only``) must be one the scope
+    can take. The active-project cap is still the lab's (or department's).
     """
 
     def get_serializer_class(self):
@@ -145,7 +156,7 @@ class ProjectListView(ListCreateAPIView):
         qs = (
             Project.objects.visible_to(self.request.user)
             .select_related("scope_lab", "scope_department", "scope_user")
-            .prefetch_related("members", "memberships")
+            .prefetch_related("members", "memberships__user")
         )
         lab_slug = self.request.query_params.get("lab", "").strip()
         if lab_slug:
@@ -164,6 +175,7 @@ class ProjectListView(ListCreateAPIView):
         lab_slug = (data.pop("lab", "") or "").strip()
         dept_slug = (data.pop("department", "") or "").strip()
         focus = data.pop("focus", None)
+        wanted_scope = data.pop("visibility", None)
         user = self.request.user
 
         # Resolve the scope, check the manage permission, and enforce the plan cap
@@ -179,9 +191,10 @@ class ProjectListView(ListCreateAPIView):
                 lab = get_object_or_404(
                     Lab.objects.select_for_update(), slug=lab_slug
                 )
-                if not user_can_edit_lab_profile(user, lab):
+                if not user_can_create_in_scope(user, lab=lab):
                     raise PermissionDenied(
-                        "Only a lab owner, admin, or PI can add projects to this lab."
+                        "Only the lab's PI, owner or admins can start projects in "
+                        "this lab."
                     )
                 self._enforce_cap(lab_scope_cap(lab))
                 save_kwargs = {"scope_lab": lab}
@@ -190,9 +203,10 @@ class ProjectListView(ListCreateAPIView):
                 department = get_object_or_404(
                     Department.objects.select_for_update(), pk=dept_slug
                 )
-                if not user_can_edit_dept_profile(user, department):
+                if not user_can_create_in_scope(user, department=department):
                     raise PermissionDenied(
-                        "Only a department owner or admin can add projects to it."
+                        "Only the department's owner or admins can start projects "
+                        "in it."
                     )
                 self._enforce_cap(department_scope_cap(department))
                 save_kwargs = {"scope_department": department}
@@ -203,18 +217,39 @@ class ProjectListView(ListCreateAPIView):
                 save_kwargs = {"scope_user": user}
                 target = {"scope": "user"}
 
+            if wanted_scope:
+                allowed = scope.allowed_visibilities(Project(**save_kwargs))
+                if wanted_scope not in allowed:
+                    raise ValidationError(
+                        {
+                            "visibility": [
+                                f"This project cannot be scoped to {wanted_scope!r}."
+                            ]
+                        }
+                    )
+                save_kwargs["visibility"] = wanted_scope
             if focus is not None:
                 from .serializers import apply_focus
 
                 data["goals"] = apply_focus(data.get("goals") or {}, focus)
             project = serializer.save(**save_kwargs)
+            if project.scope_user_id is None:
+                # The creator owns a lab or department project. A personal
+                # project's owner is its scope_user already.
+                ProjectMember.objects.create(
+                    project=project, user=user, role=ProjectMember.Role.OWNER
+                )
 
         record_audit_event(
             actor=user,
             action="project.create",
             target_type="project",
             target_id=str(project.id),
-            metadata={"name": project.name, **target},
+            metadata={
+                "name": project.name,
+                "visibility": project.visibility,
+                **target,
+            },
         )
         # Seed the new project's recommendations over the existing corpus (Phase 6
         # wires the background task; a no-op stub keeps creation working until then).
@@ -273,7 +308,7 @@ class LabProjectsView(ListAPIView):
         return (
             scope.visible_in_lab(self.request.user, lab)
             .select_related("scope_lab")
-            .prefetch_related("members", "memberships")
+            .prefetch_related("members", "memberships__user")
         )
 
 
@@ -289,15 +324,13 @@ class DepartmentProjectsView(APIView):
     """
 
     def get(self, request: Request, pk) -> Response:
-        from apps.accounts.permissions import user_has_department_access
-
         department = get_object_or_404(Department, pk=pk)
         if not user_has_department_access(request.user, department):
             raise PermissionDenied("You do not have access to this department.")
         visible = (
             scope.department_projects_visible(request.user, department)
             .select_related("scope_lab", "scope_department", "scope_user")
-            .prefetch_related("members", "memberships")
+            .prefetch_related("members", "memberships__user")
         )
         names_only = scope.names_only_for(request.user, department).select_related(
             "scope_lab"
@@ -310,6 +343,265 @@ class DepartmentProjectsView(APIView):
                 "names_only": ProjectNameOnlySerializer(names_only, many=True).data,
             }
         )
+
+
+# --------------------------------------------------------------------------- #
+# The directory — projects the caller can see exist but is not on.
+# --------------------------------------------------------------------------- #
+
+
+def _directory_response(request: Request, queryset) -> Response:
+    """Directory rows (reduced: name, focus line, owner, member count, scope)."""
+    rows = list(
+        queryset.select_related(
+            "scope_lab", "scope_department", "scope_user"
+        ).prefetch_related("memberships__user")
+    )
+    ids = [row.id for row in rows]
+    pending = set(
+        ProjectJoinRequest.objects.filter(
+            user=request.user,
+            project_id__in=ids,
+            state=ProjectJoinRequest.State.PENDING,
+        ).values_list("project_id", flat=True)
+    )
+    data = ProjectDirectorySerializer(
+        rows,
+        many=True,
+        context={
+            "request": request,
+            "openable": scope.openable_ids(request.user, ids),
+            "pending": pending,
+        },
+    ).data
+    return Response({"count": len(data), "items": data})
+
+
+class ProjectDirectoryView(APIView):
+    """Every project on the instance the caller can see exists but is not on:
+    their labs' and departments' scoped projects, and ``public`` ones (for a
+    verified account). Reduced rows only."""
+
+    def get(self, request: Request) -> Response:
+        return _directory_response(request, scope.directory(request.user))
+
+
+class LabProjectDirectoryView(APIView):
+    """"Projects in this lab": the lab's projects the caller can see but is not
+    on. Lab members only — an outside collaborator on one project gets no
+    directory of the lab."""
+
+    def get(self, request: Request, slug: str) -> Response:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_has_lab_access(request.user, lab):
+            raise PermissionDenied("You do not have access to this lab.")
+        return _directory_response(request, scope.directory(request.user, lab=lab))
+
+
+class DepartmentProjectDirectoryView(APIView):
+    """"Projects in this department": the department's projects and its labs'
+    that the caller can see but is not on. Effective members only."""
+
+    def get(self, request: Request, pk) -> Response:
+        department = get_object_or_404(Department, pk=pk)
+        if not user_has_department_access(request.user, department):
+            raise PermissionDenied("You do not have access to this department.")
+        return _directory_response(
+            request, scope.directory(request.user, department=department)
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Join requests — the "ask" half of membership (the other is an invitation).
+# --------------------------------------------------------------------------- #
+
+
+def _join_request_qs():
+    return ProjectJoinRequest.objects.select_related(
+        "project", "user", "decided_by"
+    )
+
+
+def _tell_requester(join_request: ProjectJoinRequest) -> None:
+    """Put the decision on the requester's bell — theirs alone; a refusal is
+    never announced to the lab. Best-effort: the decision already stands."""
+    from tools.delivery.models import Notification
+
+    approved = join_request.state == ProjectJoinRequest.State.APPROVED
+    title = (
+        f"You're on {join_request.project.name} now"
+        if approved
+        else f"Your request to join {join_request.project.name} was declined"
+    )
+    try:
+        Notification.objects.get_or_create(
+            dedupe_key=f"project-join:{join_request.id}:{join_request.state}",
+            defaults={
+                "user": join_request.user,
+                "kind": Notification.Kind.PROJECT_JOIN,
+                "title": title,
+                "body": (
+                    "It is in your projects."
+                    if approved
+                    else "Only you were told. You can ask again later."
+                ),
+            },
+        )
+    except Exception:  # pragma: no cover - the bell is a courtesy
+        logger.warning(
+            "join-request notification failed for %s", join_request.id, exc_info=True
+        )
+
+
+class ProjectJoinRequestsView(APIView):
+    """``POST``: ask to join a project you can see but are not on. ``GET``: the
+    open requests, for the people who decide (owner, editors, the scope's
+    managers).
+
+    A request is possible only when the project is not ``invite_only`` and the
+    caller can see it exists. Someone who cannot see it gets the same 404 as
+    an id that names nothing.
+    """
+
+    def get(self, request: Request, pk) -> Response:
+        project = _visible_project(request, pk)
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot decide this project's join requests.")
+        rows = _join_request_qs().filter(
+            project=project, state=ProjectJoinRequest.State.PENDING
+        )
+        data = ProjectJoinRequestSerializer(rows, many=True).data
+        return Response({"count": len(data), "items": data})
+
+    def post(self, request: Request, pk) -> Response:
+        project = get_object_or_404(
+            Project.objects.select_related("scope_lab", "scope_department"), pk=pk
+        )
+        if not scope.can_see(request.user, project):
+            raise NotFound("No such project.")
+        if scope.is_participant(request.user, project):
+            raise ValidationError("You are already on this project.")
+        if not user_can_request_to_join(request.user, project):
+            raise PermissionDenied(
+                "This project is joined by invitation only."
+                if not scope.admits_requests(project)
+                else "This project is not taking requests."
+            )
+        if ProjectJoinRequest.objects.filter(
+            project=project,
+            user=request.user,
+            state=ProjectJoinRequest.State.PENDING,
+        ).exists():
+            raise ValidationError("You already asked to join this project.")
+        join_request = ProjectJoinRequest.objects.create(
+            project=project,
+            user=request.user,
+            note=str(request.data.get("note", ""))[:2000],
+        )
+        record_audit_event(
+            actor=request.user,
+            action="project.join_request",
+            target_type="project",
+            target_id=str(project.id),
+            metadata={"request_id": str(join_request.id)},
+        )
+        return Response(
+            ProjectJoinRequestSerializer(join_request).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ProjectJoinRequestDecideView(APIView):
+    """The owner or an editor approves or refuses one open request.
+
+    Approval makes the requester a ``member``. A refusal tells the requester
+    alone."""
+
+    _ACTIONS = {
+        "approve": ProjectJoinRequest.State.APPROVED,
+        "refuse": ProjectJoinRequest.State.REFUSED,
+    }
+
+    def post(self, request: Request, pk, rid) -> Response:
+        project = _visible_project(request, pk)
+        if not _user_can_edit(request.user, project):
+            raise PermissionDenied("You cannot decide this project's join requests.")
+        join_request = get_object_or_404(_join_request_qs(), pk=rid, project=project)
+        if join_request.state != ProjectJoinRequest.State.PENDING:
+            return Response(
+                {"detail": "This request has already been answered."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        action = str(request.data.get("action", "")).strip().lower()
+        if action not in self._ACTIONS:
+            raise ValidationError({"action": ["Must be one of: approve, refuse."]})
+
+        with transaction.atomic():
+            if action == "approve":
+                _, created = ProjectMember.objects.get_or_create(
+                    project=project, user=join_request.user
+                )
+            join_request.state = self._ACTIONS[action]
+            join_request.decided_by = request.user
+            join_request.decided_at = timezone.now()
+            join_request.save(update_fields=["state", "decided_by", "decided_at"])
+        record_audit_event(
+            actor=request.user,
+            action=f"project.join_request.{action}",
+            target_type="project",
+            target_id=str(project.id),
+            metadata={
+                "request_id": str(join_request.id),
+                "username": join_request.user.get_username(),
+            },
+        )
+        if action == "approve" and created:
+            _maybe_recompute_team(project)
+        _tell_requester(join_request)
+        return Response(ProjectJoinRequestSerializer(join_request).data)
+
+
+class MyProjectJoinRequestsView(APIView):
+    """The bell's join-request rows: ``to_decide`` (open requests on projects
+    the caller decides for) and ``mine`` (the caller's own open requests)."""
+
+    def get(self, request: Request) -> Response:
+        pending = _join_request_qs().filter(state=ProjectJoinRequest.State.PENDING)
+        mine = pending.filter(user=request.user)
+        # Candidate projects: ones the caller can open; each is then checked
+        # against the one edit rule, so the bell and the team card agree.
+        openable = Project.objects.visible_to(request.user).values("id")
+        to_decide = [
+            row
+            for row in pending.filter(project_id__in=openable).exclude(
+                user=request.user
+            )
+            if _user_can_edit(request.user, row.project)
+        ]
+        return Response(
+            {
+                "to_decide": ProjectJoinRequestSerializer(to_decide, many=True).data,
+                "mine": ProjectJoinRequestSerializer(mine, many=True).data,
+            }
+        )
+
+
+class ProjectJoinRequestWithdrawView(APIView):
+    """The requester withdraws their own open request."""
+
+    def post(self, request: Request, rid) -> Response:
+        join_request = get_object_or_404(_join_request_qs(), pk=rid)
+        if join_request.user_id != request.user.id:
+            raise NotFound("No such request.")
+        if join_request.state != ProjectJoinRequest.State.PENDING:
+            return Response(
+                {"detail": "This request has already been answered."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        join_request.state = ProjectJoinRequest.State.WITHDRAWN
+        join_request.decided_at = timezone.now()
+        join_request.save(update_fields=["state", "decided_at"])
+        return Response(ProjectJoinRequestSerializer(join_request).data)
 
 
 #: Kept under its old name for the call sites below; the rule lives in
@@ -327,8 +619,7 @@ class ProjectDetailView(APIView):
             ).prefetch_related("members"),
             pk=pk,
         )
-        if not project.is_visible_to(request.user):
-            raise PermissionDenied("You do not have access to this project.")
+        _require_open(request.user, project)
         return project
 
     def _context(self, request, project) -> dict:
@@ -422,8 +713,7 @@ class ProjectArchiveView(APIView):
             ),
             pk=pk,
         )
-        if not project.is_visible_to(request.user):
-            raise PermissionDenied("You do not have access to this project.")
+        _require_open(request.user, project)
         if not _user_can_edit(request.user, project):
             raise PermissionDenied("You cannot archive this project.")
         return project
@@ -544,22 +834,17 @@ class ProjectMembersView(APIView):
     def get(self, request: Request, pk) -> Response:
         """The current roster, readable by anyone who can see the project."""
         project = _visible_project(request, pk)
-        return Response(
-            {
-                "count": project.members.count(),
-                "items": [_member_brief(u) for u in project.members.all()],
-            }
-        )
+        items = ProjectSerializer(context={"request": request}).get_members(project)
+        return Response({"count": len(items), "items": items})
 
     def post(self, request: Request, pk) -> Response:
-        project = get_object_or_404(
-            Project.objects.select_related("scope_lab"), pk=pk
-        )
+        project = _visible_project(request, pk)
         if project.scope_lab_id is None:
             raise ValidationError("Members can only be added directly to lab projects.")
         if not _user_can_edit(request.user, project):
             raise PermissionDenied(
-                "Only a lab owner, admin, or PI can add project members."
+                "Only the project's owner, its editors, or the lab's PI can add "
+                "project members."
             )
         username = str(request.data.get("username", "")).strip()
         if not username:
@@ -603,7 +888,9 @@ class ProjectMemberDetailView(APIView):
         if not _user_can_edit(request.user, project):
             raise PermissionDenied("You cannot manage this project's members.")
         target = get_object_or_404(User, username=username)
-        if project.scope_user_id == target.id:
+        if project.scope_user_id == target.id or ProjectMember.objects.filter(
+            project=project, user=target, role=ProjectMember.Role.OWNER
+        ).exists():
             raise ValidationError("The project's owner cannot be removed from it.")
         deleted, _ = ProjectMember.objects.filter(
             project=project, user=target
@@ -618,6 +905,36 @@ class ProjectMemberDetailView(APIView):
             )
             _maybe_recompute_team(project)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def patch(self, request: Request, pk, username) -> Response:
+        """Make a member an editor, or an editor a member — the owner's call.
+
+        Ownership itself is not handed over here (plan Phase 5)."""
+        project = _visible_project(request, pk)
+        if not user_can_change_visibility(request.user, project):
+            raise PermissionDenied("Only the project's owner changes roles.")
+        role = str(request.data.get("role", "")).strip()
+        if role not in (ProjectMember.Role.EDITOR, ProjectMember.Role.MEMBER):
+            raise ValidationError({"role": ["Choose editor or member."]})
+        row = get_object_or_404(
+            ProjectMember, project=project, user__username=username
+        )
+        if row.role == ProjectMember.Role.OWNER:
+            raise ValidationError("The owner's role is not changed here.")
+        if row.role != role:
+            before = row.role
+            row.role = role
+            row.save(update_fields=["role"])
+            record_audit_event(
+                actor=request.user,
+                action="project.member_role",
+                target_type="project",
+                target_id=str(project.id),
+                metadata={"username": username, "from": before, "to": role},
+            )
+        return Response(
+            ProjectSerializer(project, context={"request": request}).data
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -688,6 +1005,16 @@ class ProjectInvitationsView(APIView):
         if project.scope_user_id == invitee.id:
             raise ValidationError(
                 {"identifier": ["That person already owns this project."]}
+            )
+        home = scope.scope_people_ids(project)
+        if (
+            home is not None
+            and invitee.id not in home
+            and not user_can_invite_outside(request.user, project)
+        ):
+            raise PermissionDenied(
+                "Only the project's owner can invite someone from outside the "
+                f"{project.scope}."
             )
         if ProjectInvitation.objects.filter(
             project=project, invitee=invitee, status=ProjectInvitation.Status.PENDING
@@ -913,9 +1240,23 @@ def _visible_project(request: Request, pk) -> Project:
         Project.objects.select_related("scope_lab", "scope_department", "scope_user"),
         pk=pk,
     )
-    if not project.is_visible_to(request.user):
-        raise PermissionDenied("You do not have access to this project.")
+    _require_open(request.user, project)
     return project
+
+
+def _require_open(user, project: Project) -> None:
+    """Refuse unless ``user`` may open ``project``.
+
+    Someone who cannot even see the project exists gets a 404, the same answer
+    as an id that names nothing — so guessing an ``invite_only`` project's id
+    confirms nothing. Someone who can see it (a directory row) but not open it
+    gets a 403: they already know it is there, and the answer is "join it".
+    """
+    if project.is_visible_to(user):
+        return
+    if scope.can_see(user, project):
+        raise PermissionDenied("Join this project to open it.")
+    raise NotFound("No such project.")
 
 
 class ProjectShareView(APIView):
@@ -1261,8 +1602,7 @@ class ProjectStateView(APIView):
             ),
             pk=pk,
         )
-        if not project.is_visible_to(request.user):
-            raise PermissionDenied("You do not have access to this project.")
+        _require_open(request.user, project)
         return project
 
     def get(self, request: Request, pk) -> Response:
@@ -1316,8 +1656,7 @@ class ProjectStateConfirmView(APIView):
         project = get_object_or_404(
             Project.objects.select_related("scope_lab", "scope_user", "state"), pk=pk
         )
-        if not project.is_visible_to(request.user):
-            raise PermissionDenied("You do not have access to this project.")
+        _require_open(request.user, project)
         if not _user_can_edit(request.user, project):
             raise PermissionDenied("You cannot edit this project.")
 
@@ -1354,8 +1693,7 @@ class ProjectStateExtractView(APIView):
         from apps.research.state_extract import extract_project_state
 
         project = get_object_or_404(Project, pk=pk)
-        if not project.is_visible_to(request.user):
-            raise PermissionDenied("You do not have access to this project.")
+        _require_open(request.user, project)
         if not _user_can_edit(request.user, project):
             raise PermissionDenied("You cannot edit this project.")
 

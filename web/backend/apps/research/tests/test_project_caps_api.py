@@ -4,7 +4,13 @@ import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
-from apps.accounts.models import Department, DeptMembership, Lab, LabMembership
+from apps.accounts.models import (
+    Department,
+    DeptMembership,
+    Lab,
+    LabMembership,
+    ProjectCreation,
+)
 from apps.billing.models import Subscription, Tier
 from apps.research.models import Project
 
@@ -122,7 +128,9 @@ def test_department_owner_creates_department_project(client: APIClient) -> None:
 @pytest.mark.django_db
 def test_non_manager_cannot_create_department_project(client: APIClient) -> None:
     owner = User.objects.create_user(username="dean", password="p")
-    dept = Department.objects.create(owner=owner, name="Bio")
+    dept = Department.objects.create(
+        owner=owner, name="Bio", project_creation=ProjectCreation.MANAGERS
+    )
     Subscription.objects.create(tier=Tier.CANOPY, scope_department=dept)
     member = User.objects.create_user(username="rank", password="p")
     DeptMembership.objects.create(

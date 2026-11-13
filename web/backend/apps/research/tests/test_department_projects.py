@@ -107,11 +107,11 @@ def test_plain_department_member_cannot_edit(
     client.force_authenticate(plain)
     # A rank-and-file member does not even see the department's projects.
     resp = client.patch(f"/api/projects/{project.id}/", {"name": "X"}, format="json")
-    assert resp.status_code == 403
-    assert client.post(f"/api/projects/{project.id}/archive/").status_code == 403
+    assert resp.status_code == 404
+    assert client.post(f"/api/projects/{project.id}/archive/").status_code == 404
     assert (
         client.post(
             f"/api/projects/{project.id}/invitations/", {"identifier": "head"}
         ).status_code
-        == 403
+        == 404
     )
