@@ -52,3 +52,15 @@
   `tools/agent/memory.py:63` filter conversational edges on
   `status == "confirmed"`, which is not an `EdgeStatus` value (pending,
   active, faded, rejected); confirmed edges never reach those two places.
+- **Harness bug, answer graders (found 2026-11-13 00:13, after attempt 2 and
+  attempt 3's gate arm):** after a turn the runner read the thread's numbered
+  references from the in-memory thread object, which the turn had not
+  refreshed, so every `#n` resolved to nothing and the `cites` and
+  `overlap_top` graders failed whatever the answer said (attempt 1's `run.py`
+  has the same bug; it never produced results). Leak graders are unaffected
+  (they match strings in the text, the results and the catalog). Attempt 2's
+  answer-category pass rates for `tagged_paper`, `feed_blocker`,
+  `pipeline_parity`, `grant_fit` and `who_should_apply` (the tasks with a
+  `cites` or `overlap_top` grader) are therefore not usable. Fixed
+  (`thread.refresh_from_db()`), and the original thirty's answer tasks are
+  rerun under attempt 3 (`--answers-only --tag v3`).

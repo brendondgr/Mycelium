@@ -220,7 +220,9 @@ def run_plain(task, w, base):
     out = turn_outcome(thread, port)
     out["seconds"] = round(time.monotonic() - started, 2)
     cited = sorted({int(n) for n in re.findall(r"#(\d+)", out["text"])})
+    thread.refresh_from_db()  # the turn numbered its references in the stored row
     by_n = {e["n"]: e["ref"] for e in refs.thread_refs(thread)}
+    out["thread"] = str(thread.pk)
     out["cites"] = [by_n.get(n) for n in cited]
     return out
 
@@ -471,6 +473,8 @@ def main() -> int:
     ap.add_argument("--tag", default="main")
     ap.add_argument("--only", default="")
     ap.add_argument("--probes-only", action="store_true")
+    ap.add_argument("--answers-only", action="store_true",
+                    help="only the original thirty's answer tasks (not probes)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--graders", choices=["v2", "v3"], default="v2",
                     help="v3: Amendment 2's grader corrections (attempt 3)")
@@ -525,6 +529,8 @@ def main() -> int:
         tasks = [graders_v3(t) for t in tasks]
     if args.probes_only:
         tasks = [t for t in tasks if t["probe"] or t["category"] == "scope_control"]
+    if args.answers_only:
+        tasks = [t for t in tasks if t["set"] == "original" and not t["probe"]]
     if args.only:
         tasks = [t for t in tasks if t["id"] in args.only.split(",")]
     name = f"runs_v2_{args.arm}_{args.tag}{'_dry' if args.dry_run else ''}.jsonl"

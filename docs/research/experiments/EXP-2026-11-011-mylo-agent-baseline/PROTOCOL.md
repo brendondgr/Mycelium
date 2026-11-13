@@ -166,3 +166,11 @@ attempt 2:
    was derived from the message) are reported as vacuous, not as passes.
 
 The original thirty keep attempt 1's graders unchanged.
+
+Addendum to Amendment 2 (2026-11-13 00:14, before the run it describes): a
+harness bug made every `cites` / `overlap_top` grader fail (the runner read
+the thread's references from a stale object; ISSUES.md). The original
+thirty's answer tasks (not the probes) are rerun in the gate arm under
+attempt 3 with the fix (`--answers-only --graders v3 --tag v3`, three
+repetitions, graders otherwise as in attempt 1). Attempt 2's answer-category
+numbers are reported as affected by the bug and not used.
