@@ -196,7 +196,7 @@ def test_a_department_report_covers_only_its_shared_projects() -> None:
 
     department = _department()
     Project.objects.create(
-        name="Shared survey", scope_department=department, share_in_lab_reports=True
+        name="Shared survey", scope_department=department, visibility="department"
     )
     Project.objects.create(name="Private plan", scope_department=department)
 

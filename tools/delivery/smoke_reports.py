@@ -1,6 +1,6 @@
 """The plan's §8 smoke checklist, as code rather than a wiki page.
 
-Twelve checks over the live database, run after a phase ships and before a
+Fifteen checks over the live database, run after a phase ships and before a
 release. They are deliberately *system* checks rather than unit tests: each one
 asks a question about the thing that is actually deployed — this cadence matrix,
 these outbox rows, this lab's projects — which is the class of failure a test
@@ -10,7 +10,9 @@ Two of them are the ones that would actually catch a regression that matters and
 neither is faked:
 
 * **S5** walks every queued lab post and every lab report and asserts that no
-  unshared project's name appears in either. That is the privacy invariant, and
+  unshared project's name appears in either; **S5-lab / S5-department /
+  S5-public** do the same per server width, for every post that went to a
+  server of that width. That is the privacy invariant, and
   checking it against real rows is the only check worth having.
 * **S4** asserts no weekday DM exists for a weekly-cadence reader. It is the
   whole point of making cadence real, and it is exactly the thing that will
@@ -180,14 +182,14 @@ def check_no_unshared_project_in_a_lab_post(today: date) -> Check:
 
     from apps.accounts.models import Lab
     from apps.integrations.models import DiscordOutboxMessage
-    from apps.research.models import Project
+    from apps.research import visibility
 
     from tools.delivery.models import DailyBriefing
 
     private = {
         str(row["name"]): row["scope_lab_id"]
-        for row in Project.objects.active()
-        .filter(scope_lab__isnull=False, share_in_lab_reports=False)
+        for row in visibility.lab_held_back(Lab.objects.values_list("id", flat=True))
+        .filter(is_archived=False)
         .values("name", "scope_lab_id")
     }
     if not private:
@@ -214,6 +216,71 @@ def check_no_unshared_project_in_a_lab_post(today: date) -> Check:
         "S5 no unshared project on a lab surface",
         not leaked,
         "; ".join(leaked[:3]) if leaked else f"{len(private)} private project(s)",
+    )
+
+
+#: Discord rows that can name a project: the lab's post, its PDF line, its
+#: weekly, and announcement threads.
+_PLACE_KINDS = ("lab_digest", "lab_report", "lab_weekly", "announcement")
+
+
+def check_place_width(today: date, width: str) -> Check:
+    """S5 per width: no Discord post in a server of ``width`` names a project
+    whose scope is narrower than the server.
+
+    The server's width is decided by everything bound in it
+    (``resolve.server_width``) — a lab's post in its department's server is a
+    ``department`` place and may not name a ``lab`` project — so this walks
+    today's real rows, finds the server each went to through its route, and
+    checks the names of the target's projects that place may not carry.
+    """
+    import json
+
+    from apps.integrations.models import DiscordChannelRoute, DiscordOutboxMessage
+    from apps.integrations.services import resolve
+    from apps.research import visibility
+
+    name = f"S5-{width} no {width}-wide server names a narrower project"
+    rows = list(
+        DiscordOutboxMessage.objects.filter(
+            created_at__date=today, kind__in=_PLACE_KINDS
+        )
+    )
+    routes = {
+        r.channel_id: r
+        for r in DiscordChannelRoute.objects.filter(
+            channel_id__in={row.channel_id for row in rows if row.channel_id}
+        ).select_related("binding__guild", "binding__lab", "binding__department")
+    }
+    widths: dict[str, str] = {}
+    checked = 0
+    leaked: list[str] = []
+    for row in rows:
+        route = routes.get(row.channel_id)
+        if route is None:
+            continue
+        binding = route.binding
+        guild = binding.guild.guild_id
+        if guild not in widths:
+            widths[guild] = resolve.server_width(guild)
+        if widths[guild] != width:
+            continue
+        checked += 1
+        narrower = visibility.too_narrow_for(
+            width,
+            lab_id=binding.lab_id,
+            department_id=binding.department_id,
+        ).filter(is_archived=False)
+        rendered = json.dumps(row.embed or {}) + (row.content or "")
+        for project_name in narrower.values_list("name", flat=True):
+            if project_name and project_name in rendered:
+                leaked.append(f"{row.kind} in {guild} names {project_name!r}")
+    if not checked:
+        return Check(name, SKIP, f"no post went to a {width}-wide server today")
+    return _check(
+        name,
+        not leaked,
+        "; ".join(leaked[:3]) if leaked else f"{checked} post(s) checked",
     )
 
 
@@ -405,6 +472,7 @@ def run_checklist(*, today: date | None = None, send: bool = False) -> list[Chec
         check_send_hours(today),
         check_no_weekday_dm_for_weekly_cadence(today),
         check_no_unshared_project_in_a_lab_post(today),
+        *(check_place_width(today, width) for width in ("lab", "department", "public")),
         check_embeds_fit(today),
         check_stats_reconcile(today),
         check_citations_resolve(today),

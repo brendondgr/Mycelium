@@ -93,7 +93,7 @@ def _weekly_body(user_or_lab, *, is_lab: bool):
     from tools.delivery.org_scope import org
 
     data = (
-        compile_report_for_lab(user_or_lab)
+        compile_report_for_lab(user_or_lab, width=org(user_or_lab).post_width())
         if is_lab
         else compile_report_for_user(user_or_lab)
     )
@@ -189,7 +189,11 @@ def send_lab_weeklies(labs, *, on: date | None = None) -> WeeklySendSummary:
                 summary.unreachable += 1
                 continue
             kind = "lab_weekly" if scope.is_lab else "dept_weekly"
-            alerts = _alerts(scope.alert_filter) if scope.alert_filter else []
+            alerts = (
+                _alerts(scope.alert_filter, width=scope.post_width())
+                if scope.alert_filter
+                else []
+            )
             outbox.enqueue_channel(
                 dedupe_key=delivery.lab_weekly_key(scope, monday),
                 kind=kind,
@@ -231,11 +235,13 @@ def send_lab_weeklies(labs, *, on: date | None = None) -> WeeklySendSummary:
     return summary
 
 
-def _alerts(target_filter: dict):
+def _alerts(target_filter: dict, *, width: str = "lab"):
     """This week's open alerts, as the post's attention lines."""
     from tools.delivery.alert_report import block_for, discord_lines, open_alerts
 
-    return discord_lines([block_for(alert) for alert in open_alerts(target_filter)])
+    return discord_lines(
+        [block_for(alert) for alert in open_alerts(target_filter, width=width)]
+    )
 
 
 def _monday(value: date) -> date:

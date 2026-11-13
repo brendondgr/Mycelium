@@ -341,6 +341,17 @@ def attention_for(user):
     return ProjectAttention.objects.filter(user=user).select_related("project")
 
 
+def _can_open(reader, project) -> bool:
+    """Whether ``reader`` (a person, not a lab) may open ``project``."""
+    from django.contrib.auth import get_user_model
+
+    from apps.research import visibility as scope
+
+    if not isinstance(reader, get_user_model()):
+        return False
+    return scope.can_open(reader, project)
+
+
 def developments_in_effect(project, *, reader=None, changes=None):
     """A project's developments that change something: told, or confirmed.
 
@@ -355,6 +366,11 @@ def developments_in_effect(project, *, reader=None, changes=None):
     visible = Q(visibility=Visibility.LAB)
     if reader is not None:
         visible |= Q(visibility=Visibility.PERSONAL, speaker=reader)
+        # What was learned about an invite-only project stays with the people
+        # who can open it (scoping plan, Phase 4); a lab surface passes no
+        # person as ``reader`` and never sees it.
+        if _can_open(reader, project):
+            visible |= Q(visibility=Visibility.PROJECT)
     rows = ProjectDevelopment.objects.filter(
         project=project,
         status__in=[
@@ -483,16 +499,32 @@ def changes_between(*, since, until, user=None, projects=()):
 
     For a person (``user``): their own changes — personal ones included — and
     the lab-visible ones on ``projects``. For a lab (no ``user``): only the
-    lab-visible changes on ``projects``, which the caller has already limited
-    to the lab's shared projects. A personal change cannot match the lab query,
-    so a lab report cannot carry one (Plan 09 acceptance).
+    lab-visible changes on ``projects`` whose scope still reaches a lab —
+    re-checked here at read, so a project narrowed after the caller listed it
+    drops out. A personal change cannot match the lab query, so a lab report
+    cannot carry one (Plan 09 acceptance).
     """
     from django.db.models import Q
+
+    from apps.research import visibility as scope
+    from apps.research.models import Project
 
     from .models import AppliedChange
 
     project_ids = [getattr(p, "pk", p) for p in projects]
+    if user is None:
+        project_ids = list(
+            Project.objects.filter(pk__in=project_ids)
+            .filter(scope.lab_surface_q())
+            .values_list("pk", flat=True)
+        )
     shared = Q(project_id__in=project_ids, visibility=Visibility.LAB)
+    if user is not None:
+        # A person's own projects' project-only changes are theirs to read.
+        own = Project.objects.filter(
+            Q(members=user) | Q(scope_user=user), pk__in=project_ids
+        ).values("pk")
+        shared |= Q(project_id__in=own, visibility=Visibility.PROJECT)
     query = (Q(user=user) | shared) if user is not None else shared
     rows = (
         AppliedChange.objects.filter(query, created_at__gte=since, created_at__lt=until)

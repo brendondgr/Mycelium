@@ -81,6 +81,9 @@ import {
   fetchSaves,
   fetchProfile,
   fetchMyProjectInvitations,
+  fetchMyProjectJoinRequests,
+  fetchProjectDirectory,
+  fetchProjectJoinRequests,
   fetchProject,
   fetchProjectConversation,
   fetchProjectState,
@@ -111,6 +114,12 @@ import {
   addToCollection,
   archiveProject,
   cancelProjectInvitation,
+  decideJoinRequest,
+  requestToJoinProject,
+  setDepartmentProjectCreation,
+  setLabProjectCreation,
+  setProjectMemberRole,
+  withdrawJoinRequest,
   attachLabToDept,
   cancelInvitation,
   createCollection,
@@ -124,6 +133,7 @@ import {
   createProject,
   createReminder,
   deleteLabLogo,
+  setLabDepartmentSees,
   deleteReminder,
   detachLabFromDept,
   disconnectDiscord,
@@ -147,7 +157,6 @@ import {
   setLabPlanInclusion,
   testDiscordDm,
   inviteToLab,
-  joinProject,
   leaveProject,
   removeProjectMember,
   respondProjectInvitation,
@@ -197,6 +206,8 @@ import type {
   AnnouncementTarget,
   MyDepartment,
   MyLab,
+  DepartmentSees,
+  ProjectCreation,
 } from "@/lib/portal/types";
 
 export type SearchInput = {
@@ -443,6 +454,17 @@ export function useDeleteLabLogo(slug: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
       queryClient.invalidateQueries({ queryKey: ["portal", "lab-profile", slug] });
+    },
+  });
+}
+
+/** Set what the department's heads see of the lab's projects. */
+export function useSetLabDepartmentSees(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: DepartmentSees) => setLabDepartmentSees(slug, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
     },
   });
 }
@@ -843,6 +865,105 @@ export function useProjectInvitations(id?: string) {
   });
 }
 
+/** The project directory (reduced rows): a lab's, a department's, or the
+ * whole instance's projects the caller can see but is not on. */
+export function useProjectDirectory(
+  where: { labSlug?: string; departmentId?: string } = {},
+  enabled = true,
+) {
+  const labSlug = where.labSlug && where.labSlug !== PERSONAL_SLUG ? where.labSlug : undefined;
+  return useQuery({
+    queryKey: [
+      "portal",
+      "project-directory",
+      labSlug ?? "",
+      where.departmentId ?? "",
+    ],
+    queryFn: () =>
+      fetchProjectDirectory({ labSlug, departmentId: where.departmentId }),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** A project's open join requests (its owner and editors). */
+export function useProjectJoinRequests(id?: string, enabled = true) {
+  return useQuery({
+    queryKey: ["portal", "project-join-requests", id ?? "none"],
+    queryFn: () => fetchProjectJoinRequests(id as string),
+    enabled: Boolean(id) && enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Join requests for the bell: to decide, and the caller's own. */
+export function useMyProjectJoinRequests() {
+  return useQuery({
+    queryKey: ["portal", "my-project-join-requests"],
+    queryFn: fetchMyProjectJoinRequests,
+    staleTime: 60_000,
+  });
+}
+
+/** Ask to join, approve / refuse, or withdraw — refreshing every list a join
+ * request shows up in. */
+export function useJoinRequests() {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    for (const key of [
+      "project-directory",
+      "project-join-requests",
+      "my-project-join-requests",
+      "project",
+      "projects",
+      "lab-projects",
+    ]) {
+      queryClient.invalidateQueries({ queryKey: ["portal", key] });
+    }
+  };
+  const request = useMutation({
+    mutationFn: (input: { id: string; note?: string }) =>
+      requestToJoinProject(input.id, input.note),
+    onSuccess: invalidate,
+  });
+  const decide = useMutation({
+    mutationFn: (input: {
+      projectId: string;
+      requestId: string;
+      action: "approve" | "refuse";
+    }) => decideJoinRequest(input.projectId, input.requestId, input.action),
+    onSuccess: invalidate,
+  });
+  const withdraw = useMutation({
+    mutationFn: (requestId: string) => withdrawJoinRequest(requestId),
+    onSuccess: invalidate,
+  });
+  return { request, decide, withdraw };
+}
+
+/** Set who may start a project in a lab (the switcher carries it). */
+export function useSetLabProjectCreation(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: ProjectCreation) => setLabProjectCreation(slug, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
+    },
+  });
+}
+
+/** Set who may start a department project. */
+export function useSetDepartmentProjectCreation(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: ProjectCreation) =>
+      setDepartmentProjectCreation(id, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "departments"] });
+    },
+  });
+}
+
 /** The caller's own pending project invitations (notifications feed). */
 export function useMyProjectInvitations() {
   return useQuery({
@@ -948,7 +1069,8 @@ export function useUpdateProjectFocus() {
   });
 }
 
-/** Every project of a lab (any lab member may browse them to join). */
+/** The projects of a lab the caller may see: their own, or all of them for a
+ * lab manager or a department head. There is no self-join. */
 export function useLabProjects(slug?: string) {
   const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
   return useQuery({
@@ -959,7 +1081,7 @@ export function useLabProjects(slug?: string) {
   });
 }
 
-/** Join / leave / add / remove members on a project, refreshing the project
+/** Leave / add / remove members on a project, refreshing the project
  * itself (its roster is serialized on the row) and both project lists. */
 export function useProjectMembership() {
   const queryClient = useQueryClient();
@@ -968,10 +1090,6 @@ export function useProjectMembership() {
     queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
     queryClient.invalidateQueries({ queryKey: ["portal", "lab-projects"] });
   };
-  const join = useMutation({
-    mutationFn: (id: string) => joinProject(id),
-    onSuccess: invalidate,
-  });
   const leave = useMutation({
     mutationFn: (id: string) => leaveProject(id),
     onSuccess: invalidate,
@@ -986,7 +1104,15 @@ export function useProjectMembership() {
       removeProjectMember(input.id, input.username),
     onSuccess: invalidate,
   });
-  return { join, leave, addMember, removeMember };
+  const setRole = useMutation({
+    mutationFn: (input: {
+      id: string;
+      username: string;
+      role: "editor" | "member";
+    }) => setProjectMemberRole(input.id, input.username, input.role),
+    onSuccess: invalidate,
+  });
+  return { leave, addMember, removeMember, setRole };
 }
 
 /** Save a lab's purpose & goals, updating the cached copy in place. */

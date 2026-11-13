@@ -126,24 +126,40 @@ def _visibility(item: Extracted, conversation: Conversation, projects: dict) -> 
 
     Anything about the person themselves is personal. A project fact is lab
     only when it was said on the lab's own surface about one of the lab's
-    projects; said in a DM, it stays with the person who said it.
+    projects whose scope reaches the lab; said about an ``invite_only``
+    project it is ``project`` evidence, for that project's people only; said in
+    a DM, it stays with the person who said it.
     """
+    from apps.research import visibility as scope
+
     if item.kind in PERSONAL_KINDS:
         return Visibility.PERSONAL
     if item.line.place_kind == PlaceKind.DM or not conversation.source.lab_id:
         return Visibility.PERSONAL
     project = projects.get(item.line.project_id)
-    if project is not None and project.scope_lab_id == conversation.source.lab_id:
+    if project is None or project.scope_user_id is not None:
+        # A personal project's talk stays with the person who said it.
+        return Visibility.PERSONAL
+    if scope.stays_with_people(project):
+        return Visibility.PROJECT
+    if project.scope_lab_id == conversation.source.lab_id:
         return Visibility.LAB
     return Visibility.PERSONAL
 
 
 def _owner(item: Extracted, speaker, projects: dict):
     """Whose scope a topic's concept is born in: the person for anything about
-    them, the lab for a lab project's development."""
+    them, the lab for a lab project's development — unless the project is
+    ``invite_only``, whose themes stay with the person who said them."""
+    from apps.research import visibility as scope
+
     if item.kind not in PERSONAL_KINDS:
         project = projects.get(item.line.project_id)
-        if project is not None and project.scope_lab_id:
+        if (
+            project is not None
+            and project.scope_lab_id
+            and not scope.stays_with_people(project)
+        ):
             return project.scope_lab
     return speaker
 

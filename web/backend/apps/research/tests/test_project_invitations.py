@@ -151,7 +151,7 @@ def test_invite_and_accept_puts_someone_on_a_personal_project(
 
     # The invitee cannot see the project until they accept …
     client.force_authenticate(outsider)
-    assert client.get(f"/api/projects/{project.id}/").status_code == 403
+    assert client.get(f"/api/projects/{project.id}/").status_code == 404
 
     mine = client.get("/api/project-invitations/")
     assert mine.status_code == 200
@@ -226,7 +226,7 @@ def test_lab_project_invite_grants_the_project_but_not_the_lab(
     )
     assert client.get(f"/api/projects/{project.id}/").status_code == 200
     # The lab's other work stays invisible — an invitation is per project.
-    assert client.get(f"/api/projects/{other.id}/").status_code == 403
+    assert client.get(f"/api/projects/{other.id}/").status_code == 404
     assert not LabMembership.objects.filter(user=outsider, lab=lab).exists()
 
 

@@ -13,7 +13,7 @@ from datetime import date, timedelta
 
 import pytest
 from apps.accounts.models import Lab, WatchPreference
-from apps.research.models import Project, ProjectState
+from apps.research.models import Project, ProjectMember, ProjectState
 from django.contrib.auth.models import User
 from django.utils import timezone
 
@@ -369,7 +369,7 @@ def test_a_lab_alert_does_not_ring_every_members_bell(db) -> None:
     """One finding ringing eight times is how a bell gets ignored."""
     lab = Lab.objects.create(name="Pulse", slug="pulse")
     project = Project.objects.create(
-        name="Ariadne", scope_lab=lab, share_in_lab_reports=True
+        name="Ariadne", scope_lab=lab, visibility="lab"
     )
     ProjectAlert.objects.create(
         target_lab=lab,
@@ -381,6 +381,49 @@ def test_a_lab_alert_does_not_ring_every_members_bell(db) -> None:
 
     assert notify(open_alerts({"target_lab": lab})) == 0
     assert Notification.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_an_unshared_project_drops_its_stored_lab_alerts_at_read(db) -> None:
+    """An alert never outlives its project leaving the lab's shared surfaces."""
+    lab = Lab.objects.create(name="Pulse", slug="pulse")
+    project = Project.objects.create(
+        name="Ariadne", scope_lab=lab, visibility="lab"
+    )
+    ProjectAlert.objects.create(
+        target_lab=lab,
+        project=project,
+        content=_item("A paper"),
+        trigger=ProjectAlert.Trigger.TIMELINE,
+        fired_on=timezone.localdate(),
+    )
+    assert [a.project_id for a in open_alerts({"target_lab": lab})] == [project.id]
+
+    project.visibility = "invite_only"
+    project.save(update_fields=["visibility"])
+
+    assert open_alerts({"target_lab": lab}) == []
+    assert ProjectAlert.objects.count() == 1  # stored, just no longer shown
+
+
+@pytest.mark.django_db
+def test_leaving_a_project_drops_its_stored_personal_alerts_at_read(db) -> None:
+    lab = Lab.objects.create(name="Pulse", slug="pulse")
+    project = Project.objects.create(name="Ariadne", scope_lab=lab)
+    member = User.objects.create_user("member", password="p")
+    ProjectMember.objects.create(project=project, user=member)
+    ProjectAlert.objects.create(
+        target_user=member,
+        project=project,
+        content=_item("A paper"),
+        trigger=ProjectAlert.Trigger.TIMELINE,
+        fired_on=timezone.localdate(),
+    )
+    assert len(open_alerts({"target_user": member})) == 1
+
+    ProjectMember.objects.filter(project=project, user=member).delete()
+
+    assert open_alerts({"target_user": member}) == []
 
 
 # --------------------------------------------------------------------------- #

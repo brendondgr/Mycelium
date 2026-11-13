@@ -96,8 +96,26 @@ no Mylo database, schema, or migration history.
   removing one leaves every other binding working. A kicked server silences its
   bindings without deleting their routes. The older lab features (deadline
   reminders, the lab digest, weekly and report re-sends) read the lab's **primary**
-  binding — its oldest live binding with the route in question — so they behave
-  exactly as they did with one server per lab. Server-scoped commands that need a
+  binding — its live binding with the route in question in the **narrowest
+  server** (a lab's own server before its department's), oldest first.
+
+  **Server width.** What a post or a Mylo reply may name is decided by
+  everything bound in the server, never by which binding it travels on
+  (`resolve.server_width`, carried on `Place.width`): one lab alone is a `lab`
+  server; a department binding, or labs of one department, make it a
+  `department` server; labs of different departments, or of none, make it
+  `public`; pending bindings count. A project appears only where its scope is at
+  least that wide (`apps.research.visibility.may_surface`): the lab's daily post,
+  its PDF, weekly and alerts use `resolve.lab_post_width`; an announcement's
+  project teams are cut for the widest server the target is bound in
+  (`announce.place_width`) and a thread is not opened in a server too wide for
+  them (`discord_announcements.may_post_in`); a department post may name
+  department- and public-scoped projects, without their members' names. Mylo
+  chat's audience in a server is the server's width (`department` audience for a
+  lab's channel in its department's server; agent width `public` for a mixed
+  one). A project narrowed after its announcement thread opened leaves the thread's team, *Who should look* and prose on the thread's next update (`discord_announcements.scrub_narrowed`); what was already posted stays. A deadline reminder made from inside an `invite_only` project can only be a DM. No Discord post says "N private projects not shown"; the count is on
+  the managers' web view only. `manage.py smoke_reports` checks each width
+  (`S5-lab`, `S5-department`, `S5-public`). Server-scoped commands that need a
   lab (listening, `lab_digest`) find it only when the server holds exactly one lab
   binding; otherwise the lab must be named.
 

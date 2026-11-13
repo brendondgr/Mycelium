@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
+from django.db.models import Q
 from django.utils import timezone
 
 from tools.delivery.models import ProjectAlert
@@ -170,12 +171,52 @@ def block_for(alert: ProjectAlert) -> AlertBlock:
     )
 
 
-def open_alerts(target_filter: dict, day: date | None = None) -> list[ProjectAlert]:
-    """Today's open alerts for one target, in the order the report shows them."""
+def _still_shown(target_filter: dict, width: str = "lab") -> dict:
+    """The project filter a stored alert must still pass to be read.
+
+    An alert is stored when it fires, but who may see its project can change
+    afterwards: a lab project can be un-shared, a person can leave a project. So
+    sharing is re-checked here, at read, rather than trusted from the moment the
+    alert was written — an alert never outlives the project leaving the surface.
+
+    * A lab target reads only alerts for the lab's projects whose scope still
+      reaches the place being written for
+      (:func:`apps.research.visibility.lab_surface_projects`): ``width`` is
+      ``lab`` on the web and in the lab's own server, wider when the lab's post
+      lands in a server holding more than the lab.
+    * A person reads only alerts for projects that are still theirs — owned
+      personally or held as a member.
+    """
+    from apps.research import visibility
+    from apps.research.models import Project
+
+    if "target_lab" in target_filter:
+        lab = target_filter["target_lab"]
+        shown = visibility.lab_surface_projects(lab, width)
+    elif "target_user" in target_filter:
+        user = target_filter["target_user"]
+        shown = Project.objects.filter(Q(scope_user=user) | Q(members=user))
+    else:
+        return {}
+    return {"project_id__in": shown.values("id")}
+
+
+def open_alerts(
+    target_filter: dict, day: date | None = None, *, width: str = "lab"
+) -> list[ProjectAlert]:
+    """Today's open alerts for one target, in the order the report shows them.
+
+    Filtered through :func:`_still_shown`, so a project un-shared (or left) after
+    its alert fired drops out of every surface that reads it, and a lab's alert
+    reaches only a place (``width``) its project's scope allows.
+    """
     day = day or timezone.localdate()
     return list(
         ProjectAlert.objects.filter(
-            **target_filter, fired_on=day, status=ProjectAlert.Status.OPEN
+            **target_filter,
+            **_still_shown(target_filter, width),
+            fired_on=day,
+            status=ProjectAlert.Status.OPEN,
         )
         .select_related("project", "content")
         .order_by("project__name", "trigger")

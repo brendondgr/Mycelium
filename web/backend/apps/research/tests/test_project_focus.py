@@ -120,4 +120,4 @@ def test_outsider_cannot_read_project(client: APIClient) -> None:
     project = Project.objects.create(name="Private", scope_user=owner)
 
     client.force_authenticate(outsider)
-    assert client.get(f"/api/projects/{project.id}/").status_code == 403
+    assert client.get(f"/api/projects/{project.id}/").status_code == 404

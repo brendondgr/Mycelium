@@ -8,12 +8,13 @@
  */
 
 import * as React from "react";
-import { FolderKanban } from "lucide-react";
 
 import { MyloAndYouSection } from "@/components/portal/ambient/mylo-and-you-section";
 import { CollaborationSettingsCard } from "@/components/portal/collab/collaboration-settings-card";
 import { AgentPolicyCard } from "@/components/portal/mylo/settings-cards";
 import { usePortal } from "@/components/portal/portal-context";
+import { DepartmentSeesCard } from "@/components/portal/projects/department-sees-card";
+import { ProjectCreationCard } from "@/components/portal/projects/project-creation-card";
 import { Card } from "@/components/portal/primitives/card";
 import { EditIcon } from "@/components/portal/icons";
 import { SlackLabCard, TeamsLabCard } from "@/components/portal/ambient/slack-cards";
@@ -107,25 +108,6 @@ export function YouPage({ page }: { page: YouPageKey }) {
  * default visibility, what the department sees). Until then it says so plainly
  * rather than pretending to be empty.
  */
-function ProjectRulesPlaceholder({ noun }: { noun: "lab" | "department" }) {
-  return (
-    <Card className="p-5" aria-labelledby={`${noun}-project-rules-title`}>
-      <h2
-        id={`${noun}-project-rules-title`}
-        className="flex items-center gap-2 text-base font-semibold text-[var(--text-primary)]"
-      >
-        <FolderKanban size={16} aria-hidden="true" className="text-[var(--text-muted)]" />
-        Project rules
-      </h2>
-      <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
-        {noun === "lab"
-          ? "Who may start a project in this lab, how visible a new project is, and what the department sees of the lab's projects will be set here. There is nothing to set yet."
-          : "Who may start a project in this department and how visible a new project is will be set here. There is nothing to set yet."}
-      </p>
-    </Card>
-  );
-}
-
 function EditProfileButton({ onClick }: { onClick: () => void }) {
   return (
     <div>
@@ -240,7 +222,8 @@ export function LabPage({ lab, page }: { lab: MyLab; page: OrgPageKey }) {
     case "projects":
       return (
         <>
-          <ProjectRulesPlaceholder noun="lab" />
+          <ProjectCreationCard kind="lab" slug={lab.slug} value={lab.project_creation} />
+          {lab.department ? <DepartmentSeesCard lab={lab} /> : null}
           <ProjectsCard lab={lab} canManage={can(lab, CAPABILITY.PROFILE_EDIT)} />
         </>
       );
@@ -319,7 +302,9 @@ export function DeptPage({ dept, page }: { dept: MyDepartment; page: OrgPageKey 
     case "people":
       return <DeptPeople dept={dept} />;
     case "projects":
-      return <ProjectRulesPlaceholder noun="department" />;
+      return (
+        <ProjectCreationCard kind="department" id={dept.id} value={dept.project_creation} />
+      );
     case "servers":
       return (
         <>

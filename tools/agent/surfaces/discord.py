@@ -114,15 +114,26 @@ def _guest_limits(discord_user_id: str, guild_id: str) -> Refusal | None:
 
 
 def _scope_and_audience(place) -> tuple[Scope, Audience]:
+    """The thread's scope comes from the binding that owns the room; who will
+    read the reply comes from **everything bound in the server**
+    (``place.width``, ``resolve.server_width``). A lab's channel in its
+    department's server is read by the department, so a ``lab`` project is not
+    shown there; a server holding labs of different departments is ``public``."""
+    width = getattr(place, "width", "public")
     if place.lab is not None:
-        return Scope("lab", place.lab), Audience("lab", place.lab)
+        scope = Scope("lab", place.lab)
+        if width == "lab":
+            return scope, Audience("lab", place.lab)
+        if width == "department" and place.lab.department_id:
+            return scope, Audience("department", place.lab.department)
+        return scope, Audience("public")
     if place.department is not None:
-        return (
-            Scope("department", place.department),
-            Audience("department", place.department),
-        )
+        scope = Scope("department", place.department)
+        if width in ("lab", "department"):
+            return scope, Audience("department", place.department)
+        return scope, Audience("public")
     # Several bindings, none owns the channel: public material only.
-    return Scope(), Audience("instance")
+    return Scope(), Audience("public")
 
 
 def _refusal(gate_result) -> Refusal:

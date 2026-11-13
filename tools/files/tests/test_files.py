@@ -220,7 +220,9 @@ def test_the_file_list_is_filtered_in_sql_and_matches_can_see(
     upload(world.carol, b"carol project", "cp.txt", "project", other_lab_project)
     every = list(StoredFile.objects.all())
     for user in (world.alice, world.bob, world.carol, world.admin):
-        with django_assert_max_num_queries(3):  # fixed, whatever the file count
+        # Fixed, whatever the file count: the reader's scopes (their labs,
+        # departments and what they oversee) and then one query for the files.
+        with django_assert_max_num_queries(7):
             got = access.visible_queryset(user)
         assert {f.pk for f in got} == {f.pk for f in every if access.can_see(user, f)}
     assert {f.filename for f in access.visible_queryset(world.carol)} == {

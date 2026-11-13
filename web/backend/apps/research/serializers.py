@@ -6,10 +6,20 @@ from tools.recommendation.targets import (
 )
 
 from apps.accounts.interests import validate_interests
-from apps.accounts.permissions import user_can_edit_lab_profile
 from apps.core.people import display_name, initials
 
-from .models import Project, ProjectInvitation
+from . import visibility as rules
+from .models import (
+    Project,
+    ProjectInvitation,
+    ProjectJoinRequest,
+    ProjectMember,
+    Visibility,
+)
+from .permissions import (
+    EDIT_ROLES,
+    user_manages_project_scope,
+)
 
 
 def _clean_list(value) -> list[str]:
@@ -114,20 +124,6 @@ def _person(user) -> dict:
     }
 
 
-class ProjectMemberSerializer(serializers.Serializer):
-    """A user as a project participant — read-only display fields only."""
-
-    username = serializers.CharField()
-    name = serializers.SerializerMethodField()
-    initials = serializers.SerializerMethodField()
-
-    def get_name(self, user) -> str:
-        return display_name(user)
-
-    def get_initials(self, user) -> str:
-        return initials(user)
-
-
 #: Alias bounds. See ``ProjectUpdateSerializer.validate_aliases``.
 ALIAS_MIN = 3
 ALIAS_MAX = 60
@@ -156,7 +152,13 @@ class ProjectSerializer(serializers.ModelSerializer):
     is_over_cap = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     can_manage_members = serializers.SerializerMethodField()
-    members = ProjectMemberSerializer(many=True, read_only=True)
+    my_role = serializers.SerializerMethodField()
+    is_participant = serializers.SerializerMethodField()
+    can_change_visibility = serializers.SerializerMethodField()
+    allowed_visibilities = serializers.SerializerMethodField()
+    can_invite_outside = serializers.SerializerMethodField()
+    can_request = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -175,10 +177,16 @@ class ProjectSerializer(serializers.ModelSerializer):
             "member_count",
             "is_member",
             "is_archived",
-            "share_in_lab_reports",
+            "visibility",
+            "my_role",
+            "is_participant",
             "is_over_cap",
             "can_edit",
             "can_manage_members",
+            "can_change_visibility",
+            "allowed_visibilities",
+            "can_invite_outside",
+            "can_request",
             "members",
             "aliases",
             "updated_at",
@@ -289,28 +297,298 @@ class ProjectSerializer(serializers.ModelSerializer):
         user = self._caller()
         if user is None:
             return False
-        if project.scope_user_id is not None:
-            return project.scope_user_id == user.id
-        if project.scope_lab_id is None:
-            return False
-        cache = getattr(self, "_editable_labs", None)
-        if cache is None:
-            cache = {}
-            self._editable_labs = cache
-        if project.scope_lab_id not in cache:
-            cache[project.scope_lab_id] = user_can_edit_lab_profile(
-                user, project.scope_lab
-            )
-        return cache[project.scope_lab_id]
+        if project.scope_user_id is not None and project.scope_user_id == user.id:
+            return True
+        if self.get_my_role(project) in EDIT_ROLES:
+            return True
+        # Only the scope's managers are the same across a lab's projects; a
+        # role is per project and was checked above.
+        return self._manages_scope(user, project)
+
+    def get_my_role(self, project: Project) -> str | None:
+        """The caller's role on the project (``owner`` / ``editor`` /
+        ``member``), or ``null`` when they are not a member. Read from the
+        prefetched memberships when the view supplied them."""
+        user = self._caller()
+        if user is None:
+            return None
+        cache = getattr(project, "_prefetched_objects_cache", {})
+        if "memberships" in cache:
+            for row in cache["memberships"]:
+                if row.user_id == user.id:
+                    return row.role
+            return None
+        return rules.member_role(user, project)
 
     def get_can_manage_members(self, project: Project) -> bool:
         """Whether the caller may add or remove this project's members.
 
-        Same authority as editing: a personal project's owner, or a lab project's
-        owner / admin / PI. A lab manager adds lab members directly; anyone else
-        joins through an invitation.
+        Same authority as editing: a personal project's owner, a lab project's
+        owner / admin / PI, or a department project's owner / admin. A lab
+        manager adds lab members directly; anyone else joins through an
+        invitation.
         """
         return self.get_can_edit(project)
+
+    def get_is_participant(self, project: Project) -> bool:
+        """Whether this is one of the caller's projects (a member, or the
+        personal owner). An overseer who can open it is not a participant, so
+        the app keeps it out of "My projects"."""
+        user = self._caller()
+        if user is None:
+            return False
+        if project.scope_user_id is not None and project.scope_user_id == user.id:
+            return True
+        return self.get_my_role(project) is not None
+
+    def _manages_scope(self, user, project: Project) -> bool:
+        """``user_manages_project_scope``, memoized per lab / department — the
+        same cache :meth:`get_can_edit` fills."""
+        if project.scope_lab_id is not None:
+            key = ("lab", project.scope_lab_id)
+        elif project.scope_department_id is not None:
+            key = ("department", project.scope_department_id)
+        else:
+            return False
+        cache = getattr(self, "_editable_scopes", None)
+        if cache is None:
+            cache = {}
+            self._editable_scopes = cache
+        if key not in cache:
+            cache[key] = user_manages_project_scope(user, project)
+        return cache[key]
+
+    def get_can_change_visibility(self, project: Project) -> bool:
+        """Mirrors :func:`permissions.user_can_change_visibility` from the
+        prefetched role and the memoized manager check (no query per row)."""
+        user = self._caller()
+        if user is None:
+            return False
+        if project.scope_user_id is not None:
+            return project.scope_user_id == user.id
+        if self.get_my_role(project) == ProjectMember.Role.OWNER:
+            return True
+        return self._manages_scope(user, project)
+
+    def get_allowed_visibilities(self, project: Project) -> list[str]:
+        return list(rules.allowed_visibilities(project))
+
+    def get_can_invite_outside(self, project: Project) -> bool:
+        """Mirrors :func:`permissions.user_can_invite_outside`."""
+        if project.scope_user_id is not None:
+            return self.get_can_edit(project)
+        return self.get_can_change_visibility(project)
+
+    def get_can_request(self, project: Project) -> bool:
+        """Whether the caller may ask to join (and has no open request).
+
+        A full row only ever reaches someone who may open the project (every
+        route checks ``visible_to`` first), and opening implies seeing — so of
+        :func:`permissions.user_can_request_to_join` only the scope, archive
+        and membership tests are left, answered without a query per row."""
+        user = self._caller()
+        if user is None or project.is_archived:
+            return False
+        if not rules.admits_requests(project) or self.get_is_participant(project):
+            return False
+        pending = getattr(self, "_pending_requests", None)
+        if pending is None:
+            # The caller's open requests, once per serializer, not per row.
+            pending = set(
+                ProjectJoinRequest.objects.filter(
+                    user=user, state=ProjectJoinRequest.State.PENDING
+                ).values_list("project_id", flat=True)
+            )
+            self._pending_requests = pending
+        return project.id not in pending
+
+    def _home_people(self, project: Project) -> set | None:
+        """:func:`visibility.scope_people_ids`, memoized per lab / department
+        so a list of one lab's projects asks for its roster once."""
+        if project.scope_lab_id is not None:
+            key = ("lab", project.scope_lab_id)
+        elif project.scope_department_id is not None:
+            key = ("department", project.scope_department_id)
+        else:
+            return None
+        cache = getattr(self, "_home_people_cache", None)
+        if cache is None:
+            cache = {}
+            self._home_people_cache = cache
+        if key not in cache:
+            cache[key] = rules.scope_people_ids(project)
+        return cache[key]
+
+    def get_members(self, project: Project) -> list[dict]:
+        """The roster: each person with their role, and ``outside`` when they
+        are not in the project's lab (or department) — an outside collaborator,
+        who sees this one project and nothing else of the lab."""
+        cache = getattr(project, "_prefetched_objects_cache", {})
+        if "memberships" in cache:
+            rows = list(cache["memberships"])
+        else:
+            rows = list(project.memberships.select_related("user"))
+        home = self._home_people(project)
+        rows.sort(key=lambda row: row.user.get_username())
+        return [
+            {
+                **_person(row.user),
+                "role": row.role,
+                "outside": home is not None and row.user_id not in home,
+            }
+            for row in rows
+        ]
+
+
+class ProjectNameOnlySerializer(serializers.Serializer):
+    """What a department head sees of a project in a lab set to *Names only*:
+    name, owner, member count and scope — never goals, state, feed, files or
+    the roster."""
+
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    visibility = serializers.CharField()
+    scope_name = serializers.SerializerMethodField()
+    scope_slug = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
+    member_count = serializers.SerializerMethodField()
+    names_only = serializers.SerializerMethodField()
+
+    def get_scope_name(self, project: Project) -> str:
+        return project.scope_lab.name if project.scope_lab_id else ""
+
+    def get_scope_slug(self, project: Project) -> str | None:
+        return project.scope_lab.slug if project.scope_lab_id else None
+
+    def get_owner(self, project: Project) -> dict | None:
+        owner = rules.owner_of(project)
+        return _person(owner) if owner is not None else None
+
+    def get_member_count(self, project: Project) -> int:
+        return ProjectMember.objects.filter(project=project).count()
+
+    def get_names_only(self, project: Project) -> bool:
+        return True
+
+
+#: How long a directory row's focus line may run.
+FOCUS_LINE_MAX = 160
+
+
+def focus_line(project: Project) -> str:
+    """One line saying what the project is about: its description, else its
+    focus statement, else its areas — cut to :data:`FOCUS_LINE_MAX`."""
+    goals = project.goals if isinstance(project.goals, dict) else {}
+    text = ""
+    for value in (goals.get("description"), goals.get("goal")):
+        if isinstance(value, str) and value.strip():
+            text = value
+            break
+    if not text:
+        interests = project_interests(project)
+        text = interests["statement"] or ", ".join(interests["areas"][:4])
+    text = " ".join(str(text).split())
+    if len(text) > FOCUS_LINE_MAX:
+        text = text[: FOCUS_LINE_MAX - 1].rstrip() + "…"
+    return text
+
+
+class ProjectDirectorySerializer(serializers.Serializer):
+    """A directory row: a project the caller can see exists but is not on.
+
+    Name, a one-line focus, owner, member count and scope — never goals,
+    state, feed, files or the roster. ``can_open`` is true for an overseer
+    (who may open it without joining); ``can_request`` when the caller may ask
+    to join; ``request_status`` is ``pending`` while their request is open.
+    The view passes ``openable`` (ids) and ``pending`` (ids) in context.
+    """
+
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    visibility = serializers.CharField()
+    scope = serializers.CharField()
+    scope_name = serializers.SerializerMethodField()
+    scope_slug = serializers.SerializerMethodField()
+    focus = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
+    member_count = serializers.SerializerMethodField()
+    can_open = serializers.SerializerMethodField()
+    can_request = serializers.SerializerMethodField()
+    request_status = serializers.SerializerMethodField()
+
+    def _rows(self, project: Project) -> list:
+        cache = getattr(project, "_prefetched_objects_cache", {})
+        if "memberships" in cache:
+            return list(cache["memberships"])
+        return list(project.memberships.select_related("user"))
+
+    def get_scope_name(self, project: Project) -> str:
+        if project.scope_lab_id:
+            return project.scope_lab.name
+        if project.scope_department_id:
+            return project.scope_department.name
+        return "Personal"
+
+    def get_scope_slug(self, project: Project) -> str | None:
+        return project.scope_lab.slug if project.scope_lab_id else None
+
+    def get_focus(self, project: Project) -> str:
+        return focus_line(project)
+
+    def get_owner(self, project: Project) -> dict | None:
+        for row in self._rows(project):
+            if row.role == ProjectMember.Role.OWNER:
+                return _person(row.user)
+        if project.scope_user_id is not None:
+            return _person(project.scope_user)
+        return None
+
+    def get_member_count(self, project: Project) -> int:
+        return len(self._rows(project))
+
+    def get_can_open(self, project: Project) -> bool:
+        return project.id in self.context.get("openable", set())
+
+    def get_request_status(self, project: Project) -> str | None:
+        if project.id in self.context.get("pending", set()):
+            return ProjectJoinRequest.State.PENDING
+        return None
+
+    def get_can_request(self, project: Project) -> bool:
+        if project.id in self.context.get("pending", set()):
+            return False
+        # Every directory row is one the caller can see and is not on, so the
+        # scope and the archive flag are what is left to decide.
+        return not project.is_archived and rules.admits_requests(project)
+
+
+class ProjectJoinRequestSerializer(serializers.ModelSerializer):
+    """One join request, for the deciders' list and the requester's own."""
+
+    project_id = serializers.CharField(source="project.id", read_only=True)
+    project_name = serializers.CharField(source="project.name", read_only=True)
+    user = serializers.SerializerMethodField()
+    decided_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProjectJoinRequest
+        fields = [
+            "id",
+            "project_id",
+            "project_name",
+            "user",
+            "note",
+            "state",
+            "decided_by",
+            "decided_at",
+            "created_at",
+        ]
+
+    def get_user(self, row: ProjectJoinRequest) -> dict:
+        return _person(row.user)
+
+    def get_decided_by(self, row: ProjectJoinRequest) -> dict | None:
+        return _person(row.decided_by) if row.decided_by_id else None
 
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
@@ -330,10 +608,16 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         write_only=True, required=False, allow_blank=True
     )
     focus = serializers.DictField(write_only=True, required=False)
+    #: The project's scope. Checked against what the resolved scope may take
+    #: (``visibility.allowed_visibilities``) by the view; ``invite_only`` when
+    #: omitted.
+    visibility = serializers.ChoiceField(
+        choices=Visibility.choices, required=False, write_only=True
+    )
 
     class Meta:
         model = Project
-        fields = ["id", "name", "goals", "lab", "department", "focus"]
+        fields = ["id", "name", "goals", "lab", "department", "focus", "visibility"]
         read_only_fields = ["id"]
 
     def validate_name(self, value: str) -> str:
@@ -364,9 +648,10 @@ class ProjectUpdateSerializer(serializers.Serializer):
     (or an empty string, for the text fields) clears one rather than storing a
     blank, so the page falls back to "not set" instead of rendering an empty pill.
 
-    ``share_in_lab_reports`` is a real column rather than a ``goals`` key: it is a
-    permission-shaped decision that the briefing query filters on, and a JSON key
-    cannot be filtered on cheaply or trusted to exist.
+    ``visibility`` is a real column rather than a ``goals`` key: it is a
+    permission-shaped decision every surface filters on, and a JSON key cannot be
+    filtered on cheaply or trusted to exist. Only the owner may change it (the
+    view checks), and only to a scope the project can take.
     """
 
     name = serializers.CharField(required=False)
@@ -381,10 +666,8 @@ class ProjectUpdateSerializer(serializers.Serializer):
     watch_categories = serializers.ListField(
         child=serializers.CharField(), required=False
     )
-    #: Opt this project into the lab's shared surfaces (plan M6). Off by default
-    #: and settable only by a project editor, which is what the view already
-    #: enforces before this serializer runs.
-    share_in_lab_reports = serializers.BooleanField(required=False)
+    #: The project's one scope (``apps.research.visibility``).
+    visibility = serializers.ChoiceField(choices=Visibility.choices, required=False)
     #: Other names people use for this project in conversation. Read by ambient
     #: attribution, where a name or alias is the strongest single signal.
     aliases = serializers.ListField(
@@ -427,6 +710,14 @@ class ProjectUpdateSerializer(serializers.Serializer):
             )
         return out
 
+    def validate_visibility(self, value: str) -> str:
+        project = self.instance
+        if project is not None and value not in rules.allowed_visibilities(project):
+            raise serializers.ValidationError(
+                f"A {project.scope} project cannot be scoped to {value!r}."
+            )
+        return value
+
     def validate_watch_categories(self, value) -> list[str]:
         allowed = {"papers", "grants", "fellowships", "conferences"}
         out = [str(v).strip().lower() for v in value if str(v).strip()]
@@ -459,8 +750,8 @@ class ProjectUpdateSerializer(serializers.Serializer):
         if "watch_categories" in validated:
             goals["watch_categories"] = validated["watch_categories"]
         instance.goals = goals
-        if "share_in_lab_reports" in validated:
-            instance.share_in_lab_reports = bool(validated["share_in_lab_reports"])
+        if "visibility" in validated:
+            instance.visibility = validated["visibility"]
         if "aliases" in validated:
             name = instance.name.casefold()
             instance.aliases = [

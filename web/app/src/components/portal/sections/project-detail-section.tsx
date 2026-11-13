@@ -28,6 +28,7 @@ import {
   ThumbsUpIcon,
 } from "@/components/portal/icons";
 import { TabBar, type TabItem } from "@/components/portal/primitives/tab-bar";
+import { PersonalOnlyScope } from "@/components/portal/personal-only-scope";
 import { usePortal } from "@/components/portal/portal-context";
 import {
   ProjectAboutCard,
@@ -119,7 +120,8 @@ export function ProjectDetailSection() {
   const tab: ProjectTabKey =
     tabState.projectId === activeProjectId ? tabState.tab : "overview";
   const setTab = React.useCallback(
-    (next: ProjectTabKey) => setTabState({ projectId: activeProjectId, tab: next }),
+    (next: ProjectTabKey) =>
+      setTabState({ projectId: activeProjectId, tab: next }),
     [activeProjectId],
   );
 
@@ -142,8 +144,8 @@ export function ProjectDetailSection() {
         {backButton}
         {projectQuery.isError ? (
           <p className="text-sm text-[var(--text-secondary)]">
-            This project isn&apos;t available — it may have been archived, or you
-            may no longer have access to it.
+            This project isn&apos;t available — it may have been archived, or
+            you may no longer have access to it.
           </p>
         ) : (
           <div className="space-y-4" aria-hidden>
@@ -180,32 +182,35 @@ export function ProjectDetailSection() {
         tracked={project.watch_categories}
       />
 
-      <div
-        role="tabpanel"
-        id="project-tabpanel"
-        aria-labelledby={`project-tab-${tab}`}
-        tabIndex={0}
-        className="focus-visible:outline-none"
-      >
-        {tab !== "overview" ? (
-          <ProjectAreaPanel
-            area={tab}
-            project={project}
-            data={recQuery.data}
-            isLoading={recQuery.isLoading}
-            isError={recQuery.isError}
-          />
-        ) : (
-          <ProjectOverviewPanel
-            project={project}
-            recQuery={recQuery}
-            feedQuery={feedQuery}
-            canCollaborate={canCollaborate}
-            onEdit={() => setEditorOpen(true)}
-            onOpenTab={setTab}
-          />
-        )}
-      </div>
+      {/* An invite-only project's saves and reminders stay with the person. */}
+      <PersonalOnlyScope active={project.visibility === "invite_only"}>
+        <div
+          role="tabpanel"
+          id="project-tabpanel"
+          aria-labelledby={`project-tab-${tab}`}
+          tabIndex={0}
+          className="focus-visible:outline-none"
+        >
+          {tab !== "overview" ? (
+            <ProjectAreaPanel
+              area={tab}
+              project={project}
+              data={recQuery.data}
+              isLoading={recQuery.isLoading}
+              isError={recQuery.isError}
+            />
+          ) : (
+            <ProjectOverviewPanel
+              project={project}
+              recQuery={recQuery}
+              feedQuery={feedQuery}
+              canCollaborate={canCollaborate}
+              onEdit={() => setEditorOpen(true)}
+              onOpenTab={setTab}
+            />
+          )}
+        </div>
+      </PersonalOnlyScope>
 
       {editorOpen ? (
         <ProjectEditorModal
@@ -615,7 +620,11 @@ const AREA_TILES: {
 }[] = [
   { key: "papers", label: "Papers", icon: <DocumentIcon size={15} /> },
   { key: "grants", label: "Grants", icon: <BankIcon size={15} /> },
-  { key: "conferences", label: "Conferences", icon: <ConferenceIcon size={15} /> },
+  {
+    key: "conferences",
+    label: "Conferences",
+    icon: <ConferenceIcon size={15} />,
+  },
   { key: "fellowships", label: "Fellowships", icon: <SparkleIcon size={15} /> },
 ];
 
@@ -828,7 +837,10 @@ function IngestLinkForm({
               : "flex flex-1 cursor-not-allowed items-center gap-2 rounded-[10px] border border-border bg-surface-alt px-[13px] py-2 opacity-60"
           }
         >
-          <LinkIcon size={15} className="shrink-0 text-[var(--text-secondary)]" />
+          <LinkIcon
+            size={15}
+            className="shrink-0 text-[var(--text-secondary)]"
+          />
           <input
             value={rawInput}
             onChange={(e) => setRawInput(e.target.value)}
@@ -1024,7 +1036,10 @@ function AddToCollectionButton({
             </ul>
           )}
           {error ? (
-            <p className="px-2.5 pb-1 pt-0.5 text-[11px] text-clay" role="alert">
+            <p
+              className="px-2.5 pb-1 pt-0.5 text-[11px] text-clay"
+              role="alert"
+            >
               {error}
             </p>
           ) : null}
@@ -1068,7 +1083,9 @@ function ShareToProjectButton({
         type="button"
         onClick={handleClick}
         disabled={share.isPending || shared}
-        aria-label={shared ? "Shared to the project feed" : "Share to the project feed"}
+        aria-label={
+          shared ? "Shared to the project feed" : "Share to the project feed"
+        }
         className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-[var(--text-secondary)] transition-colors hover:border-[color-mix(in_srgb,var(--accent)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70"
       >
         {shared ? "Shared" : share.isPending ? "Sharing…" : "Share"}

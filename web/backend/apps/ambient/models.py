@@ -509,6 +509,9 @@ class Visibility(models.TextChoices):
 
     PERSONAL = "personal", "Personal"
     LAB = "lab", "Lab"
+    #: About an ``invite_only`` project, wherever it was said: for the people
+    #: who can open that project, never a lab surface (scoping plan, Phase 4).
+    PROJECT = "project", "Project"
 
 
 class Origin(models.TextChoices):

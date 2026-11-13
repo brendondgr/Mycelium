@@ -17,6 +17,8 @@ import {
 } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import { CreateProjectWizard } from "@/components/portal/projects/create-project-wizard";
+import { ProjectDirectory } from "@/components/portal/projects/project-directory";
+import { VISIBILITY_LABEL } from "@/components/portal/projects/visibility-picker";
 import {
   displayStatus,
   statusPillTone,
@@ -45,14 +47,53 @@ function relativeTime(isoString: string): string {
   return `${diffYears} year${diffYears === 1 ? "" : "s"} ago`;
 }
 
+/**
+ * "My projects" — the ones the reader is on — and, below, the directory of
+ * projects they can see but are not on. The two are separate on purpose:
+ * seeing a project (its scope includes you, or you oversee it) never makes it
+ * one of yours, so an overseen project sits in the directory with an Open
+ * button rather than in your own list.
+ */
 export function ProjectsListSection() {
   const {
-    projects,
+    projects: scoped,
     projectsLoading,
     projectsError,
     scopeLabel,
     openProject,
+    scope,
+    currentLab,
+    currentDepartment,
+    labs,
+    departments,
   } = usePortal();
+  const projects = React.useMemo(
+    () => scoped.filter((p) => p.is_participant),
+    [scoped],
+  );
+  // Whether the reader may start a project anywhere the wizard offers.
+  const canCreate =
+    scope.kind === "lab"
+      ? Boolean(currentLab?.can_create_projects)
+      : scope.kind === "department"
+        ? Boolean(currentDepartment?.can_create_projects)
+        : true;
+  const directoryTitle =
+    scope.kind === "lab"
+      ? `Projects in ${currentLab?.name ?? "this lab"}`
+      : scope.kind === "department"
+        ? `Projects in ${currentDepartment?.name ?? "this department"}`
+        : "Other projects you can see";
+  const directoryWhere =
+    scope.kind === "lab"
+      ? { labSlug: scope.slug }
+      : scope.kind === "department"
+        ? { departmentId: scope.id }
+        : {};
+  const creationNote =
+    !canCreate && (labs.length > 0 || departments.length > 0)
+      ? `Only the managers of ${scopeLabel} start projects here. You can still start a personal one.`
+      : null;
 
   const [showWizard, setShowWizard] = React.useState(false);
   const [showArchived, setShowArchived] = React.useState(false);
@@ -81,6 +122,7 @@ export function ProjectsListSection() {
         type="button"
         onClick={() => setShowWizard(true)}
         className="inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        title={creationNote ?? undefined}
       >
         <PlusIcon size={15} />
         New project
@@ -92,8 +134,8 @@ export function ProjectsListSection() {
     <div>
       <SectionHeader
         eyebrow="Workspace"
-        title="Projects"
-        subtitle={`Active research projects across ${scopeLabel}. Open one for its feed.`}
+        title="My projects"
+        subtitle={`The projects you are on in ${scopeLabel}. Open one for its feed.`}
         action={newProjectAction}
       />
 
@@ -106,6 +148,12 @@ export function ProjectsListSection() {
             an administrator to raise the limit.
           </span>
         </div>
+      ) : null}
+
+      {creationNote ? (
+        <p className="mb-4 text-[12.5px] text-[var(--text-secondary)]">
+          {creationNote}
+        </p>
       ) : null}
 
       {actionError ? (
@@ -147,8 +195,8 @@ export function ProjectsListSection() {
       ) : projects.length === 0 ? (
         <EmptyState
           icon={<FolderIcon size={28} />}
-          title="No projects yet"
-          description={`Start a project scoped to ${scopeLabel} — give it a focus and Mylo will start finding matches for it.`}
+          title="You are not on any projects yet"
+          description={`Start a project — give it a focus and Mylo will start finding matches for it — or ask to join one below.`}
           action={
             <button
               type="button"
@@ -225,6 +273,12 @@ export function ProjectsListSection() {
         </div>
       )}
 
+      <ProjectDirectory
+        title={directoryTitle}
+        where={directoryWhere}
+        onOpen={openProject}
+      />
+
       {showWizard ? (
         <CreateProjectWizard onClose={() => setShowWizard(false)} />
       ) : null}
@@ -291,7 +345,8 @@ function ProjectRow({
             ) : null}
           </p>
           <p className="m-0 text-[11.5px] text-[var(--text-secondary)]">
-            Updated {relativeTime(project.updated_at)}
+            {VISIBILITY_LABEL[project.visibility]} · Updated{" "}
+            {relativeTime(project.updated_at)}
           </p>
         </div>
 
@@ -328,6 +383,7 @@ function ProjectRow({
         />
       </button>
 
+      {project.can_edit ? (
       <button
         type="button"
         onClick={handleToggleArchive}
@@ -342,6 +398,9 @@ function ProjectRow({
             ? "Archiving…"
             : "Archive"}
       </button>
+      ) : (
+        <span className="w-[76px] shrink-0" aria-hidden="true" />
+      )}
     </div>
   );
 }

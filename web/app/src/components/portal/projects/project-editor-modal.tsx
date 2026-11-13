@@ -9,12 +9,22 @@ import {
   EditorSection,
   type EditorTab,
 } from "@/components/portal/primitives/editor-modal";
+import { usePortal } from "@/components/portal/portal-context";
+import {
+  VisibilityPicker,
+  scopeChangeNote,
+  type ProjectHome,
+} from "@/components/portal/projects/visibility-picker";
 import type { ClusterGroup } from "@/lib/auth-types";
 import { useUpdateProject } from "@/lib/portal/hooks";
-import type { Project, ProjectUpdateInput } from "@/lib/portal/types";
+import type {
+  Project,
+  ProjectUpdateInput,
+  ProjectVisibility,
+} from "@/lib/portal/types";
 
 /** Which panel the modal opens on. */
-export type ProjectEditorTab = "details" | "focus";
+export type ProjectEditorTab = "details" | "focus" | "visibility";
 
 const INPUT =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -160,6 +170,7 @@ export function ProjectEditorModal({
   onClose: () => void;
 }) {
   const save = useUpdateProject();
+  const { labs } = usePortal();
 
   const [tab, setTab] = React.useState<ProjectEditorTab>(initialTab);
   const [error, setError] = React.useState<string | null>(null);
@@ -183,6 +194,23 @@ export function ProjectEditorModal({
   );
   const [statement, setStatement] = React.useState(project.focus.statement);
   const [focusTouched, setFocusTouched] = React.useState(false);
+
+  // Who can see it — only the owner changes it.
+  const [visibility, setVisibility] = React.useState<ProjectVisibility>(
+    project.visibility,
+  );
+  const home: ProjectHome =
+    project.scope === "lab"
+      ? {
+          kind: "lab",
+          labName: project.scope_name,
+          departmentName:
+            labs.find((lab) => lab.slug === project.scope_slug)?.department ??
+            null,
+        }
+      : project.scope === "department"
+        ? { kind: "department", departmentName: project.scope_name }
+        : { kind: "personal" };
 
 
   const trimmedName = name.trim();
@@ -214,6 +242,9 @@ export function ProjectEditorModal({
     // Only send a focus when the reader actually changed one — an untouched
     // focus should not be rewritten (and re-seeded) just because they opened
     // the dialog to rename the project.
+    if (project.can_change_visibility && visibility !== project.visibility) {
+      patch.visibility = visibility;
+    }
     if (focusTouched) {
       patch.focus = {
         areas,
@@ -363,11 +394,43 @@ export function ProjectEditorModal({
         </EditorSection>
       ),
     },
+    {
+      id: "visibility",
+      label: "Who can see it",
+      hint: "Its scope",
+      content: (
+        <EditorSection
+          title="Who can see it"
+          description="One scope decides who sees this project exists and where Mylo may mention it — in reports, Discord servers and chat."
+        >
+          <VisibilityPicker
+            value={visibility}
+            onChange={setVisibility}
+            home={home}
+            allowed={project.allowed_visibilities}
+            disabled={!project.can_change_visibility}
+          />
+          {project.can_change_visibility ? (
+            <p
+              role="status"
+              className="text-[11.5px] leading-relaxed text-[var(--text-secondary)]"
+            >
+              {scopeChangeNote(project.visibility, visibility, home) ??
+                "A change applies to everything Mylo has not sent yet. Posts, PDFs and DMs already delivered stay where they are."}
+            </p>
+          ) : (
+            <p className="text-[11.5px] leading-relaxed text-[var(--text-secondary)]">
+              Only the project&apos;s owner changes who can see it.
+            </p>
+          )}
+        </EditorSection>
+      ),
+    },
   ];
 
   return (
     <EditorModal
-      eyebrow={project.scope === "lab" ? project.scope_name : "Personal project"}
+      eyebrow={project.scope === "user" ? "Personal project" : project.scope_name}
       title={`Edit ${project.name}`}
       subtitle="What this project is called, what it is about, and what Mylo searches on for it."
       tabs={tabs}

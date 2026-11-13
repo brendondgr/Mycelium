@@ -214,9 +214,12 @@ def repost_lab_report(
     from apps.integrations.services import outbox, resolve
 
     from tools.delivery.briefing import generate_briefing_for_lab
-    from tools.delivery.daily_report import compile_report_for_lab
     from tools.delivery.daily_report_pdf import render_report_pdf
-    from tools.delivery.lab_digest import REPORT_MESSAGE, report_filename
+    from tools.delivery.lab_digest import (
+        REPORT_MESSAGE,
+        compile_post_report,
+        report_filename,
+    )
 
     on = on or timezone.localdate()
     outcome = ResendOutcome(key=lab.slug, kind="lab")
@@ -240,7 +243,7 @@ def repost_lab_report(
         outcome.regenerated = True
         outcome.briefing_origin = briefing.origin
 
-    data = compile_report_for_lab(lab)
+    data = compile_post_report(lab)
     outcome.briefing_origin = outcome.briefing_origin or data.briefing_origin
     outcome.counts = _shown_per_category(data)
     outcome.new_counts = dict(data.personal.counts) if data.personal else {}

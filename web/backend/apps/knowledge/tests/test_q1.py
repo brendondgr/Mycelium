@@ -34,6 +34,7 @@ def reef(db, embedder):
     project = Project.objects.create(
         name="Bleaching",
         scope_lab=lab,
+        visibility="lab",
         goals={"interests": {"areas": ["Oceanography"], "keywords": []}},
     )
     project.members.add(ada, bo)

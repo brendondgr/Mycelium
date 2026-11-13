@@ -207,7 +207,7 @@ class ReportData:
     personal: ReportPart | None = None
     projects: list[ReportPart] = field(default_factory=list)
     #: How many of the target's projects this surface is holding back — a lab's
-    #: projects whose editors have not turned on ``share_in_lab_reports``. Reported
+    #: projects whose scope is narrower than ``lab`` (``invite_only``). Reported
     #: as a count and never by name, so the document is honest about being partial
     #: without publishing what it is withholding. Always 0 on a personal report,
     #: which is scoped to one reader.
@@ -622,11 +622,11 @@ def _is_today(briefing, today: str) -> bool:
     return generated is not None and generated.isoformat() == today
 
 
-def _alert_blocks(target_filter: dict) -> list:
+def _alert_blocks(target_filter: dict, *, width: str = "lab") -> list:
     """Today's open alerts, as blocks. Imported lazily to keep the module acyclic."""
     from tools.delivery.alert_report import block_for, open_alerts
 
-    return [block_for(alert) for alert in open_alerts(target_filter)]
+    return [block_for(alert) for alert in open_alerts(target_filter, width=width)]
 
 
 def _user_window(user) -> int:
@@ -666,7 +666,7 @@ def compile_report_for_user(user) -> ReportData:
     )
 
 
-def compile_report_for_lab(lab) -> ReportData:
+def compile_report_for_lab(lab, *, width: str | None = None) -> ReportData:
     """Gather one lab's — or one department's — day into a :class:`ReportData`.
 
     Read-only. ``lab`` is a ``Lab`` or a ``Department``: a department's report is
@@ -679,17 +679,24 @@ def compile_report_for_lab(lab) -> ReportData:
     The aggregate part carries the **org's name**, not "Personal": a document whose
     contents page offers a reader "Personal" and then lists the lab's matches has
     mislabelled its own largest section.
+
+    ``width`` is the place the report is for: the org's own width on the web,
+    and its post width (``Org.post_width``) when it is posted to Discord — its
+    projects and alerts are then only those whose scope reaches that server.
     """
     from tools.delivery.org_scope import org
 
     scope = org(lab)
+    width = width or scope.web_width
     return _compile(
         key=scope.file_key,
         display_name=scope.name,
         watch=scope.watch,
         target_filter=scope.target_filter,
         briefing_filter=scope.owner,
-        projects=scope.shared_projects(),
+        projects=scope.shared_projects(width),
+        # Managers see the count on the web (``stats.private_projects_hidden``);
+        # no rendered surface prints it.
         hidden_projects=scope.hidden_projects(),
         allow=briefing.LAB_BRIEFING_CATEGORIES,
         personal_label=scope.name,
@@ -697,7 +704,11 @@ def compile_report_for_lab(lab) -> ReportData:
         window_days=(
             _lab_window(scope.obj) if scope.is_lab else DEFAULT_DEADLINE_WINDOW_DAYS
         ),
-        alerts=_alert_blocks(scope.alert_filter) if scope.alert_filter else [],
+        alerts=(
+            _alert_blocks(scope.alert_filter, width=width)
+            if scope.alert_filter
+            else []
+        ),
         # A lab's deadline horizon covers what the *lab* saved. One member's
         # bookmark is not the lab's intention, and a lab post naming it would
         # publish a personal save to a channel. A department saves nothing.

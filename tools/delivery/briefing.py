@@ -301,7 +301,9 @@ def by_attention(user, projects: list) -> tuple[list, str | None]:
     return ordered, lead
 
 
-def report_projects_for_lab(lab, *, shared_only: bool = True) -> list:
+def report_projects_for_lab(
+    lab, *, shared_only: bool = True, width: str = "lab"
+) -> list:
     """The active projects a lab's **shared** surfaces cover, in display order.
 
     A lab report is read by every lab member and posted to the lab's Discord
@@ -311,72 +313,80 @@ def report_projects_for_lab(lab, *, shared_only: bool = True) -> list:
     people the project itself would not show them to — and once project *state*
     enters a report that becomes unpublished research plans.
 
-    So a project reaches a lab surface only when its editors opted it in
-    (``share_in_lab_reports``, default off). Private lab projects keep appearing in
-    their own members' personal reports through
+    So a project reaches a lab surface only when its scope is at least ``lab``
+    (:mod:`apps.research.visibility`; ``invite_only`` is the default). Invite-only
+    lab projects keep appearing in their own members' personal reports through
     :func:`report_projects_for_user`, which is scoped to one reader.
+
+    ``width`` is the width of the place the surface lands in: ``lab`` for the
+    lab's web surfaces and its own Discord server, ``department`` or ``public``
+    when its post goes to a server holding more than the lab
+    (``resolve.lab_post_width``) — a ``lab`` project is then left out.
 
     ``shared_only=False`` is for callers that are not a shared surface — a count of
     what the lab actually owns, or an editor's own project list.
     """
-    from apps.research.models import Project
+    from apps.research import visibility
 
-    queryset = Project.objects.active().filter(scope_lab=lab)
-    if shared_only:
-        queryset = queryset.filter(share_in_lab_reports=True)
-    return list(queryset.order_by("name", "id"))
+    queryset = (
+        visibility.lab_surface_projects(lab, width)
+        if shared_only
+        else visibility.lab_projects(lab)
+    )
+    return list(queryset.filter(is_archived=False).order_by("name", "id"))
 
 
 def hidden_lab_projects(lab) -> int:
-    """How many of a lab's active projects a shared surface is leaving out.
+    """How many of a lab's active projects its shared surfaces leave out.
 
-    The lab post and the lab PDF both say "N private projects not shown" rather
-    than silently showing a shorter list: a reader who knows the lab has six
-    projects and sees one should be told why, and told it is a sharing setting
-    rather than a quiet day.
+    Shown to the lab's managers on the web only (decision 11). It used to be a
+    line in the lab's Discord post and PDF, "N private projects not shown", and
+    that line told the whole server that private projects exist.
     """
-    from apps.research.models import Project
+    from apps.research import visibility
 
-    return (
-        Project.objects.active()
-        .filter(scope_lab=lab, share_in_lab_reports=False)
-        .count()
-    )
+    return visibility.lab_held_back(lab).filter(is_archived=False).count()
 
 
-def report_projects_for_org(scope) -> list:
+def report_projects_for_org(scope, *, width: str | None = None) -> list:
     """The active projects a lab's or a department's shared surfaces cover.
 
     A lab reads :func:`report_projects_for_lab`. A department's surfaces are
     read by every department member and posted to its server, so they hold to
-    the same rule: only its own projects whose editors opted them in.
+    the same rule: only projects whose scope reaches the place
+    (``visibility.department_surface_projects``). ``width`` is the width of the
+    place the surface lands in; the org's own web surfaces when omitted.
     """
     from tools.delivery.org_scope import org
 
     scope = org(scope)
+    width = width or scope.web_width
     if scope.is_lab:
-        return report_projects_for_lab(scope.obj)
-    from apps.research.models import Project
+        return report_projects_for_lab(scope.obj, width=width)
+    from apps.research import visibility
 
     return list(
-        Project.objects.active()
-        .filter(scope_department=scope.obj, share_in_lab_reports=True)
+        visibility.department_surface_projects(scope.obj, width)
+        .filter(is_archived=False)
         .order_by("name", "id")
     )
 
 
 def hidden_org_projects(scope) -> int:
-    """:func:`hidden_lab_projects` for a lab or a department."""
+    """:func:`hidden_lab_projects` for a lab or a department: how many of its
+    own active projects its shared surfaces leave out (managers' web view only)."""
     from tools.delivery.org_scope import org
 
     scope = org(scope)
     if scope.is_lab:
         return hidden_lab_projects(scope.obj)
+    from apps.research import visibility
     from apps.research.models import Project
 
     return (
         Project.objects.active()
-        .filter(scope_department=scope.obj, share_in_lab_reports=False)
+        .filter(scope_department=scope.obj)
+        .exclude(visibility__in=visibility.DEPARTMENT_WIDE)
         .count()
     )
 
@@ -764,7 +774,6 @@ def _write_briefing(
     allow: tuple[str, ...] | None = None,
     member_names: dict[str, str] | None = None,
     projects: list | None = None,
-    hidden_projects: int = 0,
     alert_summaries: list | None = None,
     personal_label: str = briefing_sections.PERSONAL_HEADING,
     complete: briefing_sections.CompleteFn | None = None,
@@ -779,9 +788,7 @@ def _write_briefing(
     ``owner`` is the update-or-create key (``{"user": user}`` or ``{"lab": lab}``);
     ``target`` is the :class:`MatchTarget` the prose is grounded in; ``target_filter``
     is the ``target_*`` FK the scores are read under; ``projects`` are the projects
-    the report covers after the Personal part, and ``hidden_projects`` is how many
-    the surface is holding back (a lab's unshared projects), which the body reports
-    as a count and never by name. Shared by the user and lab entry
+    the report covers after the Personal part. Shared by the user and lab entry
     points so both apply the same gather + fallback rules — a lab's report is
     structurally the same document its members receive.
     """
@@ -849,7 +856,6 @@ def _write_briefing(
             project_parts,
             complete=complete,
             narrative=narrative_payload,
-            hidden_projects=hidden_projects,
             attention=attention,
         )
         origin = (
@@ -1019,15 +1025,20 @@ def generate_briefing_for_lab(
     from tools.delivery.org_scope import org
     from tools.delivery.report_stats import record_run_stats
 
+    # The written report is attached to the org's Discord post as its PDF, so it
+    # is written for the server that post lands in (plan "Surfaces").
     scope = org(lab)
-    alerts = open_alerts(scope.alert_filter) if scope.alert_filter else []
+    width = scope.post_width()
+    alerts = (
+        open_alerts(scope.alert_filter, width=width) if scope.alert_filter else []
+    )
     blocks = [block_for(alert) for alert in alerts]
     summaries = [
         (block.project_label, block.trigger_label, block.title) for block in blocks
     ]
     from tools.delivery.weekly_changes import changed_today, with_changed_today
 
-    shared = scope.shared_projects()
+    shared = scope.shared_projects(width)
     changed = changed_today(reader=scope.obj, projects=shared, is_lab=True)
     # With announcements live, each grant, fellowship and conference already has
     # its own thread: the report keeps papers and one line per kind (plan D6).
@@ -1042,7 +1053,6 @@ def generate_briefing_for_lab(
         allow=("papers",) if announcing else LAB_BRIEFING_CATEGORIES,
         member_names=_member_names(scope.target_filter),
         projects=shared,
-        hidden_projects=scope.hidden_projects(),
         # The org's aggregate part is the org, so it is named after it. "Personal"
         # is what a *person's* own matches are called; on a lab's report it named
         # nobody.

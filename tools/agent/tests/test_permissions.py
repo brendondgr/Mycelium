@@ -255,17 +255,17 @@ def test_audience_lab_channel_offers_nothing_personal(world):
     names = allowed(c)
     assert names, "a lab channel still gets lab-wide functions"
     for name in names:
-        assert fn(name).output in ("lab", "department", "instance"), name
+        assert fn(name).output in ("lab", "department", "public", "instance"), name
     assert "me_profile" not in names and "read_result" not in names
 
 
 def test_mixed_output_is_filtered_in_the_handler(world):
     from tools.agent.functions import projects
 
-    world.lab_project.share_in_lab_reports = False
+    world.lab_project.visibility = "invite_only"
     world.lab_project.save()
     shared = type(world.lab_project).objects.create(
-        scope_lab=world.lab, name="Shared one", share_in_lab_reports=True
+        scope_lab=world.lab, name="Shared one", visibility="lab"
     )
     lab_view = projects.projects_list(
         caller(world.owner, "lab", world.lab, width="lab")

@@ -138,7 +138,6 @@ class WeeklyPacket:
     personal: list[PacketItem] = field(default_factory=list)
     deadline_horizon: list[dict] = field(default_factory=list)
     engagement: dict = field(default_factory=dict)
-    private_projects_hidden: int = 0
     #: "Mylo's reflection", already rendered. Deterministic rules phrased in code
     #: (:mod:`tools.delivery.reflection`) — the model is never asked to decide that
     #: a reader's own description of their work should change.
@@ -188,7 +187,6 @@ class WeeklyPacket:
             "personal": [item.as_dict() for item in self.personal],
             "deadline_horizon": list(self.deadline_horizon),
             "engagement": dict(self.engagement),
-            "private_projects_hidden": self.private_projects_hidden,
             **(
                 {"context_version": self.context_version}
                 if self.context_version

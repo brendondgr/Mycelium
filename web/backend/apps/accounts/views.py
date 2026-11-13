@@ -72,10 +72,13 @@ from .models import (
     LabMembership,
     LabWatchPreference,
     OrgInvite,
+    ProjectCreation,
     WatchPreference,
 )
 from .permissions import (
     require_verified_email,
+    user_can_create_department_project,
+    user_can_create_lab_project,
     user_can_edit_dept_profile,
     user_can_edit_lab_profile,
     user_can_grant_lab_role,
@@ -1022,6 +1025,152 @@ class LabProfileView(RetrieveUpdateAPIView):
             # thing verification activates.
             require_verified_email(user)
         return lab.profile
+
+
+class LabDepartmentSeesView(APIView):
+    """What a lab's department heads see of its projects (plan "Oversight").
+
+    Any lab member reads it; the lab's PI / owner / admin set it — never the
+    department, whose view it narrows. ``everything`` (default) lets a
+    department head open every project of the lab; ``names_only`` shows them
+    name, owner, member count and scope. A project the head is a member of
+    opens in full either way.
+    """
+
+    capabilities = {"GET": caps.MEMBERSHIP, "PATCH": caps.PROJECTS_POLICY}
+
+    def _lab(self, slug: str) -> Lab:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_has_lab_access(self.request.user, lab):
+            raise PermissionDenied("You do not have access to this lab.")
+        return lab
+
+    @staticmethod
+    def _payload(lab: Lab) -> dict:
+        return {
+            "department_sees": lab.department_sees,
+            "department": lab.department.name if lab.department_id else None,
+        }
+
+    def get(self, request: Request, slug: str) -> Response:
+        return Response(self._payload(self._lab(slug)))
+
+    def patch(self, request: Request, slug: str) -> Response:
+        lab = self._lab(slug)
+        if not user_can_edit_lab_profile(request.user, lab):
+            raise PermissionDenied(
+                "Only the lab's PI, owner or admin decides what the department sees."
+            )
+        value = str(request.data.get("department_sees", "")).strip()
+        if value not in Lab.DepartmentSees.values:
+            return Response(
+                {"department_sees": ["Choose everything or names_only."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if value != lab.department_sees:
+            before = lab.department_sees
+            lab.department_sees = value
+            lab.save(update_fields=["department_sees", "updated_at"])
+            record_audit_event(
+                actor=request.user,
+                action="lab.department_sees",
+                target_type="lab",
+                target_id=str(lab.id),
+                metadata={"from": before, "to": value},
+            )
+        return Response(self._payload(lab))
+
+
+def _set_project_creation(
+    request: Request, org, *, target_type: str
+) -> Response | None:
+    """Validate and store ``project_creation`` on a lab or department; a 400
+    response on a bad value, ``None`` when stored (or unchanged)."""
+    value = str(request.data.get("project_creation", "")).strip()
+    if value not in ProjectCreation.values:
+        return Response(
+            {"project_creation": ["Choose members or managers."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if value != org.project_creation:
+        before = org.project_creation
+        org.project_creation = value
+        org.save(update_fields=["project_creation", "updated_at"])
+        record_audit_event(
+            actor=request.user,
+            action=f"{target_type}.project_creation",
+            target_type=target_type,
+            target_id=str(org.id),
+            metadata={"from": before, "to": value},
+        )
+    return None
+
+
+class LabProjectCreationView(APIView):
+    """*Who can create projects* in a lab: any member (default) or managers only.
+
+    Any lab member reads it (with whether they themselves may create); the lab's
+    PI / owner / admin set it.
+    """
+
+    capabilities = {"GET": caps.MEMBERSHIP, "PATCH": caps.PROJECTS_POLICY}
+
+    def _lab(self, slug: str) -> Lab:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_has_lab_access(self.request.user, lab):
+            raise PermissionDenied("You do not have access to this lab.")
+        return lab
+
+    def _payload(self, lab: Lab) -> dict:
+        return {
+            "project_creation": lab.project_creation,
+            "can_create": user_can_create_lab_project(self.request.user, lab),
+        }
+
+    def get(self, request: Request, slug: str) -> Response:
+        return Response(self._payload(self._lab(slug)))
+
+    def patch(self, request: Request, slug: str) -> Response:
+        lab = self._lab(slug)
+        if not user_can_edit_lab_profile(request.user, lab):
+            raise PermissionDenied(
+                "Only the lab's PI, owner or admin decides who can create projects."
+            )
+        refused = _set_project_creation(request, lab, target_type="lab")
+        return refused or Response(self._payload(lab))
+
+
+class DepartmentProjectCreationView(APIView):
+    """*Who can create projects* in a department: any member (default) or
+    managers only. Any effective member reads it; the owner / admins set it."""
+
+    capabilities = {"GET": caps.MEMBERSHIP, "PATCH": caps.PROJECTS_POLICY}
+
+    def _department(self, pk) -> Department:
+        department = get_object_or_404(Department, pk=pk)
+        if not user_has_department_access(self.request.user, department):
+            raise PermissionDenied("You do not have access to this department.")
+        return department
+
+    def _payload(self, department: Department) -> dict:
+        return {
+            "project_creation": department.project_creation,
+            "can_create": user_can_create_department_project(
+                self.request.user, department
+            ),
+        }
+
+    def get(self, request: Request, pk) -> Response:
+        return Response(self._payload(self._department(pk)))
+
+    def patch(self, request: Request, pk) -> Response:
+        department = self._department(pk)
+        if not user_can_manage_department(request.user, department):
+            raise PermissionDenied(
+                "Only the department's owner or admin decides who can create projects."
+            )
+        refused = _set_project_creation(request, department, target_type="department")
+        return refused or Response(self._payload(department))
 
 
 #: Max lab-logo upload size (2 MB) and the raster types we accept, with the
@@ -2387,6 +2536,8 @@ def _department_row(department: Department, user: User) -> dict[str, object]:
             )
             if mine > DEPT_ROLE_RANK[r]
         ],
+        "project_creation": department.project_creation,
+        "can_create_projects": user_can_create_department_project(user, department),
     }
 
 

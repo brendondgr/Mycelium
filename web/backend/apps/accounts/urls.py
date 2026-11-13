@@ -145,6 +145,28 @@ urlpatterns = [
         views.LabProfileView.as_view(),
         name="lab-profile-no-slash",
     ),
+    # What the department's heads see of the lab's projects (PI sets it).
+    path(
+        "labs/<slug:slug>/department-sees/",
+        views.LabDepartmentSeesView.as_view(),
+        name="lab-department-sees",
+    ),
+    path(
+        "labs/<slug:slug>/department-sees",
+        views.LabDepartmentSeesView.as_view(),
+        name="lab-department-sees-no-slash",
+    ),
+    # Who can create projects in the lab (PI sets it; any member reads it).
+    path(
+        "labs/<slug:slug>/project-creation/",
+        views.LabProjectCreationView.as_view(),
+        name="lab-project-creation",
+    ),
+    path(
+        "labs/<slug:slug>/project-creation",
+        views.LabProjectCreationView.as_view(),
+        name="lab-project-creation-no-slash",
+    ),
     # Lab logo: any member reads (GET streams it); lead/owner/admin upload/clear.
     path(
         "labs/<slug:slug>/logo/",
@@ -228,6 +250,17 @@ urlpatterns = [
     # which strips the slash, and APPEND_SLASH cannot redirect a PATCH.
     path("departments/<uuid:pk>/profile", views.DeptProfileView.as_view()),
     # Department members (effective roster) + direct-member management.
+    # Who can create department projects (owner / admin set it).
+    path(
+        "departments/<uuid:pk>/project-creation/",
+        views.DepartmentProjectCreationView.as_view(),
+        name="department-project-creation",
+    ),
+    path(
+        "departments/<uuid:pk>/project-creation",
+        views.DepartmentProjectCreationView.as_view(),
+        name="department-project-creation-no-slash",
+    ),
     path(
         "departments/<uuid:pk>/members/",
         views.DeptMembersView.as_view(),

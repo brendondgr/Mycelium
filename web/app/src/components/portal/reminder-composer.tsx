@@ -7,6 +7,7 @@ import * as React from "react";
 import Link from "next/link";
 
 import { MentionPicker } from "@/components/portal/mention-picker";
+import { usePersonalOnly } from "@/components/portal/personal-only-scope";
 import { Modal, ModalHeader } from "@/components/portal/primitives/modal";
 import {
   DEFAULT_OFFSETS,
@@ -141,7 +142,12 @@ export function ReminderComposer({
   const labs = useMyLabs();
   // Only labs the caller manages (PI / owner / admin) can receive a lab reminder,
   // mirroring the backend rule — so a plain member is never offered the lab option.
-  const labOptions = (labs.data ?? []).filter(holding(CAPABILITY.PROFILE_EDIT));
+  // Inside an invite-only project a reminder goes to the person alone, never a
+  // lab channel (scoping plan, decision 8).
+  const personalOnly = usePersonalOnly();
+  const labOptions = personalOnly
+    ? []
+    : (labs.data ?? []).filter(holding(CAPABILITY.PROFILE_EDIT));
   const { create } = useReminderMutations();
 
   // Derive the effective lab (no state-syncing effect): the chosen slug, else the

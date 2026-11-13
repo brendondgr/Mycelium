@@ -3,9 +3,17 @@ agent's permission gate, so the two can never disagree."""
 
 from __future__ import annotations
 
-from apps.accounts.permissions import user_can_edit_lab_profile
+from apps.accounts.permissions import (
+    user_can_create_department_project,
+    user_can_create_lab_project,
+    user_can_edit_dept_profile,
+    user_can_edit_lab_profile,
+)
 
-from .models import Project
+from .models import Project, ProjectMember
+
+#: Member roles that carry edit authority on a project.
+EDIT_ROLES = (ProjectMember.Role.OWNER, ProjectMember.Role.EDITOR)
 
 
 def user_can_edit_project(user, project: Project) -> bool:
@@ -14,11 +22,87 @@ def user_can_edit_project(user, project: Project) -> bool:
     The personal owner edits their own project; a lab's owner, admin, or lead PI
     edits that lab's projects — the same authority that creates them
     (:func:`user_can_edit_lab_profile`). It used to be owner/admin only here, which
-    left a PI holding edit controls the API then refused. Department-scoped
-    projects are not editable through this API yet.
+    left a PI holding edit controls the API then refused. A department's owner or
+    admin edits that department's projects — the same authority that creates them
+    (:func:`user_can_edit_dept_profile`); without it a department project was
+    stranded the moment it was made.
+
+    A member holding the ``owner`` or ``editor`` role edits the project too,
+    whatever its scope.
     """
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if project.scope_user_id is not None and project.scope_user_id == user.id:
+        return True
+    if ProjectMember.objects.filter(
+        project=project, user=user, role__in=EDIT_ROLES
+    ).exists():
+        return True
+    return user_manages_project_scope(user, project)
+
+
+def user_manages_project_scope(user, project: Project) -> bool:
+    """The scope's own managers: a lab's owner, admin or PI for a lab project,
+    a department's owner or admin for a department project. They hold a
+    project's owner authority whether or not it has an owner row, and may take
+    ownership (plan "Oversight")."""
+    if not getattr(user, "is_authenticated", False):
+        return False
     if project.scope_user_id is not None:
-        return project.scope_user_id == user.id
+        return False
     if project.scope_lab_id is not None:
         return user_can_edit_lab_profile(user, project.scope_lab)
+    if project.scope_department_id is not None:
+        return user_can_edit_dept_profile(user, project.scope_department)
     return False
+
+
+def user_can_change_visibility(user, project: Project) -> bool:
+    """Only the owner changes a project's scope: its owner-role member, a
+    personal project's own user, or the scope's managers acting as owner."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if project.scope_user_id is not None:
+        return project.scope_user_id == user.id
+    if ProjectMember.objects.filter(
+        project=project, user=user, role=ProjectMember.Role.OWNER
+    ).exists():
+        return True
+    return user_manages_project_scope(user, project)
+
+
+def user_can_create_in_scope(user, *, lab=None, department=None) -> bool:
+    """Who may start a project in a lab or department — its *Who can create
+    projects* setting (any member by default, or managers only). A personal
+    project needs only an account."""
+    if lab is not None:
+        return user_can_create_lab_project(user, lab)
+    if department is not None:
+        return user_can_create_department_project(user, department)
+    return bool(getattr(user, "is_authenticated", False))
+
+
+def user_can_request_to_join(user, project: Project) -> bool:
+    """Whether ``user`` may ask to join ``project``: it is not ``invite_only``,
+    not archived, the requester can see it exists (inside its scope, or an
+    overseer), and they are not already on it."""
+    from . import visibility
+
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if project.is_archived or not visibility.admits_requests(project):
+        return False
+    if visibility.is_participant(user, project):
+        return False
+    return visibility.can_see(user, project)
+
+
+def user_can_invite_outside(user, project: Project) -> bool:
+    """Who may invite someone from outside a project's lab (or department):
+    the owner — its owner-role member, or the scope's managers acting as owner
+    (plan "Outside collaborators"). Editors invite people already in the lab.
+    A personal project has no lab to be outside of, so its editors may invite
+    anyone."""
+    if project.scope_user_id is not None:
+        return user_can_edit_project(user, project)
+    return user_can_change_visibility(user, project)

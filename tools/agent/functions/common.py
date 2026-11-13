@@ -33,11 +33,10 @@ def item_info(item) -> RefInfo:
 
 
 def project_output(project) -> str:
-    if project.scope_user_id is not None:
-        return "person"
-    if project.scope_lab_id is not None and project.share_in_lab_reports:
-        return "lab"
-    return "project"
+    """The widest agent audience a project may be shown to, from its scope."""
+    from apps.research import visibility
+
+    return visibility.output_width(project)
 
 
 def project_info(project) -> RefInfo:

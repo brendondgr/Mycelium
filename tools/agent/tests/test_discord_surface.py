@@ -54,8 +54,8 @@ def server(world):
     add_route(world.binding, "grants", "forum-1")
     world.member_id = link(world.member, "100")
     world.admin_id = link(world.admin, "101")
-    world.lab_project.share_in_lab_reports = True
-    world.lab_project.save(update_fields=["share_in_lab_reports"])
+    world.lab_project.visibility = "lab"
+    world.lab_project.save(update_fields=["visibility"])
     return world
 
 
@@ -152,7 +152,8 @@ def test_several_bindings_route_or_fall_back_to_public(server):
     thread = AgentThread.objects.get(pk=h.thread_id)
     assert thread.scope_kind == "personal" and thread.shared
     event = thread.events.filter(type="user").last()
-    assert event.payload["turn"]["audience_width"] == "instance"
+    # Labs of different departments (or of none) share the room: public.
+    assert event.payload["turn"]["audience_width"] == "public"
 
 
 # --------------------------------------------------------------------------- #

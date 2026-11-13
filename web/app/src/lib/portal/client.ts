@@ -36,8 +36,12 @@ import type {
   NotificationFeed,
   OpportunityFeed,
   RankingReference,
+  MyProjectJoinRequests,
   Project,
+  ProjectCreation,
+  ProjectDirectoryRow,
   ProjectInvitation,
+  ProjectJoinRequest,
   ProjectRecommendations,
   ProjectStatePayload,
   ReflectionProposal,
@@ -147,11 +151,57 @@ export async function fetchReflections(): Promise<ReflectionProposal[]> {
   );
 }
 
-/** Every project of a lab (any lab member may browse them to join). */
+/** The projects of a lab the caller may see: their own, or every one for a lab
+ * manager or a department head. There is no self-join. */
 export async function fetchLabProjects(slug: string): Promise<Project[]> {
   return getJson<Project[]>(
     buildApiUrl(getPublicApiBase(), "projects", "lab", slug),
     "Could not load the lab's projects.",
+  );
+}
+
+/**
+ * The project directory: projects the caller can see exist but is not on, as
+ * reduced rows. Pass a lab slug for "Projects in this lab", a department id
+ * for "…in this department", or neither for everything on the instance.
+ */
+export async function fetchProjectDirectory(
+  where: { labSlug?: string; departmentId?: string } = {},
+): Promise<{ count: number; items: ProjectDirectoryRow[] }> {
+  const base = getPublicApiBase();
+  const url = where.labSlug
+    ? buildApiUrl(base, "projects", "lab", where.labSlug, "directory")
+    : where.departmentId
+      ? buildApiUrl(base, "projects", "department", where.departmentId, "directory")
+      : buildApiUrl(base, "projects", "directory");
+  return getJson(url, "Could not load the project directory.");
+}
+
+/** A project's open join requests (its owner and editors only). */
+export async function fetchProjectJoinRequests(
+  id: string,
+): Promise<{ count: number; items: ProjectJoinRequest[] }> {
+  return getJson(
+    buildApiUrl(getPublicApiBase(), "projects", id, "join-requests"),
+    "Could not load this project's join requests.",
+  );
+}
+
+/** Join requests for the bell: ones the caller decides, and their own. */
+export async function fetchMyProjectJoinRequests(): Promise<MyProjectJoinRequests> {
+  return getJson(
+    buildApiUrl(getPublicApiBase(), "project-join-requests"),
+    "Could not load join requests.",
+  );
+}
+
+/** Who may start a project in a lab, and whether the caller may. */
+export async function fetchLabProjectCreation(
+  slug: string,
+): Promise<{ project_creation: ProjectCreation; can_create: boolean }> {
+  return getJson(
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "project-creation"),
+    "Could not load who can create projects.",
   );
 }
 

@@ -20,6 +20,19 @@ class AcademicTitle(models.TextChoices):
     STAFF = "staff", "Staff"
 
 
+class ProjectCreation(models.TextChoices):
+    """Who may start a project in a lab or department (plan decision 3).
+
+    ``members`` (the default): anyone in it — a lab's members (not viewers), a
+    department's effective members. ``managers``: only its PI / owner / admins.
+    The creator becomes the project's owner either way; the cap stays the
+    lab's (or department's).
+    """
+
+    MEMBERS = "members", "Any member"
+    MANAGERS = "managers", "Managers only"
+
+
 class Department(models.Model):
     """Top-of-hierarchy container controlled by a single owning user.
 
@@ -39,6 +52,12 @@ class Department(models.Model):
     # Staff override of the instance's limits.department_projects for this one
     # department (null = use the instance/tier value). Set from Django admin.
     project_limit = models.PositiveIntegerField(null=True, blank=True)
+    project_creation = models.CharField(
+        max_length=10,
+        choices=ProjectCreation.choices,
+        default=ProjectCreation.MEMBERS,
+        help_text="Who may start a department project: any member, or managers only.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -66,6 +85,30 @@ class Lab(models.Model):
             "When true, this lab's members are covered (and paid for) by the "
             "department's plan. Opt-in: the department head includes a lab "
             "explicitly. Only meaningful while the lab belongs to a department."
+        ),
+    )
+    class DepartmentSees(models.TextChoices):
+        EVERYTHING = "everything", "Everything"
+        NAMES_ONLY = "names_only", "Names only"
+
+    department_sees = models.CharField(
+        max_length=20,
+        choices=DepartmentSees.choices,
+        default=DepartmentSees.EVERYTHING,
+        help_text=(
+            "What the department's heads see of this lab's projects: everything "
+            "(open any project) or names only (name, owner, member count, "
+            "scope). Set by the lab's PI / owner / admin, never the department. "
+            "Projects the head is a member of open in full either way."
+        ),
+    )
+    project_creation = models.CharField(
+        max_length=10,
+        choices=ProjectCreation.choices,
+        default=ProjectCreation.MEMBERS,
+        help_text=(
+            "Who may start a lab project: any member (not viewers), or the "
+            "lab's PI / owner / admins only. Set by the lab's PI."
         ),
     )
     # Reminder scheduling (Discord reminders R4). Use the IANA zone name, not "EST":

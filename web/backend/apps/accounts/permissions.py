@@ -4,7 +4,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
 
 from . import capabilities as caps
-from .models import Department, DeptMembership, Lab, LabMembership
+from .models import Department, DeptMembership, Lab, LabMembership, ProjectCreation
 
 UserOrAnon = User | AnonymousUser
 
@@ -157,6 +157,37 @@ def user_can_edit_lab_profile(user: UserOrAnon, lab: Lab) -> bool:
 def user_can_invite_to_lab(user: UserOrAnon, lab: Lab) -> bool:
     """A lab's PI (lead) or owner/admin may invite people to it."""
     return caps.has_capability(user, lab, caps.INVITES_ISSUE)
+
+
+def user_can_create_lab_project(user: UserOrAnon, lab: Lab) -> bool:
+    """Who may start a project in ``lab``: its PI / owner / admins always; any
+    other member (not a viewer) while the lab's *Who can create projects*
+    setting is "any member" (the default)."""
+    if not user.is_authenticated:
+        return False
+    if user_can_edit_lab_profile(user, lab):
+        return True
+    if lab.project_creation != ProjectCreation.MEMBERS:
+        return False
+    return (
+        LabMembership.objects.filter(user=user, lab=lab)
+        .exclude(role=LabMembership.Role.VIEWER)
+        .exists()
+    )
+
+
+def user_can_create_department_project(
+    user: UserOrAnon, department: Department
+) -> bool:
+    """Who may start a department project: its owner / admins always; any
+    effective member while the department's setting is "any member"."""
+    if not user.is_authenticated:
+        return False
+    if user_can_edit_dept_profile(user, department):
+        return True
+    if department.project_creation != ProjectCreation.MEMBERS:
+        return False
+    return user_has_department_access(user, department)
 
 
 def user_has_department_access(user: UserOrAnon, department: Department) -> bool:

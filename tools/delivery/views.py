@@ -5,6 +5,7 @@ from apps.accounts import capabilities as caps
 from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
     lab_manager_q,
+    user_can_edit_lab_profile,
     user_has_department_access,
     user_has_lab_access,
 )
@@ -381,6 +382,21 @@ class BriefingDetailView(APIView):
         return Response(_daily_briefing_envelope(briefing))
 
 
+def _lab_envelope(briefing, user, lab) -> dict:
+    """A lab briefing's envelope for one reader. How many projects the lab's
+    shared surfaces leave out (``stats.private_projects_hidden``) is the lab's
+    managers' to see — the PI, owner and admins (decision 11). Anyone else, and
+    every Discord post, is not told private projects exist."""
+    envelope = _daily_briefing_envelope(briefing)
+    if not user_can_edit_lab_profile(user, lab):
+        envelope["stats"] = {
+            k: v
+            for k, v in (envelope.get("stats") or {}).items()
+            if k != "private_projects_hidden"
+        }
+    return envelope
+
+
 class LabBriefingHistoryView(APIView):
     """A lab's retained briefings, newest first. Any lab member may read them."""
 
@@ -410,7 +426,7 @@ class LabBriefingDetailView(APIView):
         briefing = get_object_or_404(
             DailyBriefing, lab=lab, generated_on=on, kind=_requested_kind(request)
         )
-        return Response(_daily_briefing_envelope(briefing))
+        return Response(_lab_envelope(briefing, request.user, lab))
 
 
 class LabDailyBriefingView(APIView):
@@ -430,7 +446,7 @@ class LabDailyBriefingView(APIView):
         if not user_has_lab_access(request.user, lab):
             raise PermissionDenied("You do not have access to this lab.")
         briefing = DailyBriefing.latest_for(_requested_kind(request), lab=lab)
-        return Response(_daily_briefing_envelope(briefing))
+        return Response(_lab_envelope(briefing, request.user, lab))
 
 
 def _department_for(request, pk) -> Department:
@@ -1362,14 +1378,12 @@ class ProjectRecommendationsView(APIView):
         project = get_object_or_404(Project, pk=pk)
         if not project.is_visible_to(request.user):
             raise PermissionDenied("You do not have access to this project.")
-        # "Interested" members come from the project's lab (a lab project) or its
-        # own members (a personal project) — the people to connect over an item.
-        if project.scope_lab_id is not None:
-            member_ids = LabMembership.objects.filter(
-                lab_id=project.scope_lab_id
-            ).values_list("user_id", flat=True)
-        else:
-            member_ids = project.members.values_list("id", flat=True)
+        # "Interested" members: the project's own people, plus its scope's people
+        # only when the scope includes them — never the whole lab for an
+        # invite-only project (scoping plan, Phase 4).
+        from apps.research import visibility as project_scope
+
+        member_ids = list(project_scope.candidate_people_ids(project))
         digest = request.query_params.get("digest") in ("1", "true", "yes")
         return Response(
             _recommendations_payload(
@@ -1421,6 +1435,9 @@ class SaveOpportunityView(APIView):
         lab, error = self._resolve_lab(request)
         if error is not None:
             return error
+        error = _personal_only_from_project(request, lab is not None, "save")
+        if error is not None:
+            return error
         saved = _save_from_item(
             request.user, item, note=request.data.get("note", ""), target_lab=lab
         )
@@ -1468,6 +1485,33 @@ class SaveOpportunityView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         return lab, None
+
+
+def _personal_only_from_project(request, to_lab: bool, what: str):
+    """A save or reminder made from inside a project (``project_id``): the
+    caller must be able to open it, and inside an ``invite_only`` project it
+    stays with the person — never the lab's saves or the lab's channel
+    (scoping plan, Phase 4 / decision 8). ``None`` when it may go ahead."""
+    from apps.research import visibility as project_scope
+
+    project, problem = project_scope.project_from_request(
+        request.user, request.data.get("project_id")
+    )
+    if problem:
+        return Response(
+            {"detail": "No such project."}, status=status.HTTP_404_NOT_FOUND
+        )
+    if project is not None and to_lab and project_scope.stays_with_people(project):
+        return Response(
+            {
+                "detail": (
+                    f"A {what} made inside an invite-only project stays with you: "
+                    "it is not shared with the lab."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
 
 
 def _save_from_item(

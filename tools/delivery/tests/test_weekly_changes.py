@@ -38,7 +38,7 @@ def world(db):
     LabMembership.objects.create(user=bo, lab=lab)
     LabMembership.objects.create(user=cy, lab=lab)
     shared = Project.objects.create(
-        name="Imaging pipeline", scope_lab=lab, share_in_lab_reports=True
+        name="Imaging pipeline", scope_lab=lab, visibility="lab"
     )
     private = Project.objects.create(name="Grant draft", scope_lab=lab)
     for person in (ada, bo):

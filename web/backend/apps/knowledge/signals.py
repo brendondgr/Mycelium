@@ -53,7 +53,8 @@ def lab_profile_saved(sender, instance, update_fields=None, **kwargs) -> None:
 
 @receiver(post_save, sender=Project)
 def project_saved(sender, instance, update_fields=None, **kwargs) -> None:
-    if _touches(update_fields, "goals"):
+    # A new scope re-projects: the project's concepts take its scope.
+    if _touches(update_fields, "goals", "visibility", "scope_lab", "scope_department"):
         _after_commit("project", instance.pk)
 
 
@@ -61,3 +62,4 @@ def project_saved(sender, instance, update_fields=None, **kwargs) -> None:
 def project_state_saved(sender, instance, update_fields=None, **kwargs) -> None:
     if _touches(update_fields, "slow", "fast", "provenance"):
         _after_commit("project", instance.project_id)
+

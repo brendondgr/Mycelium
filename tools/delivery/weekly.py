@@ -317,11 +317,6 @@ def compose_weekly(
         packet.reflection,
         references_block(packet.references()),
     ]
-    if packet.private_projects_hidden:
-        noun = "project" if packet.private_projects_hidden == 1 else "projects"
-        frame.insert(
-            0, f"_{packet.private_projects_hidden} private {noun} not shown._"
-        )
     footer = record.footer()
     if footer:
         frame.append(f"_{footer}_")
@@ -371,7 +366,8 @@ def generate_weekly_for_user(user, *, complete=None, today: date | None = None):
 
 def generate_weekly_for_lab(lab, *, complete=None, today: date | None = None):
     """The same for a lab or a department — **shared projects only** (plan 0.2 /
-    H4)."""
+    H4), and only those whose scope reaches the server the weekly is posted to
+    (``Org.post_width``): one body is both the web weekly and the post."""
     from tools.delivery.org_scope import org
     from tools.delivery.weekly_build import SURFACE_CHANNEL, build_weekly_packet
 
@@ -379,12 +375,11 @@ def generate_weekly_for_lab(lab, *, complete=None, today: date | None = None):
     today = today or timezone.localdate()
     packet = build_weekly_packet(
         target_filter=scope.target_filter,
-        projects=scope.shared_projects(),
+        projects=scope.shared_projects(scope.post_width()),
         reader=scope.obj,
         surface=SURFACE_CHANNEL,
         label=scope.key,
         today=today,
-        hidden_projects=scope.hidden_projects(),
     )
     return _persist(packet, scope.owner, complete=complete, today=today)
 

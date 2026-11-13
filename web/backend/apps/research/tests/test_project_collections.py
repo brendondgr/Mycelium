@@ -139,10 +139,10 @@ def test_non_visible_outsider_blocked(client, project):
     outsider = User.objects.create_user(username="nope", password="p")
     client.force_authenticate(outsider)
     assert (
-        client.get(f"/api/projects/{project.id}/collections/").status_code == 403
+        client.get(f"/api/projects/{project.id}/collections/").status_code == 404
     )
     assert (
-        _make_collection(client, project, name="X").status_code == 403
+        _make_collection(client, project, name="X").status_code == 404
     )
 
 

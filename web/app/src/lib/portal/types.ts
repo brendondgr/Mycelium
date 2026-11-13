@@ -7,6 +7,19 @@ import type { Capability } from "@/lib/portal/capabilities";
 
 export type LabRole = "owner" | "admin" | "member" | "viewer";
 
+/** What a lab shows its department's heads of its projects. */
+export type DepartmentSees = "everything" | "names_only";
+
+/** A project's one scope: who may see it and where Mylo may mention it. */
+export type ProjectVisibility = "invite_only" | "lab" | "department" | "public";
+
+/** A member's role on a project. */
+export type ProjectRole = "owner" | "editor" | "member";
+
+/** Who may start a project in a lab or department: any member (the default),
+ * or its PI / owner / admins only. */
+export type ProjectCreation = "members" | "managers";
+
 /**
  * Mylo's four-point judgement — what replaced the percent match everywhere.
  *
@@ -29,6 +42,14 @@ export type MyLab = {
   role: LabRole;
   is_lead: boolean;
   department: string | null;
+  /** What the department's heads see of this lab's projects. The lab's PI /
+   * owner / admin sets it; `names_only` shows them name, owner, member count and
+   * scope instead of the project itself. */
+  department_sees: DepartmentSees;
+  /** Who may start a project in this lab (the PI sets it). */
+  project_creation: ProjectCreation;
+  /** Whether the signed-in user may start a project in this lab. */
+  can_create_projects: boolean;
   /** Whether the lab has an uploaded logo (shown as the workspace brand mark). */
   has_logo: boolean;
   /** Cache-busting token for the logo URL, or null when there's no logo. */
@@ -55,6 +76,11 @@ export type ProjectMember = {
   username: string;
   name: string;
   initials: string;
+  /** On a project's roster: the person's role there. */
+  role?: ProjectRole;
+  /** On a lab (or department) project's roster: true for an outside
+   * collaborator — someone not in the lab, who sees this project only. */
+  outside?: boolean;
 };
 
 /** A pending lab invitation addressed to the caller (notifications panel). */
@@ -136,6 +162,22 @@ export type Project = {
   /** Archived projects keep their stored recommendations but stop new search
    * work and free a slot against the owner's plan cap. Never deleted. */
   is_archived: boolean;
+  /** Who may see this project and where Mylo may mention it. */
+  visibility: ProjectVisibility;
+  /** The signed-in user's role on the project; null when not a member. */
+  my_role: ProjectRole | null;
+  /** Whether this is one of the signed-in user's projects (a member, or a
+   * personal project's own user). An overseer who can open a project without
+   * being on it is not a participant, so it stays out of "My projects". */
+  is_participant: boolean;
+  /** Whether the signed-in user may change the project's scope (the owner). */
+  can_change_visibility: boolean;
+  /** The scopes this project may take, narrowest first. */
+  allowed_visibilities: ProjectVisibility[];
+  /** Whether the signed-in user may invite someone from outside the lab. */
+  can_invite_outside: boolean;
+  /** Whether the signed-in user may ask to join (and has no open request). */
+  can_request: boolean;
   /** True when a plan downgrade pushed this (active) project past its owner's
    * cap — Mylo pauses new recommendations for it until it's archived or the
    * plan is upgraded. Always false once archived. */
@@ -164,6 +206,49 @@ export type ProjectUpdateInput = {
   watch_categories?: BriefingCategory[];
   focus?: ProjectFocusInput;
   aliases?: string[];
+  /** Only the owner may change it; the backend refuses anyone else. */
+  visibility?: ProjectVisibility;
+};
+
+/**
+ * A directory row: a project the caller can see exists but is not on. Name, a
+ * one-line focus, owner, member count and scope — never goals, state, feed,
+ * files or the roster.
+ */
+export type ProjectDirectoryRow = {
+  id: string;
+  name: string;
+  visibility: ProjectVisibility;
+  scope: ProjectScope;
+  scope_name: string;
+  scope_slug: string | null;
+  focus: string;
+  owner: ProjectMember | null;
+  member_count: number;
+  /** True for an overseer (the lab's PI, a department head) who may open it
+   * without joining. */
+  can_open: boolean;
+  can_request: boolean;
+  request_status: "pending" | null;
+};
+
+/** A request to join a project. */
+export type ProjectJoinRequest = {
+  id: string;
+  project_id: string;
+  project_name: string;
+  user: ProjectMember;
+  note: string;
+  state: "pending" | "approved" | "refused" | "withdrawn";
+  decided_by: ProjectMember | null;
+  decided_at: string | null;
+  created_at: string;
+};
+
+/** `GET /api/project-join-requests/` — the bell's join-request rows. */
+export type MyProjectJoinRequests = {
+  to_decide: ProjectJoinRequest[];
+  mine: ProjectJoinRequest[];
 };
 
 /** A channel Mylo has heard in the lab's server, and the project it hints at. */
@@ -1014,7 +1099,8 @@ export type NotificationItem = {
     | "deadline_moved"
     | "high_signal"
     | "delivery_failed"
-    | "project_alert";
+    | "project_alert"
+    | "project_join";
   content_id: string | null;
   title: string;
   body: string;
@@ -1696,6 +1782,9 @@ export type MyDepartment = {
   capabilities: Capability[];
   /** The roles the caller may hand out here, highest first (never owner). */
   grantable_roles: LabRole[];
+  /** Who may start a department project. */
+  project_creation: ProjectCreation;
+  can_create_projects: boolean;
 };
 
 /**

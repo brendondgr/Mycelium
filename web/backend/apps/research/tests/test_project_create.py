@@ -4,7 +4,7 @@ import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
-from apps.accounts.models import Lab, LabMembership
+from apps.accounts.models import Lab, LabMembership, ProjectCreation
 from apps.billing.models import Subscription, Tier
 from apps.research.models import Project
 
@@ -48,7 +48,10 @@ def test_manager_creates_lab_project(client: APIClient) -> None:
 
 @pytest.mark.django_db
 def test_non_manager_cannot_create_lab_project(client: APIClient) -> None:
+    """With the lab set to *managers only*, a plain member is refused."""
     user, lab = _lab_with(LabMembership.Role.MEMBER)
+    lab.project_creation = ProjectCreation.MANAGERS
+    lab.save(update_fields=["project_creation"])
     client.force_authenticate(user)
 
     resp = client.post(

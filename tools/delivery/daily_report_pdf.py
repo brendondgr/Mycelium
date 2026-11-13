@@ -1413,18 +1413,9 @@ def render_report_pdf(data: ReportData) -> bytes:
             styles["CoverFoot"],
         )
     )
-    # A lab document lists only projects opted into lab reports, so it says how
-    # many it is leaving out — a count, never a name. Without the line a reader who
-    # knows the lab runs six projects reads a one-project table as a quiet day.
-    if data.private_projects_hidden:
-        noun = "project" if data.private_projects_hidden == 1 else "projects"
-        cover.append(Spacer(1, 0.06 * inch))
-        cover.append(
-            Paragraph(
-                f"{data.private_projects_hidden} private {noun} not shown.",
-                styles["CoverFoot"],
-            )
-        )
+    # No "N private projects not shown" line: the document is attached to the
+    # lab's Discord post, and the count told the server that private projects
+    # exist. Managers read it on the web (decision 11).
     story.append(_CenteredCover(cover))
     story.append(PageBreak())
 

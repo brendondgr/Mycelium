@@ -14,22 +14,18 @@ SCOPE_FIELDS = ("scope_user", "scope_lab", "scope_department")
 HEAD_ROLES = ("owner", "admin")
 
 
+class Visibility(models.TextChoices):
+    """A project's one visibility scope (see :mod:`apps.research.visibility`)."""
+
+    INVITE_ONLY = "invite_only", "Invite only"
+    LAB = "lab", "Lab"
+    DEPARTMENT = "department", "Department"
+    PUBLIC = "public", "Public"
+
+
 class ProjectQuerySet(models.QuerySet):
-    """Visibility queries over the lab/department hierarchy.
-
-    Who can see a project (user's verbal spec, 2026-06-21):
-
-    * Anyone *involved* in the project — its members or its personal owner.
-    * For a **lab** project — the *heads* of that lab (a lead PI, or an
-      owner/admin member).
-    * For a lab project — the *heads* of the department that lab belongs to.
-      A department head therefore always sees every project of every lab
-      under them ("if a lab is part of a project, the department will always
-      be able to see it").
-    * For a **department** project — the *heads* of that department.
-
-    "Lab/department can see it" means the *heads*, not every member — only
-    explicit project members get visibility from the rank-and-file side.
+    """Project queries. Who may see a project is decided in one place,
+    :mod:`apps.research.visibility`; :meth:`visible_to` is its queryset form.
     """
 
     def active(self) -> "ProjectQuerySet":
@@ -43,42 +39,16 @@ class ProjectQuerySet(models.QuerySet):
         return self.filter(is_archived=False)
 
     def visible_to(self, user) -> "ProjectQuerySet":
-        if not getattr(user, "is_authenticated", False):
+        """The projects ``user`` may open (full row) — the queryset form of
+        :func:`apps.research.visibility.can_open`, where the rule lives. Being
+        inside a project's scope only shows that it exists
+        (:func:`~apps.research.visibility.can_see`, a directory row)."""
+        from .visibility import open_q
+
+        query = open_q(user)
+        if query is None:
             return self.none()
-
-        # Imported lazily to avoid an import cycle at app-load time.
-        from apps.accounts.models import (
-            Department,
-            DeptMembership,
-            Lab,
-            LabMembership,
-        )
-
-        lab_head_ids = (
-            LabMembership.objects.filter(user=user)
-            .filter(Q(is_lead=True) | Q(role__in=HEAD_ROLES))
-            .values_list("lab_id", flat=True)
-        )
-
-        head_dept_ids = set(
-            Department.objects.filter(owner=user).values_list("id", flat=True)
-        ) | set(
-            DeptMembership.objects.filter(user=user, role__in=HEAD_ROLES).values_list(
-                "department_id", flat=True
-            )
-        )
-
-        labs_under_head_depts = Lab.objects.filter(
-            department_id__in=head_dept_ids
-        ).values_list("id", flat=True)
-
-        return self.filter(
-            Q(members=user)
-            | Q(scope_user=user)
-            | Q(scope_lab_id__in=lab_head_ids)
-            | Q(scope_lab_id__in=labs_under_head_depts)
-            | Q(scope_department_id__in=head_dept_ids)
-        ).distinct()
+        return self.filter(query).distinct()
 
 
 class Project(models.Model):
@@ -146,15 +116,17 @@ class Project(models.Model):
             "stops getting new ones and frees a slot against the plan cap."
         ),
     )
-    share_in_lab_reports = models.BooleanField(
-        default=False,
+    visibility = models.CharField(
+        max_length=20,
+        choices=Visibility.choices,
+        default=Visibility.INVITE_ONLY,
+        db_index=True,
         help_text=(
-            "Show this project in the lab's shared surfaces — its Discord "
-            "channel post and the lab report PDF. Off by default: a lab report "
-            "is readable by every lab member and posted to a channel, while "
-            "project visibility (see ProjectQuerySet.visible_to) is narrower "
-            "than that, so an unshared project's name and matches stay out of "
-            "both. Members still see their own projects in their own reports."
+            "Who may see this project and where Mylo may mention it. "
+            "invite_only: its members (and the lab's or department's "
+            "overseers); lab: the owning lab's members; department: the lab's "
+            "department too; public: any verified account on this instance. "
+            "Read only through apps.research.visibility."
         ),
     )
     archived_at = models.DateTimeField(null=True, blank=True)
@@ -176,8 +148,10 @@ class Project(models.Model):
         validate_exactly_one(self, *SCOPE_FIELDS)
 
     def is_visible_to(self, user) -> bool:
-        """Whether ``user`` can see this project under the cascade rules."""
-        return Project.objects.filter(pk=self.pk).visible_to(user).exists()
+        """Whether ``user`` may open this project (:func:`visibility.can_open`)."""
+        from .visibility import can_open
+
+        return can_open(user, self)
 
     @property
     def scope(self) -> str:
@@ -270,8 +244,134 @@ class ProjectInvitation(models.Model):
         return f"Invite<{self.invitee} -> {self.project} ({self.status})>"
 
 
+class ProjectJoinRequest(models.Model):
+    """Someone inside a project's scope asks to join it (plan "Membership").
+
+    Possible only when the project is not ``invite_only`` and the requester can
+    see it exists (:func:`apps.research.visibility.can_see`). The owner and
+    editors decide; approval creates a ``member`` :class:`ProjectMember`. One
+    open request per person per project. A refusal is told to the requester
+    alone, never announced to the lab.
+    """
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REFUSED = "refused", "Refused"
+        WITHDRAWN = "withdrawn", "Withdrawn"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="join_requests",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="project_join_requests",
+    )
+    note = models.TextField(
+        blank=True,
+        default="",
+        help_text="Optional note from the requester, shown to the deciders.",
+    )
+    state = models.CharField(
+        max_length=20,
+        choices=State.choices,
+        default=State.PENDING,
+        db_index=True,
+    )
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="decided_project_join_requests",
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # One open request per person per project.
+            models.UniqueConstraint(
+                fields=["project", "user"],
+                condition=Q(state="pending"),
+                name="research_unique_pending_join_request",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"JoinRequest<{self.user} -> {self.project} ({self.state})>"
+
+
+class ProjectTransfer(models.Model):
+    """A lab project offered to the lab's department (scoping plan, Phase 5).
+
+    The project's owner offers; a head of the department accepts, and the
+    project becomes a department project with its members kept. An open offer
+    lapses when the lab leaves the department."""
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Offered"
+        ACCEPTED = "accepted", "Accepted"
+        WITHDRAWN = "withdrawn", "Withdrawn"
+        LAPSED = "lapsed", "Lapsed"
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="transfers"
+    )
+    department = models.ForeignKey(
+        "accounts.Department", on_delete=models.CASCADE, related_name="+"
+    )
+    offered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    state = models.CharField(
+        max_length=10, choices=State.choices, default=State.PENDING
+    )
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project"],
+                condition=Q(state="pending"),
+                name="research_unique_pending_transfer",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Transfer<{self.project} -> {self.department_id} ({self.state})>"
+
+
 class ProjectMember(models.Model):
-    """Join between users and the projects they participate in (briefing §3)."""
+    """Join between users and the projects they participate in (briefing §3).
+
+    ``role``: the owner and editors invite, remove, edit and archive; only the
+    owner changes visibility or hands over ownership. A project created before
+    roles existed may have no owner row, in which case the lab's (or
+    department's) managers hold the owner's authority, as they always did.
+    """
+
+    class Role(models.TextChoices):
+        OWNER = "owner", "Owner"
+        EDITOR = "editor", "Editor"
+        MEMBER = "member", "Member"
 
     project = models.ForeignKey(
         Project,
@@ -282,6 +382,11 @@ class ProjectMember(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="project_memberships",
+    )
+    role = models.CharField(
+        max_length=10,
+        choices=Role.choices,
+        default=Role.MEMBER,
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

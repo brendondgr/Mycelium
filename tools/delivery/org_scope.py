@@ -86,11 +86,28 @@ class Org:
         """The lab's watch row; a department has none (defaults apply)."""
         return getattr(self.obj, "watch", None) if self.is_lab else None
 
-    def shared_projects(self) -> list:
-        """The active projects this org's shared surfaces may cover."""
+    def post_width(self, purpose: str = "updates") -> str:
+        """The audience width of the server this org's scheduled posts land in
+        (``apps.research.visibility``): a lab's own server is ``lab``, a server
+        that also holds its department or other labs is wider; a department's is
+        never narrower than ``department``. With no server, the org's own width."""
+        from apps.integrations.services import resolve
+
+        if self.is_lab:
+            return resolve.lab_post_width(self.obj, purpose)
+        return resolve.target_widest_width(department=self.obj)
+
+    @property
+    def web_width(self) -> str:
+        """The width of this org's own web surfaces."""
+        return "lab" if self.is_lab else "department"
+
+    def shared_projects(self, width: str | None = None) -> list:
+        """The active projects this org's shared surfaces may cover in a place
+        of ``width`` (default: the org's own web surfaces)."""
         from tools.delivery.briefing import report_projects_for_org
 
-        return report_projects_for_org(self)
+        return report_projects_for_org(self, width=width)
 
     def hidden_projects(self) -> int:
         from tools.delivery.briefing import hidden_org_projects

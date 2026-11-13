@@ -99,7 +99,11 @@ def changes_for(user, *, limit: int = 200):
     projects = Project.objects.filter(Q(members=user) | Q(scope_user=user)).values("pk")
     return (
         AppliedChange.objects.filter(
-            Q(user=user) | Q(project__in=projects, visibility=Visibility.LAB)
+            Q(user=user)
+            | Q(
+                project__in=projects,
+                visibility__in=[Visibility.LAB, Visibility.PROJECT],
+            )
         )
         .select_related("project", "user", "undo_of")
         .distinct()
@@ -111,15 +115,16 @@ def lab_changes(lab, *, limit: int = 200):
     """A lab's changes: lab-visible ones on the lab's shared projects only.
 
     The rule is the query — a personal change never matches it — so a lab
-    surface cannot show one even by mistake (Plan 07, step 7). "Shared" is the
-    project's own ``share_in_lab_reports`` opt-in, the rule every lab surface
-    uses: a lab project that is not shared is seen by its members and heads
-    only, and its changes reach them through their own "What changed".
+    surface cannot show one even by mistake (Plan 07, step 7). "Shared" is a
+    scope of ``lab`` or wider (:mod:`apps.research.visibility`), the rule every
+    lab surface uses: an ``invite_only`` lab project is seen by its members and
+    overseers only, and its changes reach them through their own "What changed".
     """
+    from apps.research import visibility as scope
+
     return (
         AppliedChange.objects.filter(
-            project__scope_lab=lab,
-            project__share_in_lab_reports=True,
+            project__in=scope.lab_surface_projects(lab),
             visibility=Visibility.LAB,
         )
         .select_related("project", "user")
@@ -131,7 +136,7 @@ def may_undo(change: AppliedChange, user) -> bool:
     """The person it was about; for a lab project's change, its editors too."""
     if change.user_id == user.pk:
         return True
-    if change.project_id and change.visibility == Visibility.LAB:
+    if change.project_id and change.visibility in (Visibility.LAB, Visibility.PROJECT):
         from .editing import can_edit
 
         return can_edit(user, change.project)
@@ -304,7 +309,9 @@ def project_developments(project, viewer) -> list[dict]:
     rows = (
         ProjectDevelopment.objects.filter(project=project)
         .filter(
-            Q(visibility=Visibility.LAB)
+            # A project-only development is for whoever may open the project,
+            # which the caller has already checked of ``viewer``.
+            Q(visibility__in=[Visibility.LAB, Visibility.PROJECT])
             | Q(visibility=Visibility.PERSONAL, speaker=viewer)
         )
         .exclude(status=ProjectDevelopment.Status.SUPERSEDED)

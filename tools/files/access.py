@@ -169,12 +169,7 @@ def output_width(stored) -> str:
     if kind == "user":
         return "person"
     if kind == "project":
-        project = stored.owner
-        if project.scope_user_id is not None:
-            return "person"
-        return (
-            "lab"
-            if project.share_in_lab_reports and project.scope_lab_id
-            else "project"
-        )
+        from apps.research import visibility
+
+        return visibility.output_width(stored.owner)
     return kind

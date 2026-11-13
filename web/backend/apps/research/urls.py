@@ -5,7 +5,38 @@ from . import views
 urlpatterns = [
     path("projects/", views.ProjectListView.as_view(), name="project-list"),
     path("projects", views.ProjectListView.as_view(), name="project-list-no-slash"),
-    # Every project of one lab (any lab member may browse them to join).
+    # The directory: projects the caller can see exist but is not on (reduced rows).
+    path(
+        "projects/directory/",
+        views.ProjectDirectoryView.as_view(),
+        name="project-directory",
+    ),
+    path(
+        "projects/directory",
+        views.ProjectDirectoryView.as_view(),
+        name="project-directory-no-slash",
+    ),
+    path(
+        "projects/lab/<slug:slug>/directory/",
+        views.LabProjectDirectoryView.as_view(),
+        name="lab-project-directory",
+    ),
+    path(
+        "projects/lab/<slug:slug>/directory",
+        views.LabProjectDirectoryView.as_view(),
+        name="lab-project-directory-no-slash",
+    ),
+    path(
+        "projects/department/<uuid:pk>/directory/",
+        views.DepartmentProjectDirectoryView.as_view(),
+        name="department-project-directory",
+    ),
+    path(
+        "projects/department/<uuid:pk>/directory",
+        views.DepartmentProjectDirectoryView.as_view(),
+        name="department-project-directory-no-slash",
+    ),
+    # The projects of one lab the caller may see (visible_to, narrowed).
     path(
         "projects/lab/<slug:slug>/",
         views.LabProjectsView.as_view(),
@@ -15,6 +46,18 @@ urlpatterns = [
         "projects/lab/<slug:slug>",
         views.LabProjectsView.as_view(),
         name="lab-projects-no-slash",
+    ),
+    # A department's (and its labs') projects: full rows where the caller may
+    # open them, reduced rows for a head over a lab set to "names only".
+    path(
+        "projects/department/<uuid:pk>/",
+        views.DepartmentProjectsView.as_view(),
+        name="department-projects",
+    ),
+    path(
+        "projects/department/<uuid:pk>",
+        views.DepartmentProjectsView.as_view(),
+        name="department-projects-no-slash",
     ),
     # Read one project, or PATCH its name / research focus (managers).
     path(
@@ -72,18 +115,40 @@ urlpatterns = [
         views.ProjectArchiveView.as_view(),
         name="project-archive-no-slash",
     ),
-    # Self-join / leave a project; managers add another member. Both slash and
-    # no-slash variants — the Next `/api` proxy strips the trailing slash and
-    # Django's APPEND_SLASH cannot redirect a POST (it would 500).
+    # Leave a project; managers add another member. There is no self-join: a
+    # project is joined by invitation. Both slash and no-slash variants — the
+    # Next `/api` proxy strips the trailing slash and Django's APPEND_SLASH cannot
+    # redirect a POST (it would 500).
+    # Ownership hand-over and transfer to the department (scoping plan, Phase 5).
     path(
-        "projects/<uuid:pk>/join/",
-        views.ProjectJoinView.as_view(),
-        name="project-join",
+        "projects/<uuid:pk>/ownership/",
+        views.ProjectOwnershipView.as_view(),
+        name="project-ownership",
     ),
     path(
-        "projects/<uuid:pk>/join",
-        views.ProjectJoinView.as_view(),
-        name="project-join-no-slash",
+        "projects/<uuid:pk>/ownership",
+        views.ProjectOwnershipView.as_view(),
+        name="project-ownership-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/transfer/",
+        views.ProjectTransferView.as_view(),
+        name="project-transfer",
+    ),
+    path(
+        "projects/<uuid:pk>/transfer",
+        views.ProjectTransferView.as_view(),
+        name="project-transfer-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/transfer/accept/",
+        views.ProjectTransferAcceptView.as_view(),
+        name="project-transfer-accept",
+    ),
+    path(
+        "projects/<uuid:pk>/transfer/accept",
+        views.ProjectTransferAcceptView.as_view(),
+        name="project-transfer-accept-no-slash",
     ),
     path(
         "projects/<uuid:pk>/leave/",
@@ -157,6 +222,49 @@ urlpatterns = [
         "project-invitations/<uuid:pk>/respond",
         views.ProjectInvitationRespondView.as_view(),
         name="project-invitation-respond-no-slash",
+    ),
+    # Join requests: ask to join a non-invite-only project you can see; the owner
+    # and editors list and decide. The requester's own rows sit outside the
+    # project namespace because they cannot open the project yet.
+    path(
+        "projects/<uuid:pk>/join-requests/",
+        views.ProjectJoinRequestsView.as_view(),
+        name="project-join-requests",
+    ),
+    path(
+        "projects/<uuid:pk>/join-requests",
+        views.ProjectJoinRequestsView.as_view(),
+        name="project-join-requests-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/join-requests/<uuid:rid>/decide/",
+        views.ProjectJoinRequestDecideView.as_view(),
+        name="project-join-request-decide",
+    ),
+    path(
+        "projects/<uuid:pk>/join-requests/<uuid:rid>/decide",
+        views.ProjectJoinRequestDecideView.as_view(),
+        name="project-join-request-decide-no-slash",
+    ),
+    path(
+        "project-join-requests/",
+        views.MyProjectJoinRequestsView.as_view(),
+        name="my-project-join-requests",
+    ),
+    path(
+        "project-join-requests",
+        views.MyProjectJoinRequestsView.as_view(),
+        name="my-project-join-requests-no-slash",
+    ),
+    path(
+        "project-join-requests/<uuid:rid>/withdraw/",
+        views.ProjectJoinRequestWithdrawView.as_view(),
+        name="project-join-request-withdraw",
+    ),
+    path(
+        "project-join-requests/<uuid:rid>/withdraw",
+        views.ProjectJoinRequestWithdrawView.as_view(),
+        name="project-join-request-withdraw-no-slash",
     ),
     # Collaboration surface: share into the feed, read the feed, paste-a-link
     # ingest, mark-seen, and engagement events. Slash + no-slash for the proxy.

@@ -515,17 +515,20 @@ def _feed_order(score: RelevanceScore):
 def scope_members(persist_kwargs: dict) -> list:
     """The people a target's recommendations can name.
 
-    A **lab**: its members. A **project**: its lab's members when it is lab-scoped
-    (the people who could pick the work up), else its own members. Anything else
-    (a personal target) has nobody to recommend to and yields an empty list — which
-    is exactly why the personal pages carry no recommendation layer.
+    A **lab**: its members. A **project**: its members, plus the people of its
+    scope only when the scope includes them (scoping plan, Phase 4) — the lab's
+    members for a ``lab``-scoped or wider lab project, never for an
+    ``invite_only`` one, whose name must not reach a lab-mate's "who is this
+    for?". Anything else (a personal target) has nobody to recommend to and
+    yields an empty list — which is exactly why the personal pages carry no
+    recommendation layer.
     """
     from apps.accounts.models import LabMembership
+    from apps.research import visibility
+    from django.contrib.auth import get_user_model
 
     lab = persist_kwargs.get("target_lab")
     project = persist_kwargs.get("target_project")
-    if lab is None and project is not None:
-        lab = getattr(project, "scope_lab", None)
     if lab is not None:
         return [
             membership.user
@@ -534,7 +537,13 @@ def scope_members(persist_kwargs: dict) -> list:
             )
         ]
     if project is not None:
-        return list(project.members.select_related("profile"))
+        ids = visibility.candidate_people_ids(project)
+        return list(
+            get_user_model()
+            .objects.filter(id__in=ids)
+            .select_related("profile")
+            .order_by("username")
+        )
     return []
 
 

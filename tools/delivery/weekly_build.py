@@ -236,7 +236,6 @@ def build_weekly_packet(
     surface: str,
     label: str,
     today: date | None = None,
-    hidden_projects: int = 0,
 ) -> WeeklyPacket:
     """The whole week, numbered and closed.
 
@@ -270,7 +269,6 @@ def build_weekly_packet(
         packet_id=f"weekly:{label}:{start.isoformat()}",
         surface=surface,
         week_start=start,
-        private_projects_hidden=hidden_projects,
     )
     for project in projects:
         packet.projects.append(
