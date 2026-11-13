@@ -1,0 +1,360 @@
+{
+ "note": "EXP-2026-11-013. Fixed 2026-11-12 before any answer was generated. Asked as the demo PI (a fictional person) in the demo lab's scope; mentions are real corpus items (item:<ContentItem id>) chosen from the demo lab's highest relevance scores on 2026-11-12. No question names a real person.",
+ "questions": [
+  {
+   "id": "ta01",
+   "category": "tagged_paper",
+   "text": "What does this paper predict, and how far ahead?",
+   "mentions": [
+    "item:b7ccb1b7-d1d5-4bd9-bb95-bcb2bd7a6e68"
+   ]
+  },
+  {
+   "id": "ta02",
+   "category": "tagged_paper",
+   "text": "What method does this paper propose, in two sentences?",
+   "mentions": [
+    "item:1bf6048f-3e11-4da9-90a1-64207894abb4"
+   ]
+  },
+  {
+   "id": "ta03",
+   "category": "tagged_paper",
+   "text": "What data does this model take as input, and what does it output?",
+   "mentions": [
+    "item:5b5da109-7ee1-45ec-a5fc-e3cdf990cd23"
+   ]
+  },
+  {
+   "id": "ta04",
+   "category": "tagged_paper",
+   "text": "According to this paper, how many days ahead do machine-learning forecasts of marine heatwaves stay skilful?",
+   "mentions": [
+    "item:9aa8a08a-3f71-4e1f-9c84-502aff4dabad"
+   ]
+  },
+  {
+   "id": "ta05",
+   "category": "tagged_paper",
+   "text": "What region and period does this dataset cover?",
+   "mentions": [
+    "item:15ce6421-8a93-481a-8d34-2294f67366d8"
+   ]
+  },
+  {
+   "id": "ta06",
+   "category": "tagged_paper",
+   "text": "Could this paper help the Plastic pathways project? Say why or why not.",
+   "mentions": [
+    "item:50626250-280b-405d-a93c-750f2894b7c7"
+   ]
+  },
+  {
+   "id": "ta07",
+   "category": "tagged_paper",
+   "text": "What is the main idea of this paper, and who are its authors?",
+   "mentions": [
+    "item:185c402e-a526-481b-8fe1-74243408b290"
+   ]
+  },
+  {
+   "id": "ta08",
+   "category": "tagged_paper",
+   "text": "When was this paper published, and what does it conclude about heat conservation?",
+   "mentions": [
+    "item:fef13994-268e-44de-9fbe-bf0933a202e6"
+   ]
+  },
+  {
+   "id": "ta01",
+   "category": "tagged_opportunity",
+   "text": "When does this call close, and how much funding does it offer?",
+   "mentions": [
+    "item:c4ffc4a1-77b2-4060-ada9-51f292bdd497"
+   ]
+  },
+  {
+   "id": "ta02",
+   "category": "tagged_opportunity",
+   "text": "Does this call fit the Marine heatwave early warning project?",
+   "mentions": [
+    "item:bc7438f7-2c6b-422c-9b84-49fd50840d35"
+   ]
+  },
+  {
+   "id": "ta03",
+   "category": "tagged_opportunity",
+   "text": "Who runs this funding programme, and is it open now?",
+   "mentions": [
+    "item:7e937741-9231-4746-b512-e21a67e6c512"
+   ]
+  },
+  {
+   "id": "ta04",
+   "category": "tagged_opportunity",
+   "text": "What kinds of work does this call fund?",
+   "mentions": [
+    "item:d0691bc6-c114-41bb-96be-8c60b687474c"
+   ]
+  },
+  {
+   "id": "ta05",
+   "category": "tagged_opportunity",
+   "text": "Who is eligible for this fellowship, and when is it due?",
+   "mentions": [
+    "item:1f62c961-e6ab-4a2c-b166-1c8f2040b7a8"
+   ]
+  },
+  {
+   "id": "ta06",
+   "category": "tagged_opportunity",
+   "text": "Is this fellowship for students or postdocs, and when is the next deadline?",
+   "mentions": [
+    "item:f14b7f54-19a3-4653-a2d8-a2a3739adeb1"
+   ]
+  },
+  {
+   "id": "ta07",
+   "category": "tagged_opportunity",
+   "text": "Is this fellowship open now, and what was its previous deadline?",
+   "mentions": [
+    "item:2e7975bf-11a0-43f9-84af-2af957e7b857"
+   ]
+  },
+  {
+   "id": "ta08",
+   "category": "tagged_opportunity",
+   "text": "Would a postdoc in our lab be eligible for this, and when is it due?",
+   "mentions": [
+    "item:6a7e7493-12ff-4654-b1a4-e587dca76cf7"
+   ]
+  },
+  {
+   "id": "fe01",
+   "category": "feed_project",
+   "text": "Which paper in our feed matters most for the Marine heatwave early warning project, and why?",
+   "mentions": []
+  },
+  {
+   "id": "fe02",
+   "category": "feed_project",
+   "text": "Which paper in our feed matters most for the Plastic pathways project, and why?",
+   "mentions": []
+  },
+  {
+   "id": "fe03",
+   "category": "feed_project",
+   "text": "Which open grant in our feed fits the Marine heatwave early warning project best?",
+   "mentions": []
+  },
+  {
+   "id": "fe04",
+   "category": "feed_project",
+   "text": "Which open grant in our feed fits the Plastic pathways project best?",
+   "mentions": []
+  },
+  {
+   "id": "fe05",
+   "category": "feed_project",
+   "text": "Which fellowship in our feed would suit a PhD student on the Marine heatwave early warning project?",
+   "mentions": []
+  },
+  {
+   "id": "fe06",
+   "category": "feed_project",
+   "text": "Is there anything in our feed about how marine litter is transported or beached?",
+   "mentions": []
+  },
+  {
+   "id": "fe07",
+   "category": "feed_project",
+   "text": "Which three papers from the feed should the team on the Marine heatwave early warning project read first?",
+   "mentions": []
+  },
+  {
+   "id": "fe08",
+   "category": "feed_project",
+   "text": "Is there a conference in our feed that fits the Plastic pathways project?",
+   "mentions": []
+  },
+  {
+   "id": "pr01",
+   "category": "project_status",
+   "text": "Where does the Marine heatwave early warning project stand right now?",
+   "mentions": []
+  },
+  {
+   "id": "pr02",
+   "category": "project_status",
+   "text": "What is blocking the Plastic pathways project?",
+   "mentions": []
+  },
+  {
+   "id": "pr03",
+   "category": "project_status",
+   "text": "Who is working on the Plastic pathways project?",
+   "mentions": []
+  },
+  {
+   "id": "pr04",
+   "category": "project_status",
+   "text": "What are the goals of the Marine heatwave early warning project?",
+   "mentions": []
+  },
+  {
+   "id": "pr05",
+   "category": "project_status",
+   "text": "What method does the Marine heatwave early warning project use?",
+   "mentions": []
+  },
+  {
+   "id": "pr06",
+   "category": "project_status",
+   "text": "When was the state of the Plastic pathways project last confirmed?",
+   "mentions": []
+  },
+  {
+   "id": "pr07",
+   "category": "project_status",
+   "text": "What is the next step for the Marine heatwave early warning project?",
+   "mentions": []
+  },
+  {
+   "id": "pr08",
+   "category": "project_status",
+   "text": "Which of our two projects is further along, and why do you say so?",
+   "mentions": []
+  },
+  {
+   "id": "wh01",
+   "category": "who_fits",
+   "text": "Who in my lab should apply to this call?",
+   "mentions": [
+    "item:c4ffc4a1-77b2-4060-ada9-51f292bdd497"
+   ]
+  },
+  {
+   "id": "wh02",
+   "category": "who_fits",
+   "text": "Who in my lab is best placed to lead an application to this call?",
+   "mentions": [
+    "item:bc7438f7-2c6b-422c-9b84-49fd50840d35"
+   ]
+  },
+  {
+   "id": "wh03",
+   "category": "who_fits",
+   "text": "Which lab members have the expertise this call asks for?",
+   "mentions": [
+    "item:d0691bc6-c114-41bb-96be-8c60b687474c"
+   ]
+  },
+  {
+   "id": "wh04",
+   "category": "who_fits",
+   "text": "Which student in my lab should apply for this fellowship?",
+   "mentions": [
+    "item:1f62c961-e6ab-4a2c-b166-1c8f2040b7a8"
+   ]
+  },
+  {
+   "id": "wh05",
+   "category": "who_fits",
+   "text": "Is anyone in my lab a good fit for this fellowship?",
+   "mentions": [
+    "item:f14b7f54-19a3-4653-a2d8-a2a3739adeb1"
+   ]
+  },
+  {
+   "id": "wh06",
+   "category": "who_fits",
+   "text": "Who in my lab could contribute to an application to this call, and in what role?",
+   "mentions": [
+    "item:8280e654-e83b-4034-88ad-31fdd87b489b"
+   ]
+  },
+  {
+   "id": "wh07",
+   "category": "who_fits",
+   "text": "Who in my lab fits this call, and what expertise would we be missing?",
+   "mentions": [
+    "item:7e937741-9231-4746-b512-e21a67e6c512"
+   ]
+  },
+  {
+   "id": "wh08",
+   "category": "who_fits",
+   "text": "Who in my lab, if anyone, should apply to this call?",
+   "mentions": [
+    "item:4aa8935a-1b4d-41d4-b72a-b3498ce4899a"
+   ]
+  },
+  {
+   "id": "co01",
+   "category": "compound",
+   "text": "Which open grant fits the Marine heatwave early warning project best, who in the lab should lead the application, and who outside the lab could we partner with?",
+   "mentions": []
+  },
+  {
+   "id": "co02",
+   "category": "compound",
+   "text": "Which open grant fits the Plastic pathways project best, who in the lab should lead the application, and who outside the lab could we partner with?",
+   "mentions": []
+  },
+  {
+   "id": "co03",
+   "category": "compound",
+   "text": "Summarise where the Plastic pathways project stands, name the three most relevant new papers for it, and suggest one funding opportunity it could apply to.",
+   "mentions": []
+  },
+  {
+   "id": "co04",
+   "category": "compound",
+   "text": "Across both of our projects, what are the two most urgent upcoming deadlines, who in the lab fits each, and which recent paper would strengthen each application?",
+   "mentions": []
+  },
+  {
+   "id": "co05",
+   "category": "compound",
+   "text": "What is blocking the Marine heatwave early warning project, and is there a paper in our feed that could help with it?",
+   "mentions": []
+  },
+  {
+   "id": "co06",
+   "category": "compound",
+   "text": "Compare these two calls for our lab: which one fits better, and who would lead it?",
+   "mentions": [
+    "item:c4ffc4a1-77b2-4060-ada9-51f292bdd497",
+    "item:bc7438f7-2c6b-422c-9b84-49fd50840d35"
+   ]
+  },
+  {
+   "id": "co07",
+   "category": "compound",
+   "text": "Does this paper change anything for the Marine heatwave early warning project, and who on the team should read it?",
+   "mentions": [
+    "item:9aa8a08a-3f71-4e1f-9c84-502aff4dabad"
+   ]
+  },
+  {
+   "id": "co08",
+   "category": "compound",
+   "text": "Which fellowship in our feed has the nearest deadline, who in the lab is eligible, and what would make their application strong?",
+   "mentions": []
+  },
+  {
+   "id": "co09",
+   "category": "compound",
+   "text": "What has entered our feed recently that matters for the Plastic pathways project, and what should we do about it this month?",
+   "mentions": []
+  },
+  {
+   "id": "co10",
+   "category": "compound",
+   "text": "Is this call worth applying to for our lab, and if so, which project would it fund and who would lead it?",
+   "mentions": [
+    "item:1f96b447-8881-4363-849e-33c4ce955a2f"
+   ]
+  }
+ ]
+}
