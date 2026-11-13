@@ -92,7 +92,9 @@ def _weekly_body(user_or_lab, *, is_lab: bool):
     from tools.delivery.models import DailyBriefing
 
     data = (
-        compile_report_for_lab(user_or_lab)
+        compile_report_for_lab(
+            user_or_lab, width=resolve.lab_post_width(user_or_lab)
+        )
         if is_lab
         else compile_report_for_user(user_or_lab)
     )
@@ -188,7 +190,12 @@ def send_lab_weeklies(labs, *, on: date | None = None) -> WeeklySendSummary:
                 channel_id=channel_id,
                 lab=lab,
                 embed=discord_embeds.lab_post_embed(
-                    data, data.stats, "weekly", alerts=_alerts({"target_lab": lab})
+                    data,
+                    data.stats,
+                    "weekly",
+                    alerts=_alerts(
+                        {"target_lab": lab}, width=resolve.lab_post_width(lab)
+                    ),
                 ),
                 subject_type="lab_weekly",
                 subject_id=str(lab.id),
@@ -223,11 +230,13 @@ def send_lab_weeklies(labs, *, on: date | None = None) -> WeeklySendSummary:
     return summary
 
 
-def _alerts(target_filter: dict):
+def _alerts(target_filter: dict, *, width: str = "lab"):
     """This week's open alerts, as the post's attention lines."""
     from tools.delivery.alert_report import block_for, discord_lines, open_alerts
 
-    return discord_lines([block_for(alert) for alert in open_alerts(target_filter)])
+    return discord_lines(
+        [block_for(alert) for alert in open_alerts(target_filter, width=width)]
+    )
 
 
 def _monday(value: date) -> date:

@@ -213,7 +213,7 @@ PROJECTS = (
         "List the projects visible to the person in this conversation's scope "
         "(in a project thread: that project).",
         f"{H}.projects:projects_list",
-        output="lab",
+        output="public",
         guest="no_people",
     ),
     _f(
@@ -224,7 +224,7 @@ PROJECTS = (
         "blockers, stage, milestones), developments in effect, and members. In a "
         "project thread the project argument may be left out.",
         f"{H}.projects:projects_get",
-        output="lab",
+        output="public",
         params={"project": ref_param("project", "#n or project:<uuid>")},
         guest="no_people",
     ),
@@ -235,7 +235,7 @@ PROJECTS = (
         "The project's current per-category slate from the nightly ranking, in rank "
         "order, with why each item fits and when it entered.",
         f"{H}.projects:projects_feed",
-        output="lab",
+        output="public",
         params={
             "project": ref_param("project", "#n or project:<uuid>"),
             "types": {

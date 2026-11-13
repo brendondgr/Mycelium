@@ -306,9 +306,7 @@ def align(
         if isinstance(beat, str) and beat.strip():
             notes.append(beat.strip())
 
-    teams: list[dict] = []
-    if target.kind == "lab":
-        teams = _project_teams(target.obj, row.content_id)
+    teams = _project_teams(target, row.content_id)
     projects = [t["name"] for t in teams]
 
     if target.kind == "department":
@@ -321,7 +319,10 @@ def align(
             "cluster_id": cluster_id,
             "theme": theme,
             "theme_notes": notes,
-            "projects": [],
+            # A department's post may name its own and its labs' projects scoped
+            # to the department or wider (plan "Surfaces").
+            "projects": projects,
+            "project_teams": teams,
             "people": [
                 {
                     "id": f"l{i}",
@@ -371,18 +372,38 @@ def align(
     }
 
 
-def _project_teams(lab, content_id) -> list[dict]:
-    """The lab's projects whose own score suggested this item — only those whose
-    scope reaches the lab and that are not archived, since a post is read by
-    everyone in the channel (the same rule as the lab report)."""
+def place_width(target: Target) -> str:
+    """The width an announcement's write-up must be safe for: the widest server
+    among the target's live bindings (it is written once and posted to every
+    one), never narrower than the target itself (``resolve.target_widest_width``).
+    """
+    from apps.integrations.services import resolve
+
+    if target.kind == "lab":
+        return resolve.target_widest_width(lab=target.obj)
+    return resolve.target_widest_width(department=target.obj)
+
+
+def _project_teams(target: Target, content_id) -> list[dict]:
+    """The target's projects whose own score suggested this item — only those not
+    archived and whose scope reaches every server the post goes to
+    (:func:`place_width`), since a post is read by everyone in the channel (the
+    same rule as the lab report). For a lab, its projects; for a department, its
+    own and its labs' projects scoped to the department or wider."""
     from apps.core.people import display_name
     from apps.research import visibility
 
     from tools.recommendation.targets import project_interests
 
+    width = place_width(target)
+    shown = (
+        visibility.lab_surface_projects(target.obj, width)
+        if target.kind == "lab"
+        else visibility.department_surface_projects(target.obj, width)
+    )
     rows = (
         RelevanceScore.objects.filter(
-            target_project__in=visibility.lab_surface_projects(lab),
+            target_project__in=shown,
             target_project__is_archived=False,
             content_id=content_id,
         )
@@ -405,7 +426,12 @@ def _project_teams(lab, content_id) -> list[dict]:
             ),
             project_interests(project)["statement"],
         )
-        members = sorted(project.members.all(), key=lambda u: display_name(u))
+        # A department post names labs, never people: its teams carry no names.
+        members = (
+            sorted(project.members.all(), key=lambda u: display_name(u))
+            if target.kind == "lab"
+            else []
+        )
         teams.append(
             {
                 "id": f"j{index}",

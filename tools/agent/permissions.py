@@ -177,8 +177,15 @@ def _at_least(kind: str, held: str | None, needed: str) -> bool:
 def within_audience(info, audience) -> bool:
     """Width is not enough: a lab-wide object of lab B is still not for lab
     A's channel. Where the audience is an org, an org-scoped object must
-    belong to that org (or a wider one containing it)."""
+    belong to that org (or a wider one containing it). A project must also be
+    scoped at least as wide as the audience
+    (:func:`apps.research.visibility.may_surface`): its scope decides, not
+    which org owns it."""
     if audience.width == "person" or info.output == "instance":
+        return True
+    if info.kind == "project" and not _project_may_surface(info.key, audience.width):
+        return False
+    if info.output == "public":
         return True
     org = audience.obj
     if org is None:  # an unbound channel: only what any signed-in person sees
@@ -228,6 +235,27 @@ def within_audience(info, audience) -> bool:
         )
     # items, papers and documents carry their own width; a lab-licensed paper
     # is fine to quote in any lab the caller belongs to
+    return True
+
+
+def _project_may_surface(key, width: str) -> bool:
+    """Whether the project ``key`` may be named to an audience of ``width``."""
+    from apps.research import visibility
+    from apps.research.models import Project
+
+    if width in ("person", "project"):
+        return True
+    project = Project.objects.filter(pk=key).first() if _is_uuid(key) else None
+    return project is not None and visibility.may_surface(project, width)
+
+
+def _is_uuid(value) -> bool:
+    from uuid import UUID
+
+    try:
+        UUID(str(value))
+    except (TypeError, ValueError):
+        return False
     return True
 
 
@@ -282,7 +310,10 @@ def _may_guest_chat(caller) -> Decision:
     """A guest (S-11): only in Discord, only in a lab's or department's own
     server, and only while the guest level there is above ``off``."""
     scope = caller.scope
-    ambiguous = scope.kind == "personal" and caller.audience.width == "instance"
+    ambiguous = scope.kind == "personal" and caller.audience.width in (
+        "public",
+        "instance",
+    )
     if caller.surface != "discord" or not (
         ambiguous or (scope.kind in ("lab", "department") and scope.obj is not None)
     ):

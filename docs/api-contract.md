@@ -1189,6 +1189,12 @@ without a packet behind it.
 The same envelope over the lab's aggregate matches, across all four areas. Any
 member may read; the daily run writes it for entitled labs. Where an item carries
 member-fit names, the prose says who it suits. `403` for a non-member.
+`stats.private_projects_hidden` — how many of the lab's projects its shared
+surfaces leave out — is served only to the lab's PI, owners and admins (also on
+the history detail route); every other member gets `stats` without the key, and
+no report body, PDF or Discord post carries the count. The body is written for
+the server the lab's post lands in, so it names only projects whose scope
+reaches that server (see `docs/discord-integration.md`, "Server width").
 
 ### `GET /api/briefings/` · `GET /api/briefings/<YYYY-MM-DD>/`
 

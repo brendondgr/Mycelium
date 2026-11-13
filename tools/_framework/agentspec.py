@@ -19,8 +19,11 @@ from typing import Any
 #: What a function may do. Only ``read`` loads in this pass.
 RISKS = ("read", "write", "external", "destructive")
 #: Visibility widths, narrowest first. A function may run only when its
-#: ``output`` is at least as wide as the audience of the reply.
-WIDTHS = ("person", "project", "lab", "department", "instance")
+#: ``output`` is at least as wide as the audience of the reply. ``public`` is a
+#: project scoped to any verified account, and the audience of a Discord server
+#: holding more than one lab's or department's people; ``instance`` is the
+#: shared corpus, readable by anyone.
+WIDTHS = ("person", "project", "lab", "department", "public", "instance")
 #: Thread scopes.
 SCOPES = ("personal", "lab", "department", "project")
 #: Roles per scope kind, lowest first.

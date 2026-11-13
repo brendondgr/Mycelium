@@ -152,7 +152,8 @@ def test_several_bindings_route_or_fall_back_to_public(server):
     thread = AgentThread.objects.get(pk=h.thread_id)
     assert thread.scope_kind == "personal" and thread.shared
     event = thread.events.filter(type="user").last()
-    assert event.payload["turn"]["audience_width"] == "instance"
+    # Labs of different departments (or of none) share the room: public.
+    assert event.payload["turn"]["audience_width"] == "public"
 
 
 # --------------------------------------------------------------------------- #

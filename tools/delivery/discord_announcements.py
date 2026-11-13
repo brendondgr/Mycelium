@@ -21,6 +21,7 @@ night waits for the next.
 
 from __future__ import annotations
 
+import logging
 from datetime import date, timedelta
 
 from apps.integrations.services import outbox, resolve
@@ -39,6 +40,8 @@ from tools.delivery.models import (
 )
 from tools.retrieval.models import ContentItem
 from tools.retrieval.read import ONLINE, item_continent
+
+logger = logging.getLogger(__name__)
 
 GOLD, SAGE, MOSS, BARK, ALERT = 0xC9A35A, 0x8DA66F, 0x5E7A3E, 0x8A6E4B, 0xB5523B
 
@@ -458,15 +461,51 @@ def bindings_for(announcement: Announcement) -> list:
     return resolve.bindings_for_department(announcement.target_department)
 
 
+def may_post_in(announcement: Announcement, binding) -> bool:
+    """Whether every project the write-up names may be mentioned in the server
+    ``binding`` is in — its width decided by everything bound there
+    (``resolve.binding_width``), not by the binding itself.
+
+    The write-up is composed once for the widest server the target had
+    (:func:`tools.delivery.announce.place_width`); this is the check at send
+    time, for a server that has widened since. A post that would name a project
+    too narrow for the room is not sent there at all: the write-up cannot be
+    re-cut per server."""
+    from apps.research import visibility
+    from apps.research.models import Project
+
+    ids = [
+        t.get("project_id")
+        for t in (announcement.alignment or {}).get("project_teams") or []
+        if t.get("project_id")
+    ]
+    if not ids:
+        return True
+    width = resolve.binding_width(binding)
+    projects = list(Project.objects.filter(id__in=ids))
+    if len(projects) != len(set(ids)):
+        return False  # a named project is gone; its name must not travel further
+    return all(visibility.may_surface(p, width) for p in projects)
+
+
 def post(
     announcement: Announcement, *, drain: bool = True, bindings=None
 ) -> list[AnnouncementPost]:
     """Queue one thread per live binding that routes this kind (or only in
-    ``bindings``, for a manager's manual announce from search)."""
+    ``bindings``, for a manager's manual announce from search), in every server
+    wide enough for the projects it names (:func:`may_post_in`)."""
     posts = []
     for binding in bindings if bindings is not None else bindings_for(announcement):
         route = route_for(binding, announcement.category)
         if route is None:
+            continue
+        if not may_post_in(announcement, binding):
+            logger.info(
+                "announcement %s not posted to binding %s: names a project "
+                "scoped narrower than the server",
+                announcement.pk,
+                binding.pk,
+            )
             continue
         ensure_forum_tags(route)
         row, _ = AnnouncementPost.objects.get_or_create(

@@ -183,8 +183,9 @@ def test_lab_report_excludes_unshared_projects() -> None:
     assert "Unpublished Coral Genome" not in _rows(briefing)
     assert "Unpublished Coral Genome" not in briefing.body
     assert "Secret Paper" not in briefing.body
-    # Partial, and honest about it — a count, never a name.
-    assert "1 private project not shown" in briefing.body
+    # Not even a count: the body is the PDF under the lab's Discord post, and
+    # "N private projects" told the server they exist (decision 11).
+    assert "private project" not in briefing.body
 
 
 @pytest.mark.django_db

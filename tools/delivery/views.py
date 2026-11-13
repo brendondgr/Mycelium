@@ -2,7 +2,11 @@ from collections import Counter, defaultdict
 from datetime import date, timedelta
 
 from apps.accounts.models import Lab, LabMembership
-from apps.accounts.permissions import user_can_manage_lab, user_has_lab_access
+from apps.accounts.permissions import (
+    user_can_edit_lab_profile,
+    user_can_manage_lab,
+    user_has_lab_access,
+)
 from apps.core.people import display_name, initials
 from apps.research.models import Project
 from django.conf import settings
@@ -376,6 +380,21 @@ class BriefingDetailView(APIView):
         return Response(_daily_briefing_envelope(briefing))
 
 
+def _lab_envelope(briefing, user, lab) -> dict:
+    """A lab briefing's envelope for one reader. How many projects the lab's
+    shared surfaces leave out (``stats.private_projects_hidden``) is the lab's
+    managers' to see — the PI, owner and admins (decision 11). Anyone else, and
+    every Discord post, is not told private projects exist."""
+    envelope = _daily_briefing_envelope(briefing)
+    if not user_can_edit_lab_profile(user, lab):
+        envelope["stats"] = {
+            k: v
+            for k, v in (envelope.get("stats") or {}).items()
+            if k != "private_projects_hidden"
+        }
+    return envelope
+
+
 class LabBriefingHistoryView(APIView):
     """A lab's retained briefings, newest first. Any lab member may read them."""
 
@@ -401,7 +420,7 @@ class LabBriefingDetailView(APIView):
         briefing = get_object_or_404(
             DailyBriefing, lab=lab, generated_on=on, kind=_requested_kind(request)
         )
-        return Response(_daily_briefing_envelope(briefing))
+        return Response(_lab_envelope(briefing, request.user, lab))
 
 
 class LabDailyBriefingView(APIView):
@@ -419,7 +438,7 @@ class LabDailyBriefingView(APIView):
         if not user_has_lab_access(request.user, lab):
             raise PermissionDenied("You do not have access to this lab.")
         briefing = DailyBriefing.latest_for(_requested_kind(request), lab=lab)
-        return Response(_daily_briefing_envelope(briefing))
+        return Response(_lab_envelope(briefing, request.user, lab))
 
 
 # --------------------------------------------------------------------------- #

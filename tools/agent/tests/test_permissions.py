@@ -255,7 +255,7 @@ def test_audience_lab_channel_offers_nothing_personal(world):
     names = allowed(c)
     assert names, "a lab channel still gets lab-wide functions"
     for name in names:
-        assert fn(name).output in ("lab", "department", "instance"), name
+        assert fn(name).output in ("lab", "department", "public", "instance"), name
     assert "me_profile" not in names and "read_result" not in names
 
 

@@ -260,10 +260,14 @@ def test_allowed_scopes_depend_on_where_the_project_lives(world):
 def test_agent_output_width_follows_the_scope(world):
     w = world
     widths = [visibility.output_width(w.p[s]) for s in w.p]
-    assert widths == ["project", "lab", "department", "department"]
+    # The agent has a ``public`` width (Phase 3): a public project may be named
+    # anywhere, a personal one included.
+    assert widths == ["project", "lab", "department", "public"]
     personal = Project.objects.create(
         name="Mine", scope_user=w.member, visibility="public"
     )
+    assert visibility.output_width(personal) == "public"
+    personal.visibility = "invite_only"
     assert visibility.output_width(personal) == "person"
 
 

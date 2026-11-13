@@ -379,7 +379,7 @@ def test_a_lab_weekly_covers_shared_projects_only(db) -> None:
     weekly = generate_weekly_for_lab(lab, complete=lambda _s, _p: "", today=MONDAY)
 
     assert "Unpublished Coral Genome" not in weekly.body
-    assert "1 private project not shown" in weekly.body
+    assert "private project" not in weekly.body
 
 
 @pytest.mark.django_db

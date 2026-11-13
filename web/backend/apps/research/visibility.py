@@ -283,52 +283,101 @@ def audience(project: Project) -> str:
     return _AUDIENCE.get(project.visibility, "member")
 
 
-def may_surface(project: Project, place: str) -> bool:
-    """Whether a place of width ``place`` may mention ``project``.
+def place_width(place) -> str:
+    """The width of ``place``: a width string, or anything carrying ``.width``
+    (``apps.integrations.services.resolve.Place``, built with the server-width
+    rule), or an agent audience width (``person`` … ``instance``)."""
+    width = getattr(place, "width", place)
+    return _AGENT_PLACE.get(width, width)
 
-    Phase 3 builds ``place`` from where Mylo is speaking (the server-width rule);
-    until then callers pass the width of their own surface.
+
+#: The agent's audience widths, as place widths.
+_AGENT_PLACE = {
+    "person": "member",
+    "project": "member",
+    "instance": "public",
+}
+
+
+def may_surface(project: Project, place) -> bool:
+    """Whether a place of width ``place`` may mention ``project``: only when the
+    project's audience is at least as wide as the place.
+
+    ``place`` is a width (:data:`WIDTHS`) or a ``resolve.Place``. A Discord
+    server's width is decided by everything bound in it
+    (``resolve.server_width``), never by which binding a post travels on. An
+    unknown width allows nothing.
     """
-    if place not in WIDTHS:
+    width = place_width(place)
+    if width not in WIDTHS:
         return False
-    return WIDTHS.index(audience(project)) >= WIDTHS.index(place)
+    return WIDTHS.index(audience(project)) >= WIDTHS.index(width)
+
+
+def scopes_for_width(width: str) -> tuple[str, ...]:
+    """The scopes a place of ``width`` may name (an unknown width: none)."""
+    width = place_width(width)
+    if width not in WIDTHS:
+        return ()
+    rank = WIDTHS.index(width)
+    return tuple(
+        scope for scope, aud in _AUDIENCE.items() if WIDTHS.index(aud) >= rank
+    )
 
 
 def output_width(project: Project) -> str:
     """The widest Mylo-chat audience (``person`` / ``project`` / ``lab`` /
-    ``department``) a project may be shown to, from its scope.
+    ``department`` / ``public``) a project may be shown to, from its scope.
 
-    The agent has no ``public`` width until Phase 3 adds one, so a wider scope
-    is held to the widest width the agent knows for the project's home. A
-    personal project stays with its person.
+    A personal project stays with its person unless it is ``public``. A
+    department-scoped lab project is ``department``; a lab project in a lab
+    with no department cannot be ``department`` (the scope picker does not
+    offer it), and is held to ``lab`` if it ever is.
     """
+    width = audience(project)
+    if width == "public":
+        return "public"
     if project.scope_user_id is not None:
         return "person"
-    width = audience(project)
     if width == "member":
         return "project"
+    if width == "lab":
+        return "lab" if project.scope_lab_id is not None else "project"
     if project.scope_department_id is not None:
         return "department"
-    if width == "lab":
-        return "lab"
     return "department" if project.scope_lab.department_id else "lab"
+
+
+def surface_q(width: str = "lab", prefix: str = "") -> Q:
+    """Filter (on a project, or through ``prefix`` on a relation to one) for a
+    scope a place of ``width`` may name."""
+    return Q(**{f"{prefix}visibility__in": scopes_for_width(width)})
 
 
 def lab_surface_q(prefix: str = "") -> Q:
     """Filter (on a project, or through ``prefix`` on a relation to one) for a
     scope wide enough for the owning lab's shared surfaces."""
-    return Q(**{f"{prefix}visibility__in": LAB_WIDE})
+    return surface_q("lab", prefix)
 
 
-def lab_surface_projects(labs):
+def lab_surface_projects(labs, width: str = "lab"):
     """Projects of ``labs`` (one lab, or ids) that the lab's own surfaces —
-    overview, daily post, PDF, weekly, alerts, announcement teams — may name."""
-    return lab_projects(labs).filter(lab_surface_q())
+    overview, daily post, PDF, weekly, alerts, announcement teams — may name.
+
+    ``width`` is the place's: ``lab`` for the lab's web surfaces and its own
+    server, wider when the post lands in a server holding more than the lab
+    (``resolve.lab_post_width``). Never narrower than ``lab``: a lab surface is
+    read by the whole lab."""
+    if width not in WIDTHS or WIDTHS.index(width) < WIDTHS.index("lab"):
+        width = "lab"
+    return lab_projects(labs).filter(surface_q(width))
 
 
-def lab_held_back(lab):
-    """Projects of ``lab`` its shared surfaces leave out (narrower than lab)."""
-    return lab_projects(lab).exclude(lab_surface_q())
+def lab_held_back(lab, width: str = "lab"):
+    """Projects of ``lab`` its shared surfaces of ``width`` leave out."""
+    if width not in WIDTHS or WIDTHS.index(width) < WIDTHS.index("lab"):
+        width = "lab"
+    return lab_projects(lab).exclude(surface_q(width))
 
 
 def lab_projects(labs):
@@ -339,12 +388,27 @@ def lab_projects(labs):
     return Project.objects.filter(scope_lab_id__in=labs)
 
 
-def department_surface_projects(department):
+def too_narrow_for(width: str, *, lab_id=None, department_id=None):
+    """Projects of a lab (or of a department and its labs) that a place of
+    ``width`` may **not** name — what a check of that place looks for."""
+    if lab_id is not None:
+        owned = Q(scope_lab_id=lab_id)
+    else:
+        owned = Q(scope_department_id=department_id) | Q(
+            scope_lab__department_id=department_id
+        )
+    return Project.objects.filter(owned).exclude(surface_q(width))
+
+
+def department_surface_projects(department, width: str = "department"):
     """Projects a department's own surfaces may name: its own and its labs',
-    scoped to the department or wider."""
+    scoped to the department or wider (``public`` only, for a ``public``
+    place)."""
+    if width not in WIDTHS or WIDTHS.index(width) < WIDTHS.index("department"):
+        width = "department"
     return Project.objects.filter(
         Q(scope_department=department) | Q(scope_lab__department=department),
-        visibility__in=DEPARTMENT_WIDE,
+        surface_q(width),
     )
 
 

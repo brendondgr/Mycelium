@@ -623,11 +623,11 @@ def _is_today(briefing, today: str) -> bool:
     return generated is not None and generated.isoformat() == today
 
 
-def _alert_blocks(target_filter: dict) -> list:
+def _alert_blocks(target_filter: dict, *, width: str = "lab") -> list:
     """Today's open alerts, as blocks. Imported lazily to keep the module acyclic."""
     from tools.delivery.alert_report import block_for, open_alerts
 
-    return [block_for(alert) for alert in open_alerts(target_filter)]
+    return [block_for(alert) for alert in open_alerts(target_filter, width=width)]
 
 
 def _user_window(user) -> int:
@@ -667,7 +667,7 @@ def compile_report_for_user(user) -> ReportData:
     )
 
 
-def compile_report_for_lab(lab) -> ReportData:
+def compile_report_for_lab(lab, *, width: str = "lab") -> ReportData:
     """Gather one lab's day into a :class:`ReportData` (read-only).
 
     Narrowed to ``LAB_BRIEFING_CATEGORIES`` — the categories a lab is actually
@@ -677,6 +677,10 @@ def compile_report_for_lab(lab) -> ReportData:
     The aggregate part carries the **lab's name**, not "Personal": a document whose
     contents page offers a reader "Personal" and then lists the lab's matches has
     mislabelled its own largest section.
+
+    ``width`` is the place the report is for: ``lab`` on the web, and the lab's
+    post width (``resolve.lab_post_width``) when it is posted to Discord — its
+    projects and alerts are then only those whose scope reaches that server.
     """
     return _compile(
         key=lab.slug,
@@ -684,13 +688,15 @@ def compile_report_for_lab(lab) -> ReportData:
         watch=getattr(lab, "watch", None),
         target_filter={"target_lab": lab},
         briefing_filter={"lab": lab},
-        projects=briefing.report_projects_for_lab(lab),
+        projects=briefing.report_projects_for_lab(lab, width=width),
+        # Managers see the count on the web (``stats.private_projects_hidden``);
+        # no rendered surface prints it.
         hidden_projects=briefing.hidden_lab_projects(lab),
         allow=briefing.LAB_BRIEFING_CATEGORIES,
         personal_label=lab.name,
         interests=target_for_lab(lab).interests,
         window_days=_lab_window(lab),
-        alerts=_alert_blocks({"target_lab": lab}),
+        alerts=_alert_blocks({"target_lab": lab}, width=width),
         # A lab's deadline horizon covers what the *lab* saved. One member's
         # bookmark is not the lab's intention, and a lab post naming it would
         # publish a personal save to a channel.

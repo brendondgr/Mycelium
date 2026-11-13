@@ -101,6 +101,20 @@ def eligible_labs(labs, *, on: date | None = None, kind: str = delivery.DAILY) -
 # --------------------------------------------------------------------------- #
 # Sending
 # --------------------------------------------------------------------------- #
+def post_width(lab) -> str:
+    """The width of the server the lab's updates post lands in
+    (``resolve.lab_post_width``): ``lab`` in the lab's own server, wider in a
+    server that also holds its department or other labs. What the post — and
+    the PDF under it — may name is decided by this, not by the binding."""
+    return resolve.lab_post_width(lab, "updates")
+
+
+def compile_post_report(lab) -> ReportData:
+    """The lab's day compiled for its Discord post: only projects, and alerts on
+    projects, whose scope reaches :func:`post_width`."""
+    return compile_report_for_lab(lab, width=post_width(lab))
+
+
 def queue_lab_digest(
     lab,
     *,
@@ -121,12 +135,16 @@ def queue_lab_digest(
     score landed between them.
     """
     on = on or timezone.localdate()
-    data = data if data is not None else compile_report_for_lab(lab)
+    width = post_width(lab)
+    data = data if data is not None else compile_report_for_lab(lab, width=width)
     if alerts is None:
         from tools.delivery.alert_report import block_for, discord_lines, open_alerts
 
         alerts = discord_lines(
-            [block_for(alert) for alert in open_alerts({"target_lab": lab}, on)]
+            [
+                block_for(alert)
+                for alert in open_alerts({"target_lab": lab}, on, width=width)
+            ]
         )
     from tools.delivery.briefing import report_projects_for_lab
     from tools.delivery.weekly_changes import changed_today
@@ -134,7 +152,7 @@ def queue_lab_digest(
     # Ambient Plan 09: a stated-state change accepted today is one line in the
     # day's post — never a post of its own, and never a development (OD-09a).
     changes = changed_today(
-        reader=lab, projects=report_projects_for_lab(lab), is_lab=True
+        reader=lab, projects=report_projects_for_lab(lab, width=width), is_lab=True
     )
     if is_quiet(data) and not changes:
         # Nothing new and nothing wrong. A daily "I found nothing" post trains
@@ -212,7 +230,7 @@ def queue_lab_report(
     if not channel_id:
         return False
 
-    data = data if data is not None else compile_report_for_lab(lab)
+    data = data if data is not None else compile_post_report(lab)
     if not data.total_count and not data.briefing_markdown.strip():
         return False
 

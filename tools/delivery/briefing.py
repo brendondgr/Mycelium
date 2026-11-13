@@ -301,7 +301,9 @@ def by_attention(user, projects: list) -> tuple[list, str | None]:
     return ordered, lead
 
 
-def report_projects_for_lab(lab, *, shared_only: bool = True) -> list:
+def report_projects_for_lab(
+    lab, *, shared_only: bool = True, width: str = "lab"
+) -> list:
     """The active projects a lab's **shared** surfaces cover, in display order.
 
     A lab report is read by every lab member and posted to the lab's Discord
@@ -316,13 +318,18 @@ def report_projects_for_lab(lab, *, shared_only: bool = True) -> list:
     lab projects keep appearing in their own members' personal reports through
     :func:`report_projects_for_user`, which is scoped to one reader.
 
+    ``width`` is the width of the place the surface lands in: ``lab`` for the
+    lab's web surfaces and its own Discord server, ``department`` or ``public``
+    when its post goes to a server holding more than the lab
+    (``resolve.lab_post_width``) — a ``lab`` project is then left out.
+
     ``shared_only=False`` is for callers that are not a shared surface — a count of
     what the lab actually owns, or an editor's own project list.
     """
     from apps.research import visibility
 
     queryset = (
-        visibility.lab_surface_projects(lab)
+        visibility.lab_surface_projects(lab, width)
         if shared_only
         else visibility.lab_projects(lab)
     )
@@ -330,12 +337,11 @@ def report_projects_for_lab(lab, *, shared_only: bool = True) -> list:
 
 
 def hidden_lab_projects(lab) -> int:
-    """How many of a lab's active projects a shared surface is leaving out.
+    """How many of a lab's active projects its shared surfaces leave out.
 
-    The lab post and the lab PDF both say "N private projects not shown" rather
-    than silently showing a shorter list: a reader who knows the lab has six
-    projects and sees one should be told why, and told it is a sharing setting
-    rather than a quiet day.
+    Shown to the lab's managers on the web only (decision 11). It used to be a
+    line in the lab's Discord post and PDF, "N private projects not shown", and
+    that line told the whole server that private projects exist.
     """
     from apps.research import visibility
 
@@ -725,7 +731,6 @@ def _write_briefing(
     allow: tuple[str, ...] | None = None,
     member_names: dict[str, str] | None = None,
     projects: list | None = None,
-    hidden_projects: int = 0,
     alert_summaries: list | None = None,
     personal_label: str = briefing_sections.PERSONAL_HEADING,
     complete: briefing_sections.CompleteFn | None = None,
@@ -740,9 +745,7 @@ def _write_briefing(
     ``owner`` is the update-or-create key (``{"user": user}`` or ``{"lab": lab}``);
     ``target`` is the :class:`MatchTarget` the prose is grounded in; ``target_filter``
     is the ``target_*`` FK the scores are read under; ``projects`` are the projects
-    the report covers after the Personal part, and ``hidden_projects`` is how many
-    the surface is holding back (a lab's unshared projects), which the body reports
-    as a count and never by name. Shared by the user and lab entry
+    the report covers after the Personal part. Shared by the user and lab entry
     points so both apply the same gather + fallback rules — a lab's report is
     structurally the same document its members receive.
     """
@@ -810,7 +813,6 @@ def _write_briefing(
             project_parts,
             complete=complete,
             narrative=narrative_payload,
-            hidden_projects=hidden_projects,
             attention=attention,
         )
         origin = (
@@ -972,16 +974,23 @@ def generate_briefing_for_lab(
     shares. ``member_names`` is still resolved and passed down because
     :func:`_showcase_item` records it on the stored showcase for those surfaces.
     """
+    from apps.integrations.services import resolve
+
     from tools.delivery.alert_report import attention_section, block_for, open_alerts
     from tools.delivery.report_stats import record_run_stats
 
-    blocks = [block_for(alert) for alert in open_alerts({"target_lab": lab})]
+    # The written report is attached to the lab's Discord post as its PDF, so it
+    # is written for the server that post lands in (plan "Surfaces").
+    width = resolve.lab_post_width(lab)
+    blocks = [
+        block_for(alert) for alert in open_alerts({"target_lab": lab}, width=width)
+    ]
     summaries = [
         (block.project_label, block.trigger_label, block.title) for block in blocks
     ]
     from tools.delivery.weekly_changes import changed_today, with_changed_today
 
-    shared = report_projects_for_lab(lab)
+    shared = report_projects_for_lab(lab, width=width)
     changed = changed_today(reader=lab, projects=shared, is_lab=True)
     # With announcements live, each grant, fellowship and conference already has
     # its own thread: the report keeps papers and one line per kind (plan D6).
@@ -996,7 +1005,6 @@ def generate_briefing_for_lab(
         allow=("papers",) if announcing else LAB_BRIEFING_CATEGORIES,
         member_names=_lab_member_names(lab),
         projects=shared,
-        hidden_projects=hidden_lab_projects(lab),
         # The lab's aggregate part is the lab, so it is named after it. "Personal"
         # is what a *person's* own matches are called; on a lab's report it named
         # nobody.

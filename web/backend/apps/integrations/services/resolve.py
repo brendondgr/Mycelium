@@ -528,6 +528,14 @@ def _binding_state(binding) -> str:
 
 
 def _primary_binding(lab, purpose: str | None = None, *, rows=None):
+    """The lab's (or, with ``rows``, a department's) primary binding: live before
+    not, with the route before without, and then the **narrowest server** — a
+    lab's own server before its department's — oldest first.
+
+    Narrowest first because what a post may name depends on everything bound in
+    the server it lands in (:func:`server_width`): a lab's daily post in its own
+    server can carry its ``lab`` projects, the same post in the department's
+    server cannot. A lab that has its own server posts there."""
     rows = all_bindings_for_lab(lab) if rows is None else rows
     if not rows:
         return None
@@ -536,8 +544,92 @@ def _primary_binding(lab, purpose: str | None = None, *, rows=None):
     if purpose:
         with_route = [b for b in pool if route_channel(b, purpose)]
         if with_route:
-            return with_route[0]
-    return pool[0]
+            pool = with_route
+    if len(pool) == 1:
+        return pool[0]
+    return min(
+        enumerate(pool), key=lambda pair: (width_rank(binding_width(pair[1])), pair[0])
+    )[1]
+
+
+# --------------------------------------------------------------------------- #
+# Server width: who is in the room
+# --------------------------------------------------------------------------- #
+#: Place widths, narrowest first — the same ladder as
+#: :data:`apps.research.visibility.WIDTHS`, which decides what a place of each
+#: width may name.
+WIDTH_MEMBER, WIDTH_LAB, WIDTH_DEPARTMENT, WIDTH_PUBLIC = (
+    "member",
+    "lab",
+    "department",
+    "public",
+)
+PLACE_WIDTHS = (WIDTH_MEMBER, WIDTH_LAB, WIDTH_DEPARTMENT, WIDTH_PUBLIC)
+
+
+def width_rank(width: str) -> int:
+    return PLACE_WIDTHS.index(width) if width in PLACE_WIDTHS else len(PLACE_WIDTHS)
+
+
+def widest(widths) -> str:
+    """The widest of ``widths`` (``lab`` when there are none)."""
+    widths = [w for w in widths if w in PLACE_WIDTHS]
+    return max(widths, key=width_rank) if widths else WIDTH_LAB
+
+
+def width_of_bindings(bindings) -> str:
+    """The audience width of a server holding ``bindings``.
+
+    Decided by **everything bound in it**, never by which binding a message
+    travels on (plan "Surfaces"):
+
+    * exactly one binding, a lab → ``lab``;
+    * a department binding, or labs, all of one department → ``department``;
+    * labs of different departments, or of none, or two departments → ``public``.
+
+    No bindings at all is ``public``: a room Mylo cannot place is treated as
+    open to anyone."""
+    labs = {b.lab_id: b.lab for b in bindings if b.lab_id}
+    departments = {b.department_id for b in bindings if b.department_id}
+    if not departments and len(labs) == 1:
+        return WIDTH_LAB
+    homes = departments | {lab.department_id for lab in labs.values()}
+    if len(homes) == 1 and None not in homes:
+        return WIDTH_DEPARTMENT
+    return WIDTH_PUBLIC
+
+
+def server_width(guild_id: str) -> str:
+    """The audience width of one Discord server. Pending bindings count: a lab or
+    department that someone has installed but not yet claimed is already in the
+    room, so the width never narrows on the strength of an unfinished setup."""
+    return width_of_bindings(bindings_for_guild(str(guild_id), include_pending=True))
+
+
+def binding_width(binding) -> str:
+    """The width of the server ``binding`` is in."""
+    return server_width(binding.guild.guild_id)
+
+
+def lab_post_width(lab, purpose: str = "updates") -> str:
+    """The width of the place a lab's scheduled posts land in: the server of its
+    primary binding for ``purpose``, never narrower than ``lab``. A lab with no
+    server posts nowhere, and its web surfaces are ``lab``."""
+    binding = _primary_binding(lab, purpose)
+    if binding is None:
+        return WIDTH_LAB
+    return widest([WIDTH_LAB, binding_width(binding)])
+
+
+def target_widest_width(*, lab=None, department=None) -> str:
+    """The widest server among a target's live bindings — what one write-up posted
+    to every binding (an announcement) must be safe for. ``lab`` / ``department``
+    when it has no server."""
+    rows = bindings_for_lab(lab) if lab is not None else bindings_for_department(
+        department
+    )
+    floor = WIDTH_LAB if lab is not None else WIDTH_DEPARTMENT
+    return widest([floor, *(binding_width(b) for b in rows)])
 
 
 def primary_server_for_lab(lab, purpose: str | None = None) -> LabServer | None:
@@ -599,6 +691,9 @@ class Place:
     #: Any live binding of the server, for the server's own entitlement check
     #: where no binding owns the channel.
     any_binding: DiscordTargetBinding | None = None
+    #: Who is in the room (:func:`server_width`): ``member`` in a DM, else the
+    #: server's width — decided by everything bound in it, not by ``binding``.
+    width: str = "member"
 
     @property
     def lab(self):
@@ -635,7 +730,8 @@ def place_for(
         return Place(kind=PLACE_DM)
     live = list(_live_bindings().filter(guild__guild_id=str(guild_id)))
     if not live:
-        return Place(kind=PLACE_UNBOUND)
+        return Place(kind=PLACE_UNBOUND, width=WIDTH_PUBLIC)
+    width = server_width(str(guild_id))
     by_id = {b.pk: b for b in live}
     read = _delivery_read()
     if thread_id and read is not None:
@@ -649,6 +745,7 @@ def place_for(
                 title=post["title"],
                 closed=post["closed"],
                 any_binding=live[0],
+                width=width,
             )
         soon = read.closing_soon_for_thread(str(thread_id))
         if soon and soon["binding_id"] in by_id:
@@ -658,6 +755,7 @@ def place_for(
                 shared=True,
                 title=f"Closing soon: {soon['category']}s, {soon['on_date']}",
                 any_binding=live[0],
+                width=width,
             )
     kind = PLACE_THREAD if thread_id else PLACE_CHANNEL
     rooms = {str(channel_id), str(parent_id or "")} - {""}
@@ -674,9 +772,18 @@ def place_for(
     elif len(live) == 1:
         binding = live[0]
     else:
-        return Place(kind=PLACE_AMBIGUOUS, shared=bool(thread_id), any_binding=live[0])
+        return Place(
+            kind=PLACE_AMBIGUOUS,
+            shared=bool(thread_id),
+            any_binding=live[0],
+            width=width,
+        )
     return Place(
-        kind=kind, binding=binding, shared=bool(thread_id), any_binding=live[0]
+        kind=kind,
+        binding=binding,
+        shared=bool(thread_id),
+        any_binding=live[0],
+        width=width,
     )
 
 

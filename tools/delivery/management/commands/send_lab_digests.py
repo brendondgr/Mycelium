@@ -39,8 +39,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         from apps.accounts.models import Lab
 
-        from tools.delivery.daily_report import compile_report_for_lab
         from tools.delivery.lab_digest import (
+            compile_post_report,
             eligible_labs,
             is_quiet,
             queue_lab_digest,
@@ -74,7 +74,7 @@ class Command(BaseCommand):
                 # doubles the work and, if a score lands between the two calls,
                 # can post a summary describing a different morning from the PDF
                 # underneath it.
-                data = compile_report_for_lab(lab)
+                data = compile_post_report(lab)
                 if is_quiet(data):
                     summary["empty"] += 1
                     continue

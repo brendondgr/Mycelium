@@ -319,11 +319,9 @@ def lab_post_embed(
         "color": BRAND_COLOR,
         "fields": [],
     }
+    # Never "N private projects not shown": that count told the server private
+    # projects exist. It stays on the managers' web view (decision 11).
     shared = _project_line(stats, projects_only=True)
-    if stats.private_projects_hidden:
-        noun = "project" if stats.private_projects_hidden == 1 else "projects"
-        hidden = f"{stats.private_projects_hidden} private {noun} not shown"
-        shared = f"{shared} · {hidden}" if shared else hidden
     fields = [
         _field(f"Needs attention ({stats.alerts})", attention_lines(alerts)),
         # Ambient Plan 09: a stated-state change accepted today, and by whom.

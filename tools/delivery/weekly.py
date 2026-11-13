@@ -317,11 +317,6 @@ def compose_weekly(
         packet.reflection,
         references_block(packet.references()),
     ]
-    if packet.private_projects_hidden:
-        noun = "project" if packet.private_projects_hidden == 1 else "projects"
-        frame.insert(
-            0, f"_{packet.private_projects_hidden} private {noun} not shown._"
-        )
     footer = record.footer()
     if footer:
         frame.append(f"_{footer}_")
@@ -370,19 +365,22 @@ def generate_weekly_for_user(user, *, complete=None, today: date | None = None):
 
 
 def generate_weekly_for_lab(lab, *, complete=None, today: date | None = None):
-    """The same for a lab — **shared projects only** (plan 0.2 / H4)."""
-    from tools.delivery.briefing import hidden_lab_projects, report_projects_for_lab
+    """The same for a lab — **shared projects only** (plan 0.2 / H4), and only
+    those whose scope reaches the server the lab's weekly is posted to
+    (``resolve.lab_post_width``): one body is both the web weekly and the post."""
+    from apps.integrations.services import resolve
+
+    from tools.delivery.briefing import report_projects_for_lab
     from tools.delivery.weekly_build import SURFACE_CHANNEL, build_weekly_packet
 
     today = today or timezone.localdate()
     packet = build_weekly_packet(
         target_filter={"target_lab": lab},
-        projects=report_projects_for_lab(lab),
+        projects=report_projects_for_lab(lab, width=resolve.lab_post_width(lab)),
         reader=lab,
         surface=SURFACE_CHANNEL,
         label=lab.slug,
         today=today,
-        hidden_projects=hidden_lab_projects(lab),
     )
     return _persist(packet, {"lab": lab}, complete=complete, today=today)
 

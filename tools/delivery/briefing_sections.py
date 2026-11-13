@@ -115,20 +115,6 @@ def empty_report_body() -> str:
     )
 
 
-def hidden_projects_note(count: int) -> str:
-    """The one line a shared surface owes a reader it is holding projects back from.
-
-    A lab report lists only projects scoped to the lab or wider. A reader
-    who knows the lab runs six projects and sees one should be told the difference
-    is a sharing setting, not a quiet day — and told it without naming what is
-    hidden, which would defeat the point.
-    """
-    if count <= 0:
-        return ""
-    noun = "project" if count == 1 else "projects"
-    return f"_{count} private {noun} not shown._"
-
-
 def generate_report_body(
     profile_text: str,
     categories: list[str],
@@ -137,7 +123,6 @@ def generate_report_body(
     *,
     complete: CompleteFn | None = None,
     narrative: dict | None = None,
-    hidden_projects: int = 0,
     attention: str = "",
 ) -> tuple[str, bool]:
     """Assemble the full markdown report body. Returns ``(body, used_llm)``.
@@ -183,10 +168,6 @@ def generate_report_body(
         block, _part_written = _project_block(categories, part)
         if block:
             blocks.append(block)
-
-    note = hidden_projects_note(hidden_projects)
-    if note:
-        blocks.append(note)
 
     lead = (payload.get("lead") or "").strip()
     if not blocks and not lead:
