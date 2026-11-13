@@ -1,0 +1,16 @@
+{
+ "gate_access_runs": 96,
+ "gate_access_leaks_answer": 6,
+ "gate_access_ci95": [
+  0.0233,
+  0.1311
+ ],
+ "gate_access_runs_excl_own_word_probe": 90,
+ "gate_access_leaks_excl_own_word_probe": 0,
+ "gate_access_ci95_excl_own_word_probe": [
+  0.0,
+  0.0402
+ ],
+ "gate_controls_passed": 12,
+ "gate_controls_runs": 12
+}

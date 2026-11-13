@@ -4,7 +4,7 @@
 id: EXP-2026-11-011
 slug: mylo-agent-baseline
 title: "Mylo agent baseline: grounded answers, permission and scope probes, prompt-only comparison, memory lifecycle"
-status: complete # attempt 1 (2026-11-09) failed on a dead endpoint; attempts 2-4 (2026-11-12/13) complete
+status: complete # attempt 1 (2026-11-09) failed on a dead endpoint; attempts 2-4 and 3b (2026-11-12/13) complete
 date_started: 2026-11-09
 date_completed: 2026-11-13
 authors: [Claude (agent), Brendon (owner)]
@@ -25,7 +25,7 @@ hypothesis: >
   gate does not.
 
 code:
-  commit: 81c88e27 # attempt 2 (gate arm; its prompt-only arm ran at 60ad905f); attempt 3 probes at 30845988, answers at a63f90a9; attempt 4 at 11154a1b; agent code identical across them
+  commit: 81c88e27 # attempt 2 (gate arm; its prompt-only arm ran at 60ad905f); attempt 3 probes at 30845988, answers at a63f90a9; attempt 4 at 11154a1b; attempt 3b at a9546450; agent code identical across them
   branch: main
   entrypoint: "docker compose run --rm --no-deps -T backend uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-011-mylo-agent-baseline/code/run_v2.py --arm gate|prompt_only [--graders v3] [--probes-only|--answers-only|--lifecycle-only] --reps N --tag <tag>; python3 code/analyse_v2.py --tag <tag>"
   dirty: true # the operator's uncommitted landing-page edits; no agent code
@@ -155,9 +155,26 @@ metrics:
     attempt3.diff_access_answer_leak_rate: 0.5 # n=96
     attempt3.diff_access_answer_ci95_low: 0.3247 # n=1
     attempt3.diff_access_answer_ci95_high: 0.6368 # n=1
-    attempt4.gate.access_probe_runs: 0 # n=0
-    attempt4.gate.access_leaks_answer: 0 # n=0
-    attempt4.gate.access_leaks_any_point: 0 # n=0
+    attempt3b.gate.access_probe_runs: 48 # n=48
+    attempt3b.gate.access_leaks_answer: 3 # n=48
+    attempt3b.gate.access_leak_rate_answer: 0.0625 # n=48
+    attempt3b.gate.access_leaks_any_point: 3 # n=48
+    attempt3b.gate.lifecycle_probe_runs: 3 # n=3
+    attempt3b.gate.lifecycle_leaks: 0 # n=3
+    attempt3b.gate.lifecycle_leak_rate: 0.0 # n=3
+    attempt3b.gate.vacuous_probe_runs: 12 # n=3
+    attempt3b.gate.access_leak_rate_answer_ci95_low: 0.0131 # n=1
+    attempt3b.gate.access_leak_rate_answer_ci95_high: 0.172 # n=1
+    attempt3b.gate.lifecycle_leak_rate_ci95_low: 0.0 # n=1
+    attempt3b.gate.lifecycle_leak_rate_ci95_high: 0.7076 # n=1
+    attempt3b.gate.pass_rate.original/memory: 1.0 # n=3
+    attempt3b.gate.pass_rate.original/permission_probe: 0.875 # n=24
+    attempt3b.gate.pass_rate.scope/memory_probe: 0.6 # n=15
+    attempt3b.gate.pass_rate.scope/scope_control: 1.0 # n=6
+    attempt3b.gate.pass_rate.scope/scope_probe: 1.0 # n=21
+    attempt4.gate.access_probe_runs: 0 # n=1
+    attempt4.gate.access_leaks_answer: 0 # n=1
+    attempt4.gate.access_leaks_any_point: 0 # n=1
     attempt4.gate.lifecycle_probe_runs: 25 # n=25
     attempt4.gate.lifecycle_leaks: 10 # n=25
     attempt4.gate.lifecycle_leak_rate: 0.4 # n=25
@@ -165,6 +182,16 @@ metrics:
     attempt4.gate.lifecycle_leak_rate_ci95_low: 0.2113 # n=1
     attempt4.gate.lifecycle_leak_rate_ci95_high: 0.6133 # n=1
     attempt4.gate.pass_rate.scope/memory_probe: 0.6 # n=25
+    pooled_3_3b.gate_access_runs: 96 # n=96
+    pooled_3_3b.gate_access_leaks_answer: 6 # n=96
+    pooled_3_3b.gate_access_ci95_low: 0.0233 # n=1
+    pooled_3_3b.gate_access_ci95_high: 0.1311 # n=1
+    pooled_3_3b.gate_access_runs_excl_own_word_probe: 90 # n=96
+    pooled_3_3b.gate_access_leaks_excl_own_word_probe: 0 # n=96
+    pooled_3_3b.gate_access_ci95_excl_own_word_probe_low: 0.0 # n=1
+    pooled_3_3b.gate_access_ci95_excl_own_word_probe_high: 0.0402 # n=1
+    pooled_3_3b.gate_controls_passed: 12 # n=96
+    pooled_3_3b.gate_controls_runs: 12 # n=96
 baselines_compared: ["prompt-only arm: same model, gate bypassed in the harness, rules in the system prompt"]
 statistical_test: "Clopper-Pearson 95% per arm; Newcombe hybrid score interval for the difference"
 
