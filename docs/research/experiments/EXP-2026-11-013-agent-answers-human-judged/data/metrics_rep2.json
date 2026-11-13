@@ -20,8 +20,15 @@
   "empty_answers": 1
  },
  "arm_b": {
-  "answers": 0,
-  "errors": 0
+  "answers": 50,
+  "errors": 0,
+  "tokens_mean": 9582,
+  "tokens_median": 9920.0,
+  "tokens_max": 14441,
+  "seconds_mean": 14.97,
+  "seconds_median": 13.19,
+  "seconds_max": 41.33,
+  "answers_with_citation": 42
  },
  "by_category": {
   "compound": {
@@ -45,8 +52,15 @@
     "empty_answers": 0
    },
    "b": {
-    "answers": 0,
-    "errors": 0
+    "answers": 10,
+    "errors": 0,
+    "tokens_mean": 9830,
+    "tokens_median": 9873.0,
+    "tokens_max": 14441,
+    "seconds_mean": 12.96,
+    "seconds_median": 12.83,
+    "seconds_max": 20.31,
+    "answers_with_citation": 9
    }
   },
   "feed_project": {
@@ -70,8 +84,15 @@
     "empty_answers": 0
    },
    "b": {
-    "answers": 0,
-    "errors": 0
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 9299,
+    "tokens_median": 9630.5,
+    "tokens_max": 10678,
+    "seconds_mean": 18.67,
+    "seconds_median": 16.74,
+    "seconds_max": 37.8,
+    "answers_with_citation": 7
    }
   },
   "project_status": {
@@ -95,8 +116,15 @@
     "empty_answers": 0
    },
    "b": {
-    "answers": 0,
-    "errors": 0
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 10252,
+    "tokens_median": 10285.0,
+    "tokens_max": 13069,
+    "seconds_mean": 19.57,
+    "seconds_median": 16.49,
+    "seconds_max": 41.33,
+    "answers_with_citation": 5
    }
   },
   "tagged_opportunity": {
@@ -120,8 +148,15 @@
     "empty_answers": 1
    },
    "b": {
-    "answers": 0,
-    "errors": 0
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 8316,
+    "tokens_median": 8110.5,
+    "tokens_max": 11840,
+    "seconds_mean": 11.83,
+    "seconds_median": 12.15,
+    "seconds_max": 16.12,
+    "answers_with_citation": 8
    }
   },
   "tagged_paper": {
@@ -145,8 +180,15 @@
     "empty_answers": 0
    },
    "b": {
-    "answers": 0,
-    "errors": 0
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 10964,
+    "tokens_median": 11272.0,
+    "tokens_max": 12420,
+    "seconds_mean": 17.35,
+    "seconds_median": 20.12,
+    "seconds_max": 20.94,
+    "answers_with_citation": 7
    }
   },
   "who_fits": {
@@ -170,8 +212,15 @@
     "empty_answers": 0
    },
    "b": {
-    "answers": 0,
-    "errors": 0
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 8771,
+    "tokens_median": 9509.5,
+    "tokens_max": 13941,
+    "seconds_mean": 9.94,
+    "seconds_median": 8.94,
+    "seconds_max": 21.79,
+    "answers_with_citation": 6
    }
   }
  },

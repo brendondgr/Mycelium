@@ -145,7 +145,7 @@ done before any sheet left the folder.
    tags if time allows) for run-to-run stability and the repair's cost (fixed
    per-call counter). Only `main` goes to raters.
 
-## Amendment 2 — 2026-11-13 03:32, before arm (b) `rep2`
+## Amendment 2 — 2026-11-13 03:22, before arm (b) `rep2`
 
 Arm (b) repeated unchanged (`--arm b --budget-from data/arm_a_main.jsonl
 --tag rep2`) to show the single call's run-to-run variation in tokens and

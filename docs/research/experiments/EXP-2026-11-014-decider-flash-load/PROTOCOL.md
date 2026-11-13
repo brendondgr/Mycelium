@@ -97,7 +97,7 @@ cost about ninety minutes. Run r2 is therefore a shorter repeat for
 run-to-run variation only: shapes `joint` and `synthetic`, levels 1, 4, 16,
 32 and 64, two timed passes per level. Nothing about r1 changes.
 
-## Amendment 2 — 2026-11-13 01:12, after run r1 stopped, before any further request
+## Amendment 2 — 2026-11-13 01:10, after run r1 stopped, before any further request
 
 **What happened.** Run r1's `joint` shape completed levels 1–24 without an
 error. At 32 requests in flight, 80 of 113 requests failed: the engine ran

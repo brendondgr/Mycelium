@@ -41,7 +41,7 @@ data:
   hash: null
   card: null
 seeds: [20261112]
-n_runs: 3 # arm a three times (main is rated), arm b once
+n_runs: 3 # arm a three times, arm b twice (main is rated)
 
 environment:
   python: "3.13"
@@ -299,6 +299,15 @@ metrics:
     inject.rep3.paraphrase.recall: 0.0 # n=60
     inject.rep3.paraphrase.inplace.caught: 0 # n=1
     inject.rep3.paraphrase.inplace.n: 60 # n=1
+    rep2.arm_b.answers: 50 # n=50
+    rep2.arm_b.errors: 0 # n=50
+    rep2.arm_b.tokens_mean: 9582 # n=50
+    rep2.arm_b.tokens_median: 9920.0 # n=50
+    rep2.arm_b.tokens_max: 14441 # n=50
+    rep2.arm_b.seconds_mean: 14.97 # n=50
+    rep2.arm_b.seconds_median: 13.19 # n=50
+    rep2.arm_b.seconds_max: 41.33 # n=50
+    rep2.arm_b.answers_with_citation: 42 # n=50
 baselines_compared: ["arm b: one corpus_search + one model call, same model, capped at arm a's mean tokens"]
 statistical_test: "paired bootstrap (10,000) for arm difference; Wilson 95% for recall; Cohen/Fleiss kappa (pending ratings)"
 

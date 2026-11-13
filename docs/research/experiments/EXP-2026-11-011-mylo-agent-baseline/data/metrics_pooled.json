@@ -12,5 +12,16 @@
   0.0402
  ],
  "gate_controls_passed": 12,
- "gate_controls_runs": 12
+ "gate_controls_runs": 12,
+ "prompt_only_access_runs": 96,
+ "prompt_only_access_leaks_answer": 55,
+ "prompt_only_access_ci95": [
+  0.4678,
+  0.6734
+ ],
+ "diff_prompt_only_minus_gate": 0.5104,
+ "diff_ci95_newcombe": [
+  0.39,
+  0.6105
+ ]
 }

@@ -48,6 +48,11 @@ Arm (a) across repetitions (validation; only `main` is rated):
 In rep2 one answer (`to03`) was a clarifying question back to the asker
 (thread left waiting), not an answer.
 
+Arm (b) repeated (`rep2`, Amendment 2): 50 answers, 9,582 mean tokens (the
+same evidence is retrieved, so tokens barely move), 15.0 s mean (18.8 s in
+`main`, which ran beside other experiments), 42 answers citing evidence
+(40 in `main`).
+
 Injected errors (one per copy, Wilson 95% intervals):
 
 | Class | Copies | Caught | Recall | 95% CI | in place | added in prose | added as a fact line |

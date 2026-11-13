@@ -25,7 +25,7 @@ hypothesis: >
   gate does not.
 
 code:
-  commit: 81c88e27 # attempt 2 (gate arm; its prompt-only arm ran at 60ad905f); attempt 3 probes at 30845988, answers at a63f90a9; attempt 4 at 11154a1b; attempt 3b at a9546450; agent code identical across them
+  commit: 81c88e27 # attempt 2 (gate arm; its prompt-only arm ran at 60ad905f); attempt 3 probes at 30845988, answers at a63f90a9; attempt 4 at 11154a1b; attempt 3b at a9546450 (gate) and 1135a814 (prompt-only); agent code identical across them
   branch: main
   entrypoint: "docker compose run --rm --no-deps -T backend uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-011-mylo-agent-baseline/code/run_v2.py --arm gate|prompt_only [--graders v3] [--probes-only|--answers-only|--lifecycle-only] --reps N --tag <tag>; python3 code/analyse_v2.py --tag <tag>"
   dirty: true # the operator's uncommitted landing-page edits; no agent code
@@ -65,7 +65,7 @@ llm:
     repetitions per task. Ambient's extractor also uses the instance model.
 
 metrics:
-  primary: attempt3.diff_access_answer_leak_rate
+  primary: pooled_3_3b.diff_prompt_only_minus_gate
   values:
     attempt2.gate.access_probe_runs: 48 # n=48
     attempt2.gate.access_leaks_answer: 4 # n=48
@@ -172,6 +172,26 @@ metrics:
     attempt3b.gate.pass_rate.scope/memory_probe: 0.6 # n=15
     attempt3b.gate.pass_rate.scope/scope_control: 1.0 # n=6
     attempt3b.gate.pass_rate.scope/scope_probe: 1.0 # n=21
+    attempt3b.prompt_only.access_probe_runs: 48 # n=48
+    attempt3b.prompt_only.access_leaks_answer: 28 # n=48
+    attempt3b.prompt_only.access_leak_rate_answer: 0.5833 # n=48
+    attempt3b.prompt_only.access_leaks_any_point: 30 # n=48
+    attempt3b.prompt_only.lifecycle_probe_runs: 3 # n=3
+    attempt3b.prompt_only.lifecycle_leaks: 0 # n=3
+    attempt3b.prompt_only.lifecycle_leak_rate: 0.0 # n=3
+    attempt3b.prompt_only.vacuous_probe_runs: 12 # n=3
+    attempt3b.prompt_only.access_leak_rate_answer_ci95_low: 0.4321 # n=1
+    attempt3b.prompt_only.access_leak_rate_answer_ci95_high: 0.7239 # n=1
+    attempt3b.prompt_only.lifecycle_leak_rate_ci95_low: 0.0 # n=1
+    attempt3b.prompt_only.lifecycle_leak_rate_ci95_high: 0.7076 # n=1
+    attempt3b.prompt_only.pass_rate.original/memory: 1.0 # n=3
+    attempt3b.prompt_only.pass_rate.original/permission_probe: 0.5 # n=24
+    attempt3b.prompt_only.pass_rate.scope/memory_probe: 0.6 # n=15
+    attempt3b.prompt_only.pass_rate.scope/scope_control: 1.0 # n=6
+    attempt3b.prompt_only.pass_rate.scope/scope_probe: 0.1429 # n=21
+    attempt3b.diff_access_answer_leak_rate: 0.5208 # n=96
+    attempt3b.diff_access_answer_ci95_low: 0.3449 # n=1
+    attempt3b.diff_access_answer_ci95_high: 0.6554 # n=1
     attempt4.gate.access_probe_runs: 0 # n=1
     attempt4.gate.access_leaks_answer: 0 # n=1
     attempt4.gate.access_leaks_any_point: 0 # n=1
@@ -192,6 +212,13 @@ metrics:
     pooled_3_3b.gate_access_ci95_excl_own_word_probe_high: 0.0402 # n=1
     pooled_3_3b.gate_controls_passed: 12 # n=96
     pooled_3_3b.gate_controls_runs: 12 # n=96
+    pooled_3_3b.prompt_only_access_runs: 96 # n=96
+    pooled_3_3b.prompt_only_access_leaks_answer: 55 # n=96
+    pooled_3_3b.prompt_only_access_ci95_low: 0.4678 # n=1
+    pooled_3_3b.prompt_only_access_ci95_high: 0.6734 # n=1
+    pooled_3_3b.diff_prompt_only_minus_gate: 0.5104 # n=96
+    pooled_3_3b.diff_ci95_newcombe_low: 0.39 # n=1
+    pooled_3_3b.diff_ci95_newcombe_high: 0.6105 # n=1
 baselines_compared: ["prompt-only arm: same model, gate bypassed in the harness, rules in the system prompt"]
 statistical_test: "Clopper-Pearson 95% per arm; Newcombe hybrid score interval for the difference"
 

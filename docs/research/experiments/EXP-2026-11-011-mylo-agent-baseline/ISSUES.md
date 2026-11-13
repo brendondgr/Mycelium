@@ -64,3 +64,8 @@
   `cites` or `overlap_top` grader) are therefore not usable. Fixed
   (`thread.refresh_from_db()`), and the original thirty's answer tasks are
   rerun under attempt 3 (`--answers-only --tag v3`).
+- Attempt 3b's lifecycle probes are mostly vacuous: they repeat attempts 2–3's
+  messages word for word to the same members, and ambient skips a window whose
+  content hash it has already read, so no new observation was derived.
+  Attempt 4 (fresh members) is the lifecycle measurement; attempt 3b is used
+  for the access probes only.

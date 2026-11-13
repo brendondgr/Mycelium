@@ -83,7 +83,7 @@ five minutes; that is the reason for this arm, not a measurement).
 - Reported per group: median, worst case, and mean.
 - Decision rule unchanged. No default is changed by this experiment.
 
-## Amendment 2 — 2026-11-13 00:47, before arm A3
+## Amendment 2 — 2026-11-13 00:46, before arm A3
 
 **A3 — several people at once.** A1 and A2 measure one turn at a time. A3
 asks how a turn's time changes when several are in flight together, as when
@@ -97,7 +97,7 @@ run (1 in flight). The operator states the model server takes up to 128
 concurrent requests; 8 turns put at most 8 model calls in flight. No
 hypothesis beyond "slower per turn, faster per batch"; descriptive.
 
-Addendum to Amendment 2 (2026-11-13 02:44, after runs `a3c4` and `a3c8`,
+Addendum to Amendment 2 (2026-11-13 02:40, after runs `a3c4` and `a3c8`,
 before the runs it describes): `a3c4`/`a3c8` ran their turns as threads in one
 Python process, while the web chat runs each turn in a Celery prefork worker,
 a separate process. To separate the model server's behaviour from the

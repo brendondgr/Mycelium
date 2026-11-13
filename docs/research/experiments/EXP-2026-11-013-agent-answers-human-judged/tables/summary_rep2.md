@@ -7,13 +7,13 @@
 | tagged_opportunity | a | 8 | 11.65 | 9.34 | 29.04 | 10421 | 30590 |
 | tagged_paper | a | 8 | 23.1 | 22.48 | 37.19 | 11850 | 27484 |
 | who_fits | a | 8 | 26.26 | 23.76 | 42.44 | 20827 | 37157 |
-| all | b | 0 | None | None | None | None | None |
-| compound | b | 0 | None | None | None | None | None |
-| feed_project | b | 0 | None | None | None | None | None |
-| project_status | b | 0 | None | None | None | None | None |
-| tagged_opportunity | b | 0 | None | None | None | None | None |
-| tagged_paper | b | 0 | None | None | None | None | None |
-| who_fits | b | 0 | None | None | None | None | None |
+| all | b | 50 | 14.97 | 13.19 | 41.33 | 9582 | 14441 |
+| compound | b | 10 | 12.96 | 12.83 | 20.31 | 9830 | 14441 |
+| feed_project | b | 8 | 18.67 | 16.74 | 37.8 | 9299 | 10678 |
+| project_status | b | 8 | 19.57 | 16.49 | 41.33 | 10252 | 13069 |
+| tagged_opportunity | b | 8 | 11.83 | 12.15 | 16.12 | 8316 | 11840 |
+| tagged_paper | b | 8 | 17.35 | 20.12 | 20.94 | 10964 | 12420 |
+| who_fits | b | 8 | 9.94 | 8.94 | 21.79 | 8771 | 13941 |
 
 | Injected class | Copies | Caught | Recall | 95% CI | in place | prose | fact line |
 |---|---:|---:|---:|---|---|---|---|
