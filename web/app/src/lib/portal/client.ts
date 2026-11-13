@@ -215,6 +215,16 @@ export async function fetchLabDailyBriefing(
   );
 }
 
+/** A department's Mylo Report — the lab's briefing envelope. */
+export async function fetchDepartmentDailyBriefing(
+  id: string,
+): Promise<DailyBriefing> {
+  return getJson<DailyBriefing>(
+    buildApiUrl(getPublicApiBase(), "departments", id, "daily-briefing"),
+    "Could not load the department's daily briefing.",
+  );
+}
+
 /** The caller's retained briefings, newest day first — dates and counts only. */
 export async function fetchBriefings(
   kind: BriefingKind = "daily",

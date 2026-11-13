@@ -63,6 +63,7 @@ import {
   fetchDeptProfile,
   fetchLabProfile,
   fetchLabProjects,
+  fetchDepartmentDailyBriefing,
   fetchDepartmentRecommendations,
   fetchLabRecommendations,
   fetchLabWatch,
@@ -360,6 +361,16 @@ export function useLabDailyBriefing(slug?: string) {
     queryKey: ["portal", "lab-daily-briefing", slug ?? "none"],
     queryFn: () => fetchLabDailyBriefing(slug as string),
     enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** A department's "Mylo Report" briefing (the department overview). */
+export function useDepartmentDailyBriefing(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "department-daily-briefing", id ?? "none"],
+    queryFn: () => fetchDepartmentDailyBriefing(id as string),
+    enabled: Boolean(id),
     staleTime: 60_000,
   });
 }
