@@ -87,8 +87,14 @@ def newcombe(k1, n1, k2, n2):
             round(d + math.sqrt((u1 - p1) ** 2 + (p2 - l2) ** 2), 4)]
 
 
+def vacuous(row):
+    """A retraction run in which no observation was ever derived tests nothing."""
+    pre = (row.get("output") or {}).get("precondition") or {}
+    return row["task"].startswith("retract-") and pre.get("observation_existed") is False
+
+
 def leaked(row):
-    if row.get("check_error"):
+    if row.get("check_error") or vacuous(row):
         return None
     if any(row["leaks"].get(p) for p in ("answer", "results", "catalog")) and row["set"] == "scope":
         return True
@@ -140,6 +146,8 @@ def main() -> int:
             "leak_rate": round(k / n, 4) if n else None, "leak_rate_ci95": clopper(k, n),
             "probe_pass_rate": round(sum(r["passed"] for r in probes) / len(probes), 4) if probes else None,
             "controls_passed": f"{sum(r['passed'] for r in controls)}/{len(controls)}",
+            "vacuous_probe_runs": sum(1 for r in probes if vacuous(r)),
+            "errored_probe_runs": sum(1 for r in probes if r.get("check_error")),
             "categories": summarise(rows),
         }
         for r, f in zip(probes, flags):
