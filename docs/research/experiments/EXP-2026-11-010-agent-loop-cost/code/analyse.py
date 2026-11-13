@@ -105,6 +105,9 @@ def a2_summary(path):
         out["in_flight"] = 1
         out["batch_wall_s"] = {"n": len(batches), "median": round(st.median(batches), 1),
                                "max": round(max(batches), 1)}
+    if "batch_wall_s" in out:
+        per_batch = len(ok) / out["batch_wall_s"]["n"]
+        out["seconds_per_question_overall"] = round(out["batch_wall_s"]["median"] / per_batch, 2)
     out["over_60s_any"] = sum(r["wall_s"] > 60 for r in ok)
     peaks = [max((c["prompt_tokens"] or 0) for c in r["calls"]) for r in ok if r.get("calls")]
     out["peak_prompt_tokens_any_call"] = max(peaks) if peaks else None
@@ -121,7 +124,7 @@ def main() -> int:
     for p in sorted(data.glob("a1_*.json")):
         metrics["a1"][p.stem[3:]] = a1_summary(p)
     for p in sorted(data.glob("a2_*.jsonl")):
-        if p.stem.endswith("smoke"):
+        if p.stem.endswith("smoke") or p.stem.count("_") > 1:
             continue
         metrics["a2"][p.stem[3:]] = a2_summary(p)
     (data / "metrics.json").write_text(json.dumps(metrics, indent=1))

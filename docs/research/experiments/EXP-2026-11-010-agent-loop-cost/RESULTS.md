@@ -16,8 +16,11 @@ three runs), and no real turn's single model call exceeded 19.1k prompt
 tokens, so nothing needed compaction. On an idle model server the median turn takes
 **2.4 s** for a one-lookup question, **9.7 s** for a few lookups and **22.0 s**
 for a compound question; the worst compound turn took **83.8 s** (27 model
-calls, 347k tokens in total). The informal five-minute observation that
-motivated A2 was not reproduced: no turn came near the 15-minute cap.
+calls, 347k tokens in total). **With several people asking at once, turns
+slow down sharply:** with 8 turns in flight (separate processes, as in
+production) the medians are 5.9 s, 32.4 s and 77.8 s and the worst compound
+turn took 234 s, the scale of the informal five-minute observation that
+motivated A2; five-call turns still stayed under 34 s.
 
 ## 2. Results table
 
@@ -47,6 +50,23 @@ C-030's bar, measured directly:
 | idle | 16 | 9.59 s | 22,660 | 0 | 0 | 18,943 |
 | idle, second run | 16 | 7.17 s | 25,441 | 0 | 0 | 19,055 |
 | under the nightly | 14 | 10.64 s | 19,757 | 0 | 0 | 12,895 |
+
+A3, several turns at once (Amendment 2 and its addendum). The process-based
+runs match production, where each turn runs in its own Celery worker process;
+the thread-based runs (several turns as threads in one harness process) are
+kept, and their extra slowdown is the harness's:
+
+| Run | Turns in flight | Turns | One lookup, median / worst s | A few, median / worst s | Compound, median / worst s | Median model call s | Seconds per question overall |
+|---|---:|---:|---|---|---|---:|---:|
+| idle (`a2idle`, `a2idle2`) | 1 | 36 + 36 | 2.35 / 4.61 and 2.22 / 4.77 | 9.67 / 17.89 and 7.96 / 18.78 | 22.01 / 83.84 and 20.31 / 44.87 | 0.87 and 0.77 | 14.10 and 11.47 |
+| 4 processes (`a3p4`) | 4 | 48 | 4.06 / 7.70 | 16.59 / 30.31 | 44.15 / 103.81 | 1.69 | 6.31 |
+| 8 processes (`a3p8`) | 8 | 96 | 5.94 / 25.33 | 32.42 / 82.19 | 77.78 / 234.00 | 3.15 | 5.91 |
+| 4 threads (`a3c4`) | 4 | 36 | 9.40 / 12.79 | 27.16 / 38.01 | 64.51 / 79.68 | 1.57 | 9.13 |
+| 8 threads (`a3c8`) | 8 | 36 | 16.07 / 22.25 | 47.68 / 92.51 | 73.63 / 104.87 | 1.89 | 8.06 |
+
+With 4 and 8 processes, every turn with up to five function calls still
+finished within 28.4 s and 33.9 s (25 and 44 turns; none over 30k tokens).
+No turn errored or hit the 15-minute cap.
 
 A1 (scripted results; three repetitions; the model made exactly the calls
 asked in every repetition):
@@ -81,8 +101,20 @@ None.
   third at the median (13.2 vs 9.7 s, 29.2 vs 22.0 s) and left one-lookup
   turns unchanged.
 - First activity (the first streamed text or function call) arrives in under
-  1 s at the median in every group; a person sees something happening almost
-  at once even when the answer takes 20–80 s.
+  1 s at the median in every group when one turn runs at a time, and in 1.4–2.8 s
+  with 4–8 concurrent turns; a person sees something happening early even
+  when the answer takes 20–80 s.
+- **Concurrency is where a turn gets slow.** With several people asking at
+  once the model server slows each call (median call 0.8 s alone, 1.7 s with
+  4 turns in flight, 3.2 s with 8), and a compound turn's many calls multiply
+  that: its median rises from about 21 s to 44 s and 78 s, and the worst
+  compound turn with 8 in flight took 234 s. That is the scale of the informal
+  five-minute observation that motivated A2, which was made while the server
+  had other work. Total throughput only roughly doubles (11.5–14.1 s per
+  question one at a time; 6.3 and 5.9 s with 4 and 8 in flight). If several
+  people will use Mylo at once, a faster model on the agent route, or a lower
+  `max_steps` for compound questions, is the lever; the five-call bar of
+  C-030 still holds (≤ 34 s).
 
 ## 5. Threats to validity
 
@@ -109,3 +141,5 @@ can show it).
 ## AMENDMENTS
 
 Amendment 1 (PROTOCOL.md, before the run): container runtime and the A2 arm.
+Amendment 2 and its addendum (before their runs): the A3 concurrency arm, in
+threads and then in separate processes.

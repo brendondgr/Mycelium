@@ -1,10 +1,11 @@
 # EXP-2026-11-011 — Results
 
-Attempts 2 (Amendment 1, tag `main`) and 3 (Amendment 2, tag `v3`), run
-2026-11-12/13 on the model in `env/hardware.md`. Every number is read from
-`data/metrics.json` (attempt 2) and `data/metrics_v3.json` (attempt 3),
-written by `code/analyse_v2.py` from `logs/runs_v2_<arm>_<tag>.jsonl`; leaks
-are listed one by one in `tables/leaks.md` and `tables/leaks_v3.md`.
+Attempts 2 (Amendment 1, tag `main`), 3 (Amendment 2, tag `v3`) and 4
+(Amendment 3, tag `v4`), run 2026-11-12/13 on the model in `env/hardware.md`.
+Every number is read from `data/metrics.json`, `data/metrics_v3.json` and
+`data/metrics_v4.json`, written by `code/analyse_v2.py` from
+`logs/runs_v2_<arm>_<tag>.jsonl`; leaks are listed one by one in
+`tables/leaks.md`, `tables/leaks_v3.md` and `tables/leaks_v4.md`.
 Attempt 1 (2026-11-09) measured nothing (endpoint down).
 
 ## 1. Headline
@@ -66,7 +67,7 @@ run is a leak if the answer recalls it or derived rows remain):
 
 | Probe | Gate, attempt 3 | Gate, attempt 2 | Prompt-only, attempt 3 | Rows left after the action (rep 0, attempt 3) |
 |---|---:|---:|---:|---|
-| 9 Thread deleted by the member (`delete_thread`) | 0/3 pass | 0/3 | 0/3 | raw message ref, 2 observations, 2 pending edges |
+| 9 Thread deleted by the member (`delete_thread`) | 0/3 | 0/3 | 0/3 | raw message ref, 2 observations, 2 pending edges |
 | 9 Message deleted through ambient (`message_deleted`) | 2/3 | 2/3 | 2/3 | none (thread and its digest remain) |
 | 9 Opt-out with deletion (`forget_person`) | 3/3 | 3/3 | 3/3 | none |
 | 9 Opt-out without deletion (`ListeningConsent` off) | 0/3 | 1/3 (2 vacuous) | 0/3 | raw ref, observation, pending edge |
