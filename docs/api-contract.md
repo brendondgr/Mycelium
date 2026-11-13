@@ -235,6 +235,8 @@ asking (one open request per person per project). The owner and editors (and the
 scope's managers) list and decide; approval adds a `member`. The requester is
 told on their bell (`project_join` notification); a refusal is told to them
 alone, never to the lab. A decided request answers `409` to a second decision.
+Approval answers `403` when the requester is no longer inside the project's scope
+(they left the lab, or the scope narrowed); refusing still works.
 
 `projects` holds what the caller may open (member, or an overseer). `names_only` is
 filled only for the department's owner / admins, and only with projects of labs

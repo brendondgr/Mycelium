@@ -135,8 +135,10 @@ function MemberRow({
   const projectId = project.id;
   const { removeMember, setRole } = useProjectMembership();
   const [error, setError] = React.useState<string | null>(null);
-  // The owner stays: a personal project's own user, or the owner-role member.
-  const isOwner = project.scope === "user" || member.role === "owner";
+  // The owner stays. The server marks them: the owner-role member (a personal
+  // project's own user carries that role too). Every other row, collaborators
+  // on a personal project included, can be removed.
+  const isOwner = member.role === "owner";
   const canSetRole =
     project.can_change_visibility &&
     (member.role === "editor" || member.role === "member");

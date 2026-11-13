@@ -18,9 +18,6 @@ from .models import (
 )
 from .permissions import (
     EDIT_ROLES,
-    user_can_change_visibility,
-    user_can_invite_outside,
-    user_can_request_to_join,
     user_manages_project_scope,
 )
 
@@ -304,21 +301,9 @@ class ProjectSerializer(serializers.ModelSerializer):
             return True
         if self.get_my_role(project) in EDIT_ROLES:
             return True
-        if project.scope_lab_id is not None:
-            key = ("lab", project.scope_lab_id)
-        elif project.scope_department_id is not None:
-            key = ("department", project.scope_department_id)
-        else:
-            return False
-        cache = getattr(self, "_editable_scopes", None)
-        if cache is None:
-            cache = {}
-            self._editable_scopes = cache
-        if key not in cache:
-            # Only the scope's managers are the same across a lab's projects;
-            # a role is per project and was checked above.
-            cache[key] = user_manages_project_scope(user, project)
-        return cache[key]
+        # Only the scope's managers are the same across a lab's projects; a
+        # role is per project and was checked above.
+        return self._manages_scope(user, project)
 
     def get_my_role(self, project: Project) -> str | None:
         """The caller's role on the project (``owner`` / ``editor`` /
@@ -356,25 +341,83 @@ class ProjectSerializer(serializers.ModelSerializer):
             return True
         return self.get_my_role(project) is not None
 
+    def _manages_scope(self, user, project: Project) -> bool:
+        """``user_manages_project_scope``, memoized per lab / department — the
+        same cache :meth:`get_can_edit` fills."""
+        if project.scope_lab_id is not None:
+            key = ("lab", project.scope_lab_id)
+        elif project.scope_department_id is not None:
+            key = ("department", project.scope_department_id)
+        else:
+            return False
+        cache = getattr(self, "_editable_scopes", None)
+        if cache is None:
+            cache = {}
+            self._editable_scopes = cache
+        if key not in cache:
+            cache[key] = user_manages_project_scope(user, project)
+        return cache[key]
+
     def get_can_change_visibility(self, project: Project) -> bool:
+        """Mirrors :func:`permissions.user_can_change_visibility` from the
+        prefetched role and the memoized manager check (no query per row)."""
         user = self._caller()
-        return user is not None and user_can_change_visibility(user, project)
+        if user is None:
+            return False
+        if project.scope_user_id is not None:
+            return project.scope_user_id == user.id
+        if self.get_my_role(project) == ProjectMember.Role.OWNER:
+            return True
+        return self._manages_scope(user, project)
 
     def get_allowed_visibilities(self, project: Project) -> list[str]:
         return list(rules.allowed_visibilities(project))
 
     def get_can_invite_outside(self, project: Project) -> bool:
-        user = self._caller()
-        return user is not None and user_can_invite_outside(user, project)
+        """Mirrors :func:`permissions.user_can_invite_outside`."""
+        if project.scope_user_id is not None:
+            return self.get_can_edit(project)
+        return self.get_can_change_visibility(project)
 
     def get_can_request(self, project: Project) -> bool:
-        """Whether the caller may ask to join (and has no open request)."""
+        """Whether the caller may ask to join (and has no open request).
+
+        A full row only ever reaches someone who may open the project (every
+        route checks ``visible_to`` first), and opening implies seeing — so of
+        :func:`permissions.user_can_request_to_join` only the scope, archive
+        and membership tests are left, answered without a query per row."""
         user = self._caller()
-        if user is None or not user_can_request_to_join(user, project):
+        if user is None or project.is_archived:
             return False
-        return not ProjectJoinRequest.objects.filter(
-            project=project, user=user, state=ProjectJoinRequest.State.PENDING
-        ).exists()
+        if not rules.admits_requests(project) or self.get_is_participant(project):
+            return False
+        pending = getattr(self, "_pending_requests", None)
+        if pending is None:
+            # The caller's open requests, once per serializer, not per row.
+            pending = set(
+                ProjectJoinRequest.objects.filter(
+                    user=user, state=ProjectJoinRequest.State.PENDING
+                ).values_list("project_id", flat=True)
+            )
+            self._pending_requests = pending
+        return project.id not in pending
+
+    def _home_people(self, project: Project) -> set | None:
+        """:func:`visibility.scope_people_ids`, memoized per lab / department
+        so a list of one lab's projects asks for its roster once."""
+        if project.scope_lab_id is not None:
+            key = ("lab", project.scope_lab_id)
+        elif project.scope_department_id is not None:
+            key = ("department", project.scope_department_id)
+        else:
+            return None
+        cache = getattr(self, "_home_people_cache", None)
+        if cache is None:
+            cache = {}
+            self._home_people_cache = cache
+        if key not in cache:
+            cache[key] = rules.scope_people_ids(project)
+        return cache[key]
 
     def get_members(self, project: Project) -> list[dict]:
         """The roster: each person with their role, and ``outside`` when they
@@ -385,7 +428,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             rows = list(cache["memberships"])
         else:
             rows = list(project.memberships.select_related("user"))
-        home = rules.scope_people_ids(project)
+        home = self._home_people(project)
         rows.sort(key=lambda row: row.user.get_username())
         return [
             {

@@ -2,7 +2,7 @@ import logging
 from collections import OrderedDict
 
 from django.contrib.auth.models import User
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -493,11 +493,16 @@ class ProjectJoinRequestsView(APIView):
             state=ProjectJoinRequest.State.PENDING,
         ).exists():
             raise ValidationError("You already asked to join this project.")
-        join_request = ProjectJoinRequest.objects.create(
-            project=project,
-            user=request.user,
-            note=str(request.data.get("note", ""))[:2000],
-        )
+        try:
+            with transaction.atomic():
+                join_request = ProjectJoinRequest.objects.create(
+                    project=project,
+                    user=request.user,
+                    note=str(request.data.get("note", ""))[:2000],
+                )
+        except IntegrityError:
+            # A double click: the partial unique constraint caught the second.
+            raise ValidationError("You already asked to join this project.") from None
         record_audit_event(
             actor=request.user,
             action="project.join_request",
@@ -526,20 +531,37 @@ class ProjectJoinRequestDecideView(APIView):
         project = _visible_project(request, pk)
         if not _user_can_edit(request.user, project):
             raise PermissionDenied("You cannot decide this project's join requests.")
-        join_request = get_object_or_404(_join_request_qs(), pk=rid, project=project)
-        if join_request.state != ProjectJoinRequest.State.PENDING:
-            return Response(
-                {"detail": "This request has already been answered."},
-                status=status.HTTP_409_CONFLICT,
-            )
         action = str(request.data.get("action", "")).strip().lower()
         if action not in self._ACTIONS:
             raise ValidationError({"action": ["Must be one of: approve, refuse."]})
 
+        created = False
         with transaction.atomic():
+            # Lock the row so two deciders (or a decide racing a withdraw)
+            # cannot both act on one request.
+            join_request = get_object_or_404(
+                ProjectJoinRequest.objects.select_for_update(of=("self",)).select_related(
+                    "project", "user"
+                ),
+                pk=rid,
+                project=project,
+            )
+            if join_request.state != ProjectJoinRequest.State.PENDING:
+                return Response(
+                    {"detail": "This request has already been answered."},
+                    status=status.HTTP_409_CONFLICT,
+                )
             if action == "approve":
+                requester = join_request.user
+                # The scope may have narrowed, or the requester left the lab,
+                # since they asked: approval still needs them inside the scope.
+                if not scope.can_see(requester, project):
+                    raise PermissionDenied(
+                        "They are no longer inside this project's scope. "
+                        "Invite them instead."
+                    )
                 _, created = ProjectMember.objects.get_or_create(
-                    project=project, user=join_request.user
+                    project=project, user=requester
                 )
             join_request.state = self._ACTIONS[action]
             join_request.decided_by = request.user
@@ -590,17 +612,23 @@ class ProjectJoinRequestWithdrawView(APIView):
     """The requester withdraws their own open request."""
 
     def post(self, request: Request, rid) -> Response:
-        join_request = get_object_or_404(_join_request_qs(), pk=rid)
-        if join_request.user_id != request.user.id:
-            raise NotFound("No such request.")
-        if join_request.state != ProjectJoinRequest.State.PENDING:
-            return Response(
-                {"detail": "This request has already been answered."},
-                status=status.HTTP_409_CONFLICT,
+        with transaction.atomic():
+            join_request = get_object_or_404(
+                ProjectJoinRequest.objects.select_for_update(of=("self",)).select_related(
+                    "project", "user"
+                ),
+                pk=rid,
             )
-        join_request.state = ProjectJoinRequest.State.WITHDRAWN
-        join_request.decided_at = timezone.now()
-        join_request.save(update_fields=["state", "decided_at"])
+            if join_request.user_id != request.user.id:
+                raise NotFound("No such request.")
+            if join_request.state != ProjectJoinRequest.State.PENDING:
+                return Response(
+                    {"detail": "This request has already been answered."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            join_request.state = ProjectJoinRequest.State.WITHDRAWN
+            join_request.decided_at = timezone.now()
+            join_request.save(update_fields=["state", "decided_at"])
         return Response(ProjectJoinRequestSerializer(join_request).data)
 
 

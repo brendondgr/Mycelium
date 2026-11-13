@@ -83,7 +83,7 @@ export function ProjectsListSection() {
       ? `Projects in ${currentLab?.name ?? "this lab"}`
       : scope.kind === "department"
         ? `Projects in ${currentDepartment?.name ?? "this department"}`
-        : "Projects open to everyone here";
+        : "Other projects you can see";
   const directoryWhere =
     scope.kind === "lab"
       ? { labSlug: scope.slug }

@@ -536,3 +536,48 @@ def test_an_outside_collaborator_sees_that_project_and_nothing_else(world):
     assert outsider.get(f"/api/projects/{w.p['lab'].id}/").status_code == 404
     assert _names(outsider.get("/api/projects/directory/")) == {"Reef public"}
     assert not LabMembership.objects.filter(user=w.outsider, lab=w.lab).exists()
+
+
+def test_approval_needs_the_requester_still_inside_the_scope(world):
+    w = world
+    project = w.p["lab"]
+    asked = _as(w.member).post(f"/api/projects/{project.id}/join-requests/")
+    rid = asked.json()["id"]
+    # They leave the lab before anyone answers.
+    LabMembership.objects.filter(user=w.member, lab=w.lab).delete()
+    resp = _as(w.owner).post(
+        f"/api/projects/{project.id}/join-requests/{rid}/decide/",
+        {"action": "approve"},
+        format="json",
+    )
+    assert resp.status_code == 403
+    assert not ProjectMember.objects.filter(project=project, user=w.member).exists()
+    assert ProjectJoinRequest.objects.get(pk=rid).state == "pending"
+    # Refusing still works.
+    resp = _as(w.owner).post(
+        f"/api/projects/{project.id}/join-requests/{rid}/decide/",
+        {"action": "refuse"},
+        format="json",
+    )
+    assert resp.status_code == 200
+
+
+def test_a_project_list_does_not_query_per_row(world, django_assert_max_num_queries):
+    """The row flags (roles, owner authority, requests, outside markers) come
+    from prefetched rows and per-scope memos, so a longer list costs no more
+    queries — for a member and for an overseer who is on none of them."""
+    w = world
+    for i in range(20):
+        project = Project.objects.create(
+            name=f"Extra {i}", scope_lab=w.lab, visibility="lab"
+        )
+        ProjectMember.objects.create(
+            project=project, user=w.owner, role=ProjectMember.Role.OWNER
+        )
+    for user in (w.owner, w.pi):
+        client = _as(user)
+        client.get("/api/projects/")  # warm caches that are not per request
+        with django_assert_max_num_queries(30):
+            resp = client.get("/api/projects/")
+        assert resp.status_code == 200
+        assert len(resp.data) >= 20
