@@ -408,7 +408,7 @@ export const PAGES: PageDef[] = [
   {
     key: "settings",
     label: "Settings",
-    route: "/app/account",
+    route: "/app/settings/you/account",
     options: [
       {
         kind: "choice",

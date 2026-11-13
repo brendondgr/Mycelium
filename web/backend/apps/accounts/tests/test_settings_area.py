@@ -159,6 +159,10 @@ def _lab_writes(slug: str) -> list[tuple[str, str, dict]]:
         ("post", f"/api/auth/labs/{slug}/invites/", {"emails": ["a@b.edu"]}),
         ("post", f"/api/labs/{slug}/billing/activate/", {}),  # Plan
         ("post", f"/api/auth/labs/{slug}/transfer-ownership/", {"username": "deputy"}),
+        # Hidden pages: Mylo & servers, Announcements.
+        ("post", f"/api/integrations/discord/lab-code/?lab={slug}", {}),
+        ("patch", f"/api/tools/agent/policy/lab/{slug}/", {"max_risk": "write"}),
+        ("put", f"/api/announcements/settings/?lab={slug}", {"daily_cap": 3}),
     ]
 
 
@@ -234,6 +238,19 @@ def test_a_department_member_is_refused_every_settings_write(
         ("post", f"{base}/labs/", {"name": "New Lab"}),
         ("post", f"/api/departments/{dept.id}/billing/activate/", {}),
         ("post", f"{base}/transfer-ownership/", {"username": "dadmin"}),
+        ("patch", f"{base}/profile/", {"statement": "x"}),
+        # Hidden pages: Mylo & servers, Announcements.
+        (
+            "post",
+            f"/api/integrations/discord/department-code/?department={dept.id}",
+            {},
+        ),
+        (
+            "patch",
+            f"/api/tools/agent/policy/department/{dept.id}/",
+            {"max_risk": "write"},
+        ),
+        ("put", f"/api/announcements/settings/?department={dept.id}", {"daily_cap": 3}),
     ]:
         resp = getattr(client, method)(url, body, format="json")
         assert resp.status_code == 403, (url, resp.status_code)
