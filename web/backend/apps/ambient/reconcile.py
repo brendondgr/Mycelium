@@ -318,15 +318,17 @@ def drop_ineligible(source: Source, refs) -> int:
     """Discard messages whose speaker is no longer eligible, before anybody reads them.
 
     Between a message arriving and the nightly read, its speaker may have opted
-    out, unlinked, or let their plan lapse. Their message is then discarded —
+    out (of the platform, this server, or the project its channel is about),
+    unlinked, or let their plan lapse. Their message is then discarded —
     body and reference — and counted, not stored: eligibility at arrival was a
     permission to hold it until tonight, not a permission that survives the
     person withdrawing it. Mylo's own lines have no speaker and are left alone.
     """
     from . import activity
-    from .eligibility import observable
+    from .eligibility import observable, project_excluded_here
 
     verdicts: dict[int, bool] = {}
+    places: dict[tuple[int, str], bool] = {}
     doomed: list[RawMessageRef] = []
     for ref in refs:
         if ref.speaker_id is None:
@@ -334,6 +336,13 @@ def drop_ineligible(source: Source, refs) -> int:
         if ref.speaker_id not in verdicts:
             verdicts[ref.speaker_id] = bool(observable(ref.speaker, source))
         if not verdicts[ref.speaker_id]:
+            doomed.append(ref)
+            continue
+        # A project the speaker kept out since: its channel is now off for them.
+        key = (ref.speaker_id, ref.place_id)
+        if key not in places:
+            places[key] = project_excluded_here(ref.speaker, source, ref.place_id)
+        if places[key]:
             doomed.append(ref)
     if not doomed:
         return 0

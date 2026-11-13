@@ -34,6 +34,7 @@ ambient_pendingsuggestion	PendingSuggestion
 ambient_projectattention	ProjectAttention
 ambient_projectdevelopment	ProjectDevelopment
 ambient_rawmessageref	RawMessageRef
+ambient_recordingexclusion	RecordingExclusion
 ambient_retraction	Retraction
 ambient_source	Source
 ambient_sourceactivity	SourceActivity

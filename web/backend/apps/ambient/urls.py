@@ -3,6 +3,16 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # What Mylo records of me, per server and per project (both slash forms).
+    path("recording/", views.RecordingView.as_view(), name="ambient-recording"),
+    path("recording", views.RecordingView.as_view()),
+    # The head's switch for an org's Discord servers.
+    path(
+        "servers/<str:kind>/<str:ref>/",
+        views.OrgServerListeningView.as_view(),
+        name="ambient-org-servers",
+    ),
+    path("servers/<str:kind>/<str:ref>", views.OrgServerListeningView.as_view()),
     path(
         "projects/<uuid:pk>/conversation/",
         views.ProjectConversationView.as_view(),

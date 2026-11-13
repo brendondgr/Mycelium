@@ -60,6 +60,9 @@ _TEAMS_CHAT = TeamsChatAdapter()
 #: its own lands in ``dropped_other`` rather than being lost.
 _COUNTER_BY_REASON = {
     "person_not_opted_in": "dropped_not_opted_in",
+    # A person keeping one server or one project out is a narrower opt-out.
+    "person_excluded_server": "dropped_not_opted_in",
+    "person_excluded_project": "dropped_not_opted_in",
     "speaker_unlinked": "dropped_unlinked",
     "speaker_inactive": "dropped_unlinked",
     "tier_free": "dropped_free_tier",

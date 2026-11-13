@@ -190,6 +190,74 @@ class ListeningConsent(models.Model):
         return f"ListeningConsent(user={self.user_id}, {self.platform}, {state})"
 
 
+class RecordingExclusion(models.Model):
+    """One person's "don't record me" for one server or one project.
+
+    Finer than :class:`ListeningConsent`, which is per platform: a person who
+    listens on Discord can still keep one server, or one project, out of it. A
+    row is an exclusion — no row means the platform switch decides alone, so
+    adding these never turned anybody *on*.
+
+    The server's own switch (:attr:`Source.consent_state`, the lab or department
+    head's) is a different thing and wins: while it is off nobody there is
+    recorded, whatever these rows say (settings plan, decision 16).
+
+    A project exclusion stops messages in a channel tied to that project from
+    being recorded at all, and takes the project out of the person's
+    attribution candidates everywhere else.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="recording_exclusions",
+    )
+    source = models.ForeignKey(
+        Source,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="exclusions",
+    )
+    project = models.ForeignKey(
+        "research.Project",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="recording_exclusions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="ambient_exclusion_one_target",
+                condition=(
+                    models.Q(source__isnull=False, project__isnull=True)
+                    | models.Q(source__isnull=True, project__isnull=False)
+                ),
+            ),
+            models.UniqueConstraint(
+                fields=["user", "source"],
+                condition=models.Q(source__isnull=False),
+                name="ambient_exclusion_unique_source",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "project"],
+                condition=models.Q(project__isnull=False),
+                name="ambient_exclusion_unique_project",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        target = (
+            f"source={self.source_id}"
+            if self.source_id
+            else f"project={self.project_id}"
+        )
+        return f"RecordingExclusion(user={self.user_id}, {target})"
+
+
 class PlaceKind(models.TextChoices):
     """The kind of place a message came up in — kept so an explanation can say
     *where* without naming an id a person cannot read."""

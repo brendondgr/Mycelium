@@ -17,6 +17,7 @@ import { usePortal } from "@/components/portal/portal-context";
 import { Card } from "@/components/portal/primitives/card";
 import { EditIcon } from "@/components/portal/icons";
 import { SlackLabCard, TeamsLabCard } from "@/components/portal/ambient/slack-cards";
+import { OrgServerListeningCard } from "@/components/portal/ambient/recording-cards";
 import { AccountSection } from "@/components/portal/sections/account-section";
 import { AnnouncementsCard } from "@/components/portal/sections/announcements-card";
 import { LabPlanCards, PersonalSubscription } from "@/components/portal/sections/billing-section";
@@ -218,6 +219,7 @@ function LabServers({ lab }: { lab: MyLab }) {
         <>
           <DiscordSyncCard lab={lab} />
           <DiscordHealthCard lab={lab} />
+          <OrgServerListeningCard kind="lab" orgRef={lab.slug} name={lab.name} />
           <SlackLabCard slug={lab.slug} />
           <TeamsLabCard slug={lab.slug} />
         </>
@@ -321,7 +323,12 @@ export function DeptPage({ dept, page }: { dept: MyDepartment; page: OrgPageKey 
     case "servers":
       return (
         <>
-          {can(dept, CAPABILITY.SERVERS_MANAGE) ? <DeptDiscordCard deptId={dept.id} /> : null}
+          {can(dept, CAPABILITY.SERVERS_MANAGE) ? (
+            <>
+              <DeptDiscordCard deptId={dept.id} />
+              <OrgServerListeningCard kind="department" orgRef={dept.id} name={dept.name} />
+            </>
+          ) : null}
           {can(dept, CAPABILITY.MYLO_POLICY) ? (
             <AgentPolicyCard kind="department" orgRef={dept.id} name={dept.name} />
           ) : null}

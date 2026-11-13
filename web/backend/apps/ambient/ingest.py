@@ -32,7 +32,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from . import buffer
-from .eligibility import observable
+from .eligibility import observable, project_excluded_here
 from .models import PlaceKind, RawMessageRef, Source, SpeakerKind
 from .text import content_hash
 
@@ -122,6 +122,8 @@ def record(source: Source, message: IncomingMessage) -> Recorded:
             # keyed on the reason, never on the person.
             logger.debug("ambient: discarded a message (%s)", verdict.reason)
             return Recorded(False, verdict.reason)
+        if project_excluded_here(message.speaker, source, message.place_id):
+            return Recorded(False, "person_excluded_project")
     elif not source.listening:
         return Recorded(False, "source_not_consented")
 

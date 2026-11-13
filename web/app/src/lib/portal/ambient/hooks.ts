@@ -10,11 +10,15 @@ import {
   fetchAmbientSettings,
   fetchChanges,
   fetchLabChanges,
+  fetchOrgServers,
+  fetchRecording,
   fetchProjectDevelopments,
   fetchSuggestions,
   fetchUnderstanding,
   reopenUnderstanding,
   saveAmbientSettings,
+  saveOrgServer,
+  saveRecording,
   undoChange,
 } from "./client";
 
@@ -107,5 +111,31 @@ export function useLabChanges(slug: string | null) {
     queryKey: [...ROOT, "lab-changes", slug],
     queryFn: () => fetchLabChanges(slug as string),
     enabled: Boolean(slug),
+  });
+}
+
+/** What Mylo records of me, per server and per project. */
+export function useRecording() {
+  return useQuery({ queryKey: [...ROOT, "recording"], queryFn: fetchRecording });
+}
+
+export function useSaveRecording() {
+  const invalidate = useInvalidateAmbient();
+  return useMutation({ mutationFn: saveRecording, onSuccess: () => invalidate() });
+}
+
+/** An org's Discord servers and the head's listening switch for each. */
+export function useOrgServers(kind: "lab" | "department", ref: string) {
+  return useQuery({
+    queryKey: [...ROOT, "org-servers", kind, ref],
+    queryFn: () => fetchOrgServers(kind, ref),
+  });
+}
+
+export function useSaveOrgServer(kind: "lab" | "department", ref: string) {
+  const invalidate = useInvalidateAmbient();
+  return useMutation({
+    mutationFn: (body: { guild_id: string; on: boolean }) => saveOrgServer(kind, ref, body),
+    onSuccess: () => invalidate(),
   });
 }

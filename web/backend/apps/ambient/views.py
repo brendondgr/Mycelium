@@ -7,6 +7,7 @@ in :mod:`.editing` and :mod:`.dialogue`, where it can be read in one place.
 
 from __future__ import annotations
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -470,3 +471,103 @@ def _meeting_scope(request):
     if not caps.has_capability(request.user, lab, caps.MEMBERSHIP):
         raise PermissionDenied("You can't add a meeting to that lab.")
     return None, lab
+
+
+class RecordingView(APIView):
+    """What Mylo records of me, per server and per project (You → Mylo & you).
+
+    ``GET`` lists the servers that could hear me — each with the head's switch,
+    mine, and whether mine is locked — and the projects I can see. ``POST
+    {server: <id>, record: bool}`` or ``{project: <id>, record: bool}`` keeps
+    one out or lifts that. Lifting a server exclusion is refused (403) while
+    its head has listening off: the head's off wins.
+    """
+
+    def get(self, request: Request) -> Response:
+        from . import recording
+
+        return Response(recording.member_state(request.user))
+
+    def post(self, request: Request) -> Response:
+        from . import recording
+
+        if "record" not in request.data:
+            raise ValidationError({"record": ["Say true or false."]})
+        record = bool(request.data.get("record"))
+        try:
+            if request.data.get("server") is not None:
+                recording.set_server(
+                    request.user, request.data["server"], record=record
+                )
+            elif request.data.get("project") is not None:
+                recording.set_project(
+                    request.user, request.data["project"], record=record
+                )
+            else:
+                raise ValidationError({"server": ["Name a server or a project."]})
+        except recording.Locked as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except (LookupError, ValueError, DjangoValidationError):
+            return Response(
+                {"detail": "Not one of yours."}, status=status.HTTP_404_NOT_FOUND
+            )
+        return Response(recording.member_state(request.user))
+
+
+class OrgServerListeningView(APIView):
+    """The head's switch: whether Mylo listens in each of an org's Discord
+    servers (Settings → Mylo & servers). ``GET`` / ``POST {guild_id, on}``.
+
+    The org is ``lab/<slug>`` or ``department/<id>`` in the path. Turning a
+    server off wins over every member's own switch there.
+    """
+
+    capabilities = {"GET": caps.SERVERS_MANAGE, "POST": caps.SERVERS_MANAGE}
+
+    def _org(self, request, kind, ref):
+        from apps.accounts.models import Department, Lab
+
+        if kind == "lab":
+            org = Lab.objects.filter(slug=ref).first()
+        elif kind == "department":
+            try:
+                org = Department.objects.filter(pk=ref).first()
+            except Exception:  # a malformed id is simply not found
+                org = None
+        else:
+            org = None
+        if org is None:
+            from django.http import Http404
+
+            raise Http404
+        caps.require(request.user, org, caps.SERVERS_MANAGE)
+        return org
+
+    def get(self, request: Request, kind: str, ref: str) -> Response:
+        from . import recording
+
+        org = self._org(request, kind, ref)
+        return Response({"servers": recording.org_servers(org)})
+
+    def post(self, request: Request, kind: str, ref: str) -> Response:
+        from . import recording
+
+        org = self._org(request, kind, ref)
+        guild_id = str(request.data.get("guild_id") or "")
+        if "on" not in request.data or not guild_id:
+            raise ValidationError({"on": ["Name a server and say on or off."]})
+        try:
+            out = recording.set_org_server(
+                org, guild_id, on=bool(request.data.get("on")), changed_by=request.user
+            )
+        except LookupError:
+            return Response(
+                {"detail": "Not one of this org's servers."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if out.get("refused") == "unavailable":
+            return Response(
+                {"detail": "Listening isn't turned on for this Mycelium."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response({"servers": recording.org_servers(org)})
