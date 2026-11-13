@@ -1,49 +1,107 @@
 # EXP-2026-11-013 — Results
 
+Generated 2026-11-12/13. Numbers that need no people are read from
+`data/metrics.json` (arm a `main`, arm b, injected errors),
+`data/metrics_rep2.json` / `data/metrics_rep3.json` (validation repetitions of
+arm a) and `data/inject_main_summary.json`. **The human-judged half (C-033,
+C-034 and C-035's precision) is not measured yet: the rating sheets are
+ready in `data/sheets/` and waiting for raters.**
+
 ## 1. Headline
 
-Two sentences. The number, and whether the hypothesis survived.
+Without people: Mylo (arm a) answered all 50 questions, at a mean of 27.1k
+tokens and 40.5 s per answer (median 36.7 s, worst 150.6 s), against 9.6k
+tokens and 18.8 s for the single retrieve-then-answer call (arm b). The
+answer verifier triggered its repair on 1 answer in 50 in each repetition. On
+660 rule-built corrupted copies of 49 clean answers it caught every invented
+citation number (108/108) and nearly every invented amount or figure
+(104/113), caught dates, authors and venues **only when written as a
+`Label: value` line** (53/58, 43/51, 30/49) and **never in running prose**
+(0/49 each), and caught **none** of 60 unsupported paraphrases — as predicted
+before the run. It raised no false alarm on the 49 originals.
 
 ## 2. Results table
 
-Generated, not typed. Mean ± std across seeds; a single run is reported as
-`n=1`, never as if it were a mean.
+Arms (50 questions each; `main` run):
 
-<!-- BEGIN GENERATED TABLE -->
-<!-- END GENERATED TABLE -->
+| Category | Arm a mean s | Arm a mean tokens | Arm b mean s | Arm b mean tokens |
+|---|---:|---:|---:|---:|
+| tagged paper | 20.2 | 11,900 | 18.6 | 10,966 |
+| tagged grant / fellowship | 16.2 | 11,379 | 12.0 | 8,312 |
+| feed vs project | 43.2 | 27,540 | 28.7 | 9,335 |
+| project status | 47.3 | 35,778 | 21.1 | 10,204 |
+| who in the lab fits | 39.1 | 21,628 | 16.0 | 8,760 |
+| compound | 69.6 | 48,859 | 16.7 | 9,849 |
+| **all** | **40.5** | **27,088** | **18.8** | **9,582** |
+
+Arm (a) across repetitions (validation; only `main` is rated):
+
+| Run | Answers | Mean tokens | Mean s | Max s | Model calls (mean) | Out of steps | Thrash stop | Repairs | Stripped |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| main | 50 | 27,088 | 40.5 | 150.6 | 6.46 | 1 | 4 | 1 | 1 |
+| rep2 | 50 | 27,025 | 34.7 | 124.4 | 6.12 | 0 | 1 | 1 | 0 |
+
+Injected errors (one per copy, Wilson 95% intervals):
+
+| Class | Copies | Caught | Recall | 95% CI | in place | added in prose | added as a fact line |
+|---|---:|---:|---:|---|---|---|---|
+| citation number not in the thread | 108 | 108 | 1.00 | 0.97–1.00 | 103/103 | 5/5 | — |
+| citation moved to an unread reference | 0 | — | — | — | — | — | — |
+| date / year | 168 | 54 | 0.32 | 0.26–0.40 | 1/61 | 0/49 | 53/58 |
+| author surname | 109 | 43 | 0.39 | 0.31–0.49 | 0/9 | 0/49 | 43/51 |
+| venue | 102 | 30 | 0.29 | 0.21–0.39 | 0/4 | 0/49 | 30/49 |
+| amount / figure | 113 | 104 | 0.92 | 0.86–0.96 | 6/15 | 49/49 | 49/49 |
+| unsupported paraphrase | 60 | 0 | 0.00 | 0.00–0.06 | 0/60 | — | — |
+
+Repair (`repair_off_<tag>.json`): `main` — the one repaired answer failed its
+repair and was stripped (cost unknown: per-call counter bug, ISSUES.md);
+`rep2` — the one repaired answer passed after the repair, costing 19,104
+tokens, 10.6 s and 2 extra model calls. With repair off, `main`'s answer would
+have lost the same flagged figure; `rep2`'s flagged figure was already gone
+from the text the strip would act on.
+
+Human-judged (C-033, C-034, C-035 precision and recall against raters): **not
+yet measured** — `code/score.py` is written and committed; it runs when the
+filled sheets are copied to `data/ratings/`.
 
 ## 3. Figures
 
-Each figure embedded with a one-line caption naming the script that produced it.
+None.
 
 ## 4. Interpretation
 
-What this means for the paper's argument. Tie it to the claim IDs in
-`../../CLAIMS.md`.
+- **The verifier is a citation-and-number checker.** It is reliable for what
+  it parses: a citation the thread never surfaced, and a figure (decimal or
+  percentage) the evidence lacks. A wrong author, venue or year is caught only
+  when the model writes it as a `- Authors:` / `Venue:` / `Year:` line; the
+  same wrong detail in a sentence passes. Integers in prose (a year, "$75,000")
+  are not figures to it. An unsupported claim with no number in it is
+  invisible. So C-035's recall bar (≥ 0.5 of what raters find) depends on what
+  kind of unsupported detail the model actually produces — which is exactly
+  what the raters' lists will show.
+- **The repair rarely runs** (1 in 50, twice), so its cost per answer is small
+  on average; when it runs it adds roughly a fifth of an answer's tokens
+  (19k of the 27k mean) and ~10 s.
+- **Arm (b) is cheaper and faster but structurally blind** to the lab's own
+  state: project-status and who-fits questions are answered from the corpus
+  alone. Whether people judge it worse is C-034, pending.
+- The `unread` check cannot be exercised by single-turn questions (every
+  surfaced reference is in view); testing it needs multi-turn threads.
 
 ## 5. Threats to validity
 
-Confounds, leakage risks, dataset artifacts, judgment quality, and what the
-comparison cost. Write the objection a reviewer would raise before they raise
-it.
-
-## 6. What surprised us
-
-The section that becomes the discussion section. If nothing surprised you, the
-experiment may not have been worth running — say that too.
-
-## 7. Follow-ups
-
-Each one is copied into `../../OPEN_QUESTIONS.md`.
-
-## 8. Reproduction
-
-The exact command that regenerates everything in this folder.
-
-```bash
-```
+- Questions were written by the implementing agent; tagged items were picked
+  from the demo lab's highest relevance scores.
+- One fictional lab, one model, one corpus snapshot. The demo lab's projects
+  are thinly described, which favours short answers.
+- Arm (a) ran while the nightly run used the same model server, so its
+  seconds are under load (ISSUES.md); tokens are unaffected.
+- Injected errors are made by rule; their recall is per error type built, not
+  per error the model makes.
+- Arm (b) never reaches its token ceiling (20-result search cap).
 
 ## AMENDMENTS
 
-A completed experiment is immutable. Corrections are appended here, dated, never
-edited into the sections above.
+Amendment 1 (PROTOCOL.md): question ids made unique, arm (b) told which
+records were tagged and rerun, removed-item sheet de-duplicated, validation
+repetitions — all before any rating.

@@ -1,0 +1,193 @@
+{
+ "tag": "rep3",
+ "arm_a": {
+  "answers": 50,
+  "errors": 0,
+  "tokens_mean": 26494,
+  "tokens_median": 20286.5,
+  "tokens_max": 87594,
+  "seconds_mean": 37.24,
+  "seconds_median": 30.25,
+  "seconds_max": 104.16,
+  "answers_with_citation": 49,
+  "model_calls_mean": 6.16,
+  "function_calls_mean": 8.08,
+  "hit_max_steps": 0,
+  "thrash_stop": 2,
+  "repair_runs": 1,
+  "final_stripped": 1,
+  "final_clean": 49,
+  "empty_answers": 0
+ },
+ "arm_b": {
+  "answers": 0,
+  "errors": 0
+ },
+ "by_category": {
+  "compound": {
+   "a": {
+    "answers": 10,
+    "errors": 0,
+    "tokens_mean": 54934,
+    "tokens_median": 56068.5,
+    "tokens_max": 87594,
+    "seconds_mean": 68.97,
+    "seconds_median": 65.69,
+    "seconds_max": 104.16,
+    "answers_with_citation": 10,
+    "model_calls_mean": 9.2,
+    "function_calls_mean": 16.4,
+    "hit_max_steps": 0,
+    "thrash_stop": 1,
+    "repair_runs": 1,
+    "final_stripped": 1,
+    "final_clean": 9,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "feed_project": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 29953,
+    "tokens_median": 23626.0,
+    "tokens_max": 57089,
+    "seconds_mean": 35.35,
+    "seconds_median": 30.25,
+    "seconds_max": 58.22,
+    "answers_with_citation": 8,
+    "model_calls_mean": 6.88,
+    "function_calls_mean": 10.88,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "project_status": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 22952,
+    "tokens_median": 23100.5,
+    "tokens_max": 34219,
+    "seconds_mean": 42.44,
+    "seconds_median": 33.08,
+    "seconds_max": 90.85,
+    "answers_with_citation": 8,
+    "model_calls_mean": 7.38,
+    "function_calls_mean": 7.25,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "tagged_opportunity": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 13282,
+    "tokens_median": 5678.0,
+    "tokens_max": 60656,
+    "seconds_mean": 15.74,
+    "seconds_median": 11.06,
+    "seconds_max": 48.18,
+    "answers_with_citation": 7,
+    "model_calls_mean": 3.62,
+    "function_calls_mean": 2.88,
+    "hit_max_steps": 0,
+    "thrash_stop": 1,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "tagged_paper": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 12628,
+    "tokens_median": 12663.5,
+    "tokens_max": 27429,
+    "seconds_mean": 17.42,
+    "seconds_median": 16.68,
+    "seconds_max": 34.39,
+    "answers_with_citation": 8,
+    "model_calls_mean": 4.12,
+    "function_calls_mean": 3.25,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "who_fits": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 18105,
+    "tokens_median": 15282.0,
+    "tokens_max": 28379,
+    "seconds_mean": 35.58,
+    "seconds_median": 23.32,
+    "seconds_max": 66.17,
+    "answers_with_citation": 8,
+    "model_calls_mean": 5,
+    "function_calls_mean": 5.75,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  }
+ },
+ "repair": {
+  "repaired_turns": 1,
+  "repair_succeeded_final_clean": 0,
+  "turns_where_off_would_remove_text": 1,
+  "turns_with_flagged_details_kept_after_repair": 0,
+  "repair_tokens_mean": 20078,
+  "repair_seconds_mean": 16.19,
+  "repair_model_calls_mean": 2,
+  "repair_cost_known_turns": 1,
+  "flags": {
+   "unmatched": 0,
+   "unread": 0,
+   "unsupported": 1
+  }
+ }
+}

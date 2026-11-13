@@ -120,3 +120,27 @@ picking a rater.
 One fictional lab ranked against the real corpus, one model, questions written
 by the implementing agent, raters arranged by the maintainer (not blind to the
 system's existence, blind to arm).
+
+## Amendment 1 — 2026-11-12, after generation, before any rating
+
+Nothing below changes an answer raters will see from arm (a); all of it was
+done before any sheet left the folder.
+
+1. **Question ids.** The tagged-paper and tagged-opportunity questions both
+   received ids `ta01`–`ta08` (an id-generation slip). The opportunity
+   questions are renamed `to01`–`to08` in `code/questions.json` and in arm (a)'s
+   rows (each row also carries its category, so the mapping is exact). Text
+   unchanged.
+2. **Arm (b) told which records were tagged.** The first arm (b) run gave the
+   model the tagged items as `#1…` but did not say they were the tagged ones,
+   so "this paper" was ambiguous to it while the agent is told what was
+   tagged. Arm (b) was rerun with one added line ("The asker tagged #1 … with
+   this question"). The first run is kept at the session scratch path, unused.
+   Arm (b)'s evidence is limited by `corpus_search`'s 20-result cap, so its mean
+   total (9.6k tokens) sits well under arm (a)'s mean (27.1k): the budget is a
+   ceiling arm (b) does not reach.
+3. **Removed-item sheet.** A repair verdict and the strip that follows it name
+   the same item; the sheet lists it once, in the sentence of the first draft.
+4. **Validation repetition.** Arm (a) is run again (`--tag rep2`, and further
+   tags if time allows) for run-to-run stability and the repair's cost (fixed
+   per-call counter). Only `main` goes to raters.

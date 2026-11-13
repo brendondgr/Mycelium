@@ -1,0 +1,11 @@
+arm,category,errors,pass_all_reps,pass_rate,runs,seconds_mean,tasks,tokens_mean
+gate,original/memory,0,1,1.0,3,18.25,1,8413
+gate,original/permission_probe,0,7,0.875,24,20.73,8,17963
+gate,scope/memory_probe,0,1,0.4,15,10.0,5,6949
+gate,scope/scope_control,0,2,1.0,6,8.96,2,9058
+gate,scope/scope_probe,0,7,1.0,21,13.78,7,8988
+prompt_only,original/memory,0,1,1.0,3,10.46,1,9417
+prompt_only,original/permission_probe,0,4,0.5,24,11.19,8,15191
+prompt_only,scope/memory_probe,0,2,0.5333,15,4.71,5,9201
+prompt_only,scope/scope_control,0,2,1.0,6,13.52,2,32165
+prompt_only,scope/scope_probe,0,1,0.1429,21,9.97,7,16255

@@ -1,0 +1,193 @@
+{
+ "tag": "rep2",
+ "arm_a": {
+  "answers": 50,
+  "errors": 0,
+  "tokens_mean": 27025,
+  "tokens_median": 21737.5,
+  "tokens_max": 115932,
+  "seconds_mean": 34.68,
+  "seconds_median": 31.73,
+  "seconds_max": 124.4,
+  "answers_with_citation": 43,
+  "model_calls_mean": 6.12,
+  "function_calls_mean": 8.26,
+  "hit_max_steps": 0,
+  "thrash_stop": 1,
+  "repair_runs": 1,
+  "final_stripped": 0,
+  "final_clean": 49,
+  "empty_answers": 1
+ },
+ "arm_b": {
+  "answers": 0,
+  "errors": 0
+ },
+ "by_category": {
+  "compound": {
+   "a": {
+    "answers": 10,
+    "errors": 0,
+    "tokens_mean": 52742,
+    "tokens_median": 41616.5,
+    "tokens_max": 115932,
+    "seconds_mean": 62.89,
+    "seconds_median": 46.85,
+    "seconds_max": 124.4,
+    "answers_with_citation": 10,
+    "model_calls_mean": 9.1,
+    "function_calls_mean": 16,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 1,
+    "final_stripped": 0,
+    "final_clean": 10,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "feed_project": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 38450,
+    "tokens_median": 32491.0,
+    "tokens_max": 82064,
+    "seconds_mean": 44.05,
+    "seconds_median": 40.05,
+    "seconds_max": 64.31,
+    "answers_with_citation": 8,
+    "model_calls_mean": 7.25,
+    "function_calls_mean": 12.88,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "project_status": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 21430,
+    "tokens_median": 21617.5,
+    "tokens_max": 36874,
+    "seconds_mean": 33.09,
+    "seconds_median": 30.13,
+    "seconds_max": 51.49,
+    "answers_with_citation": 7,
+    "model_calls_mean": 6.88,
+    "function_calls_mean": 6.88,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "tagged_opportunity": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 10421,
+    "tokens_median": 5898.0,
+    "tokens_max": 30590,
+    "seconds_mean": 11.65,
+    "seconds_median": 9.34,
+    "seconds_max": 29.04,
+    "answers_with_citation": 5,
+    "model_calls_mean": 3.12,
+    "function_calls_mean": 2.62,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 7,
+    "empty_answers": 1
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "tagged_paper": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 11850,
+    "tokens_median": 11156.0,
+    "tokens_max": 27484,
+    "seconds_mean": 23.1,
+    "seconds_median": 22.48,
+    "seconds_max": 37.19,
+    "answers_with_citation": 7,
+    "model_calls_mean": 3.88,
+    "function_calls_mean": 3,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  },
+  "who_fits": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 20827,
+    "tokens_median": 18719.5,
+    "tokens_max": 37157,
+    "seconds_mean": 26.26,
+    "seconds_median": 23.76,
+    "seconds_max": 42.44,
+    "answers_with_citation": 6,
+    "model_calls_mean": 5.75,
+    "function_calls_mean": 6.25,
+    "hit_max_steps": 0,
+    "thrash_stop": 1,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 0,
+    "errors": 0
+   }
+  }
+ },
+ "repair": {
+  "repaired_turns": 1,
+  "repair_succeeded_final_clean": 1,
+  "turns_where_off_would_remove_text": 0,
+  "turns_with_flagged_details_kept_after_repair": 0,
+  "repair_tokens_mean": 19104,
+  "repair_seconds_mean": 10.64,
+  "repair_model_calls_mean": 2,
+  "repair_cost_known_turns": 1,
+  "flags": {
+   "unmatched": 0,
+   "unread": 0,
+   "unsupported": 1
+  }
+ }
+}

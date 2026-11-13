@@ -128,14 +128,15 @@ def main() -> int:
     inj = HERE / "data" / f"inject_{args.tag}_summary.json"
     if inj.exists():
         metrics["injected"] = json.loads(inj.read_text())
-    (HERE / "data" / "metrics.json").write_text(json.dumps(metrics, indent=1))
+    suffix = "" if args.tag == "main" else f"_{args.tag}"
+    (HERE / "data" / f"metrics{suffix}.json").write_text(json.dumps(metrics, indent=1))
     flat = []
     for arm in ("a", "b"):
         flat.append({"scope": "all", "arm": arm, **metrics[f"arm_{arm}"]})
         for cat, v in metrics["by_category"].items():
             flat.append({"scope": cat, "arm": arm, **v[arm]})
     keys = sorted({k for r in flat for k in r})
-    with (HERE / "data" / "metrics.csv").open("w", newline="") as fh:
+    with (HERE / "data" / f"metrics{suffix}.csv").open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=keys)
         w.writeheader()
         w.writerows(flat)
@@ -152,7 +153,7 @@ def main() -> int:
             lines.append(f"| {cls} | {v['n']} | {v['caught']} | {v['recall']} | {v['recall_ci95']} | "
                          f"{cell('inplace')} | {cell('prose')} | {cell('factline')} |")
     (HERE / "tables").mkdir(exist_ok=True)
-    (HERE / "tables" / "summary.md").write_text("\n".join(lines) + "\n")
+    (HERE / "tables" / f"summary{suffix}.md").write_text("\n".join(lines) + "\n")
     print(json.dumps({k: v for k, v in metrics.items() if k != "by_category"}, indent=1))
     return 0
 

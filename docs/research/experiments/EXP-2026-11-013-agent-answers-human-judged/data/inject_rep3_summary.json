@@ -1,0 +1,204 @@
+{
+ "base_answers": 49,
+ "originals_flagged": 0,
+ "classes": {
+  "bad_cite": {
+   "n": 110,
+   "caught": 110,
+   "recall": 1.0,
+   "recall_ci95": [
+    0.9663,
+    1.0
+   ],
+   "inplace": {
+    "n": 109,
+    "caught": 109,
+    "recall": 1.0,
+    "ci95": [
+     0.966,
+     1.0
+    ]
+   },
+   "prose": {
+    "n": 1,
+    "caught": 1,
+    "recall": 1.0,
+    "ci95": [
+     0.2065,
+     1.0
+    ]
+   }
+  },
+  "unread_cite": {
+   "n": 0,
+   "caught": 0,
+   "recall": null,
+   "recall_ci95": [
+    null,
+    null
+   ]
+  },
+  "date": {
+   "n": 163,
+   "caught": 56,
+   "recall": 0.3436,
+   "recall_ci95": [
+    0.275,
+    0.4193
+   ],
+   "inplace": {
+    "n": 58,
+    "caught": 1,
+    "recall": 0.0172,
+    "ci95": [
+     0.003,
+     0.0914
+    ]
+   },
+   "prose": {
+    "n": 49,
+    "caught": 0,
+    "recall": 0.0,
+    "ci95": [
+     0.0,
+     0.0727
+    ]
+   },
+   "factline": {
+    "n": 56,
+    "caught": 55,
+    "recall": 0.9821,
+    "ci95": [
+     0.9055,
+     0.9968
+    ]
+   }
+  },
+  "author": {
+   "n": 109,
+   "caught": 42,
+   "recall": 0.3853,
+   "recall_ci95": [
+    0.2993,
+    0.4791
+   ],
+   "inplace": {
+    "n": 10,
+    "caught": 0,
+    "recall": 0.0,
+    "ci95": [
+     -0.0,
+     0.2775
+    ]
+   },
+   "prose": {
+    "n": 49,
+    "caught": 0,
+    "recall": 0.0,
+    "ci95": [
+     0.0,
+     0.0727
+    ]
+   },
+   "factline": {
+    "n": 50,
+    "caught": 42,
+    "recall": 0.84,
+    "ci95": [
+     0.7149,
+     0.9166
+    ]
+   }
+  },
+  "venue": {
+   "n": 103,
+   "caught": 34,
+   "recall": 0.3301,
+   "recall_ci95": [
+    0.2468,
+    0.4256
+   ],
+   "inplace": {
+    "n": 5,
+    "caught": 0,
+    "recall": 0.0,
+    "ci95": [
+     -0.0,
+     0.4345
+    ]
+   },
+   "prose": {
+    "n": 49,
+    "caught": 0,
+    "recall": 0.0,
+    "ci95": [
+     0.0,
+     0.0727
+    ]
+   },
+   "factline": {
+    "n": 49,
+    "caught": 34,
+    "recall": 0.6939,
+    "ci95": [
+     0.5547,
+     0.8048
+    ]
+   }
+  },
+  "amount": {
+   "n": 117,
+   "caught": 104,
+   "recall": 0.8889,
+   "recall_ci95": [
+    0.8191,
+    0.9339
+   ],
+   "inplace": {
+    "n": 17,
+    "caught": 4,
+    "recall": 0.2353,
+    "ci95": [
+     0.0955,
+     0.4726
+    ]
+   },
+   "prose": {
+    "n": 49,
+    "caught": 49,
+    "recall": 1.0,
+    "ci95": [
+     0.9273,
+     1.0
+    ]
+   },
+   "factline": {
+    "n": 51,
+    "caught": 51,
+    "recall": 1.0,
+    "ci95": [
+     0.93,
+     1.0
+    ]
+   }
+  },
+  "paraphrase": {
+   "n": 60,
+   "caught": 0,
+   "recall": 0.0,
+   "recall_ci95": [
+    -0.0,
+    0.0602
+   ],
+   "inplace": {
+    "n": 60,
+    "caught": 0,
+    "recall": 0.0,
+    "ci95": [
+     -0.0,
+     0.0602
+    ]
+   }
+  }
+ }
+}

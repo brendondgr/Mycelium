@@ -1,0 +1,21 @@
+[
+ {
+  "id": "co08",
+  "category": "compound",
+  "flagged_unmatched": 0,
+  "flagged_unread": 0,
+  "flagged_unsupported": 1,
+  "draft_chars": 243,
+  "off_chars": 243,
+  "final_chars": 3719,
+  "off_removed_chars": 0,
+  "final_ok": true,
+  "final_action": "none",
+  "flagged_details_kept_in_final": 0,
+  "repair_tokens": 19104,
+  "repair_seconds": 10.64,
+  "repair_model_calls": 2,
+  "off_text": "The nearest fellowship deadline in the lab's feed is the **WHOI Geophysical Fluid Dynamics (GFD) Summer Graduate Research Fellowship** (#42), ranked first in the lab's fellowship slate. Let me pull its details and check who in the lab fits it.",
+  "draft_text": "The nearest fellowship deadline in the lab's feed is the **WHOI Geophysical Fluid Dynamics (GFD) Summer Graduate Research Fellowship** (#42), ranked first in the lab's fellowship slate. Let me pull its details and check who in the lab fits it."
+ }
+]
