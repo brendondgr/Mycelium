@@ -1,0 +1,58 @@
+{
+ "before": [
+  {
+   "id": "auto",
+   "health": null,
+   "upstream": null
+  },
+  {
+   "id": "default-model",
+   "health": "healthy",
+   "upstream": "Qwen 3.8 27B Heretic"
+  },
+  {
+   "id": "default-model-2",
+   "health": "failed",
+   "upstream": null
+  },
+  {
+   "id": "default-model-3",
+   "health": "failed",
+   "upstream": null
+  },
+  {
+   "id": "default-model-4",
+   "health": "failed",
+   "upstream": null
+  }
+ ],
+ "started": "2026-11-13T07:57:14+0000",
+ "after": [
+  {
+   "id": "auto",
+   "health": null,
+   "upstream": null
+  },
+  {
+   "id": "default-model",
+   "health": "healthy",
+   "upstream": "Qwen 3.8 27B Heretic"
+  },
+  {
+   "id": "default-model-2",
+   "health": "failed",
+   "upstream": null
+  },
+  {
+   "id": "default-model-3",
+   "health": "failed",
+   "upstream": null
+  },
+  {
+   "id": "default-model-4",
+   "health": "failed",
+   "upstream": null
+  }
+ ],
+ "ended": "2026-11-13T08:02:24+0000"
+}
