@@ -76,12 +76,18 @@ def main() -> int:
     p.add_argument("--tag", default="a2")
     p.add_argument("--only", default="")
     p.add_argument("--stop-at", default="", help="local HH:MM; no new turn starts after it")
+    p.add_argument("--max-steps", type=int, default=0,
+                   help="A4: override tools.agent max_steps in this process only (Django AGENT_MAX_STEPS)")
     p.add_argument("--rotate", type=int, default=0,
                    help="start the question list at this offset (A3 process arm: each process a different order)")
     p.add_argument("--conc", type=int, default=1,
                    help="Amendment 2 (A3): turns in flight at once (all questions of a repetition together)")
     args = p.parse_args()
     mylo_turn.setup()
+    if args.max_steps:
+        from django.conf import settings
+
+        settings.AGENT_MAX_STEPS = args.max_steps
     ctx = mylo_turn.demo_context()
     qs = json.loads((HERE / "code" / "questions_a2.json").read_text())["questions"]
     if args.only:

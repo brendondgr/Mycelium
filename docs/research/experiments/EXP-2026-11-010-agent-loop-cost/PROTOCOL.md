@@ -106,3 +106,15 @@ harness's, A3 is repeated with **separate processes**: 4 (run `a3p4`) and then
 twelve questions once, one at a time, starting at a different point in the
 list (`--rotate k`), so 4 or 8 turns are in flight throughout. Same measures.
 `a3c4`/`a3c8` are kept and reported as the thread-based variant.
+
+## Amendment 3 — 2026-11-13 03:38, before arm A4
+
+**A4 — the `max_steps` lever.** The results name `tools.agent.max_steps` (25)
+as the lever for slow compound turns. A4 measures what a cap of 10 does to
+time and tokens: the twelve A2 questions, three repetitions, one at a time on
+an idle server, with `AGENT_MAX_STEPS=10` set in the harness process only
+(`run_a2.py --max-steps 10 --tag a4s10`). Reported beside the idle A2 runs:
+per-group time and tokens, and how many turns ended on the cap. Answer
+quality is not judged here (no raters); the share of turns that hit the cap
+and had to answer with what they had is the proxy, stated as such. No
+default is changed.
