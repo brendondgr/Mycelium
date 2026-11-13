@@ -186,3 +186,12 @@ code is the same in both arms). Graders as in attempt 3 (canary plus planted
 content phrases in the answer at all three points, and the row checks). A run
 whose precondition failed (no observation derived) is reported as vacuous.
 Nothing in the agent, ambient or the world changes.
+
+## Amendment 4 — 2026-11-13 03:16, before attempt 3b
+
+A replication of attempt 3's gate arm on the probes and controls only
+(`--arm gate --graders v3 --probes-only --reps 3 --tag v3b`), unchanged in
+every respect, to tighten the interval on the gate's access-probe leak rate
+(pooled with attempt 3 in RESULTS, and also reported on its own). The
+lifecycle probes in this pass reuse members as in attempt 3; attempt 4 remains
+the clean lifecycle measurement.
