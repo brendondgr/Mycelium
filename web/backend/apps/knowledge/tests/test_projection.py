@@ -140,6 +140,7 @@ def test_a_projects_stated_state_is_mirrored_in_its_labs_scope(lab, embedder):
     project = Project.objects.create(
         name="Reef",
         scope_lab=lab,
+        visibility="lab",
         goals={"interests": {"areas": ["Coral reef ecology"], "keywords": []}},
     )
     _state(
@@ -168,7 +169,7 @@ def test_a_projects_stated_state_is_mirrored_in_its_labs_scope(lab, embedder):
 
 
 def test_a_long_problem_statement_is_prose_not_a_concept(lab, embedder):
-    project = Project.objects.create(name="Reef", scope_lab=lab)
+    project = Project.objects.create(name="Reef", scope_lab=lab, visibility="lab")
     _state(project, slow={"problem": "We want to detect bleaching " * 10})
     result = projection.project_declared(project)
     assert result.skipped == 1
@@ -185,7 +186,7 @@ def test_a_personal_project_stays_personal(ada, embedder):
 
 def test_a_project_meets_its_members_on_the_shared_concept(ada, lab, embedder):
     projection.project_declared(ada)
-    project = Project.objects.create(name="Reef", scope_lab=lab)
+    project = Project.objects.create(name="Reef", scope_lab=lab, visibility="lab")
     _state(project, slow={"method": ["Conformal Prediction"]})
     projection.project_declared(project)
     assert (
@@ -195,7 +196,7 @@ def test_a_project_meets_its_members_on_the_shared_concept(ada, lab, embedder):
 
 
 def test_a_members_declaration_promotes_the_projects_private_concept(lab, embedder):
-    project = Project.objects.create(name="Reef", scope_lab=lab)
+    project = Project.objects.create(name="Reef", scope_lab=lab, visibility="lab")
     _state(project, slow={"method": ["kelp canopy mapping"]})
     projection.project_declared(project)
     private = Edge.objects.get(project=project).concept
@@ -212,7 +213,7 @@ def test_a_members_declaration_promotes_the_projects_private_concept(lab, embedd
 
 def test_orphaned_private_concepts_are_pruned_and_shared_ones_kept(ada, lab, embedder):
     projection.project_declared(ada)
-    project = Project.objects.create(name="Reef", scope_lab=lab)
+    project = Project.objects.create(name="Reef", scope_lab=lab, visibility="lab")
     _state(project, slow={"method": ["the falcon trick"]})
     projection.project_declared(project)
     private = Edge.objects.get(project=project).concept_id
@@ -228,7 +229,7 @@ def test_orphaned_private_concepts_are_pruned_and_shared_ones_kept(ada, lab, emb
 def test_the_sweep_projects_everyone_and_survives_a_bad_row(
     ada, lab, embedder, monkeypatch
 ):
-    Project.objects.create(name="Reef", scope_lab=lab, goals={"areas": ["Kelp"]})
+    Project.objects.create(name="Reef", scope_lab=lab, visibility="lab", goals={"areas": ["Kelp"]})
     real = projection.project_declared
 
     def flaky(subject):
@@ -277,7 +278,7 @@ def test_saving_a_project_or_its_state_queues_the_project(
     lab, queued, django_capture_on_commit_callbacks
 ):
     with django_capture_on_commit_callbacks(execute=True):
-        project = Project.objects.create(name="Reef", scope_lab=lab)
+        project = Project.objects.create(name="Reef", scope_lab=lab, visibility="lab")
         _state(project, slow={"method": ["x"]})
     assert queued == [("project", str(project.pk))] * 2
 

@@ -206,11 +206,12 @@ def _project_wants(project: Project) -> list[_Want]:
 
 
 def _project_scope(project: Project) -> tuple[str, object]:
-    if project.scope_lab_id:
-        return Scope.LAB, project.scope_lab
-    if project.scope_department_id:
-        return Scope.DEPARTMENT, project.scope_department
-    return Scope.PERSONAL, project.scope_user
+    """A project's concepts take the project's scope (scoping plan, Phase 4):
+    an ``invite_only`` lab project's words are its owner's, never the lab's
+    vocabulary. ``apps.research.visibility`` decides."""
+    from apps.research.visibility import knowledge_scope
+
+    return knowledge_scope(project)
 
 
 def _apply(
@@ -300,8 +301,11 @@ def project_lab(lab: Lab) -> Projected:
 
 def project_project(project: Project) -> Projected:
     scope, owner = _project_scope(project)
-    if owner is None:  # pragma: no cover - the database forbids an ownerless project
-        return Projected()
+    if owner is None and scope != Scope.GLOBAL:
+        # An invite-only project with nobody to hold its words: it keeps no
+        # edges rather than lending them to a wider scope.
+        deleted = Edge.objects.filter(project=project, tier=Tier.DECLARED).delete()[0]
+        return Projected(subjects=1, deleted=deleted)
     return _apply({"project": project}, _project_wants(project), scope, owner)
 
 

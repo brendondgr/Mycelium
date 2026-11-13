@@ -143,7 +143,7 @@ a project, with everything computed from it, appears only where its scope
 (`Project.visibility`) is at least as wide (`apps/research/visibility.py`,
 `may_surface`). A Discord server's width is decided by everything bound in it
 (`resolve.server_width`), not by the binding a message travels on, so a lab's
-post or reply in its department's server never names a `lab` project.
+post or reply in its department's server never names a `lab` project. The same scope follows what a project leaks indirectly: its concepts are minted in its scope (personal for `invite_only`), ambient talk about an `invite_only` project is `project` evidence, member fit names only the people the scope includes, and saves and reminders made inside an `invite_only` project stay personal.
 
 **The public demo.** `/demo/*` is the authenticated app, not a copy of it.
 `web/app/src/proxy.ts` rewrites `/demo/<x>` to the page at `/app/<x>` and marks

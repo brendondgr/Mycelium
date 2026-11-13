@@ -101,7 +101,9 @@ def bo(db):
 
 @pytest.fixture
 def imaging(lab, ada, bo):
-    project = Project.objects.create(name="Imaging pipeline", scope_lab=lab)
+    project = Project.objects.create(
+        name="Imaging pipeline", scope_lab=lab, visibility="lab"
+    )
     for person in (ada, bo):
         ProjectMember.objects.create(project=project, user=person)
     return project

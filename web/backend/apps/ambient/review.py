@@ -99,7 +99,11 @@ def changes_for(user, *, limit: int = 200):
     projects = Project.objects.filter(Q(members=user) | Q(scope_user=user)).values("pk")
     return (
         AppliedChange.objects.filter(
-            Q(user=user) | Q(project__in=projects, visibility=Visibility.LAB)
+            Q(user=user)
+            | Q(
+                project__in=projects,
+                visibility__in=[Visibility.LAB, Visibility.PROJECT],
+            )
         )
         .select_related("project", "user", "undo_of")
         .distinct()
@@ -132,7 +136,7 @@ def may_undo(change: AppliedChange, user) -> bool:
     """The person it was about; for a lab project's change, its editors too."""
     if change.user_id == user.pk:
         return True
-    if change.project_id and change.visibility == Visibility.LAB:
+    if change.project_id and change.visibility in (Visibility.LAB, Visibility.PROJECT):
         from .editing import can_edit
 
         return can_edit(user, change.project)
@@ -305,7 +309,9 @@ def project_developments(project, viewer) -> list[dict]:
     rows = (
         ProjectDevelopment.objects.filter(project=project)
         .filter(
-            Q(visibility=Visibility.LAB)
+            # A project-only development is for whoever may open the project,
+            # which the caller has already checked of ``viewer``.
+            Q(visibility__in=[Visibility.LAB, Visibility.PROJECT])
             | Q(visibility=Visibility.PERSONAL, speaker=viewer)
         )
         .exclude(status=ProjectDevelopment.Status.SUPERSEDED)

@@ -374,6 +374,12 @@ class ReminderListCreateView(APIView):
                 "This deadline has no date (rolling/unknown) and can't be reminded."
             )
 
+        from tools.delivery.views import _personal_only_from_project
+
+        refused = _personal_only_from_project(request, scope == "lab", "reminder")
+        if refused is not None:
+            return refused
+
         target_user = None
         target_lab = None
         mentions = []

@@ -16,6 +16,7 @@ import {
   type ExtraDeadline,
 } from "@/components/portal/primitives/deadline-list";
 import { ReminderComposer } from "@/components/portal/reminder-composer";
+import { usePersonalOnly } from "@/components/portal/personal-only-scope";
 import {
   useIgnoreItem,
   useMyLabs,
@@ -420,9 +421,12 @@ export function SaveButton({
 }) {
   const { save, unsave } = useSaveOpportunity();
   const labsQuery = useMyLabs();
+  // Inside an invite-only project a save stays personal: a lab save would show
+  // the whole lab what the project is looking at.
+  const personalOnly = usePersonalOnly();
   const managedLabs = React.useMemo(
-    () => (labsQuery.data ?? []).filter(canManageLab),
-    [labsQuery.data],
+    () => (personalOnly ? [] : (labsQuery.data ?? []).filter(canManageLab)),
+    [labsQuery.data, personalOnly],
   );
   const { open, setOpen, ref } = useDismissable<HTMLDivElement>();
 

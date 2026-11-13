@@ -1277,14 +1277,12 @@ class ProjectRecommendationsView(APIView):
         project = get_object_or_404(Project, pk=pk)
         if not project.is_visible_to(request.user):
             raise PermissionDenied("You do not have access to this project.")
-        # "Interested" members come from the project's lab (a lab project) or its
-        # own members (a personal project) — the people to connect over an item.
-        if project.scope_lab_id is not None:
-            member_ids = LabMembership.objects.filter(
-                lab_id=project.scope_lab_id
-            ).values_list("user_id", flat=True)
-        else:
-            member_ids = project.members.values_list("id", flat=True)
+        # "Interested" members: the project's own people, plus its scope's people
+        # only when the scope includes them — never the whole lab for an
+        # invite-only project (scoping plan, Phase 4).
+        from apps.research import visibility as project_scope
+
+        member_ids = list(project_scope.candidate_people_ids(project))
         digest = request.query_params.get("digest") in ("1", "true", "yes")
         return Response(
             _recommendations_payload(
@@ -1325,6 +1323,9 @@ class SaveOpportunityView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         lab, error = self._resolve_lab(request)
+        if error is not None:
+            return error
+        error = _personal_only_from_project(request, lab is not None, "save")
         if error is not None:
             return error
         saved = _save_from_item(
@@ -1374,6 +1375,33 @@ class SaveOpportunityView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         return lab, None
+
+
+def _personal_only_from_project(request, to_lab: bool, what: str):
+    """A save or reminder made from inside a project (``project_id``): the
+    caller must be able to open it, and inside an ``invite_only`` project it
+    stays with the person — never the lab's saves or the lab's channel
+    (scoping plan, Phase 4 / decision 8). ``None`` when it may go ahead."""
+    from apps.research import visibility as project_scope
+
+    project, problem = project_scope.project_from_request(
+        request.user, request.data.get("project_id")
+    )
+    if problem:
+        return Response(
+            {"detail": "No such project."}, status=status.HTTP_404_NOT_FOUND
+        )
+    if project is not None and to_lab and project_scope.stays_with_people(project):
+        return Response(
+            {
+                "detail": (
+                    f"A {what} made inside an invite-only project stays with you: "
+                    "it is not shared with the lab."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
 
 
 def _save_from_item(

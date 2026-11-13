@@ -80,7 +80,10 @@ def test_a_project_reads_its_labs_people(world):
     from apps.research.models import Project
 
     lab, ada, bo, call = world
-    project = Project.objects.create(name="Bleaching", scope_lab=lab)
+    # The lab's people are candidates only for a project scoped to the lab.
+    project = Project.objects.create(
+        name="Bleaching", scope_lab=lab, visibility="lab"
+    )
     fit = coverage.for_project(project, [call])[str(call.pk)]
     assert fit.covered == 2
 

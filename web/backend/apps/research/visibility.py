@@ -242,6 +242,85 @@ def scope_people_ids(project: Project) -> set | None:
     return None
 
 
+def candidate_people_ids(project: Project) -> set:
+    """Who Mylo may name for ``project`` ("who is this for?", team fit): its
+    members and personal owner, plus the scope's people only when the scope
+    includes them — never the whole lab for an ``invite_only`` project."""
+    ids = set(
+        ProjectMember.objects.filter(project=project).values_list("user_id", flat=True)
+    )
+    if project.scope_user_id is not None:
+        ids.add(project.scope_user_id)
+    if project.visibility != INVITE_ONLY:
+        ids |= scope_people_ids(project) or set()
+    return ids
+
+
+def newly_seen_by(project: Project, old_scope: str) -> str:
+    """Who a widening from ``old_scope`` newly shows ``project`` to, in words."""
+    if project.visibility == PUBLIC:
+        return "every verified account on this instance"
+    if project.visibility == DEPARTMENT:
+        department = (
+            project.scope_department
+            if project.scope_department_id is not None
+            else getattr(project.scope_lab, "department", None)
+        )
+        name = department.name if department is not None else "the department"
+        return f"everyone in {name}"
+    if project.visibility == LAB and project.scope_lab_id is not None:
+        return f"everyone in {project.scope_lab.name}"
+    return "its members"
+
+
+def department_scoped_lab_projects(lab):
+    """A lab's ``department``-scoped projects: what falls back to ``lab`` when
+    the lab leaves its department."""
+    return Project.objects.filter(scope_lab=lab, visibility=DEPARTMENT)
+
+
+def knowledge_scope(project: Project) -> tuple[str, object]:
+    """``(scope, owner)`` a project's concepts are minted in, from its scope
+    (Phase 4), as ``apps.knowledge.models.Scope`` values: the owner's
+    ``personal`` scope for ``invite_only`` (else the lab's PI, or the
+    department's owner), the lab for ``lab``, the department for
+    ``department``, the shared (``global``) vocabulary for ``public``.
+    ``("personal", None)`` when an ``invite_only`` project has nobody to hold
+    its words."""
+    if project.visibility == PUBLIC:
+        return "global", None
+    if project.scope_user_id is not None:
+        return "personal", project.scope_user
+    if project.visibility == LAB and project.scope_lab_id is not None:
+        return "lab", project.scope_lab
+    if project.visibility == DEPARTMENT:
+        if project.scope_department_id is not None:
+            return "department", project.scope_department
+        department = project.scope_lab.department if project.scope_lab_id else None
+        if department is not None:
+            return "department", department
+        return "lab", project.scope_lab
+    return "personal", owner_of(project) or _scope_head(project)
+
+
+def _scope_head(project: Project):
+    """The lab's PI (else its owner) or the department's owner."""
+    from apps.accounts.models import LabMembership
+
+    if project.scope_lab_id is not None:
+        row = (
+            LabMembership.objects.filter(lab_id=project.scope_lab_id)
+            .filter(Q(is_lead=True) | Q(role="owner"))
+            .order_by("-is_lead", "pk")
+            .select_related("user")
+            .first()
+        )
+        return row.user if row is not None else None
+    if project.scope_department_id is not None:
+        return project.scope_department.owner
+    return None
+
+
 def visible_in_lab(user, lab):
     """The projects of ``lab`` that ``user`` may open."""
     return Project.objects.visible_to(user).filter(scope_lab=lab)
@@ -280,7 +359,20 @@ def member_role(user, project: Project) -> str | None:
 
 def audience(project: Project) -> str:
     """The widest place ``project`` may be mentioned in (one of :data:`WIDTHS`)."""
-    return _AUDIENCE.get(project.visibility, "member")
+    return audience_of(project.visibility)
+
+
+def audience_of(scope: str) -> str:
+    """The width a scope value reaches (``member`` for anything unknown)."""
+    return _AUDIENCE.get(scope, "member")
+
+
+def stays_with_people(project: Project) -> bool:
+    """Whether what is made inside ``project`` — a save, a reminder, a learned
+    theme — stays with its people: an ``invite_only`` project, whose scope does
+    not reach even its lab. A deadline reminder from inside one goes to the
+    person, never a lab channel (decision 8)."""
+    return not may_surface(project, "lab")
 
 
 def place_width(place) -> str:
@@ -459,3 +551,21 @@ def owner_of(project: Project):
     if row is not None:
         return row.user
     return project.scope_user if project.scope_user_id is not None else None
+
+
+def project_from_request(user, project_id):
+    """The project a save or reminder was made from (``project_id`` on the
+    request), if the caller may open it: ``(project, None)``, ``(None, None)``
+    when none was named, ``(None, "not_found")`` otherwise — the same answer as
+    an unknown id, so a guess confirms nothing."""
+    if not project_id:
+        return None, None
+    from django.core.exceptions import ValidationError
+
+    try:
+        project = Project.objects.visible_to(user).filter(pk=project_id).first()
+    except (ValueError, ValidationError):  # a malformed id
+        project = None
+    if project is None:
+        return None, "not_found"
+    return project, None
