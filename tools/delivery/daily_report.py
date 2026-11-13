@@ -335,12 +335,12 @@ def _source_line(content_type: str, meta: dict) -> str:
     if content_type == "conference":
         # ``place_text`` (not ``location``) since plan Phase 3: the open collector's
         # mapper (``tools.retrieval.collect.mapping.map_conference``) never writes a
-        # "location" key — that was Pivot's field name, carried in ``pivot/records.py``
-        # off "Conference Location". The collector's equivalent free-text venue
-        # string is ``place_text``; reading the old key here silently dropped the
-        # venue half of this line down to country-only for every migrated record.
-        # Chained, not swapped. The collector writes ``place_text``; Pivot wrote
-        # ``location``. During the migration window both shapes are in the table
+        # "location" key — that is a legacy key from an earlier source. The
+        # collector's equivalent free-text venue string is ``place_text``; reading
+        # the old key here silently dropped the venue half of this line down to
+        # country-only for every migrated record.
+        # Chained, not swapped. The collector writes ``place_text``; legacy rows
+        # carry ``location``. During the migration window both shapes are in the table
         # at once — measured 2,958 of 2,962 conferences still on ``location`` and
         # none yet on ``place_text`` — so replacing the key outright would drop
         # every existing conference to country-only. The fallback costs one

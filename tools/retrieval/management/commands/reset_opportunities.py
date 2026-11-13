@@ -1,16 +1,15 @@
 """Delete every grant and conference, so the corpus can be rebuilt from open sources.
 
-This exists for exactly one job: retiring Pivot-RP. It is deliberately **not** a
+This exists for exactly one job: rebuilding grants and conferences from the
+open collector after retiring an earlier source. It is deliberately **not** a
 general "clear the database" tool, and it is deliberately narrow about what it
 will touch.
 
     uv run --project web/backend python web/backend/manage.py reset_opportunities --yes
 
 **Fellowships are never deleted.** They come from the Illinois Fellowship Finder,
-a public source that has nothing to do with Pivot-RP and is not being replaced —
-the fact that its code once lived in a directory named ``pivot`` was an accident
-of filing, not a dependency. Papers, users, labs, projects, billing and Discord
-links are equally untouched.
+a public source that is not being replaced. Papers, users, labs, projects,
+billing and Discord links are equally untouched.
 
 **Why the ORM and not ``TRUNCATE``.** Deleting a ``ContentItem`` fires
 ``pre_delete``, which marks any reminder pointing at it as stale
@@ -53,7 +52,7 @@ class Command(BaseCommand):
             "--source",
             default=None,
             help=(
-                "Restrict to one source id (e.g. 'pivot'). Default: every source, "
+                "Restrict to one source id (e.g. 'grants:nsf'). Default: every source, "
                 "which is what a full re-source wants."
             ),
         )

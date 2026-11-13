@@ -1,5 +1,4 @@
-"""Fellowship field parsers — vendored from the ProQuest tool's
-``utils/Fellowships/models.py``.
+"""Fellowship field parsers.
 
 Provides:
 - Facet vocabularies (FIELD, CITIZENSHIP, STAGE, AWARD_TYPE, LIMITS, FACET_BUCKETS)

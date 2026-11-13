@@ -388,7 +388,9 @@ class ReminderListCreateView(APIView):
                     return _bad("You don't have access to that lab.", 403)
                 target_lab = lab
                 mentions = _resolve_mentions(data.get("mentions"), lab)
-                channel_override = str(data.get("channel_id_override") or "")
+                channel_override = _lab_channel_override(
+                    lab, data.get("channel_id_override")
+                )
                 offsets = offsets or _default_offsets(lab)
             else:
                 target_user = request.user
@@ -480,6 +482,8 @@ class ReminderDetailView(APIView):
             channel = data.get("channel_id_override")
             if channel is not None and sub.target_lab_id is None:
                 raise ReminderError("a personal reminder has no channel")
+            if channel is not None:
+                channel = _lab_channel_override(sub.target_lab, channel)
 
             reactivate = False
             if "state" in data:
@@ -663,6 +667,25 @@ class LabReminderChannelsView(APIView):
                 "default_channel_name": default_name,
             }
         )
+
+
+def _lab_channel_override(lab: Lab, raw) -> str:
+    """A reminder's channel override, checked against the lab's own server.
+
+    Empty means "the lab's default channel". Anything else must be one of the
+    channels :class:`LabReminderChannelsView` would offer for this lab — the
+    linked server's postable channels, or its announcement channel. Without the
+    check a lab manager could aim the bot at any channel id it can reach,
+    including another lab's (or another community's) server. When the lab has no
+    linked server, or Discord cannot be asked, nothing can be shown to belong to
+    the lab, so an override is refused rather than trusted.
+    """
+    channel = str(raw or "").strip()
+    if not channel:
+        return ""
+    if channel not in reminders_discord.lab_channel_ids(lab):
+        raise ReminderError("pick one of your lab's own Discord channels.")
+    return channel
 
 
 def _can_manage(user, sub: ReminderSubscription) -> bool:

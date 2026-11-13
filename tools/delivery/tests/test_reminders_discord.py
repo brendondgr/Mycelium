@@ -89,7 +89,7 @@ def _active_identity(user, *, dm_ok=True, channel="dm-chan"):
 def _personal_sub(user, *, title="Neural grant", due=None):
     due = due or TODAY + timedelta(days=7)
     item = ContentItem.objects.create(
-        type=ContentItem.Type.GRANT, source="pivot", external_id="g-dm"
+        type=ContentItem.Type.GRANT, source="legacy", external_id="g-dm"
     )
     ContentDeadline.objects.create(
         content=item,

@@ -43,6 +43,7 @@ def test_a_lab_mate_is_never_named_on_papers_or_conversation(world, embedder):
     # bo's papers show environmental health, and Mylo understood it from
     # conversation too — neither is something bo's profile states.
     work = AuthorWork.objects.create(
+        verified=True,
         user=bo, source="openalex", source_id="W1", title="x"
     )
     WorkFacets.objects.create(

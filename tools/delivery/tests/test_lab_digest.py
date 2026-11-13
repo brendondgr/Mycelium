@@ -59,7 +59,7 @@ def _lab(slug="neuro", *, addon=True, channel="updates-chan", state=None):
 def _scored(lab, *, title, cluster="", category=ContentItem.Type.PAPER, percent=80):
     item = ContentItem.objects.create(
         type=category,
-        source="pivot",
+        source="legacy",
         external_id=f"{title}-{cluster}",
         metadata={"title": title},
     )
@@ -409,7 +409,7 @@ def test_the_digest_reads_the_same_scores_as_the_labs_feed(db) -> None:
     _scored(lab, title="Shown", cluster="Medical AI", percent=90)
     # An unsuggested row is not in the lab's feed, so it is not in the digest.
     item = ContentItem.objects.create(
-        type=ContentItem.Type.PAPER, source="pivot", external_id="hidden",
+        type=ContentItem.Type.PAPER, source="legacy", external_id="hidden",
         metadata={"title": "Hidden"},
     )
     RelevanceScore.objects.create(

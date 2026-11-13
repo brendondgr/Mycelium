@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block content %}
+<p style="margin:0 0 16px 0;">Hello{% if recipient_name %} {{ recipient_name }}{% endif %},</p>
+<p style="margin:0 0 16px 0;">Someone signed in to your Mycelium account asked to delete it. Enter this code, with your password, to confirm.</p>
+<p style="margin:0 0 20px 0;padding:16px 20px;background-color:#EFE7D7;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:600;letter-spacing:0.18em;color:#2E3627;text-align:center;">{{ code }}</p>
+<p style="margin:0 0 16px 0;color:#5F6853;font-size:14px;">It expires in {{ expires_in }}. Deleting the account removes your profile, your saved items, your projects and everything Mycelium learned about your work, and it cannot be undone. Mycelium will never ask you for this code — if someone does, do not share it.</p>
+<p style="margin:0;color:#5F6853;font-size:14px;"><strong>If you did not ask for this</strong>, do not enter the code. Your account has not been touched. Someone may be signed in to it, so set a new password yourself as soon as you can: doing so signs every other device out.</p>
+{% endblock %}

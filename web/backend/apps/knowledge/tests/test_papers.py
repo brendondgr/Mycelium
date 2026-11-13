@@ -40,6 +40,7 @@ def ada(db):
 def _works(user, n, *, start=0):
     return [
         AuthorWork.objects.create(
+            verified=True,
             user=user,
             source="openalex",
             source_id=f"W{start + i}",
@@ -108,6 +109,7 @@ def test_the_nightly_pass_rebuilds_only_people_whose_papers_changed(
 
 def test_the_nightly_pass_looks_up_fields_it_does_not_have(ada, embedder):
     work = AuthorWork.objects.create(
+        verified=True,
         user=ada,
         source="scholar",
         source_id="S1",
@@ -154,7 +156,7 @@ def test_an_import_queues_its_reading(
         evidence=[{"title": "A paper", "source_id": "W1", "abstract": ABSTRACT}],
     )
     with django_capture_on_commit_callbacks(execute=True):
-        store_author_works(ada, draft, source="openalex")
+        store_author_works(ada, draft, source="openalex", verified=True)
     assert queued == [str(ada.pk)]
 
 
@@ -168,7 +170,7 @@ def test_the_import_hook_is_silent_when_switched_off(
         display_name="Ada", evidence=[{"title": "A paper", "source_id": "W1"}]
     )
     with django_capture_on_commit_callbacks(execute=True):
-        store_author_works(ada, draft, source="openalex")
+        store_author_works(ada, draft, source="openalex", verified=True)
 
 
 def test_the_command_reads_one_person_or_the_backlog(

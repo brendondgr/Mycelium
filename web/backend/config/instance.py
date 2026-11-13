@@ -264,6 +264,13 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("demo.question_max_chars", "int", 500,
             "Longest question a demo visitor may send."),
     # ---- llm ---------------------------------------------------------------
+    Setting("llm.enabled", "bool", True,
+            "false: run without a language model on purpose. Write-ups, "
+            "profile synthesis and Mylo's answers use their deterministic "
+            "drafts, and `make doctor` and the nightly run do not treat the "
+            "missing model as an outage. Set it back to true once LLM_* in "
+            ".env (or a server below) names a model.",
+            env="LLM_ENABLED"),
     Setting("llm.max_tokens", "int", 0,
             "Most tokens one model reply may use, thinking included. 0 sends no "
             "cap, so a reasoning model is never starved before it answers; set "
@@ -952,7 +959,9 @@ def resolve_llm(values: Mapping[str, Any], server_file: Mapping[str, Mapping],
                 "base_url": str(environ.get("LLM_BASE_URL", "")).strip()
                 or "http://localhost:8001/v1",
                 "api_key_env": "LLM_API_KEY",
-                "model": str(environ.get("LLM_MODEL", "")).strip(),
+                # llm.enabled = false: no model on purpose, whatever .env says.
+                "model": str(environ.get("LLM_MODEL", "")).strip()
+                if values.get("llm.enabled", True) else "",
                 "label": "Local model",
                 "timeout": _env_float(environ, "LLM_TIMEOUT", 60.0),
                 "connect_timeout": _env_float(environ, "LLM_CONNECT_TIMEOUT", 5.0),

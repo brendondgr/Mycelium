@@ -28,6 +28,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
@@ -77,6 +78,35 @@ def request_reset(email: str) -> bool:
     return bool(outcome.sent)
 
 
+def request_reset_later(email: str) -> None:
+    """Hand the lookup and the send to the worker; return at once either way.
+
+    The view's only work is this enqueue, which costs the same whether or not
+    the address belongs to anyone — so the response time can no longer tell a
+    prober which addresses have accounts, as the inline send did. With no worker
+    reachable it falls back to sending inline (a degraded instance should still
+    let people reset a password). ``PASSWORD_RESET_MAIL_ASYNC = False`` sends
+    inline always, for tests and single-process setups.
+    """
+    address = str(email or "").strip()
+    if not address:
+        return
+
+    def _dispatch() -> None:
+        if not getattr(settings, "PASSWORD_RESET_MAIL_ASYNC", True):
+            request_reset(address)
+            return
+        try:
+            from .tasks import send_password_reset
+
+            send_password_reset.apply_async(args=[address], retry=False)
+        except Exception:  # noqa: BLE001 — no broker: still send the mail
+            logger.warning("Password reset queued inline: no task broker")
+            request_reset(address)
+
+    transaction.on_commit(_dispatch)
+
+
 def reset_url(user: User) -> str:
     """The absolute link mailed to ``user``."""
     query = urlencode(
@@ -124,6 +154,10 @@ def confirm_reset(uid: str, token: str, password: str) -> User:
     if profile is not None and not profile.is_verified:
         profile.is_verified = True
         profile.save(update_fields=["is_verified"])
+        # The mailbox is now proved, so lab invitations sent to it are theirs.
+        from .services import claim_pending_invitations
+
+        claim_pending_invitations(user)
 
     return user
 

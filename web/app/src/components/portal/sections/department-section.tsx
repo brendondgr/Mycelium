@@ -99,16 +99,21 @@ function DeptMembersCard({
   const { addMember, removeMember } = useDeptManagement(deptId);
   const [username, setUsername] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
 
   function onAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     const value = username.trim();
     if (!value) return;
     addMember.mutate(
       { username: value },
       {
-        onSuccess: () => setUsername(""),
+        onSuccess: (result) => {
+          setUsername("");
+          setNotice(result.detail);
+        },
         onError: (err) => setError((err as Error).message),
       },
     );
@@ -124,18 +129,24 @@ function DeptMembersCard({
         <form onSubmit={onAdd} className="mb-3 flex flex-wrap items-center gap-2">
           <input
             className={INPUT}
-            placeholder="Add a member by username"
+            placeholder="Invite a member by username"
+            aria-label="Invite a member by username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
           <button type="submit" className={PRIMARY_BUTTON} disabled={addMember.isPending}>
-            {addMember.isPending ? "Adding…" : "Add"}
+            {addMember.isPending ? "Inviting…" : "Invite"}
           </button>
         </form>
       ) : null}
       {error ? (
         <p className="mb-2 text-[12.5px] text-clay" role="alert">
           {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p className="mb-2 text-[12.5px] text-[var(--text-secondary)]" role="status">
+          {notice}
         </p>
       ) : null}
 
@@ -191,6 +202,7 @@ function DeptLabsCard({ deptId, canManage }: { deptId: string; canManage: boolea
   const [name, setName] = React.useState("");
   const [slug, setSlug] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
   const onError = (err: unknown) => setError((err as Error).message);
 
   function onCreate() {
@@ -202,9 +214,18 @@ function DeptLabsCard({ deptId, canManage }: { deptId: string; canManage: boolea
 
   function onAttach() {
     setError(null);
+    setNotice(null);
     const v = slug.trim();
     if (!v) return;
-    attachLab.mutate(v, { onSuccess: () => setSlug(""), onError });
+    attachLab.mutate(v, {
+      onSuccess: (result) => {
+        setSlug("");
+        // Only the lab's owner attaches it outright; anyone else's attach
+        // waits for the owner to accept.
+        if (!Array.isArray(result)) setNotice(result.detail);
+      },
+      onError,
+    });
   }
 
   return (
@@ -252,6 +273,11 @@ function DeptLabsCard({ deptId, canManage }: { deptId: string; canManage: boolea
       {error ? (
         <p className="mb-2 text-[12.5px] text-clay" role="alert">
           {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p className="mb-2 text-[12.5px] text-[var(--text-secondary)]" role="status">
+          {notice}
         </p>
       ) : null}
 

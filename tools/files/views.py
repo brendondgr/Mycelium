@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.http import FileResponse
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -48,6 +49,9 @@ _NOT_FOUND = Response({"code": "not_found", "detail": "No such file."}, status=4
 
 
 class FilesView(APIView):
+    # The API default is JSON only; this view takes a file upload.
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def get(self, request):
         kind = request.query_params.get("owner_kind")
         owner = (

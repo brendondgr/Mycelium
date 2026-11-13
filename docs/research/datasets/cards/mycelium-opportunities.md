@@ -5,10 +5,14 @@
 | Field | Value |
 |---|---|
 | Name | Mycelium opportunity corpus — grants, fellowships, conference CFPs |
-| Sources | Pivot-RP (Clarivate); Illinois Fellowship Finder |
-| Licence | Proprietary / site terms |
-| Redistributable | **No** |
+| Sources | Grants: Grants.gov, NIH Guide, NSF, the EU Funding & Tenders portal, SAM.gov, SBIR (`tools/retrieval/collect/grants/adapters/`). Conferences: OpenReview, ccf-deadlines, OpenResearch, the AMS math calendar, MICCAI, society pages (`…/conferences/adapters/`). Fellowships: Illinois Fellowship Finder |
+| Licence | Mixed: public-sector listings (largely public domain or open terms); each conference source's own terms; the Fellowship Finder's site terms |
+| Redistributable | Grants and most conference records: largely yes, per source terms. Fellowship text: **No** |
 | Version | Rolling |
+
+Until 2026-11 the grants and conference CFPs came from a commercial,
+login-only database; the corpus was rebuilt from the public sources above
+(open question W10). Records from the earlier source are no longer collected.
 
 ## Composition
 
@@ -17,23 +21,18 @@ Grants and fellowships with eligibility prose, deadlines, and sponsor metadata;
 rows; fellowship eligibility is evaluated by a deterministic rule engine, not an
 LLM.
 
-## Why this blocks publication
+## What still limits publication
 
-Pivot-RP is a commercial Clarivate product behind institutional SSO. The Illinois
-Fellowship Finder is one university's website, accessed by a Playwright scrape.
-Neither can be redistributed, which means:
+The grants and conferences are now collected from public sources, so a
+grant or conference result can be reproduced by re-running the collector. The
+fellowships are not: the Illinois Fellowship Finder is one university's website,
+accessed by a Playwright scrape, and its text cannot be redistributed. So:
 
-- no independent reproduction of any grant, fellowship, or conference result;
-- no *Available* artifact badge for a paper resting on this corpus;
-- no shared benchmark contribution, which is the gap (G1) most worth filling.
-
-## The route out
-
-W10 in [`../../OPEN_QUESTIONS.md`](../../OPEN_QUESTIONS.md): rebuild from CORDIS,
-NIH RePORTER, NSF Awards, and public university listings. Estimated 3 weeks. It
-costs the Pivot conference CFPs, which have no open equivalent — so the
-conference half of the product would lose its corpus, and any conference claim
-would have to be dropped or re-sourced.
+- a paper resting on fellowship records cannot ship those records; it can ship
+  record ids and labels, and the collector that rebuilds them;
+- experiment data under `docs/research/experiments/` that quotes fellowship
+  text (eligibility excerpts) should be reduced to ids and labels before it is
+  redistributed outside this repository.
 
 Award-linkage ground truth (W7) can be built from the same open sources: profile
 each PI from publications strictly *before* the award date, positives = programs
@@ -42,7 +41,8 @@ unhandled: temporal leakage (publication-to-grant year gap is the single most
 predictive feature in prior work), and *won ≠ applied*, so the positives carry
 selection bias.
 
-## Status: no experiment uses this yet
+## Experiments that use it
 
-Claims C-005 (eligibility gating) and the fellowship half of the work have no
-evidence. Nothing here has been measured.
+`EXP-2026-11-001` (department-level precision) and `EXP-2026-11-002`
+(announcement baseline) label opportunity records from this corpus. Claim C-005
+(eligibility gating) still has no evidence.

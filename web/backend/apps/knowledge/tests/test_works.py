@@ -43,6 +43,7 @@ GOOD = {
 def work(db):
     user = User.objects.create_user("ada", "ada@example.org", "pw")
     return AuthorWork.objects.create(
+        verified=True,
         user=user,
         source="openalex",
         source_id="W1",
@@ -202,6 +203,7 @@ def test_vectors_missed_while_the_embedder_was_down_are_filled_later(work, embed
 
 def test_extract_many_leaves_out_what_the_model_could_not_read(work):
     other = AuthorWork.objects.create(
+        verified=True,
         user=work.user, source="openalex", source_id="W2", title="x", abstract=ABSTRACT
     )
     replies = {work.pk: GOOD, other.pk: ConnectionError("down")}

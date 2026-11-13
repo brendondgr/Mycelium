@@ -1322,7 +1322,7 @@ class ProjectStateExtractView(APIView):
     thing invariant 9 forbids. The client sends the accepted fields back through
     :class:`ProjectStateView` if and when someone accepts them.
 
-    Reuses the résumé path's ``extract_text`` for the file itself — the size
+    Reuses the résumé path's ``extract_upload`` for the file itself — the size
     limit, the PDF sniffing and the "no readable text" error are already decided
     there, and a second set of answers to those questions would drift.
     """
@@ -1330,7 +1330,8 @@ class ProjectStateExtractView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request: Request, pk) -> Response:
-        from apps.accounts.intake import AuthorImportError, extract_text
+        from apps.accounts.intake import AuthorImportError
+        from apps.accounts.intake.resume import extract_upload
         from apps.research.state_extract import extract_project_state
 
         project = get_object_or_404(Project, pk=pk)
@@ -1343,11 +1344,8 @@ class ProjectStateExtractView(APIView):
         text = str(request.data.get("text") or "")
         if upload is not None:
             try:
-                text = extract_text(
-                    upload.read(),
-                    content_type=getattr(upload, "content_type", ""),
-                    filename=getattr(upload, "name", ""),
-                )
+                # the declared size is checked before a byte is read
+                text = extract_upload(upload)
             except AuthorImportError as exc:
                 raise ValidationError({"file": [str(exc)]}) from exc
         if not text.strip():

@@ -155,6 +155,7 @@ NOTE_WORDS = [  # fetcher outcome code -> words for a person
     ("http 403", "refused access (HTTP 403)"),
     ("http 401", "rejected our credentials (HTTP 401)"),
     ("not-wiley", "does not publish this article"),
+    ("blocked", "links to an address Mycelium will not fetch from"),
 ]
 
 

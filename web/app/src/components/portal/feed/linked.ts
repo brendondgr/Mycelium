@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-
+import { useAppRouter } from "@/components/demo/demo-context";
 import { FEED_FOR_KIND } from "@/components/portal/mylo/open-ref";
 import { fetchItemCard } from "@/lib/portal/client";
 import type { ItemCard } from "@/lib/portal/types";
@@ -15,7 +14,7 @@ export type FeedKind = ItemCard["area"];
  * "[grant]") is sent to its own feed instead, keeping the workspace.
  */
 export function useLinkedItemFetch<T>(kind: FeedKind) {
-  const router = useRouter();
+  const router = useAppRouter();
   return React.useCallback(
     async (id: string): Promise<T | null> => {
       const found = await fetchItemCard(id);

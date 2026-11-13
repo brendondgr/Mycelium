@@ -1,6 +1,27 @@
 # Go-Public Readiness and Security Hardening — Implementation Plan
 
-**Status:** planned, nothing built.
+**Status (2026-11-12):** Phases 0–6 and 8 are built on branch
+`go-public/hardening`, not yet merged to `main`. Still open:
+
+- **Phase 0.4:** the production-host cleanup, done by the maintainer on that
+  host. `docs/configuration.md` "If you ran an earlier version" lists the
+  steps.
+- **Phase 7:** the history rewrite and publishing. It waits until this branch
+  and the scoping and settings branches are merged and every session has
+  stopped.
+- **Follow-ups found while building:**
+  - a lab-settings card for answering department attach requests (the API
+    exists);
+  - a way for people to verify their own imported works (ORCID OAuth); until
+    then a self-import does not feed co-authorship edges;
+  - department ownership transfer;
+  - deciding whether existing labs' stored `full` Discord guest level should
+    drop to the new default;
+  - suppressing link previews in the scheduled digest outbox;
+  - parsing PDFs in a worker with limits;
+  - pinning images by digest;
+  - running the Node services without a read-write repository mount.
+
 **Correlation ID:** `20261112-go-public-readiness`
 
 ## Objective

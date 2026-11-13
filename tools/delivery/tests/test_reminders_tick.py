@@ -53,7 +53,7 @@ def pinned_prune_clock(monkeypatch):
 def _content_with_deadline(due: date | None, kind=_Kind.APPLICATION):
     item = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=f"g-{due}-{kind}",
         metadata={"title": "Test grant"},
     )
@@ -273,7 +273,7 @@ def test_rolling_fellowship_cannot_be_subscribed(user) -> None:
 @pytest.mark.django_db
 def test_conference_abstract_and_event_are_independently_subscribable(user) -> None:
     item = ContentItem.objects.create(
-        type=ContentItem.Type.CONFERENCE, source="pivot", external_id="conf-1"
+        type=ContentItem.Type.CONFERENCE, source="legacy", external_id="conf-1"
     )
     ContentDeadline.objects.create(
         content=item,

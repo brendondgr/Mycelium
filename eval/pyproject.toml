@@ -5,7 +5,7 @@
 # `web/backend` is a Django project, not an installable distribution, so it is
 # put on `sys.path` by `eval/run.py` rather than declared as a path dependency.
 # That means the app's runtime deps are mirrored here — the same arrangement the
-# root `pyproject.toml` uses for `pivot.py` / `manual_*.py`. Keep this list in
+# root `pyproject.toml` uses for the host scripts under `ops/`. Keep this list in
 # sync with `web/backend/pyproject.toml` when those change.
 #
 # The point of the mirroring is that the arms import `apps.content` directly, so

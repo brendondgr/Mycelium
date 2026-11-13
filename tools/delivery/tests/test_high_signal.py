@@ -29,7 +29,7 @@ def _score(
 ):
     item = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=ext,
         metadata={"title": f"Grant {ext}", "website": "https://x.test"},
     )

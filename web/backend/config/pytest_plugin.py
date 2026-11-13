@@ -131,3 +131,22 @@ def _no_knowledge_projection_on_save(settings):
     """
     settings.KNOWLEDGE_PROJECT_ON_SAVE = False
     settings.KNOWLEDGE_FACET_ON_IMPORT = False
+
+
+@pytest.fixture(autouse=True)
+def _verified_gate_off(settings):
+    """Leave the API-wide activation gate off unless a test asks for it.
+
+    The suite runs with ``signup.verify_email`` on (the institution profile), and
+    most of its fixtures create plain, unverified accounts to test something
+    other than activation. ``apps/accounts/tests/test_signin_hardening.py`` turns
+    the gate on and tests it; the organization-level ``require_verified_email``
+    checks stay on everywhere, as they always were.
+    """
+    settings.API_REQUIRE_VERIFIED_EMAIL = False
+
+
+@pytest.fixture(autouse=True)
+def _inline_password_reset_mail(settings):
+    """Send reset mail inline, never through whatever broker the machine runs."""
+    settings.PASSWORD_RESET_MAIL_ASYNC = False

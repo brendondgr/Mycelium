@@ -84,16 +84,16 @@ class MyloConfig:
         return self.dev_guild_id is not None
 
     def require_bot(self) -> MyloConfig:
-        """Assert the settings the gateway bot needs, or raise :class:`ConfigError`."""
+        """Assert the settings the gateway bot needs, or raise :class:`ConfigError`.
+
+        Only the token is required. ``ERROR_CHANNEL`` is optional: without it,
+        operational messages go to the log only (``reporting`` already treats a
+        missing channel as off).
+        """
         if not self.token:
             raise ConfigError(
                 "DISCORD_API_KEY is not set in .env-mylo. Add the bot token from "
                 "the Discord Developer Portal (Bot -> Reset Token)."
-            )
-        if self.error_channel_id is None:
-            raise ConfigError(
-                "ERROR_CHANNEL is not set in .env-mylo. Add the numeric id of the "
-                "channel Mylo should post to."
             )
         return self
 

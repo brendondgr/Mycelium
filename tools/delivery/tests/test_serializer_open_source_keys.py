@@ -5,19 +5,19 @@ caught in this class of failure (the conference venue line and the conference
 description). This one covers the rest of them, because the failure repeats
 once per field and is invisible every time:
 
-a serializer method reads a Pivot-era metadata key, the open collector writes a
+a serializer method reads a legacy metadata key, the open collector writes a
 different one, nothing raises, and the field serializes as ``""`` / ``[]`` /
 ``False`` for **every row in the corpus**. A green suite says nothing about it —
 each of these methods had either no test at all or a test that fed it the very
-Pivot-shaped metadata the collector stopped producing.
+legacy-shaped metadata the collector stopped producing.
 
 Measured against the live corpus at the time of the fix (912 conferences, 2,171
 grants, all collector-written): ``event_dates`` 0, ``event_date`` 0,
 ``abstract_open`` 0, ``manuscript_open`` 0, ``keywords`` 0, ``matched_subjects``
 0, ``sponsor`` 0, ``matched_topics`` 0, ``deadline_kind`` 0.
 
-Every test below names the branch it pins. Delete the Pivot halves — and the
-fallbacks they cover — together, once no Pivot-era row survives, not before.
+Every test below names the branch it pins. Delete the legacy halves — and the
+fallbacks they cover — together, once no legacy row survives, not before.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ def _grant(today: str = TODAY) -> GrantSerializer:
 class TestConferenceEventDates:
     """The card's human "when is it" line.
 
-    ``event_dates`` is Pivot's key; the collector writes ``event_dates_text``.
+    ``event_dates`` is the legacy key; the collector writes ``event_dates_text``.
     No rebuilt conference carries the old key, so every card lost its date line.
     """
 
@@ -114,7 +114,7 @@ class TestConferenceEventDates:
 class TestConferenceEventDate:
     """The ISO date the event-date window filter and sort are built on.
 
-    ``event_date`` is Pivot's key; the collector writes ``event_start``. A
+    ``event_date`` is the legacy key; the collector writes ``event_start``. A
     filter over a field that is empty on every row silently matches nothing.
     """
 
@@ -170,7 +170,7 @@ def _deadline(kind: str, instant: str, **extra) -> dict:
 class TestConferenceSubmissionOpen:
     """"Can I still submit to this?", derived rather than read.
 
-    ``abstract_open`` / ``manuscript_open`` are Pivot keys the collector never
+    ``abstract_open`` / ``manuscript_open`` are legacy keys the collector never
     writes, so both read ``False`` for the whole rebuilt corpus while the dates
     that decide them sat in ``deadlines_structured`` (174 abstract and 750
     submission entries live). They are also not facts that can be frozen at
@@ -246,7 +246,7 @@ class TestConferenceSubmissionOpen:
         assert _conference().get_manuscript_open(_score(meta)) is False
 
     def test_a_missing_array_falls_back_to_the_pivot_flag(self):
-        """Pivot-era rows carry the flag and no structured array; they must keep
+        """Legacy rows carry the flag and no structured array; they must keep
         rendering what they always did."""
         card = _conference()
         assert card.get_abstract_open(_score({"abstract_open": True})) is True
@@ -268,7 +268,7 @@ class TestConferenceTopics:
     """The two topic fields: same values, two documented shapes.
 
     ``keywords`` (space-joined blob) and ``matched_subjects`` (semicolon-
-    delimited chips) are both Pivot keys. The collector writes ``topics``, and
+    delimited chips) are both legacy keys. The collector writes ``topics``, and
     the verified extraction writes ``ai_fields["topics"]`` — 776 of 912
     conferences carry those against ``topics``' 70. Both shapes are load-bearing
     on the client (``conference-filters.tsx`` splits the second on ";"), so only
@@ -325,7 +325,7 @@ class TestConferenceTopics:
 class TestGrantSponsor:
     """The funder line — the single most identifying thing on a grant card.
 
-    ``sponsor`` is Pivot's key; the collector writes ``funder``. All 2,171
+    ``sponsor`` is the legacy key; the collector writes ``funder``. All 2,171
     rebuilt grants rendered a blank sponsor, and the sponsor facet with it.
     """
 
@@ -363,7 +363,7 @@ class TestGrantSponsor:
 class TestGrantMatchedTopics:
     """The grant topic chips and the Opportunities topic facet.
 
-    ``matched_topics`` is Pivot's key; the facet was derived from an empty
+    ``matched_topics`` is the legacy key; the facet was derived from an empty
     string on every row. Semicolon-delimited, because
     ``grant-filters.tsx::splitTopics`` splits on ";".
     """

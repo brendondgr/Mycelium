@@ -135,7 +135,7 @@ def test_blank_external_id_is_exempt_from_dedup() -> None:
 def test_conference_type_available() -> None:
     conf = ContentItem.objects.create(
         type=ContentItem.Type.CONFERENCE,
-        source="pivot",
+        source="legacy",
         external_id="80246426",
     )
     assert conf.type == "conference"

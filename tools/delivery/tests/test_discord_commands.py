@@ -61,7 +61,7 @@ def _linked(username="dc-user", snowflake=SNOWFLAKE, *, paid=True):
 def _grant(external_id="g-1", due=None):
     item = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=external_id,
         metadata={"title": "Neural interfaces grant"},
     )

@@ -234,6 +234,8 @@ def test_the_interpretation_line_needs_the_ranking_to_move(world, settings):
     ada = world["ada"]
     _change(ada, "exploration_confirmed", "conformal prediction", surface="dm")
     settings.AMBIENT_DRIFT_ENABLED = False
+    # A public origin, so "Tell me" is a link (with none, it is plain text).
+    settings.DISCORD_APP_BASE_URL = "https://mycelium.example.edu"
     body = generate_weekly_for_user(ada, complete=QUIET, today=TODAY).body
     assert "give it more attention" not in body
     settings.AMBIENT_DRIFT_ENABLED = True

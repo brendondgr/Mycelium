@@ -1,3 +1,4 @@
+apps.accounts.send_password_reset
 apps.ambient.read_conversations
 apps.ambient.recompute_attention
 apps.ambient.sweep_retention

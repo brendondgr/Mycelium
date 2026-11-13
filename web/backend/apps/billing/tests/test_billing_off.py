@@ -128,7 +128,9 @@ def test_lab_lead_limit(billing_off):
 
 
 @pytest.mark.django_db
-def test_profile_save_takes_more_than_six_clusters_when_unlimited(billing_off, free_user):
+def test_profile_save_takes_more_than_six_clusters_when_unlimited(
+    billing_off, free_user
+):
     """Regression: the contract validator used to ignore the person and cap at 6."""
     from apps.accounts.interests import validate_interests
 

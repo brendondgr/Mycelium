@@ -204,6 +204,12 @@ class AgentQueuedMessage(models.Model):
         ordering = ["created_at", "id"]
 
 
+#: What a guest is told in an org that has not chosen a level: public material
+#: only (the thread's post and the corpus), never people. A lab or department
+#: raises it explicitly (``/mylo chat guests``, or the policy endpoint).
+DEFAULT_DISCORD_GUESTS = "public"
+
+
 class AgentOrgPolicy(models.Model):
     """What a lab or department narrows for its members. Optional: with no
     row nothing is narrowed. It can never turn the agent on (D-5)."""
@@ -225,9 +231,10 @@ class AgentOrgPolicy(models.Model):
     groups_off = models.JSONField(default=list, blank=True)
     discord_channels_off = models.JSONField(default=list, blank=True)
     #: What a guest (someone in the org's Discord server with no account) is
-    #: told: ``full``, ``no_people``, ``public`` or ``off``. The host's
+    #: told: ``full``, ``no_people``, ``public`` or ``off``; ``""`` = not chosen,
+    #: which means :data:`DEFAULT_DISCORD_GUESTS`. The host's
     #: ``discord_guest_level`` caps it; the lower of the two wins (S-16).
-    discord_guests = models.CharField(max_length=12, default="full")
+    discord_guests = models.CharField(max_length=12, default="", blank=True)
     max_risk = models.CharField(max_length=12, default="read")
     #: Whether members' chats may inform the lab's shared understanding.
     members_inform_org = models.BooleanField(default=True)

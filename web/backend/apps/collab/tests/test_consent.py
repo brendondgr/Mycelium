@@ -185,6 +185,7 @@ def test_old_appearances_are_pruned(ada):
 def test_the_preview_shows_only_what_a_search_could_match(ada, embedder):
     service.project_declared(ada)
     work = AuthorWork.objects.create(
+        verified=True,
         user=ada, source="openalex", source_id="W1", title="x"
     )
     WorkFacets.objects.create(author_work=work, terms={"method": ["kriging"]})

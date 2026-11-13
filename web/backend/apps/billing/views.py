@@ -257,13 +257,52 @@ class LabBillingView(APIView):
         return Response(OrgBillingSerializer(payload).data)
 
 
+#: What a lead or head is told when activation needs an administrator.
+ACTIVATION_NEEDS_APPROVAL = (
+    "Activating a paid plan needs an administrator's approval on this instance. "
+    "Your request has been recorded; ask your Mycelium administrator to approve it."
+)
+
+
+def _require_activation_approval(request: Request, scope_type: str, scope_id) -> None:
+    """With billing on, only staff activate a plan.
+
+    Activation opens a billing period and entitles every member on the plan.
+    Nothing in this project takes payment, so letting any lab lead or department
+    admin flip it would let them grant their whole org a paid tier for free. The
+    lead's click is recorded as a request (an audit event an operator can act on
+    from the admin dashboard, which activates through the same service). With
+    billing off a plan decides nothing, so the old self-service path stands.
+    """
+    if not billing_enabled():
+        return
+    user = request.user
+    if user.is_staff or user.is_superuser:
+        return
+    from apps.accounts.services import record_audit_event
+
+    record_audit_event(
+        actor=user,
+        action="billing.activation_requested",
+        target_type=scope_type,
+        target_id=str(scope_id),
+    )
+    raise PermissionDenied(ACTIVATION_NEEDS_APPROVAL)
+
+
 class LabBillingActivateView(APIView):
-    """``POST /api/labs/<slug>/billing/activate/`` — a PI/manager activates the plan."""
+    """``POST /api/labs/<slug>/billing/activate/`` — a PI/manager activates the plan.
+
+    With ``billing.mode = "subscriptions"`` only a staff account (who is also a
+    lab manager) activates here; others' requests are recorded and refused, and
+    an operator activates from the admin dashboard.
+    """
 
     def post(self, request: Request, slug: str) -> Response:
         lab = get_object_or_404(Lab, slug=slug)
         if not user_can_edit_lab_profile(request.user, lab):
             raise PermissionDenied("Only a lab lead or owner/admin can activate.")
+        _require_activation_approval(request, "lab", lab.id)
         try:
             activate_lab_subscription(lab)
         except SeatCeilingExceeded as exc:
@@ -304,6 +343,7 @@ class DeptBillingActivateView(APIView):
         department = get_object_or_404(Department, id=pk)
         if not user_can_manage_department(request.user, department):
             raise PermissionDenied("Only an owner or admin can activate.")
+        _require_activation_approval(request, "department", department.id)
         try:
             activate_department_subscription(department)
         except SeatCeilingExceeded as exc:

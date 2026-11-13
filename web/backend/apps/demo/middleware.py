@@ -88,17 +88,14 @@ class DemoContext:
 def client_ip(request) -> str:
     """The visitor's address as the front door saw it.
 
-    Behind a Cloudflare tunnel nginx's peer is the tunnel, so ``CF-Connecting-IP``
-    comes first; then the first ``X-Forwarded-For`` hop; then nginx's
-    ``X-Real-IP``; then the socket. Only the per-address question cap reads it,
-    and the instance-wide cap bounds a spoofer anyway.
+    The one rule every per-client control uses
+    (:func:`apps.accounts.client_ip.client_ip`): the hop nginx set. A
+    ``CF-Connecting-IP`` or left-most ``X-Forwarded-For`` is whatever the client
+    typed, and reading it let one visitor be a new visitor on every request.
     """
-    meta = request.META
-    for key in ("HTTP_CF_CONNECTING_IP", "HTTP_X_FORWARDED_FOR", "HTTP_X_REAL_IP"):
-        value = (meta.get(key) or "").split(",")[0].strip()
-        if value:
-            return value
-    return meta.get("REMOTE_ADDR", "") or ""
+    from apps.accounts.client_ip import client_ip as _client_ip
+
+    return _client_ip(request)
 
 
 def ip_hash(ip: str) -> str:

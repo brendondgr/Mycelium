@@ -51,7 +51,7 @@ def _item(kind=ContentItem.Type.GRANT, ext="g1"):
         ContentItem.Type.CONFERENCE: {"name": "Neural conference"},
     }
     item = ContentItem.objects.create(
-        type=kind, source="pivot", external_id=ext, metadata=titles[kind]
+        type=kind, source="legacy", external_id=ext, metadata=titles[kind]
     )
     ContentDeadline.objects.create(
         content=item,

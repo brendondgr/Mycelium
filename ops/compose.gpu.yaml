@@ -1,6 +1,6 @@
 # GPU overlay: run the local embedder (fastembed / ONNX Runtime) on a CUDA card.
 #
-#   docker compose -f compose.yaml -f compose.gpu.yaml up -d
+#   docker compose -f compose.yaml -f ops/compose.gpu.yaml up -d    # or: make gpu-up
 #
 # It does two things the base stack cannot do safely by default (a dev laptop has
 # no GPU): it syncs the *GPU* flavour of the embeddings extra (`fastembed-gpu` +
@@ -11,14 +11,14 @@
 # nvidia-container-toolkit (`docker info | grep -i nvidia` should list the
 # runtime). Verify afterwards — "session providers" is the honest answer:
 #
-#   docker compose exec backend uv run --project web/backend \
+#   docker compose exec backend uv run --no-sync --project web/backend \
 #       python web/backend/manage.py embedding_device --benchmark
 #
 # EMBEDDING_DEVICE stays `auto`, so if the card ever disappears the stack keeps
 # running on the CPU instead of failing.
 services:
   backend-deps:
-    command: sh -c "uv sync --project web/backend --extra scrapers --extra embeddings-gpu"
+    command: sh -c "uv sync --locked --project web/backend --extra scrapers --extra embeddings-gpu"
 
   backend:
     deploy:

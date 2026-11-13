@@ -89,7 +89,7 @@ const CONTINENT_ORDER = [
 ];
 
 /**
- * A bounded country-name → continent map. Pivot emits full country names, so we
+ * A bounded country-name → continent map. Sources emit full country names, so we
  * key on those (lower-cased). Anything unrecognized falls through to "Other" —
  * still filterable, just not bucketed to a specific continent.
  */

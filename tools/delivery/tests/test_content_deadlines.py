@@ -7,10 +7,8 @@ the relocated ``tools.retrieval.fellowships.ingest.upsert_fellowship_items`` for
 fellowships. Embedding and prune are off so the tests stay pure-relational and
 run on SQLite.
 
-Relocated from ``ingest_pivot`` (plan Phase 6 — the deletion of Pivot-RP), which
-used to drive all three types through one dispatcher. The two conference
-fixtures also changed shape: Pivot's free-text ``deadlines`` string is gone, so
-they now build ``metadata["deadlines_structured"]`` directly — the same shape
+The two conference fixtures build ``metadata["deadlines_structured"]``
+directly — the same shape
 :func:`tools.retrieval.collect.mapping.map_conference` writes, and the shape the
 pure structured-conference tests further down already exercised directly.
 """
@@ -115,7 +113,7 @@ def _ingest_fellowship(deadline, **over):
 @pytest.mark.django_db
 def test_conference_yields_three_rows() -> None:
     """Abstract / manuscript / other — the three mapped kinds a structured
-    conference can project. No EVENT row: unlike Pivot's free-text format, the
+    conference can project. No EVENT row: unlike the legacy free-text format, the
     collector's deadline array never carries an event-date entry (see
     ``_conference_specs``'s docstring), so the third row here comes from a
     notification date falling into OTHER instead."""
@@ -284,7 +282,7 @@ def test_pure_derivation_ignores_papers() -> None:
 # These are pure (no ``@pytest.mark.django_db``, matching
 # ``test_pure_derivation_ignores_papers`` above): ``_conference_specs`` reads
 # ``metadata["deadlines_structured"]`` directly (plan Phase 6 removed the
-# legacy-Pivot dispatch this used to need), so an in-memory ``ContentItem`` with
+# legacy dispatch this used to need), so an in-memory ``ContentItem`` with
 # hand-built metadata is enough — no ingest path needed to exercise it.
 # --------------------------------------------------------------------------- #
 

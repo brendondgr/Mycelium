@@ -62,9 +62,10 @@ None for ranking.
 On each phase's tree, with the caches in the main checkout:
 
 ```bash
-export IR_DATASETS_HOME=/home/bdgr/Agents/Mycelium/data/eval-cache/ir_datasets \
-       MYCELIUM_EVAL_CACHE=/home/bdgr/Agents/Mycelium/data/eval-cache/embeddings \
-       FASTEMBED_CACHE_PATH=/home/bdgr/Agents/Mycelium/data/eval-cache/fastembed \
+MAIN=<the main checkout>   # the caches live outside any worktree
+export IR_DATASETS_HOME=$MAIN/data/eval-cache/ir_datasets \
+       MYCELIUM_EVAL_CACHE=$MAIN/data/eval-cache/embeddings \
+       FASTEMBED_CACHE_PATH=$MAIN/data/eval-cache/fastembed \
        HF_HUB_OFFLINE=1
 uv run --project eval eval/run.py \
   --config eval/configs/fusion_dense_pool.toml eval/configs/bm25_only.toml \

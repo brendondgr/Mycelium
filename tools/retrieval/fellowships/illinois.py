@@ -1,8 +1,5 @@
 """University of Illinois Graduate College Fellowship Finder adapter.
 
-Vendored from the ProQuest tool's
-``utils/Fellowships/sources/illinois.py``.
-
 Site: https://fellowship-finder.grad.illinois.edu
 
 Two very different surfaces:
@@ -20,7 +17,8 @@ separate from the async fetch/render so they're unit-testable against saved HTML
 
 ``bs4`` and ``playwright`` are optional extras — this module imports cleanly when
 they are absent; the imports happen inside functions (``fetch_listing``,
-``render_detail``) so the package loads without the optional ``pivot`` extra.
+``render_detail``) so the package loads without the optional ``fellowships``
+extra.
 """
 
 from __future__ import annotations

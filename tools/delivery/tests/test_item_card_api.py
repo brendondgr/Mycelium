@@ -28,7 +28,7 @@ def client():
 def _item(kind, title, **meta):
     return ContentItem.objects.create(
         type=kind,
-        source="pivot",
+        source="legacy",
         external_id=title,
         source_url=f"https://example.org/{title}",
         metadata={"title": title, "name": title, **meta},

@@ -1,15 +1,13 @@
-"""``manual_all.py``'s weekly dblp registry refresh and stale-Pivot cleanup.
+"""``manual_all.py``'s weekly dblp registry refresh and scrape-directory tidy-up.
 
 Both are reachable without a live stack: ``refresh_conference_registry`` only
 reads a file's mtime and calls the (stubbed) ``run_manage``, and
-``_purge_stale_pivot_json`` only touches a directory of plain JSON files —
-neither needs Docker, Postgres, or a running backend. ``test_daily_run_
-reporting.py`` stubs ``_purge_stale_pivot_json`` out entirely (its own
-comment: "stubbed out so these tests never touch the filesystem regardless
-of what happens to be sitting on the machine running them"), which leaves it
-completely unexercised anywhere in the suite. These tests run it for real,
-against a temp directory substituted for the real ``data/pivot/`` so nothing
-on the machine running the suite is ever at risk.
+``_tidy_scrape_dir`` only touches directories of plain JSON files — neither
+needs Docker, Postgres, or a running backend. ``test_daily_run_reporting.py``
+stubs ``_tidy_scrape_dir`` out entirely, which leaves it unexercised anywhere
+else in the suite. These tests run it for real, against temp directories
+substituted for the real ones so nothing on the machine running the suite is
+ever at risk.
 
     uv run python -m unittest discover -s mylo -p 'test_*.py'
 """
@@ -30,48 +28,50 @@ import manual_all
 _BASE = ["docker", "compose"]
 
 
-class PurgeStalePivotJsonTests(unittest.TestCase):
-    """``_purge_stale_pivot_json`` — housekeeping, not a correctness guard
-    (its own docstring), but it must still delete exactly the two named
-    files and nothing else."""
+class TidyScrapeDirTests(unittest.TestCase):
+    """``_tidy_scrape_dir`` — housekeeping, not a correctness guard: a one-off
+    rename of the old directory, and deleting exactly the named stale files."""
 
     def setUp(self) -> None:
         self._tmpdir = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmpdir.cleanup)
-        self.pivot_dir = Path(self._tmpdir.name)
-        patcher = mock.patch.object(manual_all, "PIVOT_DIR", self.pivot_dir)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        root = Path(self._tmpdir.name)
+        self.current = root / "fellowships"
+        self.legacy = root / "legacy"
+        for name, value in (
+            ("FELLOWSHIPS_DIR", self.current),
+            ("LEGACY_SCRAPE_DIR", self.legacy),
+        ):
+            patcher = mock.patch.object(manual_all, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
-    def test_removes_both_stale_grant_and_conference_json(self) -> None:
-        (self.pivot_dir / "pivot_grants.json").write_text("[]")
-        (self.pivot_dir / "pivot_conferences.json").write_text("[]")
+    def test_moves_the_old_directory_once(self) -> None:
+        self.legacy.mkdir()
+        (self.legacy / "keep.txt").write_text("x")
 
-        manual_all._purge_stale_pivot_json()
+        manual_all._tidy_scrape_dir()
 
-        self.assertFalse((self.pivot_dir / "pivot_grants.json").exists())
-        self.assertFalse((self.pivot_dir / "pivot_conferences.json").exists())
+        self.assertFalse(self.legacy.exists())
+        self.assertEqual((self.current / "keep.txt").read_text(), "x")
 
-    def test_never_touches_the_live_fellowship_file(self) -> None:
-        """Only the two named stale files are targeted -- unlike Pivot-RP's
-        own ``pivot.py import``, which globbed every ``pivot_*.json`` file
-        with no way to scope to one area (module docstring), this must
-        leave ``pivot_fellowships.json`` -- the file ``scrape_fellowships.
-        py`` still reads and writes every night -- completely untouched."""
-        fellowships = self.pivot_dir / "pivot_fellowships.json"
-        fellowships.write_text('{"fellowships": []}')
-        (self.pivot_dir / "pivot_grants.json").write_text("[]")
+    def test_removes_the_stale_files_and_keeps_the_live_one(self) -> None:
+        self.current.mkdir()
+        for stale in manual_all.STALE_SCRAPE_FILES:
+            (self.current / stale).write_text("[]")
+        live = self.current / "fellowships.json"
+        live.write_text('{"fellowships": []}')
 
-        manual_all._purge_stale_pivot_json()
+        manual_all._tidy_scrape_dir()
 
-        self.assertTrue(fellowships.exists())
-        self.assertEqual(fellowships.read_text(), '{"fellowships": []}')
+        for stale in manual_all.STALE_SCRAPE_FILES:
+            self.assertFalse((self.current / stale).exists())
+        self.assertEqual(live.read_text(), '{"fellowships": []}')
 
-    def test_is_a_no_op_when_neither_stale_file_exists(self) -> None:
-        """Nothing to remove must not raise -- a host that never ran
-        Pivot-RP, or already cleaned up, has no stale files to find."""
-        manual_all._purge_stale_pivot_json()
-        self.assertEqual(list(self.pivot_dir.iterdir()), [])
+    def test_is_a_no_op_when_nothing_is_there(self) -> None:
+        manual_all._tidy_scrape_dir()
+        self.assertFalse(self.current.exists())
+        self.assertFalse(self.legacy.exists())
 
 
 class RefreshConferenceRegistryTests(unittest.TestCase):

@@ -83,7 +83,7 @@ def _member(lab, username, *, role=LabMembership.Role.MEMBER, discord_id=None):
 def _lab_sub(lab, *, created_by=None, mentions=(), override="", due=None):
     due = due or TODAY + timedelta(days=7)
     item = ContentItem.objects.create(
-        type=ContentItem.Type.GRANT, source="pivot", external_id=f"g-{override}-{due}"
+        type=ContentItem.Type.GRANT, source="legacy", external_id=f"g-{override}-{due}"
     )
     ContentDeadline.objects.create(
         content=item,
@@ -210,6 +210,57 @@ def test_per_reminder_override_beats_lab_default(transport) -> None:
     assert transport.posts()[0]["path"] == "/channels/override-chan/messages"
 
 
+def _guild_lists(monkeypatch, channel_ids):
+    """The lab's server (``g1``) holds exactly ``channel_ids``."""
+    from tools.delivery import reminders_discord
+
+    def listing(guild_id):
+        assert guild_id == "g1"
+        return [{"id": c, "name": c, "type": 0} for c in channel_ids]
+
+    monkeypatch.setattr(reminders_discord, "list_postable_channels", listing)
+
+
+@pytest.mark.django_db
+def test_channel_override_must_belong_to_lab_guild(transport, monkeypatch) -> None:
+    """A manager cannot aim the bot at a channel outside their lab's server."""
+    from rest_framework.test import APIClient
+
+    lab = _lab(channel="default-chan")
+    owner = _member(lab, "owner", role=LabMembership.Role.OWNER)
+    _guild_lists(monkeypatch, ["own-chan"])
+    sub = _lab_sub(lab, created_by=owner)
+
+    api = APIClient()
+    api.force_authenticate(owner)
+    foreign = api.patch(
+        f"/api/reminders/{sub.id}/",
+        {"channel_id_override": "someone-elses-chan"},
+        format="json",
+    )
+    assert foreign.status_code == 400
+    sub.refresh_from_db()
+    assert sub.channel_id_override == ""
+
+    own = api.patch(
+        f"/api/reminders/{sub.id}/", {"channel_id_override": "own-chan"}, format="json"
+    )
+    assert own.status_code == 200
+    sub.refresh_from_db()
+    assert sub.channel_id_override == "own-chan"
+
+
+@pytest.mark.django_db
+def test_stored_foreign_override_is_not_posted_to(transport, monkeypatch) -> None:
+    """A row written before the check falls back to the lab's own channel."""
+    lab = _lab(channel="default-chan")
+    _guild_lists(monkeypatch, ["default-chan", "own-chan"])
+    sub = _lab_sub(lab, override="someone-elses-chan")
+    send_lab_channel(sub, sub.title, "body")
+    outbox.drain()
+    assert transport.posts()[0]["path"] == "/channels/default-chan/messages"
+
+
 @pytest.mark.django_db
 def test_blank_override_falls_back_to_lab_default(transport) -> None:
     lab = _lab(channel="default-chan")
@@ -259,7 +310,7 @@ def test_personal_reminder_never_appears_in_lab_channel(transport) -> None:
     lab = _lab()
     user = _member(lab, "solo", discord_id="222")
     item = ContentItem.objects.create(
-        type=ContentItem.Type.GRANT, source="pivot", external_id="g-personal"
+        type=ContentItem.Type.GRANT, source="legacy", external_id="g-personal"
     )
     ContentDeadline.objects.create(
         content=item,

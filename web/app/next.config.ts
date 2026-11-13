@@ -12,9 +12,10 @@ const workspaceRoot = path.dirname(process.cwd());
 const apiProxyTarget =
   process.env.API_PROXY_TARGET ?? "http://127.0.0.1:8000";
 
-// Next blocks cross-origin requests to dev-only assets and endpoints, so behind
-// a reverse proxy or Cloudflare tunnel the external hostname has to be declared
-// or dev assets 403. PUBLIC_HOSTNAME (compose → .env) carries it; unset, this
+// `next dev` (`make dev`) blocks cross-origin requests to dev-only assets and
+// endpoints, so behind a reverse proxy or Cloudflare tunnel the external
+// hostname has to be declared or dev assets 403. Production runs `next start`,
+// which has no dev endpoints. PUBLIC_HOSTNAME (compose → .env) carries it; unset, this
 // stays empty and only the default localhost origin is allowed.
 const publicHostname = process.env.PUBLIC_HOSTNAME?.trim();
 
@@ -23,6 +24,8 @@ const nextConfig: NextConfig = {
   // The floating Next dev-tools badge (bottom-left) is noise on a deployment
   // that happens to run in dev mode; hide it entirely.
   devIndicators: false,
+  // No "X-Powered-By: Next.js" on every response.
+  poweredByHeader: false,
   allowedDevOrigins: publicHostname ? [publicHostname] : [],
   async rewrites() {
     return [

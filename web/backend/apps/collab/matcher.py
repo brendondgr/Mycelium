@@ -216,8 +216,9 @@ def _coauthors_by_user(user_ids) -> dict[int, set[str]]:
     from apps.accounts.models import AuthorWork
 
     out: dict[int, set[str]] = defaultdict(set)
+    # Verified works only (see ``AuthorWork.verified``).
     for user_id, ids in AuthorWork.objects.filter(
-        user_id__in=list(user_ids)
+        user_id__in=list(user_ids), verified=True
     ).values_list("user_id", "coauthor_ids"):
         out[user_id].update(str(i) for i in ids or [])
     return out

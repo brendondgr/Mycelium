@@ -734,13 +734,21 @@ def guest_ceiling() -> str:
     return str(config.get("discord_guest_level") or "full")
 
 
+def org_guest_level(kind: str, org) -> str:
+    """The org's own guest level: what it chose, else the default."""
+    from .models import DEFAULT_DISCORD_GUESTS
+
+    row = AgentOrgPolicy.objects.filter(**{kind: org}).first()
+    return (row.discord_guests if row else "") or DEFAULT_DISCORD_GUESTS
+
+
 def guest_level_in_force(kind: str, org) -> str:
-    """The lower of the host's ceiling and the org's own setting."""
+    """The lower of the host's ceiling and the org's own setting (``public``
+    when the org never chose one)."""
     from tools._framework.agentspec import guest_rank
 
     ceiling = guest_ceiling()
-    row = AgentOrgPolicy.objects.filter(**{kind: org}).first()
-    own = row.discord_guests if row else "full"
+    own = org_guest_level(kind, org)
     return own if guest_rank(own) < guest_rank(ceiling) else ceiling
 
 

@@ -44,6 +44,7 @@ TEMPLATES: dict[str, str] = {
     "department_invitation": "You have been invited to a department on Mycelium",
     "verification_code": "Your Mycelium verification code",
     "password_change_code": "Confirm your Mycelium password change",
+    "account_delete_code": "Confirm deleting your Mycelium account",
     "test": "Mycelium test",
 }
 

@@ -20,6 +20,33 @@ urlpatterns = [
     # current one, or an emailed link when it has been lost).
     path("account/", views.AccountView.as_view(), name="account"),
     path("account", views.AccountView.as_view(), name="account-no-slash"),
+    # Privacy rights: a copy of everything the account holds, and erasure
+    # (DELETE account/ with the password and a code from delete/request/).
+    path("account/export/", views.AccountExportView.as_view(), name="account-export"),
+    path(
+        "account/export",
+        views.AccountExportView.as_view(),
+        name="account-export-no-slash",
+    ),
+    path(
+        "account/delete/request/",
+        views.AccountDeleteRequestView.as_view(),
+        name="account-delete-request",
+    ),
+    path(
+        "account/delete/request",
+        views.AccountDeleteRequestView.as_view(),
+        name="account-delete-request-no-slash",
+    ),
+    # Sign out everywhere else.
+    path(
+        "sessions/revoke/", views.SessionsRevokeView.as_view(), name="sessions-revoke"
+    ),
+    path(
+        "sessions/revoke",
+        views.SessionsRevokeView.as_view(),
+        name="sessions-revoke-no-slash",
+    ),
     # Two steps: ask for a code mailed to the account's own address, then spend
     # it. A signed-in session is not authority to change a password.
     path(
@@ -53,11 +80,11 @@ urlpatterns = [
     ),
     path("password/reset/confirm", views.password_reset_confirm_view),
     path("email/change/", views.EmailChangeView.as_view(), name="email-change"),
-    path("email/change", views.EmailChangeView.as_view()),
+    path("email/change", views.EmailChangeView.as_view(), name="email-change-no-slash"),
     path("email/verify/", views.email_verify_view, name="email-verify"),
-    path("email/verify", views.email_verify_view),
+    path("email/verify", views.email_verify_view, name="email-verify-no-slash"),
     path("email/resend/", views.email_resend_view, name="email-resend"),
-    path("email/resend", views.email_resend_view),
+    path("email/resend", views.email_resend_view, name="email-resend-no-slash"),
     path("email/check/", views.email_check_view, name="email-check"),
     path("email/check", views.email_check_view),
     # Interest-profile read/update (object-level permissions).
@@ -274,6 +301,39 @@ urlpatterns = [
         views.LabInviteRevokeView.as_view(),
     ),
     path(
+        "labs/<slug:slug>/invites/<uuid:pk>/regenerate/",
+        views.LabInviteRegenerateView.as_view(),
+        name="lab-invite-regenerate",
+    ),
+    path(
+        "labs/<slug:slug>/invites/<uuid:pk>/regenerate",
+        views.LabInviteRegenerateView.as_view(),
+    ),
+    path(
+        "labs/<slug:slug>/attach-requests/",
+        views.LabAttachRequestsView.as_view(),
+        name="lab-attach-requests",
+    ),
+    path("labs/<slug:slug>/attach-requests", views.LabAttachRequestsView.as_view()),
+    path(
+        "labs/<slug:slug>/attach-requests/<uuid:pk>/accept/",
+        views.LabAttachRequestRespondView.as_view(),
+        name="lab-attach-request-accept",
+    ),
+    path(
+        "labs/<slug:slug>/attach-requests/<uuid:pk>/accept",
+        views.LabAttachRequestRespondView.as_view(),
+    ),
+    path(
+        "labs/<slug:slug>/attach-requests/<uuid:pk>/decline/",
+        views.LabAttachRequestDeclineView.as_view(),
+        name="lab-attach-request-decline",
+    ),
+    path(
+        "labs/<slug:slug>/attach-requests/<uuid:pk>/decline",
+        views.LabAttachRequestDeclineView.as_view(),
+    ),
+    path(
         "departments/<uuid:pk>/invites/",
         views.DeptInvitesView.as_view(),
         name="dept-invites",
@@ -288,6 +348,15 @@ urlpatterns = [
         "departments/<uuid:pk>/invites/<uuid:invite_id>/revoke",
         views.DeptInviteRevokeView.as_view(),
     ),
+    path(
+        "departments/<uuid:pk>/invites/<uuid:invite_id>/regenerate/",
+        views.DeptInviteRegenerateView.as_view(),
+        name="dept-invite-regenerate",
+    ),
+    path(
+        "departments/<uuid:pk>/invites/<uuid:invite_id>/regenerate",
+        views.DeptInviteRegenerateView.as_view(),
+    ),
     path("invites/<str:token>/", views.invite_preview_view, name="invite-preview"),
     path("invites/<str:token>", views.invite_preview_view),
     path(
@@ -295,5 +364,9 @@ urlpatterns = [
         views.InviteAcceptView.as_view(),
         name="invite-accept",
     ),
-    path("invites/<str:token>/accept", views.InviteAcceptView.as_view()),
+    path(
+        "invites/<str:token>/accept",
+        views.InviteAcceptView.as_view(),
+        name="invite-accept-no-slash",
+    ),
 ]

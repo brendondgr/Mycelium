@@ -41,10 +41,10 @@ def _fake_embed(texts):
 
 
 def _seed_grants(records, *, embedder, today):
-    """Stand-in for the retired ``ingest_pivot`` test fixture (plan Phase 6
-    deleted Pivot's grant ingest) — see ``test_opportunities.py``'s twin helper
-    for the full rationale. These tests only ever seed one grant apiece to
-    exercise lab/project target matching, not ingest.
+    """Stand-in for a retired grant-ingest test fixture (plan Phase 6) — see
+    ``test_opportunities.py``'s twin helper for the full rationale. These tests
+    only ever seed one grant apiece to exercise lab/project target matching,
+    not ingest.
     """
     created: list[ContentItem] = []
     texts: list[str] = []

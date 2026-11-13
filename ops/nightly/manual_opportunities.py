@@ -12,7 +12,7 @@ embedding model. Any extra arguments are passed straight through to that command
 
 Usage:
     python ops/nightly/manual_opportunities.py                   # all users, synchronous
-    python ops/nightly/manual_opportunities.py --user brendondgr # just one user (repeatable)
+    python ops/nightly/manual_opportunities.py --user alice # just one user (repeatable)
     python ops/nightly/manual_opportunities.py --no-prune        # keep expired listings
     python ops/nightly/manual_opportunities.py --no-llm          # deterministic fallback scoring
     python ops/nightly/manual_opportunities.py --dry-run         # run but don't persist

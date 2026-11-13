@@ -9,15 +9,12 @@ opportunity source left that needs a real browser: the Illinois Graduate
 College Fellowship Finder is a Blazor Server app, so its detail pages only
 render inside an actual page, not a plain HTTP GET.
 
-Split out of the retired ``pivot.py`` (plan Phase 6 — the deletion of
-Pivot-RP): this script keeps exactly ``pivot.py``'s ``scrape``/``import`` shape
-for the one source that survives it, so ``manual_all.py``'s stage 1 needed no
-host-orchestration rewrite beyond the script name. Unlike Pivot-RP's own
-grant/conference scrape, this needs no saved SSO session at all — the listing
-and detail pages are public.
+It has two verbs, ``scrape`` and ``import``, which ``manual_all.py``'s stage 1
+runs in turn. It needs no saved session or login: the listing and detail pages
+are public.
 
-    uv run tools/retrieval/host/scrape_fellowships.py scrape   # browser scrape -> data/pivot/pivot_fellowships.json
-    uv run tools/retrieval/host/scrape_fellowships.py import   # data/pivot/pivot_fellowships.json -> content store
+    uv run tools/retrieval/host/scrape_fellowships.py scrape   # browser scrape -> data/fellowships/fellowships.json
+    uv run tools/retrieval/host/scrape_fellowships.py import   # data/fellowships/fellowships.json -> content store
 
 Run from the repo root: the root pyproject.toml provides the environment
 (Chromium is auto-installed on first scrape — no ``uv sync --extra`` needed).
@@ -27,11 +24,8 @@ Pruning is **not** done here — ``manual_all.py``'s dedicated
 type's expiry runs, so a moved deadline is always seen by the reminder tick
 before its item can be deleted (see that script's ``CONTAINER_STAGES`` note).
 
-The scraped JSON lands in ``data/pivot/`` — the directory name is a leftover
-of Pivot-RP's own layout (``manual_all.py``'s ``PIVOT_DIR``/
-``_purge_stale_pivot_json`` already depend on this exact path to clean up
-stale grant/conference JSON from before this migration), not a sign that
-Pivot itself survives here.
+The scraped JSON lands in ``data/fellowships/`` (gitignored runtime state, like
+the rest of ``data/``).
 """
 
 from __future__ import annotations
@@ -42,8 +36,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-PIVOT_DIR = ROOT / "data" / "pivot"
-OUT_PATH = PIVOT_DIR / "pivot_fellowships.json"
+FELLOWSHIPS_DIR = ROOT / "data" / "fellowships"
+OUT_PATH = FELLOWSHIPS_DIR / "fellowships.json"
 
 
 def _bootstrap_django() -> None:
@@ -91,7 +85,7 @@ def _scrape() -> int:
     if not records:
         print("Scrape returned nothing.")
         return 0
-    PIVOT_DIR.mkdir(parents=True, exist_ok=True)
+    FELLOWSHIPS_DIR.mkdir(parents=True, exist_ok=True)
     OUT_PATH.write_text(json.dumps(records, ensure_ascii=False, indent=2))
     print(f"fellowships: {len(records)} record(s) -> {OUT_PATH}")
     return 0

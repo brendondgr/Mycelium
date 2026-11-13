@@ -107,6 +107,11 @@ Paths are relative to the repository root.
 | Workspace provisioning at signup | `web/backend/apps/accounts/provisioning.py` |
 | Who may sign up (`signup.mode`: closed / invite / code / domain / open) and whether email must be verified; `GET /api/auth/signup-policy/` | `web/backend/apps/accounts/signup_policy.py`; tests `apps/accounts/tests/test_signup_modes.py`; the form reads it in `web/app/src/components/auth/signup-form.tsx` |
 | The code mode's brute-force gate (shared code, shadow ban) | `web/backend/apps/accounts/signup_gate.py` |
+| The client address every per-client control keys on (right-most `X-Forwarded-For` hop, as DRF `NUM_PROXIES = 1`) | `web/backend/apps/accounts/client_ip.py` |
+| Sign-in lockout (per username + address, per address), for `/api/auth/login` and Django admin | `web/backend/apps/accounts/login_guard.py` (`LoginThrottleBackend` first in `AUTHENTICATION_BACKENDS`); tests `apps/accounts/tests/test_signin_hardening.py` |
+| Account export and deletion (privacy rights) | `web/backend/apps/accounts/account_data.py`; routes `GET account/export/`, `POST account/delete/request/`, `DELETE account/`, `POST sessions/revoke/`; the app's cards are `DataAndSessionsCard` / `DeleteAccountCard` in `web/app/src/components/portal/sections/account-section.tsx` |
+| Background mail for accounts (password reset off the request) | `web/backend/apps/accounts/tasks.py` |
+| A department taking in a lab (owner's consent) | `request_lab_attach` / `respond_to_lab_attach` in `web/backend/apps/accounts/services.py`, model `LabAttachRequest`, routes `labs/<slug>/attach-requests/…` |
 | Join invitations (emailed to one address, or a share link with a use budget + expiry) | `web/backend/apps/accounts/invites.py`, models `OrgInvite` / `OrgInviteRedemption`; `create_invites` + `screen_address` are the batch path (≤15 addresses, per-address refusals) |
 | Invite → sign-up, end to end, both org kinds | `web/backend/apps/accounts/tests/test_invite_signup_flow.py` |
 | Email verification (the six-digit code that activates an account) | `web/backend/apps/accounts/email_verification.py`, model `EmailVerification` |
@@ -117,7 +122,8 @@ Paths are relative to the repository root.
 | Removing a member / changing a role, from the app | `MemberRow` in `web/app/src/components/portal/sections/member-row.tsx` (role select, Remove, Make PI, both confirms); `useLabMemberMutations` in `web/app/src/lib/portal/hooks.ts`; the client-side mirror of the rank rule is `LAB_ROLE_RANK`/`grantableLabRoles`/`outranksLabMember` in `lib/portal/nav.ts` |
 | An invitation claimed by address rather than by link | `invites.pending_for_email` / `invites.claim_for_verified_email`; sign-up reports `pending_invite` without naming the org, and the claim lands on email verification (`email_verification.verify`) |
 | Placing an account the affiliation directory cannot | `institution.grant` / `revoke_grant`, `Profile.institution_granted{,_by,_at}`, command `grant_institution --user <name> --institution <name> [--revoke]`; a grant wins over the derived value and is audited |
-| What an unverified account may not do | `require_verified_email` in `web/backend/apps/accounts/permissions.py` — guards lab/department creation, both profiles, and issuing invitations. Redeeming one is *not* gated: it guards standing an org up, not being brought into one |
+| What an unverified account may not do | `require_verified_email` in `web/backend/apps/accounts/permissions.py` — guards lab/department creation, both profiles, and issuing invitations. Redeeming one is *not* gated: it guards standing an org up, not being brought into one. When the instance verifies email, `VerifiedEmailRequired` (a default DRF permission, same file) closes the rest of the API except `VERIFICATION_EXEMPT_URL_NAMES` |
+| Who may grant which department role | `DEPT_ROLE_RANK` / `user_can_grant_dept_role` / `user_outranks_dept_member` in `web/backend/apps/accounts/permissions.py`; `user_can_invite_with_lab_role` is the lab rule every invitation path asks |
 | Interests contract (v2 clusters) | `web/backend/apps/accounts/interests.py` |
 | Profile / lab intake & synthesis | `web/backend/apps/accounts/intake/` — `synthesize.py`, `lab.py`, `clusters.py`, `agent.py` |
 | Derived membership aggregates | `web/backend/apps/accounts/aggregates.py` |
@@ -298,6 +304,7 @@ A task index across the three tools; each tool also has its own section below.
 | Tiers, pricing, add-ons, seats, periods | `web/backend/apps/billing/{tiers,pricing,addons,seats,seat_sync,period,services}.py` |
 | Standing up an org's rows (lab or department, plan inactive) | `create_lab_workspace` / `create_department_workspace` in `web/backend/apps/billing/services.py`; sign-up only ever calls `provision_workspace(user, "personal")` |
 | Platform-admin API | `web/backend/apps/adminpanel/` |
+| The first admin's "Getting started" checklist (model, first collection, profile, people, Discord) and the members' "nothing here yet" | `web/app/src/components/portal/sections/getting-started.tsx`, shown by `overview-section.tsx`; facts from `GET /api/admin/setup-status/` in `web/backend/apps/adminpanel/setup_status.py` (staff-only) |
 | Discord identity & lab linking | `web/backend/apps/integrations/models.py`, `services/resolve.py` (the single ORM boundary) |
 | Discord servers, lab/department bindings, channel routes; `/activate-department`; the settings card that adds Mylo to a lab or department server (`MyloServerCard` behind `DiscordSyncCard` / `DeptDiscordCard` in `web/app/src/components/portal/sections/labs-section.tsx`) | `DiscordGuildLink` / `DiscordTargetBinding` / `DiscordChannelRoute` in `web/backend/apps/integrations/models.py`; `services/lab_activation.py` (lab and department codes); `mylo/linking.py` + `mylo/bot/cogs/{link,setup}.py`; test builders in `apps/integrations/testing.py` |
 | Discord OAuth, API calls, outbox | `web/backend/apps/integrations/services/` |
@@ -452,7 +459,9 @@ A task index across the three tools; each tool also has its own section below.
 
 | Task | Path |
 |---|---|
-| Full-stack start/stop | `ops/mycelium` (start/stop/restart/status/migrate — wipes frontend caches, waits for the API, applies migrations, restarts Mylo), `Makefile` (`make up`/`down`/`status`), `compose.yaml`, `ops/compose.gpu.yaml` |
+| Full-stack start/stop | `ops/mycelium` (start/stop/restart/status/migrate — wipes frontend caches, waits for the API through nginx, applies migrations; never calls sudo), `Makefile` (`make up`/`dev`/`down`/`status`), `compose.yaml` (production: gunicorn, `next start`, static site; only nginx published), `compose.dev.yaml` (`make dev`: runserver, `next dev`, `astro dev`), `ops/compose.gpu.yaml` |
+| Instance health check (`make doctor`), backups (`make backup` / `make restore`), database password rotation | `ops/mycelium` (`doctor`, `backup`, `restore`, `rotate-db-password`); guide in [`configuration.md`](configuration.md) |
+| Steps that need root (systemd timer, Discord bot), `.env` editing and the 0600 rule, root-owned leftovers | `ops/setup/host_steps.py` (standard library; shared by `bootstrap.py` and `ops/mycelium`) |
 | Nightly research run | `ops/nightly/manual_all.py` (fired by `mylo-daily.timer`); its container stages come from the loaded tools (`tools/_framework/nightly.py`) |
 | On-demand re-score everyone | `ops/nightly/manual_mylo.py` |
 | Illinois fellowship scrape → import (host, Playwright) | `tools/retrieval/host/scrape_fellowships.py` |
@@ -461,8 +470,8 @@ A task index across the three tools; each tool also has its own section below.
 | Mylo chat in Discord: routing a DM, `@Mylo` or a reply; status line, answer, Stop, slow-answer ping, recovery; `/mylo ask`, `/mylo forget`, `/mylo chat …` | `mylo/chat.py` (bridge and `route`), `mylo/bot/cogs/chat.py` (delivery), `mylo/bot/chat_render.py` (pure rendering), the route call in `mylo/bot/cogs/listen.py`, commands in `mylo/bot/cogs/mylo_commands.py`; whose room a message is in: `place_for` in `web/backend/apps/integrations/services/resolve.py`; gate actions `chat`, `chat_guest`, `chat_manage`, `chat_self`, `chat_forget` in `web/backend/apps/integrations/services/gate.py` |
 | Hearing a conversation and handing it to the ledger | `mylo/bot/cogs/listen.py` (Stage A: DMs, mentions, reactions on Mylo's posts, edits, deletions, the *Tell Mylo about this* action; Stage B behind `MYLO_LISTEN_ENABLED` **and** the Message Content intent, both off) + `mylo/listening.py` |
 | Turning listening on for a server, excluding channels, the pinned notice | `/setup`'s Listening section in `mylo/bot/cogs/setup.py`; one person's own opt-in is `/mylo listening` in `mylo/bot/cogs/mylo_commands.py` |
-| systemd units | `ops/systemd/` — `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service`; installed by `ops/mycelium install-service` |
-| Gateway routing | `web/infra/nginx/default.conf` (incl. `location /demo`) |
+| systemd units | `ops/systemd/` — `mycelium.service`, `mycelium-update.service`, `mylo-daily.{service,timer}`, `mylo-bot.service` (hardened); installed by `sudo python3 ops/mycelium install-service` |
+| Gateway routing | `web/infra/nginx/default.conf` (incl. `location /demo`), plus the public-site include: `landing-static.conf` (production, the `astro build` output) or `landing-dev.conf` (`make dev`, the Astro dev server) |
 | The public demo: the door (`/api/demo/` → `/api/` as the demo viewer, read-only), Mylo's question budget, the world and its build | `web/backend/apps/demo/` — `middleware.py`, `budget.py`, `world.py` (`DOMAIN`, `exclude_demo_users`, `nightly_users` / `nightly_skipped_scopes` — the nightly leaves the world out while the demo is off), `models.py` (`DemoWorld`, `DemoQuestion`), `world.yaml` (the fictional lab), `manage.py demo build\|refresh\|status\|delete`; config `[demo]` in `web/backend/config/instance.py` |
 | The public demo in the app: `/demo/*` → `/app/*`, demo-aware links and API base, the banner, Mylo's question budget and slowness note (`DemoNote`) | `web/app/src/proxy.ts`, `web/app/src/app/demo/page.tsx` (entry), `web/app/src/lib/demo.ts` (`toDemoPath`, `canonicalPath`), `web/app/src/components/demo/` (`DemoProvider`, `useAppHref`, `useAppRouter`, `DemoBanner`), `appRedirect` in `lib/auth-server.ts`, `getPublicApiBase` in `lib/api-url.ts`, `DemoNote` and `DemoAsked` in `components/portal/mylo/chat-panel.tsx`; the ESLint rule in `web/app/eslint.config.mjs` |
 | Env contract | `.env.example`, `.env-mylo.example` |
@@ -477,9 +486,9 @@ A task index across the three tools; each tool also has its own section below.
 | Pool contrast against the **production** store (not LongEval) | `docs/research/experiments/EXP-2026-08-013-production-pool-contrast/code/` — `production_pool.py` builds the union-pool variants on top of the deployed `_build_pool`/`fuse_interest`; `run.py` scores them against the real `ContentItem` rows over a compose `postgres`. Nothing under `apps/content` is modified |
 | Research record (experiments, claims, figures) | `docs/research/` — start at [`research/README.md`](research/README.md) |
 | Research-record tooling | `ops/research/` — `new_experiment.py`, `validate_research.py`, `generate_index.py`, `build_figures.py`, `manifest.schema.json`; driven by the root `Makefile` |
-| First-time setup (`make setup [PROFILE=…]`: picks a profile and writes `mycelium.toml`, writes `.env`, builds, migrates, first admin) | `ops/setup/bootstrap.py` |
+| First-time setup (`make setup [PROFILE=…] [YES=1]`: picks a profile and writes `mycelium.toml`, asks the public hostname and the model, writes `.env` 0600 with generated secrets, builds, migrates, first admin with a password printed once, then the "run these yourself" block) | `ops/setup/bootstrap.py` |
 | Changing the instance configuration (`ops/mycelium config` / `make config ARGS=…`: profiles, init, show, explain, get, set, unset, validate, diff, recommend; all `--json`) | `ops/setup/config_cli.py`; tests `web/backend/apps/core/test_config_cli.py` |
-| Admin bootstrap (`make admin NAME=…`) | `ops/setup/create_admin.py` |
+| Admin bootstrap (`make admin NAME=…`; prompts for or generates the password, never stores it) | `ops/setup/create_admin.py` |
 | Every root command | `Makefile` (`make help`); tools: `make tools-check`, `tools-plan`, `tools-matrix`, `new-tool` |
 | README banner (generated, committed) | `docs/assets/header.svg`, written by `ops/readme/make_header.py` from `web/art/logo/logo-colored.svg`; re-run it when the logo or the README's first sentence changes |
 | README screenshots (committed) | `docs/assets/screenshot-{hero,report,feeds}.webp`, captured from the landing dev server by `ops/readme/screenshots.py` |
@@ -529,7 +538,6 @@ All under `web/backend/apps/*/management/commands/`. Run with
 | `high_signal_shadow` | Shadow-run the high-signal alert rule |
 | `create_admin`, `seed_demo`, `loadtest_purge` | Ops utilities (`seed_demo` makes hundreds of synthetic org-chart users; it is not the public demo) |
 | `demo build\|refresh\|status\|delete` | The public demo's fictional lab (`apps/demo`): build from `world.yaml` and rank it once; run the nightly's search, ranking and reports for it now; show what each target holds and how fresh it is; remove it |
-| `seed_fsu_sc` | Simulated FSU Dept. of Scientific Computing + PULSE Lab (public roster names, non-deliverable `@fsu-sc.mycelium.invalid` emails); the lab sits in the department but stays off its plan, on its own Lab plan |
 
 ## Documentation
 

@@ -14,13 +14,17 @@ What a person sees (S-9, S-12):
 4. An answer slower than the configured minutes is a new reply that pings the
    asker and nobody else; the status message then says "Answered below."
 
-Every send and edit carries ``AllowedMentions.none()``, except that one ping.
+Every send and edit carries ``AllowedMentions.none()``, except that one ping,
+and suppresses link previews (``suppress_embeds=True`` on a send,
+``suppress=True`` on an edit): Discord fetches a previewed URL with no click,
+so a prompt-injected link in an answer must never unfurl.
 A listener never kills the gateway: every handler is wrapped.
 """
 
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import time
 
@@ -49,6 +53,24 @@ def _reply_to(message) -> str:
 
 def _none() -> discord.AllowedMentions:
     return discord.AllowedMentions.none()
+
+
+def _quiet_edit(message) -> dict:
+    """``suppress=True`` where the message's ``edit`` takes it.
+
+    ``discord.Message.edit`` defaults ``suppress`` to ``False`` and so would
+    turn previews back on with every edit; a webhook (``/mylo ask``) or
+    partial message has no such argument and keeps the flag it was sent with.
+    """
+    try:
+        params = inspect.signature(message.edit).parameters
+    except (AttributeError, TypeError, ValueError):
+        return {}
+    if "suppress" in params or any(
+        p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
+    ):
+        return {"suppress": True}
+    return {}
 
 
 def _only(discord_user_id: str) -> discord.AllowedMentions:
@@ -174,7 +196,10 @@ class ChatCog(commands.Cog, name="Chat"):
             )
             if "refusal" in out:
                 await interaction.followup.send(
-                    out["refusal"], ephemeral=True, allowed_mentions=_none()
+                    out["refusal"],
+                    ephemeral=True,
+                    allowed_mentions=_none(),
+                    suppress_embeds=True,
                 )
                 return
             handle = out["handle"]
@@ -183,6 +208,7 @@ class ChatCog(commands.Cog, name="Chat"):
                 ephemeral=private,
                 wait=True,
                 allowed_mentions=_none(),
+                suppress_embeds=True,
                 view=stop_view(handle.turn_id),
             )
             handle = await self.bridge.set_status(handle, status.id) or handle
@@ -193,7 +219,11 @@ class ChatCog(commands.Cog, name="Chat"):
     async def _reply(self, message, content: str, *, view=None):
         """Reply to the question without pinging anyone; ``None`` when Mylo
         cannot post here (nothing is sent, and it is logged)."""
-        kwargs = {"allowed_mentions": _none(), "mention_author": False}
+        kwargs = {
+            "allowed_mentions": _none(),
+            "mention_author": False,
+            "suppress_embeds": True,
+        }
         if view is not None:
             kwargs["view"] = view
         try:
@@ -243,7 +273,7 @@ class ChatCog(commands.Cog, name="Chat"):
             self._active.discard(handle.turn_id)
 
     async def _edit(self, status, content: str, *, view=discord.utils.MISSING):
-        kwargs = {"content": content, "allowed_mentions": _none()}
+        kwargs = {"content": content, "allowed_mentions": _none(), **_quiet_edit(status)}
         if view is not discord.utils.MISSING:
             kwargs["view"] = view
         try:
@@ -253,7 +283,7 @@ class ChatCog(commands.Cog, name="Chat"):
             return False
 
     async def _send(self, channel, content: str, *, allowed=None, reference=None):
-        kwargs = {"allowed_mentions": allowed or _none()}
+        kwargs = {"allowed_mentions": allowed or _none(), "suppress_embeds": True}
         if reference is not None:
             kwargs["reference"] = reference
         try:
@@ -411,7 +441,9 @@ class ChatCog(commands.Cog, name="Chat"):
         await interaction.response.defer(ephemeral=True)
         handle = await self.bridge.handle_for(int(turn_id))
         if handle is None:
-            await interaction.followup.send("That answer has already finished.", ephemeral=True)
+            await interaction.followup.send(
+                "That answer has already finished.", ephemeral=True
+            )
             return
         refused = await self.bridge.stop(handle, str(interaction.user.id))
         await interaction.followup.send(refused or "Stopping.", ephemeral=True)
@@ -429,7 +461,11 @@ class ChatCog(commands.Cog, name="Chat"):
             return
         try:
             if interaction.message is not None:
-                await interaction.message.edit(view=None, allowed_mentions=_none())
+                await interaction.message.edit(
+                    view=None,
+                    allowed_mentions=_none(),
+                    **_quiet_edit(interaction.message),
+                )
         except discord.HTTPException:
             pass
         out = await self.bridge.ask(

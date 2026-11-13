@@ -25,7 +25,7 @@ def _grant(ext="g1", *, due=date(2026, 12, 1), confidence=None):
     confidence = confidence or ContentDeadline.Confidence.CONFIRMED
     item = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=ext,
         metadata={"title": "Neural grant", "website": "https://x.test"},
     )
@@ -236,7 +236,7 @@ def test_deadlines_array_lets_composer_pick_kind(client) -> None:
     user = _user()
     client.force_authenticate(user)
     item = ContentItem.objects.create(
-        type=ContentItem.Type.CONFERENCE, source="pivot", external_id="c1"
+        type=ContentItem.Type.CONFERENCE, source="legacy", external_id="c1"
     )
     ContentDeadline.objects.create(
         content=item,

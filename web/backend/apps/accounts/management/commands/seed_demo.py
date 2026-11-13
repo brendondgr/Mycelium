@@ -1,15 +1,22 @@
 """Populate the database with demo departments, labs, and people.
 
 Generates a clean, varied organisation structure so the data model can be
-explored. Every user gets an individual login — name, username,
-``@demo.mycelium.test`` email, role, and a unique password — and the full
-credential list is written to ``data/logins/demo_users.csv`` so you can sign in
-as any of them. Every record is marked as demo data (users by email domain,
-labs by a ``demo-`` slug prefix), so the command can safely clear and
-regenerate, or delete, without touching real data.
+explored. Every person is fictional: name, username, ``@demo.mycelium.test``
+email and role. By default nobody can sign in (``set_unusable_password``); with
+``--passwords`` each user gets a unique password from :mod:`secrets`. The list of
+people (and passwords, when made) is written to ``data/logins/demo_users.csv``,
+readable by its owner only (mode 0600). Every record is marked as demo data
+(users by email domain, labs by a ``demo-`` slug prefix), so the command can
+safely clear and regenerate, or delete, without touching real data.
 
-    # create/refresh demo data and write the credentials file
+It refuses to seed an instance running with ``DEBUG`` off unless ``--force``
+is given: hundreds of accounts do not belong on a production instance by
+accident. ``--delete`` always works.
+
+    # create/refresh demo data (no usable passwords) and write the people file
     uv run --project web/backend python web/backend/manage.py seed_demo
+    # ... with a password per user, to sign in as any of them
+    uv run --project web/backend python web/backend/manage.py seed_demo --passwords
     uv run --project web/backend python web/backend/manage.py seed_demo --users 600
     # add more without clearing existing demo data
     uv run --project web/backend python web/backend/manage.py seed_demo --no-clear
@@ -19,7 +26,9 @@ regenerate, or delete, without touching real data.
 
 import argparse
 import csv
+import os
 import random
+import secrets
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -151,6 +160,19 @@ class Command(BaseCommand):
             help="Directory for the credentials CSV (default: data/logins/).",
         )
         parser.add_argument(
+            "--passwords",
+            action="store_true",
+            help=(
+                "Give every user a random password (from `secrets`) and list it "
+                "in the credentials file. Default: unusable passwords."
+            ),
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Seed even though settings.DEBUG is off.",
+        )
+        parser.add_argument(
             "--from-authors",
             default=None,
             help=(
@@ -172,7 +194,15 @@ class Command(BaseCommand):
                 self.stdout.write(f"  Removed credentials file: {logins_path}")
             return
 
+        if not settings.DEBUG and not options["force"]:
+            raise CommandError(
+                "DEBUG is off, so this looks like a production instance; "
+                "seed_demo creates hundreds of accounts. Pass --force if you "
+                "really mean to seed it."
+            )
+
         self.passwords: dict[int, str] = {}
+        self.with_passwords = bool(options["passwords"])
 
         if options["from_authors"]:
             self._seed_from_authors(
@@ -190,10 +220,16 @@ class Command(BaseCommand):
         self.dept_labs: dict[str, list[Lab]] = {}
 
         target = options["users"]
-        self.stdout.write(
-            f"Creating ~{target} demo users with individual logins "
-            f"(hashing passwords, this can take ~{max(2, target // 11)}s)..."
-        )
+        if self.with_passwords:
+            self.stdout.write(
+                f"Creating ~{target} demo users with individual logins "
+                f"(hashing passwords, this can take ~{max(2, target // 11)}s)..."
+            )
+        else:
+            self.stdout.write(
+                f"Creating ~{target} demo users (no usable passwords; "
+                "--passwords to make logins)..."
+            )
 
         with transaction.atomic():
             if options["clear"]:
@@ -276,14 +312,18 @@ class Command(BaseCommand):
         )
         resolved_areas = areas or random.sample(FIELDS, k=random.randint(1, 3))
 
-        password = self._password()
         user = User(
             username=username,
             email=f"{username}@{DEMO_DOMAIN}",
             first_name=first,
             last_name=last,
         )
-        user.set_password(password)  # hashes with the project's real hashers
+        if self.with_passwords:
+            password = self._password()
+            user.set_password(password)  # hashes with the project's real hashers
+        else:
+            password = ""
+            user.set_unusable_password()
         user.save()  # post_save signal creates the Profile
         self.passwords[user.id] = password
 
@@ -302,7 +342,9 @@ class Command(BaseCommand):
         return user
 
     def _password(self) -> str:
-        return "".join(random.choice(PASSWORD_ALPHABET) for _ in range(12))
+        # `secrets`, never the seeded `random` above: a seeded generator would
+        # make every instance's demo passwords the same, and guessable.
+        return "".join(secrets.choice(PASSWORD_ALPHABET) for _ in range(12))
 
     # -- structure builders ------------------------------------------------
 
@@ -608,7 +650,10 @@ class Command(BaseCommand):
             "academic_title", "institution", "affiliation",
             "orcid", "openalex_id", "scholar_id",
         ]
-        with logins_path.open("w", newline="", encoding="utf-8") as fh:
+        # Owner-only from the first byte (and tightened if the file existed).
+        fd = os.open(logins_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", newline="", encoding="utf-8") as fh:
             writer = csv.DictWriter(fh, fieldnames=fields)
             writer.writeheader()
             writer.writerows(rows)

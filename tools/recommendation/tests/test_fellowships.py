@@ -1,6 +1,5 @@
 """Unit tests for the fellowship eligibility rule engine.
 
-Adapted from /home/bdgr/Tools/ProQuest/tests/test_fellowships_recommend.py.
 No ORM, no pgvector, no LLM — all tests are pure-Python except the E2E
 match test which seeds ContentItem rows and needs django_db.
 """

@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AnonymousUser, User
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import BasePermission
 
 from .models import Department, DeptMembership, Lab, LabMembership
 from .services import effective_member_ids
@@ -97,6 +98,27 @@ def user_outranks_lab_member(user: UserOrAnon, lab: Lab, target: User) -> bool:
     return lab_role_rank(user, lab) > lab_role_rank(target, lab)
 
 
+def user_can_invite_with_lab_role(user: UserOrAnon, lab: Lab, role: str) -> bool:
+    """Whether ``user`` may bring someone into ``lab`` *as* ``role``.
+
+    Every path that grants a lab role — a direct add, a legacy invitation, an
+    emailed invitation or a share link — asks this one question, so the rule
+    cannot be skipped by picking a different door:
+
+    * ``owner`` is never granted this way. Ownership moves only by
+      :func:`apps.accounts.services.transfer_lab_ownership`.
+    * ``admin`` only from the owner — the strict rank rule above.
+    * ``member`` and ``viewer`` from anyone who may invite at all, which also
+      covers a lead PI whose own role is ``member``; holding the lab's PI badge
+      is what lets them invite people, not their role column.
+    """
+    if role not in LAB_ROLE_RANK or role == LabMembership.Role.OWNER:
+        return False
+    if role == LabMembership.Role.ADMIN:
+        return user_can_grant_lab_role(user, lab, role)
+    return user_can_invite_to_lab(user, lab)
+
+
 def user_can_edit_lab_profile(user: UserOrAnon, lab: Lab) -> bool:
     """A lab's interest profile is edited by its lead PI or owner/admin (brief G)."""
     if not user.is_authenticated:
@@ -171,6 +193,66 @@ def user_email_verified(user: UserOrAnon) -> bool:
     return bool(profile and profile.is_verified)
 
 
+#: The routes an unactivated account still reaches, by URL name: everything it
+#: needs to *become* activated (read the account, fix a typo'd address, verify,
+#: resend), to leave (sign out, sign out everywhere, delete or export its data),
+#: and to answer an invitation — joining what someone asked you into is the one
+#: thing verification never gates (see ``InviteAcceptView``).
+VERIFICATION_EXEMPT_URL_NAMES = frozenset(
+    {
+        "auth-me",
+        "auth-me-no-slash",
+        "auth-logout",
+        "auth-logout-no-slash",
+        "account",
+        "account-no-slash",
+        "account-export",
+        "account-export-no-slash",
+        "account-delete-request",
+        "account-delete-request-no-slash",
+        "sessions-revoke",
+        "sessions-revoke-no-slash",
+        "email-change",
+        "email-change-no-slash",
+        "email-verify",
+        "email-verify-no-slash",
+        "email-resend",
+        "email-resend-no-slash",
+        "invite-accept",
+        "invite-accept-no-slash",
+    }
+)
+
+
+class VerifiedEmailRequired(BasePermission):
+    """The API's default gate: an activated account, when the instance asks.
+
+    When ``signup.verify_email`` is on or sign-up is in domain mode, an account
+    that has not proved its address reaches only the routes in
+    :data:`VERIFICATION_EXEMPT_URL_NAMES` until it does. Anonymous requests are
+    left to ``IsAuthenticated`` (and ``AllowAny`` views never reach this, since
+    they replace the default classes). With verification off this is inert —
+    :func:`user_email_verified` is then true for every account.
+    """
+
+    message = UNVERIFIED_MESSAGE
+
+    def has_permission(self, request, view) -> bool:
+        from django.conf import settings
+
+        if not getattr(settings, "API_REQUIRE_VERIFIED_EMAIL", True):
+            return True
+        user = request.user
+        if not user or not user.is_authenticated:
+            return True  # IsAuthenticated answers for the anonymous
+        if getattr(getattr(request, "_request", request), "demo", None) is not None:
+            return True  # the public demo's viewer is a fixture, not a sign-up
+        if user_email_verified(user):
+            return True
+        match = getattr(request, "resolver_match", None)
+        return bool(match and match.url_name in VERIFICATION_EXEMPT_URL_NAMES)
+
+
 def require_verified_email(user: UserOrAnon) -> None:
     """Refuse the caller unless their account is activated.
 
@@ -191,3 +273,65 @@ def user_can_invite_to_department(user: UserOrAnon, department: Department) -> b
     authority differs (a lab also lets its lead PI invite).
     """
     return user_can_manage_department(user, department)
+
+
+#: Department roles, ranked — the department twin of :data:`LAB_ROLE_RANK`, with
+#: the same downward rule: an actor acts only on people below them and grants only
+#: roles below their own. Without it any department admin could add an owner,
+#: appoint fellow admins, or remove the head's other admins.
+DEPT_ROLE_RANK: dict[str, int] = {
+    DeptMembership.Role.OWNER: 3,
+    DeptMembership.Role.ADMIN: 2,
+    DeptMembership.Role.MEMBER: 1,
+    DeptMembership.Role.VIEWER: 0,
+}
+
+
+def dept_role_rank(user: UserOrAnon, department: Department) -> int:
+    """``user``'s authority in ``department``; ``-1`` for a non-member.
+
+    ``Department.owner`` is the head whatever their membership row says, so they
+    rank as owner even with no ``DeptMembership`` at all.
+    """
+    if not user.is_authenticated:
+        return -1
+    if department.owner_id == user.id:
+        return DEPT_ROLE_RANK[DeptMembership.Role.OWNER]
+    membership = DeptMembership.objects.filter(
+        user=user, department=department
+    ).first()
+    if membership is None:
+        return -1
+    return DEPT_ROLE_RANK.get(membership.role, 0)
+
+
+def user_can_grant_dept_role(
+    user: UserOrAnon, department: Department, role: str
+) -> bool:
+    """Whether ``user`` may bring someone into ``department`` as ``role``.
+
+    Strictly below their own rank, and never ``owner``: the head is
+    ``Department.owner``, which no invitation or add can hand over.
+    """
+    granted = DEPT_ROLE_RANK.get(role)
+    if granted is None or role == DeptMembership.Role.OWNER:
+        return False
+    return dept_role_rank(user, department) > granted
+
+
+def user_outranks_dept_member(
+    user: UserOrAnon, department: Department, target: User
+) -> bool:
+    """Whether ``user`` may act on ``target`` — remove them, or re-role them."""
+    return dept_role_rank(user, department) > dept_role_rank(target, department)
+
+
+def user_owns_lab(user: UserOrAnon, lab: Lab) -> bool:
+    """Whether ``user`` holds ``lab``'s owner role — the one authority that may
+    put the lab under a department, because doing so shows the department's heads
+    every project and every member of the lab."""
+    if not user.is_authenticated:
+        return False
+    return LabMembership.objects.filter(
+        user=user, lab=lab, role=LabMembership.Role.OWNER
+    ).exists()

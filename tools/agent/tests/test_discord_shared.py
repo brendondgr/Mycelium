@@ -12,6 +12,7 @@ import pytest
 from tools.agent import loop, permissions, service, store
 from tools.agent.caller import Audience, Caller, Guest, Scope, for_thread, for_turn
 from tools.agent.models import AgentOrgPolicy, AgentQueuedMessage, AgentThread
+from tools.agent.registry import registry
 
 pytestmark = pytest.mark.django_db
 
@@ -105,6 +106,7 @@ def results(thread, after=0):
 def test_two_members_and_a_guest_take_turns_each_with_their_own_functions(
     place, scripted
 ):
+    AgentOrgPolicy.objects.create(lab=place.lab, discord_guests="full")  # opted in
     a, b, g = (
         member(place.member, place.lab),
         member(place.admin, place.lab),
@@ -145,6 +147,7 @@ def test_two_members_and_a_guest_take_turns_each_with_their_own_functions(
 
 
 def test_a_guest_reads_the_place_and_is_refused_elsewhere(place, scripted):
+    AgentOrgPolicy.objects.create(lab=place.lab, discord_guests="full")  # opted in
     a, g = member(place.member, place.lab), guest(place.lab)
     thread = shared_thread(a)
     ask(a, thread, "what is our lab about?")
@@ -201,12 +204,47 @@ def test_a_guest_reads_the_place_and_is_refused_elsewhere(place, scripted):
     assert "[Visitor, guest]" in first[-1]["content"]
 
 
+PUBLIC_CATALOG = {
+    "corpus_item",
+    "corpus_search",
+    "find_functions",
+    "fulltext_availability",
+    "fulltext_read_paper",
+    "fulltext_search_paper",
+    "load_functions",
+    "read_skill",
+}
+
+
+def test_a_guest_sees_no_people_until_the_lab_raises_the_level(place):
+    """Someone in the lab's Discord with no account cannot list the lab's
+    members, usernames or interests by default: a lab that never chose a
+    level gives guests public material only."""
+    g = guest(place.lab)
+    assert permissions.guest_level(g) == "public"
+    default = {fn.name for fn in permissions.allowed_functions(g)}
+    assert default == PUBLIC_CATALOG
+    assert "org_lab_members" not in default
+    decision = permissions.decide(g, registry().get("org_lab_members"), {})
+    assert decision.verdict == "deny"
+    assert service.guest_level_in_force("lab", place.lab) == "public"
+
+    # a policy row saved for something else does not raise it either
+    AgentOrgPolicy.objects.create(lab=place.lab, groups_off=[])
+    assert permissions.guest_level(g) == "public"
+
+    # the lab opts in
+    AgentOrgPolicy.objects.filter(lab=place.lab).update(discord_guests="full")
+    assert "org_lab_members" in {fn.name for fn in permissions.allowed_functions(g)}
+
+
 def test_guest_levels_narrow_the_catalog_and_off_refuses(place):
     g = guest(place.lab)
+    AgentOrgPolicy.objects.create(lab=place.lab, discord_guests="full")
     full = {fn.name for fn in permissions.allowed_functions(g)}
     assert {"org_lab_members", "org_person", "knowledge_people_for_call"} <= full
 
-    AgentOrgPolicy.objects.create(lab=place.lab, discord_guests="no_people")
+    AgentOrgPolicy.objects.filter(lab=place.lab).update(discord_guests="no_people")
     no_people = {fn.name for fn in permissions.allowed_functions(g)}
     assert full - no_people == {
         "org_lab_members",
@@ -216,16 +254,7 @@ def test_guest_levels_narrow_the_catalog_and_off_refuses(place):
 
     AgentOrgPolicy.objects.filter(lab=place.lab).update(discord_guests="public")
     public = {fn.name for fn in permissions.allowed_functions(g)}
-    assert public == {
-        "corpus_item",
-        "corpus_search",
-        "find_functions",
-        "fulltext_availability",
-        "fulltext_read_paper",
-        "fulltext_search_paper",
-        "load_functions",
-        "read_skill",
-    }
+    assert public == PUBLIC_CATALOG
 
     AgentOrgPolicy.objects.filter(lab=place.lab).update(discord_guests="off")
     with pytest.raises(service.ServiceError) as err:
@@ -258,6 +287,7 @@ def test_entitled_access_asks_for_the_plan_in_discord_only(place, settings):
 def test_a_guest_never_sees_more_about_a_person_than_a_member(place, scripted):
     from tools.agent import dispatch
 
+    AgentOrgPolicy.objects.create(lab=place.lab, discord_guests="full")  # opted in
     m = member(place.admin, place.lab)
     g = guest(place.lab)
     thread = shared_thread(m)

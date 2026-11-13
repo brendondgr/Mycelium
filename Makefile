@@ -11,8 +11,8 @@ RESEARCH_RUN := uv run --project ops/research
 SCRIPTS := ops/research
 
 .DEFAULT_GOAL := help
-.PHONY: help setup config up down restart build status logs migrate admin gpu-up \
-	test test-mylo lint nightly \
+.PHONY: help setup config up dev down restart build status doctor logs migrate admin \
+	backup restore gpu-up test test-mylo lint nightly \
 	new-experiment validate-research research-index figures figures-check research-ci
 
 help: ## Show these targets
@@ -21,26 +21,32 @@ help: ## Show these targets
 
 # ── Setup and the stack ──────────────────────────────────────────────────────
 
-setup: ## First run: pick a profile, write .env, build, create the first admin [PROFILE=lab]
-	@$(PYTHON) ops/setup/bootstrap.py $(if $(PROFILE),--profile $(PROFILE))
+setup: ## First run: asks hostname + model, writes .env, builds, first admin [PROFILE=lab] [YES=1]
+	@$(PYTHON) ops/setup/bootstrap.py $(if $(PROFILE),--profile $(PROFILE)) $(if $(YES),--yes)
 
 config: ## Read or change mycelium.toml: make config ARGS="show" (see `make config ARGS=-h`)
 	@$(PYTHON) ops/setup/config_cli.py $(or $(ARGS),show)
 
-up: ## Start the stack (detached) and apply migrations
-	@$(STACK) start
+up: ## Start the production stack (gunicorn, next start, static site) and migrate
+	@$(STACK) start --prod
+
+dev: ## Start the hot-reload stack instead (next dev, astro dev, runserver, DEBUG on)
+	@$(STACK) start --dev
 
 down: ## Stop the stack
 	@$(STACK) stop
 
-restart: ## Stop, then start the stack
+restart: ## Stop, then start the stack in the mode it last ran in
 	@$(STACK) restart
 
 build: ## Rebuild the images, then start the stack
 	@$(STACK) build
 
-status: ## Show containers, Mylo, and endpoint health
+status: ## Containers, endpoints, Mylo, and the steps still to run by hand
 	@$(STACK) status
+
+doctor: ## Check the instance end to end (stack, model, corpus, exposure); exit 1 on a problem
+	@$(STACK) doctor
 
 logs: ## Follow the stack's logs
 	@$(STACK) logs
@@ -48,11 +54,20 @@ logs: ## Follow the stack's logs
 migrate: ## Apply database migrations against the running stack
 	@$(STACK) migrate
 
-admin: ## Create or promote an admin: make admin NAME=alice [EMAIL=alice@example.org]
+admin: ## Create or promote an admin (prompts for, or generates, the password): make admin NAME=alice
 ifndef NAME
 	$(error NAME is required, e.g. make admin NAME=alice)
 endif
 	@$(PYTHON) ops/setup/create_admin.py "$(NAME)" $(if $(EMAIL),--email "$(EMAIL)")
+
+backup: ## Database dump + uploaded files + mycelium.toml into data/backups/ (mode 0600)
+	@$(STACK) backup
+
+restore: ## Put a backup back: make restore FILE=data/backups/mycelium-<stamp>.tar.gz
+ifndef FILE
+	$(error FILE is required, e.g. make restore FILE=data/backups/mycelium-20261112-030000.tar.gz)
+endif
+	@$(STACK) restore "$(FILE)"
 
 gpu-up: ## Start the stack with CUDA embedding (needs nvidia-container-toolkit)
 	docker compose -f compose.yaml -f ops/compose.gpu.yaml up -d
@@ -83,8 +98,11 @@ endif
 lint: ## Astro check, Next.js eslint, backend ruff
 	npm run lint
 
-nightly: ## Run the nightly research pipeline once, now, against the running stack
-	uv run ops/nightly/manual_all.py
+# Every stage runs inside the backend container (docker compose exec); the
+# host side is a standard-library orchestrator, so plain python3 runs it when
+# uv is not installed. Only the fellowship browser scrape needs the host's uv.
+nightly: ## Run the collection and ranking pipeline once, now (the first collection, too)
+	@$(if $(shell command -v uv 2>/dev/null),uv run,$(PYTHON)) ops/nightly/manual_all.py
 
 # ── Research record (docs/research/) ─────────────────────────────────────────
 

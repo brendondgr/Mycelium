@@ -7,9 +7,9 @@ the list. It does not reopen "typed institutions"; the subject still cannot set
 their own. An operator does, by name, and the grant records who and when.
 
     uv run --project web/backend python web/backend/manage.py \\
-        grant_institution --user olmozavala --institution "Florida State University"
+        grant_institution --user <username> --institution "<institution>"
     ... --revoke                 # drop the grant, fall back to the address
-    ... --actor bdgr             # who is accountable (defaults to no actor)
+    ... --actor <operator>       # who is accountable (defaults to no actor)
 
 The institution must already exist in the affiliation directory, so a grant can
 place someone but never invent somewhere. If it is genuinely missing, add it to

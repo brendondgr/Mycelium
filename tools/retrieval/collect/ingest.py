@@ -1,17 +1,13 @@
 """Upsert open-collector grants/conferences into ``ContentItem``, and prune expired.
 
-The collector's twin of Pivot-RP's own ``apps.scraper.pivot.ingest`` (plan
-Phase 4), which this module replaces for the ``grants:<adapter>`` /
-``conf:<adapter>`` sources :mod:`tools.retrieval.collect.mapping` produces — the
-mechanics below are deliberately the same shape, minus everything that was
-Pivot-specific: fellowships, the ``PivotItem`` dataclass, and the constraint
-extraction pass, none of which this module ever touches. Pivot-RP itself was
-deleted in plan Phase 6; fellowship ingest and constraint extraction now live
-permanently in :mod:`tools.retrieval.fellowships.ingest`, not here.
+Ingest for the ``grants:<adapter>`` / ``conf:<adapter>`` sources
+:mod:`tools.retrieval.collect.mapping` produces (plan Phase 4). Fellowships and
+their constraint extraction are not handled here; they live in
+:mod:`tools.retrieval.fellowships.ingest`.
 
 **Runtime order is ingest -> extract (Phase 8) -> embed** (plan D10), and that
 ordering is why this module's embedding step is a separate function rather
-than folded into the upsert the way Pivot's was. Phase 8's verified
+than folded into the upsert. Phase 8's verified
 extraction — or, for a refused record, its truncated raw-text fallback — is
 what :func:`~tools.retrieval.collect.extract.apply_to_metadata` writes to
 ``metadata["search_text"]``, directly against the stored ``ContentItem``. By
@@ -23,16 +19,15 @@ yet reached simply carries no ``search_text`` key and is silently skipped by
 is exactly what keeps a raw 11,411-character NSF description from ever being
 embedded directly (plan D9).
 
-Three guarantees the daily job relies on, same as Pivot's:
+Three guarantees the daily job relies on:
 
-* **Idempotent upsert** keyed on ``(source, external_id)`` — the same partial
-  unique constraint Pivot used (``content_item_unique_source_external_id``).
+* **Idempotent upsert** keyed on ``(source, external_id)`` — the partial
+  unique constraint ``content_item_unique_source_external_id``.
   A record already present is updated, never re-inserted.
 * **``first_seen`` is immutable** — written once and preserved on every later
   upsert (the "New" pin logic reads it).
-* **A re-ingest of unchanged input writes nothing.** This is new relative to
-  Pivot, which always wrote every touched row regardless of whether its
-  content had actually changed. Two things force the change here: the
+* **A re-ingest of unchanged input writes nothing**, whatever the earlier
+  ingest did. Two things force this: the
   ⚠️ in the plan — ``run_analytics.collect_discovery`` counts
   ``ContentItem.created_at`` on the run day, so a nightly that re-inserted
   would report a fake discovery spike, and an always-write upsert makes the
@@ -43,8 +38,7 @@ Three guarantees the daily job relies on, same as Pivot's:
 ``map_conference`` are pure functions of the collector's own record and know
 nothing about extraction or embeddings, so a freshly mapped item never carries
 ``search_text``, ``embedding_model``, or any of Phase 8's bookkeeping keys.
-Wholesale-replacing ``metadata`` on every upsert — which is what keeping
-Pivot's mechanics literally would do — would silently erase a paid-for
+Wholesale-replacing ``metadata`` on every upsert would silently erase a paid-for
 extraction verdict and force a needless re-embed on every single nightly
 re-scrape of source data that has not moved. ``_DERIVED_KEYS`` is carried
 forward from the existing row for exactly this reason; see ``upsert_items``.
@@ -63,7 +57,7 @@ from django.utils import timezone
 from tools.retrieval.models import ContentItem
 
 # An embedder maps a batch of texts to vectors, or ``None`` when unavailable
-# (the ``embeddings`` extra is not installed). Same contract as Pivot's.
+# (the ``embeddings`` extra is not installed).
 Embedder = Callable[[Sequence[str]], list[list[float]] | None]
 
 Log = Callable[[str], None]
@@ -161,10 +155,10 @@ def _material_change(old: dict[str, Any], new: dict[str, Any]) -> str:
 class IngestSummary:
     """What one ingest pass did.
 
-    Shaped after Pivot-RP's own ``PivotIngestSummary`` so the analytics stage
-    that reads it (``run_analytics``) keeps working, with one deliberate
-    substitution: Pivot's ``constrained`` (how many fellowships had their
-    eligibility prose read by the model) has no equivalent here — this module
+    Shaped so the analytics stage that reads it (``run_analytics``) keeps
+    working, with one deliberate gap: a ``constrained`` count (how many
+    fellowships had their eligibility prose read by the model) has no
+    equivalent here — this module
     never touches fellowships, which have their own permanent ingest path at
     :mod:`tools.retrieval.fellowships.ingest` (and its own
     ``FellowshipIngestSummary.constrained``) — so it is replaced with
@@ -243,9 +237,7 @@ def upsert_items(
     ``items`` is exactly what :func:`tools.retrieval.collect.mapping.map_grant` /
     ``map_conference`` produce — ``None`` is tolerated inline (``map_grant``
     returns it for a filtered ``overlay`` record) and counted as ``skipped``
-    rather than requiring the caller to pre-filter, the same convenience
-    Pivot's own ``ingest_pivot`` gave a raw record that ``build_pivot_item``
-    rejected.
+    rather than requiring the caller to pre-filter.
 
     Does **not** embed — see the module docstring on why that is a separate
     stage now — and does not run Phase 8 extraction, which is a distinct
@@ -280,8 +272,8 @@ def upsert_items(
                 if key in old:
                     meta.setdefault(key, old[key])
 
-            # Same preservation rule Pivot's ingest carried for a
-            # model-extracted ``constraints`` block: an expensive, stable,
+            # The preservation rule for a model-extracted ``constraints``
+            # block: an expensive, stable,
             # LLM-sourced verdict is never displaced by a re-scrape's cheaper
             # pattern-only result. No grant/conference metadata sets
             # ``constraints`` today — that key is fellowship eligibility,
@@ -310,7 +302,7 @@ def upsert_items(
             )
             if unchanged:
                 # Nothing the collector re-scraped actually changed. Writing
-                # anyway (Pivot always did) would make ``updated`` count every
+                # anyway would make ``updated`` count every
                 # unchanged nightly re-scrape as a real update, and defeats
                 # the idempotency guarantee this module exists to add — see
                 # the module docstring and the headline ingest test.
@@ -367,11 +359,12 @@ def _rebuild_deadline_projection(
     Only genuinely touched rows — an unchanged re-scrape's metadata (and
     therefore its deadlines) is already correct in the projection from the
     ingest that first wrote it, so rebuilding again would be pure waste. This
-    is a stricter, cheaper version of Pivot's equivalent, which rebuilt for
-    every row an ingest pass saw whether or not anything had moved.
+    is stricter and cheaper than rebuilding for every row an ingest pass saw
+    whether or not anything had moved.
 
     Phase 5 rewrites what ``deadline_specs_for`` reads for a conference
-    (``metadata["deadlines_structured"]`` instead of ``pivot.deadlines``); the
+    (``metadata["deadlines_structured"]`` instead of a legacy free-text
+    ``deadlines`` string); the
     call site here is unaffected by that change, which is why this function
     is safe to write now, ahead of Phase 5 landing.
     """
@@ -417,9 +410,8 @@ def prune_expired(
     accumulated); ``dry_run`` reports what would go without deleting anything.
 
     **Type-scoped, not source-scoped** (plan Phase 4, point 2 — the fix this
-    function exists to make). Pivot's version filtered on a hard-coded
-    ``OPPORTUNITY_SOURCES = (PIVOT_SOURCE, FELLOWSHIP_SOURCE)`` allow-list, so
-    a record from any source id not in that tuple — every single
+    function exists to make). The earlier version filtered on a hard-coded
+    allow-list of source ids, so a record from any source id not in it — every single
     ``grants:<adapter>`` / ``conf:<adapter>`` row this migration introduces —
     was silently invisible to expiry and would accumulate in the corpus
     forever, never freeing its place in the embedding/retrieval pool.
@@ -514,9 +506,8 @@ def embed_pending(*, embedder: Embedder | None = None, log: Log | None = None) -
     Scoped to ``source`` starting ``grants:`` / ``conf:`` — the prefixes
     :mod:`tools.retrieval.collect.mapping` always writes — rather than just
     ``type in (grant, conference)``, so this function can never reach a
-    still-live Pivot-sourced grant/conference row during the migration
-    window and re-embed it under a different composition than Pivot's own
-    ingest already gave it.
+    still-live legacy grant/conference row during the migration window and
+    re-embed it under a different composition than its own ingest gave it.
     """
     from django.conf import settings
 

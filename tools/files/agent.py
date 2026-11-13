@@ -47,11 +47,7 @@ def resolve_file(caller, key):
 
 
 def search_files(caller, q, limit):
-    rows = [
-        r
-        for r in access.visible_queryset(caller.user)
-        if q.lower() in r.filename.lower()
-    ]
+    rows = access.visible_queryset(caller.user, q=str(q or ""))
     return [_info(r) for r in rows[:limit]]
 
 

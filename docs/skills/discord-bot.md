@@ -140,8 +140,12 @@ Nothing here belongs in code.
 
 1. **New Application** → name it. The application is the identity; the bot is a
    facet of it.
-2. **Bot** tab → copy the **token**. This is shown once. Put it in `.env` as
-   `DISCORD_BOT_TOKEN`. If you ever paste it anywhere else, click **Reset Token**.
+2. **Bot** tab → copy the **token**. This is shown once. In Mycelium it goes in
+   `.env-mylo` (mode 0600) as `DISCORD_API_KEY`, which both the gateway
+   (`mylo/config.py`) and Django read; `DISCORD_BOT_TOKEN` is only a fallback
+   name the backend also accepts. If you ever paste it anywhere else, click
+   **Reset Token**. Starting the bot is in `docs/discord-integration.md`
+   ("Run the gateway").
 3. **Privileged Gateway Intents** — leave all three OFF unless a feature
    genuinely requires them:
    - **Message Content** — needed only to read message text you weren't

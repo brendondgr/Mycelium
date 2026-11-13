@@ -55,11 +55,19 @@ class Command(BaseCommand):
 
     def handle(self, *args: object, **options: object) -> None:
         strict = bool(options.get("strict"))
+        if not getattr(settings, "LLM_ENABLED", True):
+            # `llm.enabled = false`: the instance runs without a model on
+            # purpose, so there is nothing to check and nothing has failed.
+            self.stdout.write(self.style.SUCCESS(
+                "No language model: off on purpose (llm.enabled = false). "
+                "Profiles and write-ups use the deterministic fallback."
+            ))
+            return
         self._print_settings()
         failures = self._servers()
         if failures and strict:
             raise CommandError("; ".join(failures))
-        if not settings.LLM_MODEL:
+        if not settings.LLM_MODEL and _uses_local_server():
             message = (
                 "LLM_MODEL is empty — synthesis will always use the "
                 "deterministic fallback. Set LLM_MODEL to the served model."
@@ -212,6 +220,20 @@ class Command(BaseCommand):
 
 def _environ() -> dict[str, str]:
     return dict(os.environ)
+
+
+def _uses_local_server() -> bool:
+    """Whether the ``local`` server (the one ``LLM_MODEL`` names) is the
+    default or a route target. With only hosted providers in use, an empty
+    ``LLM_MODEL`` is expected, not an error."""
+    from apps.core import llm_servers
+
+    table = llm_servers.table()
+    if table.default == "local":
+        return True
+    routed = {r["server"] for r in llm_servers.routes().values()}
+    routed |= {r.partition(":")[0] for r in table.routes.values()}
+    return "local" in routed
 
 
 def _ping_server(name: str) -> tuple[bool, str]:

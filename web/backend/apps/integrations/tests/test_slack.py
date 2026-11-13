@@ -265,7 +265,11 @@ def test_only_a_lab_manager_can_make_a_lab_code(client, ada):
     lab = Lab.objects.create(name="PULSE", slug="pulse")
     LabMembership.objects.create(user=ada, lab=lab)  # a member, not a manager
     client.force_login(ada)
-    response = client.post("/api/integrations/slack/lab-code/", {"lab": "pulse"})
+    response = client.post(
+        "/api/integrations/slack/lab-code/",
+        {"lab": "pulse"},
+        content_type="application/json",  # the API parses JSON only
+    )
     assert response.status_code == 403
 
 

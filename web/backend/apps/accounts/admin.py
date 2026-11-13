@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from .interests import validate_interests
 from .models import (
     AuditEvent,
+    AuthorWork,
     Department,
     DeptMembership,
     DeptProfile,
@@ -135,3 +136,24 @@ class AuditEventAdmin(admin.ModelAdmin):
     list_filter = ("action", "target_type")
     search_fields = ("action", "target_type", "target_id", "actor__username")
     readonly_fields = ("created_at",)
+
+
+@admin.register(AuthorWork)
+class AuthorWorkAdmin(admin.ModelAdmin):
+    """Where staff vouch for an import: a work is ``verified`` only when the
+    author id it came from is known to be its holder's own (see
+    ``AuthorWork.verified``)."""
+
+    list_display = ("title", "user", "source", "year", "verified")
+    list_filter = ("verified", "source")
+    search_fields = ("title", "doi", "user__username", "user__email")
+    raw_id_fields = ("user",)
+    actions = ("mark_verified", "mark_unverified")
+
+    @admin.action(description="Mark selected works verified")
+    def mark_verified(self, request, queryset):
+        queryset.update(verified=True)
+
+    @admin.action(description="Mark selected works unverified")
+    def mark_unverified(self, request, queryset):
+        queryset.update(verified=False)

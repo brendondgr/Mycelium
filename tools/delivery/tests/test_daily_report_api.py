@@ -186,7 +186,7 @@ def test_excludes_grants_and_conferences(client: APIClient) -> None:
     # page (Opportunities) and must never appear in the Research Papers feed.
     grant = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id="g1",
         metadata={"title": "A grant"},
     )

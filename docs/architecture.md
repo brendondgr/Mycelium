@@ -28,8 +28,10 @@ at the repository root, and all implementation and install state lives under
 | Python deps & commands | `uv` | `web/backend/` |
 | Node workspace | npm workspaces | `web/` |
 
-**Declared but unused.** `compose.yaml` runs **Neo4j** and **MinIO**, and
-`settings.py` reads their env vars, but no application code touches either —
+**Declared but unused.** `compose.yaml` declares **Neo4j** and **MinIO** under
+the `experimental` profile (they start only with `--profile experimental`, and
+publish nothing), and `settings.py` reads their env vars, but no application
+code touches either —
 the object-storage phase is not built, and the knowledge graph is built in
 Postgres instead (`apps/knowledge`, below): its questions are one or two hops,
 and deleting a person must cascade through foreign keys rather than a sync job
@@ -42,7 +44,7 @@ reserved, not as working infrastructure.
 
 ```text
 mycelium/
-├── CLAUDE.md, README.md, Makefile, package.json, compose.yaml, .env.example   # root orchestration
+├── CLAUDE.md, README.md, Makefile, package.json, compose.yaml, compose.dev.yaml, .env.example   # root orchestration
 ├── ops/                           # everything that runs on the host, outside the containers
 │   ├── mycelium                   # stack manager CLI (start/stop/status/install-service)
 │   ├── compose.gpu.yaml           # GPU override for the embedding containers
@@ -165,9 +167,25 @@ Single-origin routing through Nginx at `http://localhost:11050`:
 
 | Path | Service |
 |---|---|
-| `/` and public pages | Astro landing |
-| `/login`, `/signup`, `/app/*`, `/demo`, `/demo/*`, `/_next/*` | Next.js app |
-| `/api/*`, `/admin/*` | Django |
+| `/` and public pages | Astro landing: the static `astro build` in production (`web/infra/nginx/landing-static.conf`), the dev server under `make dev` (`landing-dev.conf`) |
+| `/login`, `/signup`, `/app/*`, `/demo`, `/demo/*`, `/_next/*` | Next.js app (`next start`; `next dev` under `make dev`) |
+| `/api/*`, `/admin/*` | Django (gunicorn; `runserver` under `make dev`) |
+| `/static/*` | Django admin's assets, `collectstatic` into `data/static/` |
+
+**Ports and modes.** Only nginx is published to the network, on
+`${BIND_ADDR:-127.0.0.1}:${NGINX_PORT:-11050}`; Docker's published ports go
+around ufw and firewalld, so binding to loopback is the real control, and a TLS
+proxy or tunnel in front is how the instance is served to others
+(`docs/configuration.md`). Postgres (`11450`) and both Redis instances (`11550`,
+`11551`) are published on `127.0.0.1` only, for the Mylo bot on the host; each
+needs the password `make setup` generated into `.env`. Nothing else is
+published. `make up` (and `make setup`) run production: gunicorn for
+`config.wsgi`, `next build && next start`, and the public site as static files.
+`make dev` adds `compose.dev.yaml`: `runserver` with DEBUG on, `next dev`,
+`astro dev`, each also published on `127.0.0.1` (`11350`, `11250`, `11150`).
+The app services run as the checkout's owner (`UID`/`GID` in `.env`); the
+Python services see the repository read-only, with `data/` and
+web/backend/media/ writable, and their venv in `data/venv/backend`.
 
 **Why the nightly run is split across host and container.** `ops/nightly/manual_all.py` runs
 on the host but executes almost every stage *inside* the backend container, where
@@ -261,9 +279,17 @@ graph phase has not started.
   infrastructure, tuning); keys governed by `mycelium.toml` are listed there as
   pointers only, because a value in an env_file would override the file. Real
   `.env` files are git-ignored.
-- `compose.yaml` overrides per-service URLs so containers reach `postgres:5432`
-  and `redis:6379` on the Compose network, while host tooling uses the published
-  `11450` / `11550` ports.
+- `compose.yaml` builds the containers' URLs (`postgres:5432`, `redis:6379`,
+  `redis-ambient:6379`) from `POSTGRES_PASSWORD` and `REDIS_PASSWORD` in `.env`,
+  and refuses to start without them; `.env` also carries the host's URLs to the
+  loopback ports `11450` / `11550` / `11551` for the Mylo bot. No credential is
+  written in `compose.yaml` or `.env.example`.
+- Django refuses to start with DEBUG on while `PUBLIC_HOSTNAME` is set, or with
+  an empty or placeholder `DJANGO_SECRET_KEY` and DEBUG off (outside tests).
+  Secure cookies and HSTS follow "served over HTTPS" (`PUBLIC_HOSTNAME`, or
+  `SECURE_COOKIES`), not DEBUG; TLS ends at the front proxy, so there is no SSL
+  redirect in Django. With a public hostname, the public origin is the only
+  trusted CSRF/CORS origin.
 
 | Group | Variables |
 |---|---|
@@ -486,10 +512,12 @@ index therefore computes the identical ranking. See `docs/evaluation.md`.
 
 | Goal | Command |
 |---|---|
-| Full stack, single origin | `docker compose up` (or `make up`) → `http://localhost:11050` |
+| Full stack, production processes | `make up` → `http://localhost:11050` |
+| Full stack, hot reload | `make dev` (adds `compose.dev.yaml`) |
+| Is it healthy? | `make status`, then `make doctor` (exit 1 on a problem) |
 | Backend + data services only | `docker compose up backend` |
 | Host dev gateway | `npm run dev` |
-| Backend management command | `uv run --project web/backend python web/backend/manage.py <cmd>` |
+| Backend management command | `docker compose exec backend uv run --no-sync --project web/backend python web/backend/manage.py <cmd>` |
 | Backend tests | `npm run test` (or `uv run --directory web/backend python -m pytest`) |
 | GPU embedding | `docker compose -f compose.yaml -f ops/compose.gpu.yaml up` |
 
@@ -502,13 +530,13 @@ the `vector` type before any table that uses it.
 
 The FastEmbed/ONNX model (`qdrant/bge-small-en-v1.5-onnx-q`, ~65–90 MB) downloads
 lazily on first use into `data/models/fastembed/`, which `FASTEMBED_CACHE_PATH`
-in `compose.yaml` points the backend and worker at through the `.:/app` bind
+in `compose.yaml` points the backend and worker at through the `./data` bind
 mount. It is git-ignored with the rest of `data/`, survives container recreates,
 and re-downloads if deleted. Warm it once before a large concurrent run (a burst
 of first requests can race the download):
 
 ```bash
-docker compose exec -T backend uv run --project web/backend python -c \
+docker compose exec -T backend uv run --no-sync --project web/backend python -c \
   "from tools.retrieval.embedding import get_default_embedder; get_default_embedder()(['warm up'])"
 ```
 

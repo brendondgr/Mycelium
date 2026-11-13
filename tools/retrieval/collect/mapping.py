@@ -1,9 +1,8 @@
 """Map an open-collector record to a ``ContentItem``-shaped payload.
 
 This is the **port contract** between the open collector's grant/conference
-schema and Mycelium's unified :class:`~tools.retrieval.models.ContentItem`. It
-replaces :mod:`apps.scraper.pivot.records` (plan Phase 3), which did the
-equivalent job for Pivot-RP's flat dict records. The collector's records are
+schema and Mycelium's unified :class:`~tools.retrieval.models.ContentItem`
+(plan Phase 3). The collector's records are
 typed dataclasses (:class:`~tools.retrieval.collect.grants.record.Opportunity`,
 :class:`~tools.retrieval.collect.conferences.record.ConferenceInstance` /
 :class:`~tools.retrieval.collect.conferences.record.ConferenceSeries`) rather than
@@ -26,7 +25,7 @@ a dict shaped ``{type, source, external_id, source_url, text, metadata}``:
   would pull Django's app registry into a module that has no business needing
   it).
 * ``source`` — ``f"grants:{adapter}"`` / ``f"conf:{adapter}"``, so the feed can
-  always tell a Pivot-era row from an open-collector one even mid-migration.
+  always tell a legacy row from an open-collector one even mid-migration.
 * ``external_id`` — the collector's own upsert key (``stable_key`` /
   ``instance_key``), carried through unchanged so Phase 4's
   ``(source, external_id)`` upsert lines up with what the collector itself
@@ -37,8 +36,7 @@ a dict shaped ``{type, source, external_id, source_url, text, metadata}``:
   falls back to something built from raw text — see plan D9/§8.4. This field is
   that raw-text basis, not a substitute for it.
 * ``metadata`` — everything else: display fields, deadline data, and every
-  signal (rankings, trust tier, licence, source links) the collector carries
-  that Pivot never did.
+  signal (rankings, trust tier, licence, source links) the collector carries.
 
 Two rules run through every field below and are worth stating once rather than
 re-justifying at each site:
@@ -76,7 +74,7 @@ __all__ = ["map_conference", "map_grant"]
 
 
 def _join(*parts: object) -> str:
-    """Space-join non-empty parts. The same idiom ``pivot/records.py`` used."""
+    """Space-join non-empty parts."""
     return " ".join(str(p).strip() for p in parts if p and str(p).strip())
 
 

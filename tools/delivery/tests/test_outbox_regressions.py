@@ -94,7 +94,7 @@ class _FlakyTransport:
 def _content_with_deadline(due: date):
     item = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=f"outbox-{due}",
         metadata={"title": "Test grant"},
     )

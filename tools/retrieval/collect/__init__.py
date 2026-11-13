@@ -2,9 +2,8 @@
 
 This package is a near-verbatim port of the standalone ``research-collector``
 project (see ``docs/plans/open-opportunity-collector.md``, Phase 1). It runs
-in the backend container because, unlike Pivot-RP, it is pure HTTP — no
-Playwright, no SSO session — so the host/container split that Pivot needed
-does not apply here (plan decision D6).
+in the backend container because it is pure HTTP — no Playwright, no SSO
+session — so no host/container split is needed (plan decision D6).
 
 Layout:
 

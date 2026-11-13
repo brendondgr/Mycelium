@@ -1,100 +1,164 @@
 #!/usr/bin/env python3
-"""mycelium — manage the Mycelium Docker Compose stack (and the Mylo Discord bot).
+"""mycelium — manage the Mycelium Docker Compose stack.
 
 Usage:
-    mycelium start           start all services (detached) + the Mylo bot
-    mycelium stop            stop all services + the Mylo bot
-    mycelium restart         stop then start (default)
-    mycelium status          show container state, Mylo state, and live endpoint health
+    mycelium start [--dev]   start the stack (production, or the hot-reload dev stack)
+    mycelium stop            stop the stack
+    mycelium restart         stop then start, in the mode the stack last ran in (default)
+    mycelium status          containers, endpoints, Mylo, and anything still to do by hand
+    mycelium doctor          check the instance end to end; exit 1 on any failure
     mycelium logs            follow combined compose logs (Ctrl-C to exit)
     mycelium build           rebuild images then start
     mycelium migrate         apply database migrations against the running stack
-    mycelium install-service copy .service files to /etc/systemd/system/ and enable boot startup
+    mycelium backup          database dump + uploaded files + mycelium.toml, into data/backups/
+    mycelium restore FILE    put a backup back (stops the app services while it does)
+    mycelium rotate-db-password   give the Postgres user a new generated password
+    mycelium install-service copy the systemd units to /etc/systemd/system/ (run with sudo)
     mycelium config ...      read, explain, change and check mycelium.toml (`mycelium config -h`)
     mycelium tools ...       the tools import script in the running stack: `tools check`,
                              `tools plan`, `tools migrations` (see tools/README.md)
 
 Flags:
+    --dev          compose.yaml + compose.dev.yaml: next dev, astro dev, runserver, DEBUG on
+    --prod         compose.yaml alone: gunicorn, next start, the static site (`make up`)
     --keep-cache   skip the frontend cache wipe on start/restart/build
     --no-migrate   bring the stack up without waiting for or applying migrations
 
-start/stop/restart drive systemd once the units are installed — mycelium.service
-for the stack and mylo-bot.service for the bot — so `mycelium restart` and
-`systemctl restart` cannot disagree about what is running. You'll be prompted
-for your sudo password. Before `install-service` has been run they fall back to
-driving Docker Compose directly, and `build` always does (the unit has no
-rebuild step of its own).
-
-start/restart/build bring the whole environment up, not just the containers:
-the frontend build caches are wiped while the stack is down, `web-deps`
-reinstalls node modules and re-syncs the art assets as the stack comes up,
-migrations are confirmed applied once the API answers, and Mylo is restarted
-last so the bot only ever attaches to a migrated database.
+Nothing here calls sudo. Once `install-service` has put the systemd units in
+place, the stack still starts and stops through Docker Compose directly; the
+Mylo bot is a system service, so after a restart this prints the one command
+that restarts it, for you to run.
 """
 
 from __future__ import annotations
 
+from __future__ import annotations
+
+import json
+import os
+import shlex
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-# This script lives at <repo>/scripts/mycelium, so parent.parent = repo root.
+# This script lives at <repo>/ops/mycelium, so parent.parent = repo root.
 ROOT = Path(__file__).resolve().parent.parent
 COMPOSE_FILE = ROOT / "compose.yaml"
+DEV_FILE = ROOT / "compose.dev.yaml"
+MODE_FILE = ROOT / "data" / "stack-mode"
 
-ENDPOINTS = [
-    ("Gateway",       "http://localhost:11050"),
-    ("Astro landing", "http://localhost:11150"),
-    ("Next.js app",   "http://localhost:11250"),
-    ("Django API",    "http://localhost:11350/api/health/"),
-    ("Neo4j browser", "http://localhost:11650"),
-    ("MinIO console", "http://localhost:11950"),
-]
+sys.path.insert(0, str(ROOT / "ops" / "setup"))
+import host_steps  # noqa: E402  (stdlib only)
 
 # ── ANSI helpers ──────────────────────────────────────────────────────────────
 
 _COLOR = sys.stdout.isatty()
 
+
 def _c(code: str, text: str) -> str:
     return f"\033[{code}m{text}\033[0m" if _COLOR else text
 
-def green(t: str)  -> str: return _c("32", t)
-def red(t: str)    -> str: return _c("31", t)
-def bold(t: str)   -> str: return _c("1",  t)
-def dim(t: str)    -> str: return _c("2",  t)
+
+def green(t: str) -> str: return _c("32", t)
+def red(t: str) -> str: return _c("31", t)
+def bold(t: str) -> str: return _c("1", t)
+def dim(t: str) -> str: return _c("2", t)
 def yellow(t: str) -> str: return _c("33", t)
+
+
+# ── Where the stack listens ───────────────────────────────────────────────────
+
+def _env() -> dict[str, str]:
+    """What compose interpolates: .env, overridden by this shell."""
+    return {**host_steps.read_env(host_steps.ENV), **os.environ}
+
+
+def _gateway() -> str:
+    """The nginx origin as seen from this machine."""
+    env = _env()
+    bind = env.get("BIND_ADDR", "").strip() or "127.0.0.1"
+    host = "127.0.0.1" if bind in ("0.0.0.0", "::", "127.0.0.1") else bind
+    port = env.get("NGINX_PORT", "").strip() or "11050"
+    return f"http://{host}:{port}"
+
+
+def _endpoints(dev: bool) -> list[tuple[str, str]]:
+    gateway = _gateway()
+    rows = [
+        ("Public site", f"{gateway}/"),
+        ("App", f"{gateway}/login"),
+        ("API", f"{gateway}/api/health/"),
+    ]
+    if dev:
+        env = _env()
+        rows += [
+            ("Astro dev", f"http://127.0.0.1:{env.get('LANDING_PORT') or 11150}"),
+            ("Next dev", f"http://127.0.0.1:{env.get('WEB_PORT') or 11250}/login"),
+            ("Django dev", f"http://127.0.0.1:{env.get('BACKEND_PORT') or 11350}/api/health/"),
+        ]
+    return rows
+
 
 # ── Docker Compose helpers ────────────────────────────────────────────────────
 
-def _compose() -> list[str]:
+def _compose_bin() -> list[str]:
     if shutil.which("docker"):
-        probe = subprocess.run(
-            ["docker", "compose", "version"], capture_output=True
-        )
+        probe = subprocess.run(["docker", "compose", "version"], capture_output=True)
         if probe.returncode == 0:
             return ["docker", "compose"]
     if shutil.which("docker-compose"):
         return ["docker-compose"]
-    sys.exit("Docker Compose not found. Install Docker Desktop or the Compose plugin.")
+    sys.exit("Docker Compose not found. Install Docker Engine with the Compose plugin.")
+
+
+def _compose(dev: bool) -> list[str]:
+    files = ["-f", str(COMPOSE_FILE)]
+    if dev:
+        files += ["-f", str(DEV_FILE)]
+    return [*_compose_bin(), *files]
+
+
+def _last_mode() -> str:
+    try:
+        return MODE_FILE.read_text().strip() or "prod"
+    except OSError:
+        return "prod"
+
+
+def _remember_mode(dev: bool) -> None:
+    try:
+        MODE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        MODE_FILE.write_text("dev\n" if dev else "prod\n")
+    except OSError:
+        pass
+
+
+def _child_env() -> dict[str, str]:
+    """This process's environment plus who the containers run as."""
+    env = dict(os.environ)
+    if os.geteuid() != 0:
+        env.setdefault("UID", str(os.getuid()))
+        env.setdefault("GID", str(os.getgid()))
+    return env
 
 
 def _run(cmd: list[str]) -> int:
-    return subprocess.run(cmd, cwd=ROOT).returncode
+    return subprocess.run(cmd, cwd=ROOT, env=_child_env()).returncode
 
 
-def _run_capture(cmd: list[str]) -> str:
-    result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
-    return result.stdout
+def _run_capture(cmd: list[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, cwd=ROOT, env=_child_env(), capture_output=True, text=True)
 
 
 # ── Frontend caches ───────────────────────────────────────────────────────────
 
 # Next and Astro both keep compiled output and a module graph on disk. After a
-# schema change, an API-contract change, or a dependency bump, a dev server that
+# schema change, an API-contract change, or a dependency bump, a server that
 # reuses one of these serves modules compiled against the old shape — the symptom
 # is a page that renders stale data or fails on a field that no longer exists,
 # with nothing in the logs to explain it. Wiping them costs one slow first
@@ -128,52 +192,65 @@ def _clear_web_caches() -> None:
         removed += 1
     if removed == 0:
         print(dim("  nothing to clear"))
-    print(dim("  node_modules and art assets are re-synced by web-deps on start"))
+
+
+def _prepare_host() -> bool:
+    """Directories the containers write to, owned by you; secret files 0600.
+
+    Returns False (after printing the fix) when an older, root-run stack left
+    files this account cannot write: the services would fail on them later
+    with far less helpful errors.
+    """
+    host_steps.ensure_dirs()
+    for path in host_steps.tighten_secret_files():
+        print(yellow(f"  ! {path.name} was readable by others; now 0600"))
+    stuck = host_steps.root_owned()
+    if stuck:
+        print(red("  ✗ An older version of the stack ran as root and left files you cannot write:"))
+        for rel in stuck:
+            print(red(f"      {rel}"))
+        print("    The services now run as you. Hand those back once (this needs root):")
+        print(f"      cd {ROOT} && {host_steps.chown_command(stuck)}")
+        return False
+    return True
 
 
 # ── Database migrations ───────────────────────────────────────────────────────
 
 BACKEND_SERVICE = "backend"
-HEALTH_URL = "http://localhost:11350/api/health/"
-MANAGE = "uv run --project web/backend python web/backend/manage.py"
+MANAGE = "uv run --no-sync --project web/backend python web/backend/manage.py"
 
 
-def _wait_for_backend(base: list[str], timeout: int = 240) -> bool:
-    """Block until the Django API answers, or give up after `timeout` seconds.
+def _wait_for_backend(base: list[str], timeout: int = 300) -> bool:
+    """Block until the API answers through nginx, or give up after `timeout`.
 
     This is also what keeps the migrate below from racing: the backend service
-    runs `migrate` itself before `runserver`, so the health endpoint answering
-    is the signal that its migrate has already finished. Two `migrate` processes
+    runs `migrate` itself before serving, so the health endpoint answering is
+    the signal that its migrate has already finished. Two `migrate` processes
     against one database can deadlock on the same DDL lock, so we never start
     ours until that one is provably done.
     """
-    import time
-
     print(bold("Backend: waiting for the API..."))
+    url = f"{_gateway()}/api/health/"
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if _check(HEALTH_URL, timeout=3):
+        if _check(url, timeout=3):
             print(green("  ✓ API is answering"))
             return True
         time.sleep(3)
     print(red(f"  ✗ API did not answer within {timeout}s"))
-    print(dim(f"    check it with:  {' '.join(base)} logs {BACKEND_SERVICE}"))
+    print(dim(f"    check it with:  {' '.join(base[:2])} logs {BACKEND_SERVICE} nginx"))
     return False
 
 
 def _backend_exec(base: list[str], manage_args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [*base, "exec", "-T", BACKEND_SERVICE, "sh", "-c", f"{MANAGE} {manage_args}"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
+    return _run_capture(
+        [*base, "exec", "-T", BACKEND_SERVICE, "sh", "-c", f"{MANAGE} {manage_args}"]
     )
 
 
 def cmd_tools(base: list[str], args: list[str]) -> int:
     """``manage.py tools <args>`` in the backend container, output passed through."""
-    import shlex
-
     r = _backend_exec(base, "tools " + " ".join(shlex.quote(a) for a in (args or ["check"])))
     sys.stdout.write(r.stdout)
     sys.stderr.write(r.stderr)
@@ -229,61 +306,28 @@ def cmd_migrate(base: list[str], *, wait: bool = True) -> int:
     return 0
 
 
-# ── Mylo (Discord bot) helpers ────────────────────────────────────────────────
+# ── Mylo (Discord bot) ────────────────────────────────────────────────────────
 
 MYLO_UNIT = "mylo-bot.service"
-MYLO_UNIT_PATH = Path("/etc/systemd/system") / MYLO_UNIT
-
-STACK_UNIT = "mycelium.service"
-STACK_UNIT_PATH = Path("/etc/systemd/system") / STACK_UNIT
+SYSTEMD_DIR = host_steps.SYSTEMD_DIR
 
 
 def _mylo_installed() -> bool:
-    return MYLO_UNIT_PATH.exists()
-
-
-def _stack_unit_installed() -> bool:
-    return STACK_UNIT_PATH.exists()
-
-
-def _stack_systemctl(action: str) -> int:
-    """start/stop/restart the stack through systemd.
-
-    Once mycelium.service is installed, systemd owns the stack. Driving compose
-    directly behind its back leaves the unit reporting `active (exited)` after
-    the containers are gone — it is Type=oneshot with RemainAfterExit=yes, so
-    nothing tells it otherwise. Going through systemctl keeps the two in step.
-    """
-    past = {"start": "started", "stop": "stopped", "restart": "restarted"}[action]
-    print(bold(f"Stack: {action} {STACK_UNIT}..."))
-    r = subprocess.run(["sudo", "systemctl", action, STACK_UNIT])
-    if r.returncode == 0:
-        print(green(f"  ✓ {STACK_UNIT} {past}"))
-    else:
-        print(red(f"  ✗ failed to {action} {STACK_UNIT}"))
-    return r.returncode
+    return (SYSTEMD_DIR / MYLO_UNIT).exists()
 
 
 def _mylo_is_active() -> bool:
-    r = subprocess.run(
-        ["systemctl", "is-active", "--quiet", MYLO_UNIT],
-    )
-    return r.returncode == 0
+    if not shutil.which("systemctl"):
+        return False
+    return subprocess.run(["systemctl", "is-active", "--quiet", MYLO_UNIT]).returncode == 0
 
 
-def _mylo_systemctl(action: str) -> int:
-    """start/stop/restart mylo-bot.service — mutating actions need sudo."""
-    if not _mylo_installed():
-        print(yellow(f"  Mylo ({MYLO_UNIT}) isn't installed — run: sudo mycelium install-service"))
-        return 0
-    past = {"start": "started", "stop": "stopped", "restart": "restarted"}[action]
-    print(bold(f"Mylo: {action} {MYLO_UNIT}..."))
-    r = subprocess.run(["sudo", "systemctl", action, MYLO_UNIT])
-    if r.returncode == 0:
-        print(green(f"  ✓ {MYLO_UNIT} {past}"))
-    else:
-        print(red(f"  ✗ failed to {action} {MYLO_UNIT}"))
-    return r.returncode
+def _mylo_restart_hint() -> None:
+    """The bot attaches to the database the stack just migrated; restarting it
+    needs root, so say how instead of asking for a password."""
+    if _mylo_installed() and _mylo_is_active():
+        print(dim(f"  Mylo runs as a system service; restart it so it sees today's code:"))
+        print(dim(f"    sudo systemctl restart {MYLO_UNIT}"))
 
 
 # ── URL health check ──────────────────────────────────────────────────────────
@@ -292,57 +336,42 @@ def _check(url: str, timeout: int = 4) -> bool:
     try:
         with urllib.request.urlopen(url, timeout=timeout) as r:
             return r.status < 500
+    except urllib.error.HTTPError as exc:
+        return exc.code < 500
     except Exception:
         return False
 
 
-def _check_all() -> dict[str, bool]:
+def _check_all(endpoints: list[tuple[str, str]]) -> dict[str, bool]:
     results: dict[str, bool] = {}
-    with ThreadPoolExecutor(max_workers=len(ENDPOINTS)) as pool:
-        futures = {pool.submit(_check, url): (name, url) for name, url in ENDPOINTS}
+    with ThreadPoolExecutor(max_workers=len(endpoints)) as pool:
+        futures = {pool.submit(_check, url): name for name, url in endpoints}
         for future in as_completed(futures):
-            name, _ = futures[future]
-            results[name] = future.result()
+            results[futures[future]] = future.result()
     return results
 
 
-# ── Commands ──────────────────────────────────────────────────────────────────
+# ── Start / stop ──────────────────────────────────────────────────────────────
 
-def _compose_start(base: list[str], build: bool = False) -> int:
-    cmd = [*base, "up", "-d"]
+def _compose_start(base: list[str], build: bool) -> int:
+    cmd = [*base, "up", "-d", "--remove-orphans"]
     if build:
         cmd.append("--build")
-    code = _run(cmd)
-    if code == 0:
-        print()
-        print(bold("Stack is starting in the background."))
-        print(dim("  mycelium status   — check health"))
-        print(dim("  mycelium logs     — follow logs"))
-        print(dim("  mycelium stop     — shut down"))
-    return code
+    return _run(cmd)
 
 
 def _compose_stop(base: list[str]) -> int:
     return _run([*base, "down", "--remove-orphans"])
 
 
-def _bring_up(base: list[str], build: bool) -> int:
-    # `build` has no systemd equivalent (the unit runs a plain `up -d`), so an
-    # explicit rebuild always goes through compose.
-    if _stack_unit_installed() and not build:
-        return _stack_systemctl("start")
-    return _compose_start(base, build)
-
-
-def _finish_start(base: list[str], code: int, mylo_action: str, migrate: bool) -> int:
+def _finish_start(base: list[str], code: int, migrate: bool, dev: bool) -> int:
     """Everything that has to happen after the containers exist.
 
-    Order matters. Migrations run before Mylo is restarted so the bot never
-    attaches to a database it is newer than, and the endpoint summary runs last
-    so what it reports is the settled state rather than a half-booted one.
+    Migrations run before anything is reported, so the endpoint summary shows
+    the settled state rather than a half-booted one.
     """
     if code != 0:
-        print(red("  ✗ the stack did not come up — skipping migrations and Mylo"))
+        print(red("  ✗ the stack did not come up — skipping migrations"))
         return code
 
     if migrate:
@@ -350,145 +379,508 @@ def _finish_start(base: list[str], code: int, mylo_action: str, migrate: bool) -
         code = cmd_migrate(base) or code
 
     print()
-    _mylo_systemctl(mylo_action)
-
-    print()
-    print(bold("Environment:"))
-    health = _check_all()
-    for name, url in ENDPOINTS:
+    print(bold("Environment:") + dim(f"  ({'development' if dev else 'production'} mode)"))
+    endpoints = _endpoints(dev)
+    health = _check_all(endpoints)
+    for name, url in endpoints:
         badge = green("● UP  ") if health.get(name) else red("● DOWN")
-        print(f"  {badge} {name}")
-    if not health.get("Next.js app") or not health.get("Astro landing"):
-        print(dim("  the dev servers recompile from scratch after a cache wipe —"))
-        print(dim("  give them a minute, then: mycelium status"))
+        print(f"  {badge} {name:<12} {dim(url)}")
+    if not all(health.values()):
+        what = "the dev servers compile on first request" if dev else \
+            "the app runs `next build` before it serves (a few minutes)"
+        print(dim(f"  {what} — give it a minute, then: make status"))
+    _mylo_restart_hint()
+    steps = host_steps.root_steps()
+    if steps:
+        print()
+        print("\n".join(host_steps.render_root_steps(steps, bold=bold, dim=dim)))
     return code
 
 
-def cmd_start(
-    base: list[str],
-    build: bool = False,
-    *,
-    clear_cache: bool = True,
-    migrate: bool = True,
-) -> int:
+def cmd_start(dev: bool, build: bool = False, *, clear_cache: bool = True,
+              migrate: bool = True) -> int:
+    if not _prepare_host():
+        return 1
+    base = _compose(dev)
+    _remember_mode(dev)
     if clear_cache:
         _clear_web_caches()
         print()
-    code = _bring_up(base, build)
-    return _finish_start(base, code, "start", migrate)
+    code = _compose_start(base, build)
+    return _finish_start(base, code, migrate, dev)
 
 
-def cmd_stop(base: list[str]) -> int:
-    if _stack_unit_installed():
-        code = _stack_systemctl("stop")
-    else:
-        code = _compose_stop(base)
-    print()
-    _mylo_systemctl("stop")
-    return code
+def cmd_stop() -> int:
+    # Down through the dev overlay too, so its services go whichever mode ran.
+    return _compose_stop(_compose(dev=True))
 
 
-def cmd_restart(
-    base: list[str],
-    build: bool = False,
-    *,
-    clear_cache: bool = True,
-    migrate: bool = True,
-) -> int:
-    # Caches are wiped between down and up: a running dev server holds its own
+def cmd_restart(dev: bool, build: bool = False, *, clear_cache: bool = True,
+                migrate: bool = True) -> int:
+    # Caches are wiped between down and up: a running server holds its own
     # cache open and rebuilds it immediately, so clearing under a live stack
     # accomplishes nothing.
-    if clear_cache:
-        if _stack_unit_installed() and not build:
-            _stack_systemctl("stop")
-        else:
-            _compose_stop(base)
-        print()
-        _clear_web_caches()
-        print()
-        code = _bring_up(base, build)
-    elif _stack_unit_installed() and not build:
-        code = _stack_systemctl("restart")
-    else:
-        _compose_stop(base)
-        code = _compose_start(base, build)
-    return _finish_start(base, code, "restart", migrate)
+    if not _prepare_host():
+        return 1
+    _compose_stop(_compose(dev=True))
+    print()
+    return cmd_start(dev, build, clear_cache=clear_cache, migrate=migrate)
 
 
 def cmd_logs(base: list[str]) -> int:
     return _run([*base, "logs", "-f", "--tail", "100"])
 
 
-def cmd_status(base: list[str]) -> int:
-    W_NAME = 16
-    W_URL  = 36
+# ── Status ────────────────────────────────────────────────────────────────────
 
-    # ── container table ──────────────────────────────────────────────────────
-    raw = _run_capture([*base, "ps", "--format", "table {{.Service}}\t{{.State}}\t{{.Status}}"])
-    lines = [l for l in raw.strip().splitlines() if l.strip()]
+def _ps(base: list[str]) -> list[dict]:
+    r = _run_capture([*base, "ps", "--all", "--format", "json"])
+    rows = []
+    for line in r.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            parsed = json.loads(line)
+        except ValueError:
+            continue
+        rows.extend(parsed if isinstance(parsed, list) else [parsed])
+    return rows
+
+
+def cmd_status(dev: bool) -> int:
+    base = _compose(dev)
+    print()
+    print(bold("  Mycelium — Containers") + dim(f"  ({'development' if dev else 'production'} mode)"))
+    print(dim("  " + "─" * 58))
+    rows = _ps(base)
+    if not rows:
+        print(yellow("  No containers found — the stack is stopped (make up)."))
+    for row in sorted(rows, key=lambda r: r.get("Service", "")):
+        state = (row.get("State") or "").lower()
+        status = row.get("Status") or ""
+        if state == "running":
+            dot = green("●")
+        elif state == "exited" and "(0)" in status:
+            dot = dim("○")  # a one-shot that finished
+        elif state == "exited":
+            dot = red("●")
+        else:
+            dot = yellow("●")
+        print(f"  {dot} {row.get('Service', ''):<16} {dim(status)}")
 
     print()
-    print(bold("  Mycelium — Container Status"))
-    print(dim("  " + "─" * 54))
+    print(bold("  Endpoints"))
+    print(dim("  " + "─" * 58))
+    endpoints = _endpoints(dev)
+    health = _check_all(endpoints)
+    for name, url in endpoints:
+        badge = green("● UP  ") if health.get(name) else red("● DOWN")
+        print(f"  {badge} {name:<12} {dim(url)}")
 
-    if len(lines) <= 1:
-        print(yellow("  No containers found — stack may be stopped."))
-    else:
-        header, *rows = lines
-        # header: "SERVICE   STATE   STATUS"
-        print(dim(f"  {header}"))
-        print(dim("  " + "─" * 54))
-        for row in rows:
-            parts = row.split(None, 2)
-            if not parts:
-                continue
-            service = parts[0] if len(parts) > 0 else ""
-            state   = parts[1] if len(parts) > 1 else ""
-            status  = parts[2] if len(parts) > 2 else ""
-            if "running" in state.lower() or "running" in status.lower():
-                dot = green("●")
-            elif "exited" in state.lower() or "exited" in status.lower():
-                dot = red("●")
-            else:
-                dot = yellow("●")
-            print(f"  {dot} {service:<22} {dim(status)}")
-
-    # ── Mylo (Discord bot) ───────────────────────────────────────────────────
     print()
     print(bold("  Mylo (Discord bot)"))
-    print(dim("  " + "─" * 54))
-    if not _mylo_installed():
-        print(yellow("  Not installed — run: sudo mycelium install-service"))
+    print(dim("  " + "─" * 58))
+    if not host_steps.bot_token_set():
+        print(dim("  Off: no bot token in .env-mylo (see docs/discord-integration.md)."))
+    elif not _mylo_installed():
+        print(yellow("  Token set, unit not installed (see below)."))
     elif _mylo_is_active():
         print(f"  {green('●')} {MYLO_UNIT:<22} {dim('active')}")
     else:
         print(f"  {red('●')} {MYLO_UNIT:<22} {dim('inactive')}")
 
-    # ── endpoint table ───────────────────────────────────────────────────────
+    warnings = []
+    for path, mode in host_steps.loose_secret_files():
+        warnings.append(f"{path.name} is mode {mode:o}; run: chmod 600 {path}")
+    stuck = host_steps.root_owned()
+    if stuck:
+        warnings.append(f"root-owned files from an older stack: {host_steps.chown_command(stuck)}")
+    if warnings:
+        print()
+        print(bold("  Warnings"))
+        print(dim("  " + "─" * 58))
+        for line in warnings:
+            print(yellow(f"  ! {line}"))
+
+    steps = host_steps.root_steps()
+    if steps:
+        print()
+        print("\n".join("  " + line if line else line
+                        for line in host_steps.render_root_steps(steps, bold=bold, dim=dim)))
     print()
-    print(bold("  Endpoints"))
-    print(dim("  " + "─" * 54))
-    print(dim(f"  {'Service':<{W_NAME}} {'URL':<{W_URL}} Health"))
-    print(dim("  " + "─" * 54))
+    print(dim("  `make doctor` checks the model, the corpus, migrations and exposure."))
+    print()
+    return 0
 
-    print(dim("  Checking endpoints…"), end="\r", flush=True)
-    health = _check_all()
-    print(" " * 30, end="\r")  # clear the "checking" line
 
-    for name, url in ENDPOINTS:
-        up = health.get(name, False)
-        badge = green("● UP  ") if up else red("● DOWN")
-        # shorten the URL for the health-check display URL (strip trailing path)
-        display_url = url.split("/api/")[0] if "/api/" in url else url
-        print(f"  {name:<{W_NAME}} {display_url:<{W_URL}} {badge}")
+# ── Doctor ────────────────────────────────────────────────────────────────────
+
+#: The services a running instance needs (one-shots and the optional relays
+#: are not listed).
+REQUIRED_SERVICES = ("nginx", "web", "backend", "worker", "beat", "postgres", "redis",
+                     "redis-ambient")
+
+
+class Doctor:
+    def __init__(self) -> None:
+        self.failures = 0
+
+    def ok(self, what: str, detail: str = "") -> None:
+        print(f"  {green('✓')} {what}" + (dim(f"  {detail}") if detail else ""))
+
+    def fail(self, what: str, why: str, fix: str) -> None:
+        self.failures += 1
+        print(f"  {red('✗')} {what}")
+        print(f"      {why}")
+        print(dim(f"      Fix: {fix}"))
+
+    def note(self, what: str, detail: str = "") -> None:
+        print(f"  {dim('·')} {what}" + (dim(f"  {detail}") if detail else ""))
+
+
+def _config():
+    """The resolved instance configuration (host-side, stdlib only)."""
+    import config_cli  # ops/setup, on sys.path above
+
+    return config_cli.resolve()
+
+
+def _manage_capture(base: list[str], args: str, timeout: int = 180) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(
+            [*base, "exec", "-T", BACKEND_SERVICE, "sh", "-c", f"{MANAGE} {args}"],
+            cwd=ROOT, env=_child_env(), capture_output=True, text=True, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(args, 124, "", f"timed out after {timeout}s")
+
+
+def _last_line(text: str) -> str:
+    lines = [line for line in (text or "").strip().splitlines() if line.strip()]
+    return lines[-1].strip() if lines else ""
+
+
+def cmd_doctor(dev: bool) -> int:
+    base = _compose(dev)
+    doc = Doctor()
+    print()
+    print(bold("  Mycelium — doctor"))
+    print(dim("  " + "─" * 58))
+
+    # 1. The stack is up.
+    rows = {row.get("Service"): row for row in _ps(base)}
+    down = [s for s in REQUIRED_SERVICES
+            if (rows.get(s, {}).get("State") or "").lower() != "running"]
+    stack_up = not down
+    if stack_up:
+        doc.ok("stack is up", ", ".join(REQUIRED_SERVICES))
+    else:
+        doc.fail("stack is up", f"not running: {', '.join(down)}",
+                 "make up   (then `make logs` if a service keeps exiting)")
+    if not _check(f"{_gateway()}/api/health/"):
+        doc.fail("API answers through nginx", f"{_gateway()}/api/health/ did not answer",
+                 "make status; `make logs` shows nginx and backend")
+    else:
+        doc.ok("API answers through nginx", _gateway())
+
+    if stack_up:
+        # 2. Migrations.
+        pending = _pending_migrations(base)
+        if pending is None:
+            doc.fail("migrations applied", "could not read the migration state",
+                     "make logs   (the backend may be failing to start)")
+        elif pending:
+            doc.fail("migrations applied", f"{len(pending)} unapplied: {', '.join(pending[:5])}",
+                     "make migrate")
+        else:
+            doc.ok("migrations applied")
+
+        # 3. The model answers, or is off on purpose.
+        try:
+            llm_enabled = bool(_config()["llm.enabled"])
+        except Exception as exc:  # noqa: BLE001 - a broken config is its own failure
+            llm_enabled = True
+            doc.fail("mycelium.toml is valid", str(exc), "ops/mycelium config validate")
+        if not llm_enabled:
+            doc.ok("language model", "off on purpose (llm.enabled = false)")
+        else:
+            r = _manage_capture(base, "llm_check --strict", timeout=240)
+            if r.returncode == 0:
+                doc.ok("language model answers")
+            else:
+                reason = _last_line(r.stderr) or _last_line(r.stdout) or "llm_check failed"
+                doc.fail(
+                    "language model answers", reason,
+                    "set LLM_BASE_URL / LLM_MODEL / LLM_API_KEY in .env and `make restart`; "
+                    "or run without one: ops/mycelium config set llm.enabled false",
+                )
+
+        # 4. Corpus.
+        r = _manage_capture(
+            base,
+            "shell -c " + shlex.quote(
+                "from django.apps import apps; "
+                "print(apps.get_model('content', 'ContentItem').objects.count())"
+            ),
+        )
+        count = _last_line(r.stdout)
+        if r.returncode != 0 or not count.isdigit():
+            doc.fail("corpus readable", _last_line(r.stderr) or "could not count the corpus",
+                     "make tools-check   (the retrieval tool may not have loaded)")
+        elif int(count) == 0:
+            doc.fail("corpus is not empty", "no papers or opportunities have been collected yet",
+                     "make nightly   (the first collection takes a while)")
+        else:
+            doc.ok("corpus is not empty", f"{count} items")
+
+        # 8. Django's deployment checklist, when the instance is public.
+        env = _env()
+        if env.get("PUBLIC_HOSTNAME", "").strip():
+            r = _manage_capture(base, "check --deploy --fail-level WARNING")
+            if r.returncode == 0:
+                doc.ok("manage.py check --deploy", env["PUBLIC_HOSTNAME"])
+            else:
+                issues = [line.strip() for line in (r.stderr + r.stdout).splitlines()
+                          if "?:" in line or "security." in line]
+                doc.fail("manage.py check --deploy",
+                         "; ".join(issues[:3]) or _last_line(r.stderr) or "failed",
+                         "read the full list with: docker compose exec backend "
+                         f"{MANAGE} check --deploy")
+        else:
+            doc.note("check --deploy skipped", "PUBLIC_HOSTNAME is not set (local only)")
+
+    # 5. Embedding model on disk (data/ is bind-mounted, so the host can look).
+    models = ROOT / "data" / "models"
+    onnx = next(models.rglob("*.onnx"), None) if models.is_dir() else None
+    if onnx is not None:
+        doc.ok("embedding model downloaded", str(onnx.parent.relative_to(ROOT)))
+    else:
+        doc.fail("embedding model downloaded",
+                 "data/models holds no model yet; search and ranking cannot embed",
+                 "make nightly   (the first run downloads it, ~100 MB)")
+
+    # 6. Secret files.
+    loose = host_steps.loose_secret_files()
+    if loose:
+        for path, mode in loose:
+            doc.fail(f"{path.name} is private", f"mode {mode:o}: other accounts can read it",
+                     f"chmod 600 {path}")
+    else:
+        present = [p.name for p in host_steps.SECRET_FILES if p.exists()]
+        if present:
+            doc.ok("secret files are 0600", ", ".join(present))
+        else:
+            doc.fail(".env exists", "no .env: the stack has no secrets", "make setup")
+
+    # 7. Nothing internal published beyond loopback.
+    exposed = []
+    for row in _ps(base):
+        service = row.get("Service", "")
+        for pub in row.get("Publishers") or []:
+            if not pub.get("PublishedPort"):
+                continue
+            url = pub.get("URL") or ""
+            if url in ("127.0.0.1", "::1", "localhost"):
+                continue
+            if service == "nginx":
+                if url in ("0.0.0.0", "::", ""):
+                    doc.note("nginx listens on every address",
+                             "BIND_ADDR is set; make sure TLS or a firewall is in front")
+                continue
+            exposed.append(f"{service} on {url or '*'}:{pub['PublishedPort']}")
+    exposed = sorted(set(exposed))
+    if exposed:
+        doc.fail("internal ports stay on loopback", "published to the network: " + ", ".join(exposed),
+                 "remove the override that publishes them (compose.override.yaml?) and `make restart`")
+    elif rows:
+        doc.ok("internal ports stay on loopback")
+
+    stuck = host_steps.root_owned()
+    if stuck:
+        doc.fail("files owned by you", f"root-owned: {', '.join(stuck)}",
+                 host_steps.chown_command(stuck))
+
+    steps = host_steps.root_steps()
+    if steps:
+        doc.note(f"{len(steps)} step(s) still need root", "see `make status`")
 
     print()
+    if doc.failures:
+        print(red(f"  {doc.failures} problem(s)."))
+        return 1
+    print(green("  Everything checks out."))
+    return 0
+
+
+# ── Backups ───────────────────────────────────────────────────────────────────
+
+BACKUP_DIR = ROOT / "data" / "backups"
+#: What a backup holds besides the database: files people uploaded, lab logos
+#: and the instance configuration. Secrets (.env) are deliberately left out.
+BACKUP_PATHS = ("data/files", "web/backend/media", "mycelium.toml")
+
+
+def cmd_backup(base: list[str]) -> int:
+    import tarfile
+    import tempfile
+
+    rows = {row.get("Service"): row for row in _ps(base)}
+    if (rows.get("postgres", {}).get("State") or "").lower() != "running":
+        print(red("  ✗ postgres is not running; start the stack first (make up)."))
+        return 1
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    BACKUP_DIR.chmod(0o700)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    target = BACKUP_DIR / f"mycelium-{stamp}.tar.gz"
+    old_umask = os.umask(0o077)
+    try:
+        with tempfile.TemporaryDirectory(dir=BACKUP_DIR) as tmp:
+            dump = Path(tmp) / "database.dump"
+            print(bold("Backup: dumping the database..."))
+            with dump.open("wb") as out:
+                r = subprocess.run(
+                    [*base, "exec", "-T", "postgres", "pg_dump", "-U", "mycelium", "-Fc", "mycelium"],
+                    cwd=ROOT, env=_child_env(), stdout=out,
+                )
+            if r.returncode != 0:
+                print(red("  ✗ pg_dump failed"))
+                return r.returncode
+            print(bold("Backup: packing files..."))
+            with tarfile.open(target, "w:gz") as tar:
+                tar.add(dump, arcname="database.dump")
+                for rel in BACKUP_PATHS:
+                    if (ROOT / rel).exists():
+                        tar.add(ROOT / rel, arcname=rel)
+    finally:
+        os.umask(old_umask)
+    target.chmod(0o600)
+    size = target.stat().st_size / 1e6
+    print(green(f"  ✓ {target.relative_to(ROOT)} ({size:.1f} MB, mode 0600)"))
+    print(dim("  .env is not in it: keep a copy of it somewhere safe as well (it holds the"))
+    print(dim("  keys that decrypt stored Discord tokens). Copy backups off this machine."))
+    return 0
+
+
+def cmd_restore(base: list[str], args: list[str]) -> int:
+    import tarfile
+    import tempfile
+
+    if not args:
+        print(red("  ✗ name the backup: make restore FILE=data/backups/mycelium-<stamp>.tar.gz"))
+        return 2
+    source = Path(args[0]).expanduser()
+    if not source.is_absolute():
+        source = (Path.cwd() / source).resolve()
+    if not source.is_file():
+        print(red(f"  ✗ no such file: {source}"))
+        return 1
+    if sys.stdin.isatty() and "--yes" not in args:
+        answer = input(f"Replace this instance's database and files with {source.name}? [y/N] ")
+        if answer.strip().lower() not in ("y", "yes"):
+            print("Nothing was changed.")
+            return 1
+    print(bold("Restore: stopping the app services..."))
+    _run([*base, "stop", "backend", "worker", "beat", "web"])
+    _run([*base, "up", "-d", "postgres"])
+    for _ in range(30):
+        if _run_capture([*base, "exec", "-T", "postgres", "pg_isready", "-U", "mycelium"]).returncode == 0:
+            break
+        time.sleep(2)
+    with tempfile.TemporaryDirectory(dir=ROOT / "data") as tmp, tarfile.open(source) as tar:
+        names = tar.getnames()
+        if "database.dump" not in names:
+            print(red("  ✗ not a Mycelium backup (no database.dump inside)"))
+            return 1
+        try:
+            tar.extractall(tmp, filter="data")
+        except TypeError:  # Python without extraction filters
+            tar.extractall(tmp)  # noqa: S202 - our own backup, checked above
+        print(bold("Restore: loading the database..."))
+        with (Path(tmp) / "database.dump").open("rb") as dump:
+            r = subprocess.run(
+                [*base, "exec", "-T", "postgres", "pg_restore", "-U", "mycelium", "-d", "mycelium",
+                 "--clean", "--if-exists", "--no-owner", "--exit-on-error"],
+                cwd=ROOT, env=_child_env(), stdin=dump,
+            )
+        if r.returncode != 0:
+            print(red("  ✗ pg_restore failed; the app services are stopped. Fix and re-run."))
+            return r.returncode
+        print(bold("Restore: putting files back..."))
+        for rel in BACKUP_PATHS:
+            extracted = Path(tmp) / rel
+            if not extracted.exists():
+                continue
+            dest = ROOT / rel
+            if dest.is_dir():
+                shutil.rmtree(dest)
+            elif dest.exists():
+                dest.replace(dest.with_name(dest.name + ".before-restore"))
+                print(dim(f"  previous {rel} kept as {rel}.before-restore"))
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(extracted), str(dest))
+            print(dim(f"  ✓ {rel}"))
+    print(bold("Restore: starting the app services..."))
+    code = _run([*base, "up", "-d"])
+    print(green("  ✓ restored") if code == 0 else red("  ✗ the stack did not come back up"))
+    return code
+
+
+def cmd_rotate_db_password(base: list[str]) -> int:
+    """Give the database user a new generated password and record it in .env.
+
+    Also the upgrade path from the old built-in password ("mycelium"): an
+    existing database keeps whatever password it was created with, whatever
+    POSTGRES_PASSWORD says later.
+    """
+    import secrets
+
+    env = host_steps.read_env(host_steps.ENV)
+    current = env.get("POSTGRES_PASSWORD") or "mycelium"
+    new = secrets.token_hex(24)
+    run_env = {**_child_env(), "POSTGRES_PASSWORD": current,
+               "REDIS_PASSWORD": env.get("REDIS_PASSWORD") or secrets.token_hex(24)}
+    print(bold("Postgres: starting the database container..."))
+    if subprocess.run([*base, "up", "-d", "postgres"], cwd=ROOT, env=run_env).returncode != 0:
+        return 1
+    for _ in range(30):
+        ready = subprocess.run([*base, "exec", "-T", "postgres", "pg_isready", "-U", "mycelium"],
+                               cwd=ROOT, env=run_env, capture_output=True)
+        if ready.returncode == 0:
+            break
+        time.sleep(2)
+    # Over the container's local socket, which needs no password; the new one
+    # goes in on stdin, never on a command line.
+    r = subprocess.run(
+        [*base, "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1", "-q",
+         "-U", "mycelium", "-d", "mycelium"],
+        cwd=ROOT, env=run_env, input=f"ALTER USER mycelium WITH PASSWORD '{new}';\n",
+        text=True, capture_output=True,
+    )
+    if r.returncode != 0:
+        print(red(f"  ✗ could not change the password: {_last_line(r.stderr)}"))
+        return 1
+    port = env.get("POSTGRES_PORT") or "11450"
+    updates = {"POSTGRES_PASSWORD": new,
+               "DATABASE_URL": f"postgres://mycelium:{new}@127.0.0.1:{port}/mycelium"}
+    if not env.get("REDIS_PASSWORD"):
+        redis = run_env["REDIS_PASSWORD"]
+        updates.update({
+            "REDIS_PASSWORD": redis,
+            "REDIS_URL": f"redis://:{redis}@127.0.0.1:{env.get('REDIS_PORT') or 11550}/0",
+            "AMBIENT_CACHE_URL": f"redis://:{redis}@127.0.0.1:"
+                                 f"{env.get('AMBIENT_REDIS_PORT') or 11551}/0",
+        })
+    host_steps.update_env(host_steps.ENV, updates, comment="Set by ops/mycelium rotate-db-password.")
+    print(green("  ✓ new database password set and written to .env (0600)"))
+    print("  Restart so every service uses it:  make restart")
+    if _mylo_installed():
+        print(f"  The Mylo bot reads DATABASE_URL from .env too:  sudo systemctl restart {MYLO_UNIT}")
     return 0
 
 
 # ── Service installation ──────────────────────────────────────────────────────
 
-SYSTEMD_DIR = Path("/etc/systemd/system")
 DAILY_TIMER = "mylo-daily.timer"
 SERVICE_FILES = [
     "mycelium.service",
@@ -497,9 +889,15 @@ SERVICE_FILES = [
     "mylo-daily.service",
     DAILY_TIMER,
 ]
-# Units are committed with placeholders instead of one host's paths, so the same
-# files work from any checkout under any account. Substituted on install.
-UNITS_ENABLED_AT_BOOT = ("mycelium.service", MYLO_UNIT, DAILY_TIMER)
+
+
+def _units_enabled_at_boot() -> tuple[str, ...]:
+    """The stack and the daily timer always; the bot only once it has a token
+    (without one it has nothing to connect to)."""
+    units = ["mycelium.service", DAILY_TIMER]
+    if host_steps.bot_token_set():
+        units.append(MYLO_UNIT)
+    return tuple(units)
 
 
 def _install_identity() -> tuple[str, Path]:
@@ -510,7 +908,6 @@ def _install_identity() -> tuple[str, Path]:
     root-owned files into the repo and break the Docker socket auth comment in
     mycelium.service. Prefer SUDO_USER; fall back to whoever owns the checkout.
     """
-    import os
     import pwd
 
     name = os.environ.get("SUDO_USER") or ""
@@ -578,11 +975,11 @@ def cmd_install_service() -> int:
         print(red("  /etc/systemd/system not found — is this a systemd system?"), file=sys.stderr)
         return 1
 
-    # Must be root (or have write access via sudo) to install into /etc/systemd/system
-    import os
+    # Installing into /etc/systemd/system needs root. This is the one command
+    # here that does; the operator runs it under sudo themselves.
     if os.geteuid() != 0:
-        print(red("  install-service must be run with sudo:"), file=sys.stderr)
-        print("    sudo mycelium install-service", file=sys.stderr)
+        print(red("  install-service writes to /etc/systemd/system, so run it as root:"), file=sys.stderr)
+        print(f"    sudo python3 {ROOT}/ops/mycelium install-service", file=sys.stderr)
         return 1
 
     print()
@@ -599,7 +996,15 @@ def cmd_install_service() -> int:
     # Catch it here rather than as a 203/EXEC in the journal after "start".
     if not (ROOT / ".venv" / "bin" / "python").exists():
         print(red("  ✗ no root virtualenv at .venv — the Mylo units cannot start without it."))
-        print(dim(f"    build it first:  cd {ROOT} && uv sync"))
+        print(dim(f"    build it first, as yourself (no sudo):  cd {ROOT} && uv sync"))
+        return 1
+
+    # The host units configure Django from .env. Without DATABASE_URL there
+    # they would quietly fall back to an empty SQLite file.
+    if not host_steps.read_env(host_steps.ENV).get("DATABASE_URL", "").strip():
+        print(red("  ✗ .env has no DATABASE_URL, so the Mylo units would not find the database."))
+        print(dim("    `make setup` writes it (for an older .env: "
+                  "python3 ops/mycelium rotate-db-password)."))
         return 1
 
     user, home = _install_identity()
@@ -651,7 +1056,6 @@ def cmd_install_service() -> int:
             if code != 0:
                 return code
 
-    # daemon-reload
     r = subprocess.run(["systemctl", "daemon-reload"])
     if r.returncode != 0:
         print(red("  ✗ systemctl daemon-reload failed"), file=sys.stderr)
@@ -661,19 +1065,22 @@ def cmd_install_service() -> int:
     # Enable the boot-time units. mycelium-update.service is deliberately absent:
     # it is invoked on demand, not enabled. mylo-daily.service is driven by its
     # timer, so the timer (not the service) is what gets enabled.
-    for unit in UNITS_ENABLED_AT_BOOT:
+    enabled = _units_enabled_at_boot()
+    for unit in enabled:
         r = subprocess.run(["systemctl", "enable", unit])
         if r.returncode != 0:
             print(red(f"  ✗ systemctl enable {unit} failed"), file=sys.stderr)
             return r.returncode
         print(green(f"  ✓ {unit} enabled — will start automatically on next boot"))
+    if MYLO_UNIT not in enabled:
+        print(dim(f"  · {MYLO_UNIT} installed but not enabled: no bot token in .env-mylo yet"))
 
     print()
-    print(bold("  Done. To start everything now:"))
-    print(dim("    sudo systemctl start mycelium.service"))
-    print(dim(f"    sudo systemctl start {MYLO_UNIT}"))
+    print(bold("  Done. To start them now:"))
     print(dim(f"    sudo systemctl start {DAILY_TIMER}"))
-    print(dim("    mycelium status"))
+    if MYLO_UNIT in enabled:
+        print(dim(f"    sudo systemctl start {MYLO_UNIT}"))
+    print(dim("    make status"))
     print()
     return 0
 
@@ -694,9 +1101,18 @@ def main() -> int:
         action = "restart"
     else:
         action = first
-    build  = "--build" in args or "-b" in args
+    rest = args[1:] if first and not first.startswith("-") else args
+    build = "--build" in args or "-b" in args
     clear_cache = "--keep-cache" not in args
     migrate = "--no-migrate" not in args
+    if "--dev" in args:
+        dev = True
+    elif "--prod" in args:
+        dev = False
+    elif action in ("start", "up", "build"):
+        dev = False  # `make up` and setup mean production unless asked
+    else:
+        dev = _last_mode() == "dev"
 
     if action == "help":
         print(__doc__)
@@ -707,33 +1123,35 @@ def main() -> int:
 
     if action == "config":
         # Host-side and stdlib-only: works before the stack (or uv) exists.
-        sys.path.insert(0, str(ROOT / "ops" / "setup"))
         from config_cli import main as config_main
 
-        return config_main(args[1:])
+        return config_main(rest)
 
-    base = _compose()
-
+    base = _compose(dev)
     opts = {"clear_cache": clear_cache, "migrate": migrate}
+    positional = [a for a in rest if not a.startswith("-")]
     dispatch = {
-        "start":   lambda: cmd_start(base, build, **opts),
-        "up":      lambda: cmd_start(base, build, **opts),
-        "stop":    lambda: cmd_stop(base),
-        "down":    lambda: cmd_stop(base),
-        "restart": lambda: cmd_restart(base, build, **opts),
-        "status":  lambda: cmd_status(base),
+        "start":   lambda: cmd_start(dev, build, **opts),
+        "up":      lambda: cmd_start(dev, build, **opts),
+        "stop":    cmd_stop,
+        "down":    cmd_stop,
+        "restart": lambda: cmd_restart(dev, build, **opts),
+        "status":  lambda: cmd_status(dev),
+        "doctor":  lambda: cmd_doctor(dev),
         "logs":    lambda: cmd_logs(base),
-        "build":   lambda: cmd_start(base, build=True, **opts),
+        "build":   lambda: cmd_start(dev, build=True, **opts),
         "migrate": lambda: cmd_migrate(base),
-        "tools":   lambda: cmd_tools(base, args[1:]),
+        "tools":   lambda: cmd_tools(base, rest),
+        "backup":  lambda: cmd_backup(base),
+        "restore": lambda: cmd_restore(base, positional + [a for a in rest if a == "--yes"]),
+        "rotate-db-password": lambda: cmd_rotate_db_password(base),
     }
 
     fn = dispatch.get(action)
     if fn is None:
         print(f"Unknown command: {action!r}", file=sys.stderr)
         print(
-            "Valid commands: start, stop, restart, status, logs, build, migrate, "
-            "tools, install-service, config",
+            "Valid commands: " + ", ".join(sorted([*dispatch, "install-service", "config"])),
             file=sys.stderr,
         )
         return 1

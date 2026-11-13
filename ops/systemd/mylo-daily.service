@@ -1,6 +1,6 @@
 [Unit]
 Description=Mycelium — daily research run (scrape → search → match → briefing)
-Documentation=https://github.com/brendondgr/mycelium
+Documentation=file:__MYCELIUM_ROOT__/docs/configuration.md
 # The daily run drives the Docker stack (backend container) and the host
 # fellowship scrape, so the stack should be up first. `Wants` (not `Requires`)
 # on purpose:

@@ -205,13 +205,16 @@ export function cancelInvitation(slug: string, id: string): Promise<unknown> {
   );
 }
 
-/** Add an existing user to a lab directly (managers). */
+/**
+ * Invite an existing account into a lab by username (managers). They join when
+ * they accept; the answer is the same whether or not the username exists.
+ */
 export function addLabMember(
   slug: string,
   username: string,
   role = "member",
-): Promise<unknown> {
-  return sendJson(
+): Promise<{ detail: string }> {
+  return sendJson<{ detail: string }>(
     "POST",
     buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "members"),
     { username, role },
@@ -253,13 +256,18 @@ export function activateLabBilling(slug: string): Promise<OrgBilling> {
   );
 }
 
-/** Add a direct department member (managers). */
+/**
+ * Invite an existing account into a department by username (managers).
+ *
+ * Nobody is added outright: the person is emailed an invitation and joins when
+ * they accept. The answer is the same whether or not the username exists.
+ */
 export function addDeptMember(
   id: string,
   username: string,
   role = "member",
-): Promise<unknown> {
-  return sendJson(
+): Promise<{ detail: string }> {
+  return sendJson<{ detail: string }>(
     "POST",
     buildApiUrl(getPublicApiBase(), "auth", "departments", id, "members"),
     { username, role },
@@ -277,9 +285,18 @@ export function removeDeptMember(id: string, username: string): Promise<unknown>
   );
 }
 
-/** Attach an existing (unowned) lab to a department by slug (managers). */
-export function attachLabToDept(id: string, slug: string): Promise<DeptLabRow[]> {
-  return sendJson<DeptLabRow[]>(
+/**
+ * Attach an existing lab to a department by slug (managers).
+ *
+ * Only the lab's owner attaches it outright (the labs list comes back). For
+ * anyone else the server records a request the lab's owner must accept, and
+ * answers `{status: "requested", detail}` instead.
+ */
+export function attachLabToDept(
+  id: string,
+  slug: string,
+): Promise<DeptLabRow[] | { status: "requested"; detail: string }> {
+  return sendJson<DeptLabRow[] | { status: "requested"; detail: string }>(
     "POST",
     buildApiUrl(getPublicApiBase(), "auth", "departments", id, "labs"),
     { slug },
@@ -1318,6 +1335,48 @@ export function revokeLabInvite(
     ),
     undefined,
     "Could not withdraw the invitation.",
+  );
+}
+
+/** Give a lab's share link a fresh URL (the old one stops working). */
+export function regenerateLabInvite(
+  slug: string,
+  inviteId: string,
+): Promise<OrgInvite> {
+  return sendJson<OrgInvite>(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(),
+      "auth",
+      "labs",
+      slug,
+      "invites",
+      inviteId,
+      "regenerate",
+    ),
+    undefined,
+    "Could not make a new link.",
+  );
+}
+
+/** Give a department's share link a fresh URL (the old one stops working). */
+export function regenerateDeptInvite(
+  id: string,
+  inviteId: string,
+): Promise<OrgInvite> {
+  return sendJson<OrgInvite>(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(),
+      "auth",
+      "departments",
+      id,
+      "invites",
+      inviteId,
+      "regenerate",
+    ),
+    undefined,
+    "Could not make a new link.",
   );
 }
 

@@ -132,6 +132,8 @@ import {
   issueLabActivationCode,
   removeDeptMember,
   removeLabMember,
+  regenerateDeptInvite,
+  regenerateLabInvite,
   revokeDeptInvite,
   revokeLabInvite,
   setDiscordDailyReport,
@@ -1637,7 +1639,14 @@ export function useOrgInvites(kind: OrgKind, id: string) {
         : revokeDeptInvite(id, inviteId),
     onSuccess: invalidate,
   });
-  return { list, create, createMany, revoke };
+  const regenerate = useMutation({
+    mutationFn: (inviteId: string) =>
+      kind === "lab"
+        ? regenerateLabInvite(id, inviteId)
+        : regenerateDeptInvite(id, inviteId),
+    onSuccess: invalidate,
+  });
+  return { list, create, createMany, revoke, regenerate };
 }
 
 

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import setup_status, views
 
 # Both slash and no-slash variants: the browser reaches these through the Next
 # `/api` proxy, which strips the trailing slash, and Django's APPEND_SLASH cannot
@@ -35,4 +35,8 @@ urlpatterns = [
          name="admin-llm-servers"),
     path("llm/servers", views.AdminLLMServersView.as_view(),
          name="admin-llm-servers-no-slash"),
+    path("setup-status/", setup_status.SetupStatusView.as_view(),
+         name="admin-setup-status"),
+    path("setup-status", setup_status.SetupStatusView.as_view(),
+         name="admin-setup-status-no-slash"),
 ]

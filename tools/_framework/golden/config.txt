@@ -61,6 +61,7 @@ demo.questions_per_visitor	int	10	-
 demo.questions_per_ip_per_day	int	20	-
 demo.questions_per_day	int	500	-
 demo.question_max_chars	int	500	-
+llm.enabled	bool	True	LLM_ENABLED
 llm.max_tokens	int	0	LLM_MAX_TOKENS
 llm.default	str	'local'	-
 llm.allow_cloud	bool	False	-

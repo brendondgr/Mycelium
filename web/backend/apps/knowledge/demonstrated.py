@@ -50,16 +50,22 @@ def _wants(facets) -> list[_Want]:
 
 
 def record_work(work) -> Projected:
-    """Make one work's demonstrated edges match its facets."""
+    """Make one work's demonstrated edges match its facets.
+
+    An unverified work (``AuthorWork.verified``) wants no edges, so any it had
+    are removed: what someone *claims* to have written is not evidence of what
+    they have demonstrated.
+    """
     facets = getattr(work, "facets", None)
+    verified = getattr(work, "verified", True)
     result = _apply(
         {"author_work": work},
-        _wants(facets),
+        _wants(facets) if verified else [],
         Scope.GLOBAL,
         None,
         tier=Tier.DEMONSTRATED,
     )
-    if facets is not None and facets.method_neutral:
+    if verified and facets is not None and facets.method_neutral:
         _name_the_operation(work, facets.method_neutral)
     return result
 

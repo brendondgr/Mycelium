@@ -33,6 +33,8 @@ EXTRA_ENV: dict[str, str] = {}
 MANAGE_PREFIX = [
     "uv",
     "run",
+    # Never re-sync: a plain `uv run` drops the extras backend-deps installed.
+    "--no-sync",
     "--project",
     "web/backend",
     "python",
@@ -79,7 +81,7 @@ def ensure_ready() -> list[str]:
     if not backend_is_running(base):
         sys.exit(
             "The backend service is not running. Start the stack first:\n"
-            "    mycelium start"
+            "    make up"
         )
     return base
 

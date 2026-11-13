@@ -32,7 +32,10 @@ routes clients depend on most.
 | `login/` `logout/` `me/` | POST / POST / GET | Session lifecycle + current user |
 | `signup-policy/` | GET | The instance's sign-up mode, whether it verifies email, allowed domains |
 | `register/` | POST | Create one solo account (per the sign-up mode, or an invite token) |
-| `account/` | GET, PATCH | Name, affiliation, career stage, verification state |
+| `account/` | GET, PATCH, DELETE | Name, affiliation, career stage, verification state; `DELETE` erases the account (password + mailed code) |
+| `account/delete/request/` | POST | Mail the code that authorises deleting the account |
+| `account/export/` | GET | Download everything the account holds, as JSON |
+| `sessions/revoke/` | POST | Sign out everywhere else |
 | `email/verify/` `email/resend/` | POST | Submit a six-digit code; ask for a new one |
 | `email/change/` | POST | Start a move to a new address (code to the new one) |
 | `email/check/` | POST | Whether an address is free (invite-code gated) |
@@ -46,6 +49,7 @@ routes clients depend on most.
 | `departments/` | GET, POST | The caller's departments; create one (verified only) |
 | `labs/<slug>/invites/` `departments/<id>/invites/` | GET, POST | Join invitations: list, create a share link, or email one or up to 15 people |
 | `…/invites/<id>/revoke/` | POST | Withdraw a join invitation |
+| `…/invites/<id>/regenerate/` | POST | New URL for a share link (the old one dies); the only way to see a link again |
 | `invites/<token>/` | GET | **Anonymous** preview of a join link; `410` when dead |
 | `invites/<token>/accept/` | POST | Spend a join link and join the org |
 | `intake/import/` | POST | Author draft from one publication source |
@@ -58,15 +62,17 @@ routes clients depend on most.
 | `labs/<slug>/watch/` | GET, PATCH | Lab watch preference |
 | `labs/<slug>/intake/synthesize/` | POST | Lab profile synthesis |
 | `labs/<slug>/logo/` | GET, POST, PUT, DELETE | Lab logo, served through the API |
-| `labs/<slug>/members/` | GET, POST | Roster; add a member (manager) |
+| `labs/<slug>/members/` | GET, POST | Roster (members only); invite an account by username (manager) — `202`, same answer whether or not it exists |
+| `labs/<slug>/attach-requests/` | GET | Departments asking to take in this lab (lab owner only) |
+| `labs/<slug>/attach-requests/<id>/accept/` `…/decline/` | POST | The lab owner answers one |
 | `labs/<slug>/members/<username>/` | PATCH, DELETE | Change role / remove |
 | `labs/<slug>/invitations/` | GET, POST | Lab's invitations; invite someone |
 | `labs/<slug>/invitations/<id>/cancel/` | POST | Withdraw an invitation |
 | `invitations/` | GET | The caller's pending invitations |
 | `invitations/<id>/respond/` | POST | Accept / reject / ignore |
 | `departments/<id>/profile/` | GET, PATCH | Department interest profile |
-| `departments/<id>/labs/` `…/labs/<slug>/` | GET, POST / DELETE | Labs under a department |
-| `departments/<id>/members/` `…/members/<username>/` | GET, POST / PATCH, DELETE | Department roster |
+| `departments/<id>/labs/` `…/labs/<slug>/` | GET, POST / DELETE | Labs under a department; attaching someone else's lab files a request its owner answers (`202`) |
+| `departments/<id>/members/` `…/members/<username>/` | GET, POST / PATCH, DELETE | Department roster; `POST` mails an invitation by username (`202`, same answer either way) |
 
 ### Recommendations & content — `/api/`
 
@@ -147,7 +153,7 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 |---|---|---|
 | `billing/me/` | GET | Resolved entitlements + active plans |
 | `labs/<slug>/billing/` | GET | A lab plan's seat-priced state |
-| `labs/<slug>/billing/activate/` | POST | Activate the lab plan |
+| `labs/<slug>/billing/activate/` | POST | Activate the lab plan. With `billing.mode = "subscriptions"` only staff may (a lead's attempt is `403`, recorded as `billing.activation_requested`); with billing off, a lead or manager |
 | `departments/<id>/billing/` `…/activate/` | GET / POST | Same for a department |
 
 ### Discord — `/api/integrations/discord/`
@@ -203,7 +209,7 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `observations/delete/` | POST | `{"confirm": true}` — delete every summary and everything derived from them |
 | `projects/<id>/developments/` | GET | A project's development timeline, for anyone who can see the project; private ones for their speaker only |
 | `labs/<slug>/changes/` | GET | A lab's "What changed": lab-visible changes to its shared projects; members only |
-| `transcripts/` | POST | A meeting transcript (Plan 11): multipart `file` or `text`, `title`, `project` or `lab`. Without `speakers`, nothing is read: returns `{"labels", "members"}`. With `speakers` (JSON map label → user id) and `occurred_at`: reads the turns of mapped, opted-in members into the buffer, returns `{"meeting", "turns", "counts", "participants"}`. 403 while `AMBIENT_TRANSCRIPTS_ENABLED` is off or for a non-member |
+| `transcripts/` | POST | A meeting transcript (Plan 11): multipart `file` or `text`, `title`, `project` or `lab`. Without `speakers`, nothing is read: returns `{"labels", "members"}`. With `speakers` (JSON map label → user id) and `occurred_at`: reads the turns of mapped, opted-in members into the buffer, returns `{"meeting", "turns", "counts", "participants"}`. 403 while `AMBIENT_TRANSCRIPTS_ENABLED` is off, for a project the caller cannot see, or for a lab they are not a member of (a missing lab answers the same) — checked before the member list is returned |
 
 ### Collaboration — `/api/collab/`
 
@@ -225,6 +231,7 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 |---|---|---|
 | `users/` `users/<id>/` | GET / GET, PATCH | Roster; detail; assign plan + quota |
 | `labs/` `labs/<slug>/` | GET / GET, PATCH | Lab roster; detail; assign plan |
+| `setup-status/` | GET | The overview's "Getting started" checklist (`apps/adminpanel/setup_status.py`). `{steps: {model, collection, profile, people, discord}, complete}`; each step has a `state` of `done`, `todo` or `skipped` (model off on purpose) plus the facts behind it (e.g. corpus counts per kind, the last nightly run). `complete` ignores the optional `discord` step. Read-only |
 | `llm/servers/` | GET | Read-only. `{default, allow_cloud, fallback, servers: [{server, label, kind, location, enabled, callable, default, model, ok, error, cached, base_url, api_key_env, has_key, models: [{id, label, context_window, capabilities, loaded}]}], routes: {"*" or component: {server, model, label, location, requested, problem}}}`. A dead server is `ok: false` with the reason, still HTTP 200. `?refresh=1` skips the discovery cache. Never carries a key, only the name of its variable |
 
 ### Public demo — `/api/demo/` (`apps/demo`; only while `demo.enabled` and a world is built, else 404)
@@ -283,7 +290,7 @@ unverified email) plus `status/`.
 | `threads/<id>/export/?as=json\|md` | GET | The log as JSON, or a Markdown transcript with citations resolved; anything the caller can no longer see shows as unavailable |
 | `refs/search/?q=&kinds=&thread=` | GET | Candidates for the `@` picker, each already visible to the caller |
 | `preferences/` | GET, PATCH | `{chat_enabled, learning, discord_allowed, groups_off}`; `learning` is ambient's Mylo-chat consent (on unless turned off) |
-| `policy/<lab\|department>/<slug or id>/` | GET, PATCH | The org's narrowing policy `{groups_off, discord_channels_off, max_risk, members_inform_org, discord_guests, discord_guests_ceiling, discord_guests_in_force, set}`; members read it, owners and admins change it (audited); it can never widen the instance or switch the agent on or off. `discord_guests` (`full`\|`no_people`\|`public`\|`off`) is what someone without an account is told in the org's Discord server; `discord_guests_ceiling` (the host's `[tools.agent] discord_guest_level`, `off` unless `discord_access = "public"`) is read-only, and `discord_guests_in_force` is the lower of the two |
+| `policy/<lab\|department>/<slug or id>/` | GET, PATCH | The org's narrowing policy `{groups_off, discord_channels_off, max_risk, members_inform_org, discord_guests, discord_guests_ceiling, discord_guests_in_force, set}`; members read it, owners and admins change it (audited); it can never widen the instance or switch the agent on or off. `discord_guests` (`full`\|`no_people`\|`public`\|`off`; `public` until the org chooses) is what someone without an account is told in the org's Discord server; `discord_guests_ceiling` (the host's `[tools.agent] discord_guest_level`, `off` unless `discord_access = "public"`) is read-only, and `discord_guests_in_force` is the lower of the two |
 
 **The activity view** (`tools/agent/activity.py`) is what a person may see of
 a turn; Mylo's thinking never reaches a surface (S-9). Each message keeps the
@@ -342,7 +349,18 @@ Request `{ "username", "password" }`. Success `200` — the user summary:
 form. `onboarding_completed` is false until research interests are saved.
 
 Errors: `400` `{ "non_field_errors": ["Enter both username and password."] }`;
-`401` `{ "non_field_errors": ["Invalid username or password."] }`.
+`401` `{ "non_field_errors": ["Invalid username or password."] }`;
+`403` without a valid `X-CSRFToken` (checked although the caller is anonymous —
+fetch `csrf/` first); `415` for anything but a JSON body; `429 { "detail" }`
+while locked out. The lockout (`apps/accounts/login_guard.py`) counts wrong
+passwords per (normalised username, client address) — `LOGIN_MAX_FAILURES`,
+default 10 — and per address across usernames (`LOGIN_MAX_FAILURES_PER_IP`,
+50), for `LOGIN_LOCKOUT_SECONDS` (15 minutes). While locked, the right password
+is refused too. Django admin's login spends the same budget. The client address
+is the right-most `X-Forwarded-For` hop (the one nginx sets).
+
+The API authenticates by session only; HTTP Basic is not accepted. Sessions last
+`SESSION_COOKIE_AGE` (14 days).
 
 ### `POST /api/auth/register/`
 
@@ -388,7 +406,12 @@ a partial unique index on `LOWER(email)` backs it, so two racing sign-ups cannot
 both land.
 
 Success `201` — the user summary; session set. `400` on field errors; `403` on
-CSRF failure or a failed/locked-out access code.
+CSRF failure (checked although the caller is anonymous) or a failed/locked-out
+access code. JSON bodies only.
+
+Lab invitations sent to the new address (the legacy kind below) attach to the
+account only once the address is **proved** — at verification, or by a reset
+link — never at sign-up, where the address is only typed.
 
 ### `POST /api/auth/logout/` · `GET /api/auth/me/`
 
@@ -402,6 +425,45 @@ and browse, but `POST labs/`, `POST departments/<id>/labs/`,
 `POST labs/<slug>/invitations/` all answer `403` — Mycelium mails invitations to
 strangers, so an account that has not answered its own inbox does not get to
 originate that mail. Staff and superusers are exempt.
+
+When the instance verifies email (`signup.verify_email`, or `domain` mode),
+the whole API applies that rule (`VerifiedEmailRequired`, a default DRF
+permission): an unverified account gets `403` everywhere except `me/`,
+`logout/`, `account/` (and its `export/`, `delete/request/`), `sessions/revoke/`,
+`email/change|verify|resend/` and `invites/<token>/accept/`. With verification
+off the gate is inert.
+
+### `DELETE /api/auth/account/` · `POST /api/auth/account/delete/request/`
+
+Erasure takes both proofs the account has. `delete/request/` (empty body) mails
+a six-digit code issued for deletion only → `202`; `429` inside the resend
+cooldown. `DELETE account/` takes `{ "password", "code" }` → `204`, signed out.
+`400` with `password` or `code` errors; a wrong password spends the sign-in
+lockout budget (`429` once locked).
+
+Both answer `409 { "detail": [reasons], "reason": "sole_owner" }` while the
+caller is the only owner of a lab, or the owner of a department, that has other
+people in it — hand it over first. Everything that exists because of the
+account cascades with it (profile, interests, memberships, saved items,
+personal projects, ambient observations, Mylo threads, reminders,
+notifications); a lab or department that was the caller's alone goes too.
+Rows they only touched on others' objects (a lab collection they created) stay,
+unattributed. An `account.delete` audit event records the user id and what was
+removed, never content.
+
+### `GET /api/auth/account/export/`
+
+Everything the account holds, as one JSON attachment
+(`mycelium-<username>-data.json`): `account`, `memberships` (labs and
+departments with names and roles), and `records` — every row that cascades from
+the account, keyed `<app.Model>.<field>` (Mylo threads carry their events).
+Password and code hashes, tokens and embedding vectors are left out, and so is
+anything that belongs to someone else.
+
+### `POST /api/auth/sessions/revoke/`
+
+Ends every other session of the caller's account and re-keys the current one →
+`{ "ended": n }`.
 
 ### `GET` / `PATCH` `/api/auth/account/`
 
@@ -477,7 +539,10 @@ browser into a full takeover, and no signed-out flow offers it.
 ### `POST /api/auth/password/reset/`
 
 `{ "email" }` → always `200` with the same body whether or not the address is
-registered. Throttled at `password_reset`.
+registered. Throttled at `password_reset`. The lookup and the send run on the
+Celery worker (`apps.accounts.send_password_reset`), so the response time does
+not say whether the address has an account either; with no broker it falls back
+to sending inline.
 
 ### `POST /api/auth/password/reset/verify/` · `POST /api/auth/password/reset/confirm/`
 
@@ -572,6 +637,13 @@ route), and an admin can neither re-role nor remove another admin or the owner.
 A refusal is `403` with `reason` `role_above_you`, and is recorded as
 `lab.member.role.refused`.
 
+Every other way of **granting** a lab role follows the same rule: an invite by
+username (`members/` `POST`), a lab invitation (`invitations/`), an emailed
+invitation or share link (`invites/`). None grants `owner`; only the owner
+grants `admin`; a lead PI or admin invites as `member` or `viewer`. Refusals are
+`403`, audited as `lab.invite.refused`, `lab.member.add.refused` or
+`org.invite.refused`.
+
 ### `GET` / `PATCH` `/api/auth/watch/me/`
 
 What Mylo keeps an eye on: `{ "topics": [...], "categories": [...], "cadence":
@@ -632,14 +704,28 @@ a blank name.
 ### `GET | POST | PUT | DELETE /api/auth/labs/<slug>/logo/`
 
 Served **through the API** — there is no `MEDIA_URL` route. `GET` streams the
-image to any member (`image/png|jpeg|gif|webp|svg+xml`, `nosniff`); `404` when
-unset. `POST`/`PUT` take a multipart `file` (≤ 2 MB, validated by magic bytes),
-restricted to lead PI / owner / admin, returning `{ "has_logo", "logo_version" }`.
-`DELETE` clears it.
+image to any member (`image/png|jpeg|gif|webp`, `nosniff`,
+`Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`);
+an SVG stored before uploads stopped accepting them is served as an attachment.
+`404` when unset. `POST`/`PUT` take a multipart `file` (≤ 2 MB, validated by
+magic bytes; PNG, JPEG, GIF or WebP — **SVG is refused**, `400`, because it can
+carry script), restricted to lead PI / owner / admin, returning
+`{ "has_logo", "logo_version" }`. `DELETE` clears it.
 
 ### `GET /api/auth/labs/<slug>/members/`
 
-Any member may read. Leads sort first.
+Any member may read. Leads sort first. Only members are listed — someone
+invited but not yet accepted never appears, and neither does their address.
+
+`POST { "username", "role"? }` (manager, verified) **invites** that account
+rather than adding it: an in-app invitation they accept or decline. It answers
+`202 { "detail", "status": "invited" }` whether or not the username exists, is
+already a member, or already has an invitation, so the route cannot be used to
+learn who has an account. `403` for a role the caller may not grant (see **Lab
+roles**); `429` past the day's invitation cap.
+
+`POST /api/auth/departments/<id>/members/` does the same for a department, by
+mailing a join invitation (below) to the account's own address.
 
 ```json
 [{ "username": "lena", "name": "Lena Reyes", "initials": "LR",
@@ -649,15 +735,39 @@ Any member may read. Leads sort first.
 ### Lab invitations
 
 `POST /api/auth/labs/<slug>/invitations/` invites by email or username:
-`{ "identifier", "role"? }`. An email with no account stays **pending** and is
-claimed at signup; a username with no account is a `400`, as is an existing
-member or duplicate invite. Managers only.
+`{ "identifier", "role"? }`. An email is bound to an account only when that
+account has **verified** the address; otherwise it stays **pending** and is
+claimed when the address is proved. A username with no account is a `400`, as is
+an existing member or duplicate invite. Managers only; `403` for a role the
+caller may not grant; `429` past the day's cap.
 
 `GET /api/auth/invitations/` returns the caller's pending invitations;
 `POST /api/auth/invitations/<id>/respond/` takes
 `{ "action": "accept" | "reject" | "ignore" }`. Accept creates the membership
-(idempotent). `403` if the invitation is not addressed to the caller; `409` if it
+(idempotent) with the invited role re-checked against the inviter's authority at
+that moment — an `owner` invitation, or an `admin` one from someone no longer
+the owner, grants `member`. `403` if the invitation is not addressed to the
+caller, or was addressed to an email the caller has not verified; `409` if it
 was already answered.
+
+### Department lab attach requests
+
+`POST /api/auth/departments/<id>/labs/ { "slug" }` attaches the lab at once
+(`201`, the labs list) only when the caller owns that lab. Otherwise it files a
+request — `202 { "detail", "status": "requested", "request_id" }` — because
+attaching shows the department's heads every project and member of the lab.
+The lab's owner sees pending requests at `GET /api/auth/labs/<slug>/attach-requests/`
+(`[{ "id", "department_id", "department_name", "requested_by", "status",
+"created_at" }]`) and answers with `POST …/attach-requests/<id>/accept/` or
+`…/decline/` (both return the row). Anyone else, including the lab's admins, gets
+`403`. Audited as `dept.lab.attach_requested|accepted|declined`.
+
+### Department roles
+
+`owner > admin > member > viewer`, the lab rule's twin: an admin removes members
+and viewers but not another admin; nobody is granted `owner` (the head is the
+department's `owner`); only the owner grants `admin`. Leaving a department
+yourself is always allowed.
 
 ### Join invitations
 
@@ -678,18 +788,29 @@ a verified account. The payload:
 An `email` invite is bound to one address and forced to one use; a `link` takes
 `max_uses` (1–500, default 25) and `expires_in_days` (1–90, default 7). `role`
 never resolves to `owner` — that is a transfer, not something a link confers, so
-it lands as `admin`. `400` on a bad setting, an address that already belongs to a
-member, or an address that already holds an open invitation to this org.
+it lands as `admin` — and only the org's **owner** may create an `admin`
+invitation (`403` otherwise; for a lab, a lead PI or admin invites members and
+viewers). The role is checked again when the invitation is spent. `400` on a bad
+setting, an address that already belongs to a member, or an address that already
+holds an open invitation to this org. `429` past the day's cap: 100 invitations
+per creator and 200 per org in any 24 hours (`invites.MAX_INVITES_PER_*`), on
+top of the `invite_create` request throttle.
 
-The response (and the `GET` list) carries the invitation including its `url`, so
-a share link stays copyable:
+Only a SHA-256 digest of the token is stored. The **creation** response carries
+the `url`; the `GET` list cannot, so it shows `url: null` and
+`url_available: false`:
 
 ```json
 { "id": "uuid", "kind": "link", "role": "member", "email": "", "message": "",
-  "url": "https://…/join/<token>", "max_uses": 25, "used_count": 0,
-  "uses_left": 25, "expires_at": "…", "revoked_at": null, "is_live": true,
-  "created_at": "…", "created_by": "lena" }
+  "url": "https://…/join/<token>", "url_available": true, "max_uses": 25,
+  "used_count": 0, "uses_left": 25, "expires_at": "…", "revoked_at": null,
+  "is_live": true, "created_at": "…", "created_by": "lena" }
 ```
+
+`POST /api/auth/labs/<slug>/invites/<id>/regenerate/` and
+`POST /api/auth/departments/<id>/invites/<invite_id>/regenerate/` give a live
+share link a fresh token and return the row with its new `url`; the old URL
+stops working. `400` for an email invite, `409` for one no longer live.
 
 The same `POST` takes a **batch of emailed invitations** when the payload carries
 `emails` instead of `email`. Up to 15 addresses (`invites.MAX_BATCH_EMAILS`),
@@ -1683,6 +1804,10 @@ Deadline reminders are a **paid, Discord-delivered** capability.
 `{ "content_id", "deadline_kind", "deadline_round_key"?, "offsets": [{ "amount",
 "unit" }], "lab_slug"?, "channel_id_override"?, "mentions"? }`. Dateless
 deadlines are rejected; a lab reminder needs manage rights.
+`channel_id_override` (on create and on `PATCH`) must be one of the lab's own
+server channels — the set `lab-channels/` offers — or `400`; empty means the
+lab's default. At send time an override the lab's server no longer holds falls
+back to the default channel.
 
 `deadline_round_key` selects **which** round of that kind, taken verbatim from
 the matching `addressable_deadlines` entry. Omitting it means `""` — the

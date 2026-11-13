@@ -40,7 +40,7 @@ def _grant_item(sid="g1", *, source="nsf", close_date="2026-11-12", **over):
 pytestmark = pytest.mark.django_db
 
 
-def _item(kind: str, source: str = "pivot") -> ContentItem:
+def _item(kind: str, source: str = "legacy") -> ContentItem:
     return ContentItem.objects.create(
         type=kind,
         source=source,

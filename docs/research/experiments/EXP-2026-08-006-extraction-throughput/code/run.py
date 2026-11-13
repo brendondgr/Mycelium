@@ -30,7 +30,12 @@ from pathlib import Path
 
 EXP_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = EXP_DIR / "data"
-COLLECT = Path("/home/bdgr/Tools/Grant/data/collect")
+#: The collector's SQLite stores. Set COLLECT_DIR to the store the run read
+#: (at the time, the standalone collector's ``data/collect``); the default is
+#: the repository's own ``data/collect``.
+COLLECT = Path(
+    os.environ.get("COLLECT_DIR") or EXP_DIR.parents[3] / "data" / "collect"
+)
 
 #: Fixed so the sample is reproducible. The keys drawn are written to
 #: data/sample.json — the seed alone is not a reproducibility guarantee once the

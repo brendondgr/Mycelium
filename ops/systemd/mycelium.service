@@ -1,6 +1,6 @@
 [Unit]
 Description=Mycelium — full Docker Compose stack
-Documentation=https://github.com/brendondgr/mycelium
+Documentation=file:__MYCELIUM_ROOT__/docs/configuration.md
 # Require Docker to be running before we start
 After=docker.service network-online.target
 Requires=docker.service

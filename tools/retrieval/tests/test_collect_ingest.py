@@ -35,8 +35,7 @@ TODAY_ISO = "2026-08-16"
 
 
 def _fake_embedder(texts):
-    # Deterministic, dependency-free stand-in for fastembed -- same idiom the
-    # Pivot ingest test suite uses.
+    # Deterministic, dependency-free stand-in for fastembed.
     return [[float(len(t)), 1.0, 2.0] for t in texts]
 
 
@@ -242,7 +241,7 @@ def test_summary_counts_refused_records_among_those_touched():
 
 @pytest.mark.django_db
 def test_new_source_id_is_pruned_when_expired():
-    """The bug the plan names: Pivot's ``prune_expired`` filtered on a
+    """The bug the plan names: the earlier ``prune_expired`` filtered on a
     hard-coded ``OPPORTUNITY_SOURCES`` allow-list of exactly two source ids,
     so a record from any *other* source -- every ``grants:<adapter>`` /
     ``conf:<adapter>`` row this migration introduces -- was silently
@@ -412,15 +411,15 @@ def test_embed_pending_reembeds_only_when_search_text_hash_changes():
 
 @pytest.mark.django_db
 def test_embed_pending_is_scoped_to_collector_sources():
-    """A ``pivot``-sourced grant carrying its own ``search_text`` must never
-    be touched by this module's embed sweep -- Pivot's own ingest already
-    owns embedding for that row, and this function's scope is exactly the
+    """A ``legacy``-sourced grant carrying its own ``search_text`` must never
+    be touched by this module's embed sweep -- its own ingest already owns
+    embedding for that row, and this function's scope is exactly the
     ``grants:``/``conf:`` prefixes the collector mapper writes."""
     pivot_item = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id="p1",
-        metadata={"search_text": "a pivot-sourced grant"},
+        metadata={"search_text": "a legacy-sourced grant"},
     )
     upsert_items([_grant_item()], today=TODAY_ISO)
     collector_obj = ContentItem.objects.get(external_id="src:nsf:g1")

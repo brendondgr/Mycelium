@@ -23,6 +23,7 @@ mail — see :func:`apps.accounts.permissions.require_verified_email`.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import secrets
@@ -46,7 +47,13 @@ from .models import (
     OrgInvite,
     OrgInviteRedemption,
 )
-from .services import add_dept_member, add_lab_member, record_audit_event
+from .services import (
+    add_dept_member,
+    add_lab_member,
+    grantable_dept_role,
+    grantable_lab_role,
+    record_audit_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,14 +117,117 @@ class InviteError(Exception):
         self.reason = reason
 
 
+#: How many invitations one account may create in a day, across every org, and
+#: how many one org may receive. Each email invite puts Mycelium's name in a
+#: stranger's inbox, so these are what stop an instance being used to send bulk
+#: mail; a share link counts too because it is the same authority. Generous for
+#: a lab inviting its people; a burst past them is not a lab inviting its people.
+MAX_INVITES_PER_CREATOR_PER_DAY = 100
+MAX_INVITES_PER_ORG_PER_DAY = 200
+
+
+class InviteQuotaExceeded(Exception):
+    """The creator, or the org, has sent as many invitations as a day allows."""
+
+
 def new_token() -> str:
     """A fresh URL-safe invite token (about 256 bits)."""
     return secrets.token_urlsafe(32)
 
 
-def invite_url(invite: OrgInvite) -> str:
-    """The absolute link a recipient follows."""
-    return app_url(f"{JOIN_PATH}/{invite.token}")
+def hash_token(token: str) -> str:
+    """The SHA-256 hex digest an invite is stored and looked up under.
+
+    A plain digest is enough here, unlike for a six-digit code: the token carries
+    about 256 bits, so there is no space small enough to sweep offline.
+    """
+    return hashlib.sha256(str(token or "").encode("utf-8")).hexdigest()
+
+
+def invite_url(invite: OrgInvite) -> str | None:
+    """The absolute link a recipient follows, or ``None`` once it is unknown.
+
+    The raw token exists only on the object that minted it (``invite.token``, set
+    by :func:`create_invite` and :func:`regenerate_invite`); a row read back from
+    the database has only the digest, and no link can be rebuilt from that.
+    """
+    token = getattr(invite, "token", None)
+    if not token:
+        return None
+    return app_url(f"{JOIN_PATH}/{token}")
+
+
+def check_daily_quota(
+    creator: User,
+    *,
+    lab: Lab | None = None,
+    department: Department | None = None,
+    adding: int = 1,
+) -> None:
+    """Refuse once ``creator`` or the org would pass a day's invitations.
+
+    Counted from the rows themselves (the last 24 hours of ``OrgInvite`` and
+    legacy ``LabInvitation``), so the cap holds across processes and restarts
+    without a cache to agree on.
+    """
+    from .models import LabInvitation
+
+    since = timezone.now() - timedelta(days=1)
+    by_creator = (
+        OrgInvite.objects.filter(created_by=creator, created_at__gte=since).count()
+        + LabInvitation.objects.filter(inviter=creator, created_at__gte=since).count()
+    )
+    if by_creator + adding > MAX_INVITES_PER_CREATOR_PER_DAY:
+        raise InviteQuotaExceeded(
+            "You have sent as many invitations as one day allows. Try again tomorrow."
+        )
+    if lab is not None:
+        by_org = (
+            OrgInvite.objects.filter(lab=lab, created_at__gte=since).count()
+            + LabInvitation.objects.filter(lab=lab, created_at__gte=since).count()
+        )
+    else:
+        by_org = OrgInvite.objects.filter(
+            department=department, created_at__gte=since
+        ).count()
+    if by_org + adding > MAX_INVITES_PER_ORG_PER_DAY:
+        raise InviteQuotaExceeded(
+            "This organization has sent as many invitations as one day allows. "
+            "Try again tomorrow."
+        )
+
+
+def check_grant(
+    creator: User,
+    role: str,
+    *,
+    lab: Lab | None = None,
+    department: Department | None = None,
+) -> None:
+    """Refuse a role the creator may not hand out (the rank rule; never owner)."""
+    from rest_framework.exceptions import PermissionDenied
+
+    from .permissions import user_can_grant_dept_role, user_can_invite_with_lab_role
+
+    allowed = (
+        user_can_invite_with_lab_role(creator, lab, role)
+        if lab is not None
+        else user_can_grant_dept_role(creator, department, role)
+    )
+    if allowed:
+        return
+    record_audit_event(
+        actor=creator,
+        action="org.invite.refused",
+        target_type="lab" if lab is not None else "department",
+        target_id=str(lab.id if lab is not None else department.id),
+        metadata={"role": role},
+    )
+    if role == OrgInvite.Role.OWNER:
+        raise PermissionDenied("An invitation never makes someone an owner.")
+    if role == OrgInvite.Role.ADMIN:
+        raise PermissionDenied("Only the owner can invite someone as an admin.")
+    raise PermissionDenied("You can only invite people to a role below your own.")
 
 
 # --------------------------------------------------------------------------- #
@@ -137,6 +247,7 @@ def create_invite(
     expires_in_days: int | None = None,
     message: str = "",
     send: bool = True,
+    checked: bool = False,
 ) -> OrgInvite:
     """Create one invitation and, for an email invite, mail it.
 
@@ -146,6 +257,14 @@ def create_invite(
     open invitation, raises the :class:`AddressRefused` subclass — which reaches a
     single-address caller as the same ``{"email": [...]}`` body, and gives
     :func:`create_invites` a reason to report per row.
+
+    Raises DRF ``PermissionDenied`` when the creator may not hand out ``role``
+    (owner never; admin only from the owner) and :class:`InviteQuotaExceeded`
+    past the day's cap. ``checked=True`` skips both, for :func:`create_invites`,
+    which runs them once for the whole batch.
+
+    The returned object carries the raw token as ``invite.token`` — the only
+    time it exists outside the recipient's mailbox.
     """
     if (lab is None) == (department is None):
         raise ValueError("Pass exactly one of lab / department.")
@@ -155,6 +274,9 @@ def create_invite(
         raise ValidationError({"kind": ["Choose an email invite or a share link."]})
 
     role = _clean_role(role)
+    if not checked:
+        check_grant(creator, role, lab=lab, department=department)
+        check_daily_quota(creator, lab=lab, department=department)
     address = str(email or "").strip().lower()
 
     if kind == OrgInvite.Kind.EMAIL:
@@ -202,13 +324,50 @@ def create_invite(
 
 
 def _create_with_unique_token(**fields) -> OrgInvite:
-    """Insert the row, retrying the (vanishingly unlikely) token collision."""
+    """Insert the row, retrying the (vanishingly unlikely) token collision.
+
+    Only the digest is written; the raw token rides on the returned object.
+    """
     for _ in range(5):
+        token = new_token()
         try:
             with transaction.atomic():
-                return OrgInvite.objects.create(token=new_token(), **fields)
+                invite = OrgInvite.objects.create(
+                    token_hash=hash_token(token), **fields
+                )
         except IntegrityError:
             continue
+        invite.token = token
+        return invite
+    raise RuntimeError("Could not allocate an invite token.")
+
+
+def regenerate_invite(invite: OrgInvite, *, actor: User) -> OrgInvite:
+    """Give a live invite a fresh token and return it carrying the raw one.
+
+    The way a manager gets a share link back after the creation response is gone:
+    the old link stops working in the same write, so a link that leaked is also
+    retired by asking for it again.
+    """
+    for _ in range(5):
+        token = new_token()
+        try:
+            with transaction.atomic():
+                OrgInvite.objects.filter(pk=invite.pk).update(
+                    token_hash=hash_token(token)
+                )
+        except IntegrityError:
+            continue
+        invite.token_hash = hash_token(token)
+        invite.token = token
+        record_audit_event(
+            actor=actor,
+            action="org.invite.regenerate",
+            target_type="org_invite",
+            target_id=str(invite.id),
+            metadata={"org_kind": invite.org_kind},
+        )
+        return invite
     raise RuntimeError("Could not allocate an invite token.")
 
 
@@ -286,6 +445,15 @@ def create_invites(
             }
         )
 
+    # Authority and the day's budget are settled once for the whole batch, before
+    # any address is looked at: the batch is refused as a unit rather than half
+    # sent.
+    role = _clean_role(role)
+    check_grant(creator, role, lab=lab, department=department)
+    check_daily_quota(
+        creator, lab=lab, department=department, adding=len(set(addresses))
+    )
+
     created: list[OrgInvite] = []
     failed: list[dict] = []
     seen: set[str] = set()
@@ -311,6 +479,7 @@ def create_invites(
                 role=role,
                 message=message,
                 send=send,
+                checked=True,
             )
         except AddressRefused as exc:
             failed.append(
@@ -339,6 +508,45 @@ def create_invites(
     return BatchResult(created=created, failed=failed, requested=len(addresses))
 
 
+def invite_dept_member_by_username(
+    department: Department,
+    username: str,
+    *,
+    actor: User,
+    role: str = OrgInvite.Role.MEMBER,
+) -> OrgInvite | None:
+    """Mail the account named ``username`` an invitation into ``department``.
+
+    The department twin of
+    :func:`apps.accounts.services.invite_lab_member_by_username`: never a
+    membership written on the manager's say-so, and silent about the target —
+    an unknown username, an existing member or an outstanding invitation all
+    return ``None`` and the caller answers the same either way. The invitation is
+    an ordinary email invite to the account's own address, so only that mailbox
+    can spend it.
+    """
+    role = _clean_role(role)
+    check_grant(actor, role, department=department)
+    check_daily_quota(actor, department=department)
+
+    target = User.objects.filter(username__iexact=str(username or "").strip()).first()
+    if target is None or target == actor or not (target.email or "").strip():
+        return None
+    try:
+        return create_invite(
+            creator=actor,
+            department=department,
+            kind=OrgInvite.Kind.EMAIL,
+            email=target.email,
+            role=role,
+            checked=True,
+        )
+    except ValidationError:
+        # Already a member, already invited, or an address that will not
+        # validate: the answer to the caller is the same as for a stranger.
+        return None
+
+
 def _first_detail(exc: ValidationError) -> str:
     """The first human sentence out of a DRF validation error, for one row."""
     detail = exc.detail
@@ -355,6 +563,11 @@ def _first_detail(exc: ValidationError) -> str:
 def deliver_invite(invite: OrgInvite) -> bool:
     """Mail an email invite to the address it is bound to."""
     if invite.kind != OrgInvite.Kind.EMAIL or not invite.email:
+        return False
+    if invite_url(invite) is None:
+        # Only the digest is stored; a link can be mailed only by the code that
+        # just minted (or regenerated) the token.
+        logger.error("Invite %s has no raw token to mail", invite.id)
         return False
     template = (
         "lab_invitation" if invite.org_kind == "lab" else "department_invitation"
@@ -409,7 +622,7 @@ def find_invite(token: str) -> OrgInvite:
     value = str(token or "").strip()
     invite = (
         OrgInvite.objects.select_related("lab", "department", "created_by")
-        .filter(token=value)
+        .filter(token_hash=hash_token(value))
         .first()
         if value
         else None
@@ -491,14 +704,23 @@ def _join_lab(invite: OrgInvite, user: User) -> None:
     lab = invite.lab
     if LabMembership.objects.filter(lab=lab, user=user).exists():
         return
-    add_lab_member(lab, user, role=invite.role, actor=invite.created_by)
+    # The role is re-checked against the creator's authority *now*: an admin
+    # link from someone who has since lost the right to make admins grants
+    # member, and no link ever grants owner.
+    role = grantable_lab_role(invite.created_by, lab, invite.role)
+    add_lab_member(
+        lab, user, role=role, actor=invite.created_by, enforce_rank=False
+    )
 
 
 def _join_department(invite: OrgInvite, user: User) -> None:
     department = invite.department
     if DeptMembership.objects.filter(department=department, user=user).exists():
         return
-    add_dept_member(department, user, role=invite.role, actor=invite.created_by)
+    role = grantable_dept_role(invite.created_by, department, invite.role)
+    add_dept_member(
+        department, user, role=role, actor=invite.created_by, enforce_rank=False
+    )
 
 
 def redeem_token(token: str, user: User) -> OrgInvite:
@@ -512,14 +734,21 @@ def redeem_token(token: str, user: User) -> OrgInvite:
 
 
 def invite_payload(invite: OrgInvite) -> dict:
-    """The manager's view of one invite, token included so a link stays copyable."""
+    """The manager's view of one invite.
+
+    ``url`` is present only on the response that created or regenerated the
+    invite; listed afterwards it is ``null``, because only the token's digest is
+    stored (``url_available`` says which).
+    """
+    url = invite_url(invite)
     return {
         "id": str(invite.id),
         "kind": invite.kind,
         "role": invite.role,
         "email": invite.email,
         "message": invite.message,
-        "url": invite_url(invite),
+        "url": url,
+        "url_available": url is not None,
         "max_uses": invite.max_uses,
         "used_count": invite.used_count,
         "uses_left": invite.uses_left,

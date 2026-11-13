@@ -676,9 +676,9 @@ export type ConferenceOpportunity = OpportunityBase & {
   manuscript_open: boolean;
   /** Submission status: "open" | "closed" | "unknown". */
   status: string;
-  /** Pivot's raw "Scope" section, or "". */
+  /** A legacy row's raw "Scope" section, or "". */
   scope: string;
-  /** The venue's own blurb (Pivot files it under "Scope"), collapsed, or "". */
+  /** The venue's own blurb (legacy rows file it under "Scope"), collapsed, or "". */
   description: string;
   /** The venue's short acronym (e.g. "NOVAS"), with the edition year already
    * stripped out — see `year_label`. */
@@ -1683,10 +1683,15 @@ export type MyDepartment = {
 };
 
 /**
- * One way into a lab or department — the manager's view, so it carries the URL.
+ * One way into a lab or department — the manager's view.
  *
  * `kind: "email"` is bound to one address and worth exactly one use. `kind:
  * "link"` is bound to nobody, so `max_uses` and `expires_at` are what hold it.
+ *
+ * `url` is set only on the response that created or regenerated the invite:
+ * the server keeps a digest of the token, not the token, so a listed invite has
+ * `url: null` and `url_available: false`. Regenerating a link gives a new URL
+ * and retires the old one.
  */
 export type OrgInvite = {
   id: string;
@@ -1694,7 +1699,8 @@ export type OrgInvite = {
   role: string;
   email: string;
   message: string;
-  url: string;
+  url: string | null;
+  url_available: boolean;
   max_uses: number;
   used_count: number;
   uses_left: number;

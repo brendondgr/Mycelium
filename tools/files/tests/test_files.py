@@ -198,6 +198,40 @@ def test_visibility_per_owner_kind(world):
         assert c.get(f"{BASE}/files/{row.pk}/").status_code == 404
 
 
+def test_the_file_list_is_filtered_in_sql_and_matches_can_see(
+    world, django_assert_max_num_queries
+):
+    """Listing files never walks every file on the instance in Python: the
+    visibility rule is one query, and it agrees with ``can_see`` row by row."""
+    from apps.accounts.models import Department
+    from apps.research.models import Project
+
+    from tools.files import access
+
+    dept = Department.objects.create(owner=world.alice, name="Dept")
+    world.lab.department = dept
+    world.lab.save(update_fields=["department"])
+    other_lab_project = Project.objects.create(scope_user=world.carol, name="Mine")
+    upload(world.bob, b"mine", "mine.txt")
+    upload(world.bob, b"lab wide", "lab.txt", "lab", world.lab)
+    upload(world.alice, b"project", "p.txt", "project", world.project)
+    upload(world.alice, b"dept", "dept.txt", "department", dept)
+    upload(world.carol, b"carol", "carol.txt")
+    upload(world.carol, b"carol project", "cp.txt", "project", other_lab_project)
+    every = list(StoredFile.objects.all())
+    for user in (world.alice, world.bob, world.carol, world.admin):
+        with django_assert_max_num_queries(3):  # fixed, whatever the file count
+            got = access.visible_queryset(user)
+        assert {f.pk for f in got} == {f.pk for f in every if access.can_see(user, f)}
+    assert {f.filename for f in access.visible_queryset(world.carol)} == {
+        "carol.txt",
+        "cp.txt",
+    }
+    assert [f.filename for f in access.visible_queryset(world.bob, q="DEPT")] == [
+        "dept.txt"
+    ]
+
+
 def test_who_may_add(world):
     with pytest.raises(Refused):
         upload(world.carol, b"x", "a.txt", "lab", world.lab)

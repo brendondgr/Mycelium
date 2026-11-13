@@ -211,7 +211,7 @@ def send_lab_channel(
             not_entitled=True,
             has_unlinked=has_unlinked,
         )
-    channel_id = subscription.channel_id_override or _lab_default_channel(subscription)
+    channel_id = _checked_override(subscription) or _lab_default_channel(subscription)
     if not channel_id:
         return SendOutcome(ok=False, unreachable=True, has_unlinked=has_unlinked)
 
@@ -234,6 +234,46 @@ def send_lab_channel(
 
 def _lab_default_channel(subscription) -> str:
     return resolve.get_announcement_channel_for_lab(subscription.target_lab)
+
+
+def lab_channel_ids(lab, *, strict: bool = True) -> set[str] | None:
+    """The channel ids that belong to ``lab``'s own linked Discord server.
+
+    The same set the reminder channel picker offers (the server's postable
+    channels, plus its announcement channel). A reminder's channel override must
+    be one of these, or the bot could be aimed at a channel in somebody else's
+    server.
+
+    When Discord cannot be asked: ``strict`` (the write path) answers with just
+    the announcement channel, so nothing unproved is accepted; non-strict (the
+    send path, re-checking a row that was validated when written) answers
+    ``None`` — "unknown", not "empty".
+    """
+    link = resolve.primary_server_for_lab(lab, "deadlines")
+    if link is None or not link.guild_id:
+        return set()
+    ids = {str(link.announcement_channel_id)} if link.announcement_channel_id else set()
+    try:
+        ids |= {c["id"] for c in list_postable_channels(link.guild_id)}
+    except Exception:  # noqa: BLE001 — a live Discord call
+        return ids if strict else None
+    return ids
+
+
+def _checked_override(subscription) -> str:
+    """The override if it still belongs to the lab's server, else ``""``.
+
+    Defence in depth for rows written before overrides were checked: a channel
+    the lab's server does not contain falls back to the lab's default channel
+    instead of being posted to.
+    """
+    override = subscription.channel_id_override
+    if not override:
+        return ""
+    allowed = lab_channel_ids(subscription.target_lab, strict=False)
+    if allowed is None or override in allowed:
+        return override
+    return ""
 
 
 @dataclass

@@ -659,6 +659,62 @@ class LabInvitation(models.Model):
         return f"Invite<{who} -> {self.lab} ({self.status})>"
 
 
+class LabAttachRequest(models.Model):
+    """A department asking to take in a lab it does not run.
+
+    Putting a lab under a department shows the department's heads every project
+    and every member of that lab, so the lab's owner decides — not whoever holds
+    the department. A manager who also owns the lab attaches it at once; anyone
+    else leaves one of these for the lab's owner to accept or decline.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        DECLINED = "declined", "Declined"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    department = models.ForeignKey(
+        Department, on_delete=models.CASCADE, related_name="lab_attach_requests"
+    )
+    lab = models.ForeignKey(
+        Lab, on_delete=models.CASCADE, related_name="attach_requests"
+    )
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="lab_attach_requests",
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    responded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # One open request per (department, lab): asking twice is not news.
+            models.UniqueConstraint(
+                fields=["department", "lab"],
+                condition=models.Q(status="pending"),
+                name="accounts_unique_pending_lab_attach",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"AttachRequest<{self.lab} -> {self.department} ({self.status})>"
+
+
 class AuditEvent(models.Model):
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -703,6 +759,7 @@ class EmailVerification(models.Model):
         SIGNUP = "signup", "Sign-up confirmation"
         CHANGE = "change", "Email change"
         PASSWORD = "password", "Password change"
+        DELETE = "delete", "Account deletion"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
@@ -751,12 +808,11 @@ class OrgInvite(models.Model):
     the building, works for departments too, and is the only invitation that puts
     Mycelium's name in a stranger's inbox.
 
-    The token is stored in the clear, unlike a password-reset token. The two are
-    not the same kind of secret: a reset token buys an account, is spent once, and
-    is never shown again, whereas a share link exists to be re-copied by the person
-    who made it and buys nothing but membership of one org. It is revocable,
-    expiring, use-capped, and readable only by managers who can already add members
-    directly — so hashing it would cost the feature its point and buy very little.
+    Only a SHA-256 digest of the token is stored (``token_hash``). The raw token
+    is shown once — in the response that created the invite, or one that
+    regenerated it — and in the email an email invite sends. A database dump or a
+    read-only admin therefore holds no link anyone can spend; a manager who lost
+    a share link regenerates it, which also kills the old one.
     """
 
     class Kind(models.TextChoices):
@@ -803,7 +859,11 @@ class OrgInvite(models.Model):
         default="",
         help_text="Optional note from the creator, shown in the email and on the page.",
     )
-    token = models.CharField(max_length=64, unique=True)
+    token_hash = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text="SHA-256 hex digest of the token; the token itself is not kept.",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -838,9 +898,6 @@ class OrgInvite(models.Model):
                 condition=~models.Q(kind="email") | ~models.Q(email=""),
                 name="accounts_org_invite_email_has_address",
             ),
-        ]
-        indexes = [
-            models.Index(fields=["token"], name="accounts_orginvite_token"),
         ]
 
     def __str__(self) -> str:
@@ -949,6 +1006,14 @@ class AuthorWork(models.Model):
     # was tried, so a work OpenAlex does not know is not looked up every night.
     openalex_field_id = models.CharField(max_length=32, blank=True, default="")
     field_checked_at = models.DateTimeField(null=True, blank=True)
+    # Whether this work is known to be the user's own. The self-service import
+    # takes any ORCID / OpenAlex / Scholar id the person types — including
+    # somebody else's — so what it stores is a claim (False). Only a work tied
+    # to a vouched identity (an operator provisioning the account from that
+    # author record, or a staff member confirming it in admin) is True. Unverified
+    # works still keep a reader's own papers out of their feed, but never feed
+    # co-authorship or "demonstrated" edges other people see.
+    verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

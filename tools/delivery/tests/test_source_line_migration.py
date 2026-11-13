@@ -1,6 +1,6 @@
 """The venue line survives a corpus that is half-migrated.
 
-Pivot wrote a conference's place into ``metadata["location"]``; the open
+Legacy rows carry a conference's place in ``metadata["location"]``; the open
 collector writes ``metadata["place_text"]``. For the length of the migration
 both shapes are in the table at once, so every reader of that field has to
 chain rather than choose.
@@ -98,7 +98,7 @@ class TestConferenceDescription:
     """The conference card's blurb must be the verified extraction.
 
     ``ConferenceSerializer`` overrode the base ``get_description`` to read
-    Pivot's ``scope`` key. The open collector writes no ``scope``, so the
+    the legacy ``scope`` key. The open collector writes no ``scope``, so the
     override returned "" for all 912 conferences in the rebuilt corpus while
     776 of them held a verified ``ai_summary``. Nothing failed: the field was
     simply, silently empty everywhere -- the same shape as the
@@ -123,7 +123,7 @@ class TestConferenceDescription:
         """Both present: the verified text is the one the record was embedded
         on, so showing anything else would describe a row by text that is not
         what matched it."""
-        payload = {"ai_summary": "Verified blurb.", "scope": "Pivot blurb."}
+        payload = {"ai_summary": "Verified blurb.", "scope": "Legacy blurb."}
         assert self._describe(payload) == "Verified blurb."
 
     def test_falls_back_to_the_collector_key(self):

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import ipaddress
 import os
 import socket
 import sys
@@ -107,8 +108,41 @@ async def _pipe(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> N
             writer.close()
 
 
-def handler(target_host: str, port: int):
+#: Docker's default address pools for bridge networks. Every container on the
+#: host can reach the bridge address, not only Mycelium's, so on a shared
+#: server set DECISION_RELAY_ALLOW to this stack's own network
+#: (`docker network inspect <project>_default`) — see docs/configuration.md.
+DEFAULT_ALLOW = "172.16.0.0/12,192.168.0.0/16"
+
+
+def allowed_networks(environ) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    """The peer ranges the relay accepts, from ``DECISION_RELAY_ALLOW``."""
+    raw = str(environ.get("DECISION_RELAY_ALLOW", "") or DEFAULT_ALLOW)
+    return [
+        ipaddress.ip_network(part.strip(), strict=False)
+        for part in raw.split(",")
+        if part.strip()
+    ]
+
+
+def peer_allowed(peer, networks) -> bool:
+    """Whether a connection's peer address is inside one of ``networks``."""
+    try:
+        address = ipaddress.ip_address(peer[0] if isinstance(peer, tuple) else peer)
+    except (TypeError, ValueError, IndexError):
+        return False
+    return any(address in network for network in networks)
+
+
+def handler(target_host: str, port: int, networks=None):
+    networks = networks if networks is not None else allowed_networks(os.environ)
+
     async def handle(reader, writer):
+        peer = writer.get_extra_info("peername")
+        if not peer_allowed(peer, networks):
+            print(f"decision-relay: refused a connection from {peer!r}", flush=True)
+            writer.close()
+            return
         try:
             up_reader, up_writer = await asyncio.open_connection(target_host, port)
         except OSError as exc:
@@ -120,10 +154,13 @@ def handler(target_host: str, port: int):
     return handle
 
 
-async def serve(listen: str, port: int, target_host: str = "127.0.0.1"):
-    """A started server forwarding ``listen:port`` to ``target_host:port``."""
+async def serve(
+    listen: str, port: int, target_host: str = "127.0.0.1", networks=None
+):
+    """A started server forwarding ``listen:port`` to ``target_host:port``,
+    for peers inside ``networks`` (default: ``allowed_networks``)."""
     return await asyncio.start_server(
-        handler(target_host, port), listen, port, reuse_address=True
+        handler(target_host, port, networks), listen, port, reuse_address=True
     )
 
 

@@ -28,15 +28,21 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "MAX_RESUME_BYTES",
+    "MAX_RESUME_PAGES",
     "CompleteFn",
     "draft_from_resume",
     "extract_text",
+    "extract_upload",
+    "read_upload",
     "parse_resume",
 ]
 
 CompleteFn = Callable[[str], str | None]
 
 MAX_RESUME_BYTES = 5 * 1024 * 1024  # 5 MB — résumés are small; cap abuse early.
+#: Pages read from a PDF. A long academic CV fits; a 5 MB file of thousands of
+#: blank pages does not hold a web worker parsing every one.
+MAX_RESUME_PAGES = 50
 _MIN_TEXT_CHARS = 20
 _PDF_MAGIC = b"%PDF-"
 _TEXT_EXTENSIONS = (".txt", ".text", ".md", ".markdown", ".rst")
@@ -52,6 +58,27 @@ _SYSTEM_PROMPT = (
 
 
 # -- text extraction ----------------------------------------------------------
+
+
+def read_upload(upload) -> bytes:
+    """The bytes of an uploaded file, refused by its declared size *before*
+    anything is read, and never more than one byte past the limit after."""
+    size = getattr(upload, "size", None)
+    if size is not None and size > MAX_RESUME_BYTES:
+        raise AuthorImportError("the uploaded file is too large (5 MB maximum)")
+    data = upload.read(MAX_RESUME_BYTES + 1)
+    if len(data) > MAX_RESUME_BYTES:
+        raise AuthorImportError("the uploaded file is too large (5 MB maximum)")
+    return data
+
+
+def extract_upload(upload) -> str:
+    """:func:`extract_text` for a Django ``UploadedFile``, size-checked first."""
+    return extract_text(
+        read_upload(upload),
+        content_type=getattr(upload, "content_type", "") or "",
+        filename=getattr(upload, "name", "") or "",
+    )
 
 
 def extract_text(
@@ -116,7 +143,10 @@ def _extract_pdf_text(data: bytes) -> str:
                 raise AuthorImportError(
                     "the PDF is encrypted; upload an unprotected copy"
                 ) from exc
-        pages = [page.extract_text() or "" for page in reader.pages]
+        pages = [
+            reader.pages[i].extract_text() or ""
+            for i in range(min(len(reader.pages), MAX_RESUME_PAGES))
+        ]
     except AuthorImportError:
         raise
     except Exception as exc:

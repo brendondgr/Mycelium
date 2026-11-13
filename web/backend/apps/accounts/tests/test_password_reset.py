@@ -308,11 +308,22 @@ def test_a_reset_also_activates_the_account(user: User) -> None:
     assert user.profile.is_verified is True
 
 
-@override_settings(EMAIL_BACKEND=LOCMEM)
+@override_settings(
+    EMAIL_BACKEND=LOCMEM, EMAIL_APP_BASE_URL="https://mycelium.example.edu"
+)
 def test_the_emailed_link_is_absolute_and_not_loopback(user: User) -> None:
+    """On an instance with a public origin, the mailed link uses it."""
     url = password_reset.reset_url(user)
-    assert url.startswith("http")
+    assert url.startswith("https://mycelium.example.edu/reset-password?")
     assert "localhost" not in url and "127.0.0.1" not in url
+
+
+@override_settings(EMAIL_BACKEND=LOCMEM, EMAIL_APP_BASE_URL="http://localhost:11050")
+def test_a_local_only_instance_mails_its_local_origin(user: User) -> None:
+    """With no public origin (a single-machine install), the link points at
+    the local gateway rather than someone else's site or a bare path."""
+    url = password_reset.reset_url(user)
+    assert url.startswith("http://localhost:11050/reset-password?")
 
 
 # -- changing a password from inside the app -------------------------------------

@@ -1,7 +1,7 @@
 """Hybrid fellowship ranking: deterministic eligibility, then research-fit.
 
-Vendored and adapted from /home/bdgr/Tools/ProQuest/utils/Fellowships/recommend.py,
-then extended with the embedding-match signal the grants/conferences matchers
+Adapted from an earlier standalone fellowship recommender, then extended with
+the embedding-match signal the grants/conferences matchers
 already use. Fellowships still gate on eligibility facets, not semantic similarity
 — citizenship, career stage, institutional/demographic restrictions have no
 embedding — but eligibility alone says nothing about whether an eligible

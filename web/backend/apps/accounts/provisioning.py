@@ -121,7 +121,9 @@ def provision_from_author(
     # Keep the works the import already read (plan M9). Done here as well as in
     # the app's import endpoint, because an account provisioned from an author id
     # never passes through that endpoint at all.
-    store_author_works(user, draft, source=source)
+    # Verified: an operator chose this author record for this account, which is
+    # the vouching a self-service import cannot give.
+    store_author_works(user, draft, source=source, verified=True)
 
     return ProvisionedAuthor(
         user=user, profile=profile, draft=draft, credentials=credentials

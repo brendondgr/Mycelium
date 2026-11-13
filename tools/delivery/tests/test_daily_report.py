@@ -171,6 +171,46 @@ def test_render_returns_pdf_bytes() -> None:
     assert len(pdf) > 1000
 
 
+def _link_uris(data: ReportData) -> list[str]:
+    reader = PdfReader(BytesIO(render_report_pdf(data)))
+    out = []
+    for page in reader.pages:
+        for annot in page.get("/Annots") or []:
+            action = annot.get_object().get("/A") or {}
+            if "/URI" in action:
+                out.append(str(action["/URI"]))
+    return out
+
+
+def test_a_scraped_url_cannot_break_out_of_its_link() -> None:
+    """An item URL is page data: a ``"`` in it cannot close the ``href`` and
+    add attributes, and only http(s) is ever made clickable."""
+    from tools.delivery.daily_report_pdf import _href, _inline
+
+    assert _href('https://a.example/x" color="red') == (
+        "https://a.example/x&quot; color=&quot;red"
+    )
+    assert _href("javascript:alert(1)") == ""
+    assert _href(" JavaScript:alert(1)") == ""
+    assert _href("data:text/html,<b>") == ""
+    assert _href("https://a.example/?a=1&b=<2>") == (
+        "https://a.example/?a=1&amp;b=&lt;2&gt;"
+    )
+    assert '"' not in _inline('[x](https://a.example/y"onclick="z)').split('href="')[
+        1
+    ].split('" color=')[0]
+
+    data = _sample_data()
+    theme = data.personal.themes[0]
+    papers = theme.entrants["papers"]
+    papers[0].url = 'https://a.example/x" color="red'
+    papers[1].url = "javascript:alert(1)"
+    uris = _link_uris(data)
+    assert not [u for u in uris if not u.startswith(("http://", "https://"))]
+    assert any(u.startswith("https://a.example/x") for u in uris)
+    assert "Paper number 1" in _text(data)  # the title stays, unlinked
+
+
 def test_the_document_is_organised_by_theme() -> None:
     """theme → what's new → what's standing, with the prose beside the items."""
     text = _text(_sample_data())
@@ -568,7 +608,7 @@ def _opp(
     }
     item = ContentItem.objects.create(
         type=type_map[kind],
-        source="pivot",
+        source="legacy",
         external_id=f"{kind}-{i}",
         metadata={"title": f"{kind} {i}", "sponsor": "Sponsor Y"},
     )

@@ -38,7 +38,7 @@ def _embed(text: str):
 def _grant(external_id: str, title: str, abstract: str):
     return ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=external_id,
         metadata={"title": title, "abstract": abstract, "sponsor": "NSF"},
         embedding=_embed(f"{title} {abstract}"),

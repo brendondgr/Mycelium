@@ -24,9 +24,9 @@ def client() -> APIClient:
 def _grant(gid, title, *, deadline="2026-12-01", first_seen=None):
     return ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=gid,
-        source_url=f"https://pivot.proquest.com/funding_opps/{gid}",
+        source_url=f"https://example.org/funding_opps/{gid}",
         metadata={
             "title": title,
             "sponsor": "NSF",
@@ -292,7 +292,7 @@ def test_save_rejects_unknown_item(client: APIClient):
 
 @pytest.mark.django_db
 def test_grants_feed_exposes_open_collector_provenance(client: APIClient):
-    """Every field the open collector adds that Pivot never carried round-trips
+    """Every field the open collector adds that legacy rows lack round-trips
     through the feed, and ``posted`` prefers the funder's own
     ``metadata["published_on"]`` over Mylo's ingest date."""
     user = User.objects.create_user("prov", password="x")
@@ -350,7 +350,7 @@ def test_grants_feed_posted_falls_back_without_published_on(client: APIClient):
     fallback rather than dropped."""
     user = User.objects.create_user("legacy", password="x")
     client.force_authenticate(user)
-    item = _grant("legacy", "Legacy Pivot Grant")  # no metadata["published_on"]
+    item = _grant("legacy", "Legacy Grant")  # no metadata["published_on"]
     RelevanceScore.objects.create(
         content=item,
         target_user=user,

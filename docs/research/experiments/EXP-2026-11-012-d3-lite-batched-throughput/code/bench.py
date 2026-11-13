@@ -25,7 +25,10 @@ import sys
 import time
 from pathlib import Path
 
-GAIFA = Path("/home/bdgr/Agents/GAIFA")
+#: A checkout of the GAIFA repository (default: a sibling of this one).
+GAIFA = Path(
+    os.environ.get("GAIFA_DIR") or Path(__file__).resolve().parents[5].parent / "GAIFA"
+)
 MODEL = GAIFA / "data" / "models" / "decide" / "d3-lite"
 SCRATCH = Path(os.environ.get("BENCH_SCRATCH", "/tmp"))
 os.environ.setdefault("TRITON_CACHE_DIR", str(SCRATCH / "triton"))

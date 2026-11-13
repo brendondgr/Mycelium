@@ -1,12 +1,7 @@
 """Map a raw Illinois Fellowship Finder record to a ``ContentItem``-shaped payload.
 
-Relocated from :mod:`apps.scraper.pivot.records` (plan Phase 6 — the deletion of
-Pivot-RP). That module's ``build_pivot_item`` was a three-way dispatcher over
-"grants" / "conferences" / "fellowships" — only the fellowship branch has
-anything to do with this source (D8: "Fellowships are untouched apart from
-relocating their code out of the pivot/ directory"), so this module keeps that
-branch, unchanged in behaviour, under its own name with no area parameter at
-all: every record this module sees is a fellowship, always.
+Every record this module sees is a fellowship, always, so it takes no area
+parameter.
 
 Deadlines are normalized through :mod:`tools.retrieval.eligibility.parsers` so a
 single ``prune_after`` date drives the daily expiry, and ``deadline_date`` /
@@ -28,8 +23,7 @@ def _join(*parts) -> str:
 def record_text(rec: dict) -> str:
     """The searchable document text: title/blurb/description + facets + eligibility.
 
-    Facet strings add discriminating vocabulary for vector/BM25 search — the same
-    reasoning ``pivot/records.py`` used before this branch moved here.
+    Facet strings add discriminating vocabulary for vector/BM25 search.
     """
     facets = rec.get("facets") or {}
     facet_parts = []
@@ -100,8 +94,7 @@ def build_fellowship_item(rec: dict, *, today: str) -> FellowshipItem | None:
 
     # Lazy imports keep this module's import graph clean of the eligibility
     # engine until a fellowship is actually built. Both live under
-    # tools.retrieval.eligibility (Phase 2 of the migration plan lifted them out of
-    # pivot/fellowships/, which had nothing to do with Pivot).
+    # tools.retrieval.eligibility.
     from tools.retrieval.eligibility.constraints import extract_by_pattern
     from tools.retrieval.eligibility.parsers import deadline_status, facets_incomplete
 

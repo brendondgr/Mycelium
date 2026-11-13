@@ -366,6 +366,79 @@ export async function changePassword(
 }
 
 /**
+ * End every other session this account holds; this one stays signed in.
+ * Returns how many were ended.
+ */
+export async function signOutEverywhere(): Promise<number> {
+  const body = await postAuth<{ ended: number }>(
+    ["sessions", "revoke"],
+    {},
+    "Could not sign out your other sessions. Try again in a moment.",
+  );
+  return body.ended ?? 0;
+}
+
+/**
+ * Step one of deleting the account: mail a code to the account's address.
+ * Refused (with the reason) while the person is the only owner of a lab or
+ * department that has other people in it.
+ */
+export async function requestAccountDeletion(): Promise<string> {
+  const body = await postAuth<{ detail: string }>(
+    ["account", "delete", "request"],
+    {},
+    "Could not send a confirmation code. Try again in a moment.",
+  );
+  return body.detail;
+}
+
+/** Step two: the password and the mailed code erase the account for good. */
+export async function deleteAccount(password: string, code: string): Promise<void> {
+  await ensureCsrfCookie();
+  const csrfToken = readCsrfToken();
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "account"),
+    {
+      method: "DELETE",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+      },
+      body: JSON.stringify({ password, code }),
+    },
+  );
+  if (!response.ok) {
+    const body = await parseJson<Record<string, unknown>>(response);
+    throw new Error(
+      firstFieldError(body) ?? "Could not delete your account. Try again in a moment.",
+    );
+  }
+}
+
+/** Download everything the account holds as one JSON file. */
+export async function downloadAccountData(): Promise<void> {
+  const response = await fetch(
+    buildApiUrl(getPublicApiBase(), "auth", "account", "export"),
+    { method: "GET", credentials: "include", cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error("Could not prepare your data. Try again in a moment.");
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const named = /filename="([^"]+)"/.exec(disposition)?.[1];
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = named ?? "mycelium-data.json";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Ask for a reset link. The answer is the same whether or not the address is
  * registered, so callers must not treat success as proof an account exists.
  */

@@ -179,6 +179,9 @@ def test_activating_on_the_lab_seats_everyone_and_bills_the_roster(
     client: APIClient,
 ) -> None:
     lab, members = _lab_with_members(5)
+    # With billing on, activation needs a staff account (who manages the lab).
+    members[0].is_staff = True
+    members[0].save(update_fields=["is_staff"])
     client.force_authenticate(members[0])
 
     resp = client.post(f"/api/labs/{lab.slug}/billing/activate/")

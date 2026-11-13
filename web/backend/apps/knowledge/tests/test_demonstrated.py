@@ -30,6 +30,7 @@ def ada(db):
 
 def _work(user, source_id, *, year=2022, field="23", thin=False, **terms):
     work = AuthorWork.objects.create(
+        verified=True,
         user=user, source="openalex", source_id=source_id, title=source_id, year=year
     )
     WorkFacets.objects.create(

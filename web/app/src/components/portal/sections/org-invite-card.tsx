@@ -75,7 +75,17 @@ export function OrgInvitePanel({
   isVerified,
 }: OrgInvitePanelProps) {
   const appHref = useAppHref();
-  const { list, create, createMany, revoke } = useOrgInvites(kind, id);
+  const { list, create, createMany, revoke, regenerate } = useOrgInvites(kind, id);
+  // Share-link URLs exist only in the response that minted them (the server
+  // keeps a digest), so the ones minted on this page are held here to stay
+  // copyable after the list refetches without them.
+  const [freshUrls, setFreshUrls] = React.useState<Record<string, string>>({});
+  const remember = (invite: OrgInvite) => {
+    const url = invite.url;
+    if (url) {
+      setFreshUrls((current) => ({ ...current, [invite.id]: url }));
+    }
+  };
   const [tab, setTab] = React.useState<Tab>("email");
   const [chips, setChips] = React.useState<string[]>([]);
   const [draft, setDraft] = React.useState("");
@@ -236,9 +246,13 @@ export function OrgInvitePanel({
         message: message.trim(),
       },
       {
-        onSuccess: () => {
+        onSuccess: (invite) => {
+          remember(invite);
           setMessage("");
-          setSent("Link created — copy it below.");
+          setSent(
+            "Link created — copy it below now. For safety it can only be copied " +
+              "from this page; later, make a new link instead.",
+          );
         },
         onError: (cause) => setError((cause as Error).message),
       },
@@ -520,8 +534,16 @@ export function OrgInvitePanel({
                   <InviteRow
                     key={invite.id}
                     invite={invite}
+                    url={invite.url ?? freshUrls[invite.id] ?? null}
                     onRevoke={() => revoke.mutate(invite.id)}
                     revoking={revoke.isPending}
+                    onRegenerate={() =>
+                      regenerate.mutate(invite.id, {
+                        onSuccess: remember,
+                        onError: (cause) => setError((cause as Error).message),
+                      })
+                    }
+                    regenerating={regenerate.isPending}
                   />
                 ))}
               </ul>
@@ -556,18 +578,28 @@ export function OrgInviteCard(props: OrgInvitePanelProps) {
 
 function InviteRow({
   invite,
+  url,
   onRevoke,
   revoking,
+  onRegenerate,
+  regenerating,
 }: {
   invite: OrgInvite;
+  /** The share URL, when this page minted it; `null` once only a digest is left. */
+  url: string | null;
   onRevoke: () => void;
   revoking: boolean;
+  onRegenerate: () => void;
+  regenerating: boolean;
 }) {
   const [copied, setCopied] = React.useState(false);
 
   async function copy() {
+    if (!url) {
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(invite.url);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -579,7 +611,9 @@ function InviteRow({
     <li className="flex flex-wrap items-center justify-between gap-2 py-2.5">
       <div className="min-w-0">
         <p className="truncate text-[13px] font-medium text-[var(--text-primary)]">
-          {invite.kind === "email" ? invite.email : invite.url}
+          {invite.kind === "email"
+            ? invite.email
+            : (url ?? "Share link · copy available only when created")}
         </p>
         <p className="mt-0.5 text-[11.5px] text-[var(--text-muted)]">
           Joins as {invite.role} · {invite.uses_left} of {invite.max_uses} left ·
@@ -590,9 +624,20 @@ function InviteRow({
         <Pill tone={invite.kind === "email" ? "primary" : "dashed"}>
           {invite.kind === "email" ? "Email" : "Link"}
         </Pill>
-        {invite.kind === "link" ? (
+        {invite.kind === "link" && url ? (
           <button type="button" className={GHOST_BUTTON} onClick={() => void copy()}>
             {copied ? "Copied" : "Copy"}
+          </button>
+        ) : null}
+        {invite.kind === "link" && !url ? (
+          <button
+            type="button"
+            className={GHOST_BUTTON}
+            onClick={onRegenerate}
+            disabled={regenerating}
+            title="Makes a new link to copy; the old one stops working."
+          >
+            {regenerating ? "Making…" : "New link"}
           </button>
         ) : null}
         <button

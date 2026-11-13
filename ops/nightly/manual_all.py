@@ -144,18 +144,16 @@ people's own imported papers into the knowledge graph — facets, demonstrated
 edges — within a nightly cap. It is outside ``CONTAINER_STAGES`` for the same
 reason: nothing a user receives today depends on it, so a failure is a warning.
 
-Grants and conferences move into the backend container because the open
-collector is pure HTTP — the host/container split Pivot-RP needed existed only
-for its Playwright browser and saved SSO session (plan D6). The Illinois
-fellowship scrape stays on the host for exactly the reason Pivot did:
-Playwright. Host and container share the same Postgres, so a host-side
-fellowship import is visible to the backend stages that follow. Every part of
-stage 1 — the container collection, the host fellowship scrape, and the weekly
-registry refresh — is non-fatal: a failed run warns, reports to Discord, and
-lets the rest of the night proceed over whatever corpus already exists. Neither
-half needs a login: the collector's sources are public HTTP, and the Illinois
-Fellowship Finder's listing page needs no session either — only the retired
-Pivot-RP scrape ever did.
+Grants and conferences are collected inside the backend container because the
+open collector is pure HTTP. The Illinois fellowship scrape stays on the host
+because it drives a Playwright browser. Host and container share the same
+Postgres, so a host-side fellowship import is visible to the backend stages
+that follow. Every part of stage 1 — the container collection, the host
+fellowship scrape, and the weekly registry refresh — is non-fatal: a failed run
+warns, reports to Discord, and lets the rest of the night proceed over whatever
+corpus already exists. Neither half needs a login: the collector's sources are
+public HTTP, and the Illinois Fellowship Finder's listing page needs no session
+either.
 
 Each stage runs for all users with default settings; this script takes no
 pass-through flags on purpose, so "collect and recommend everything for
@@ -206,13 +204,16 @@ except Exception:  # noqa: BLE001
 HOST = socket.gethostname()
 ROOT = Path(__file__).resolve().parents[2]
 
-#: Where ``scrape_fellowships.py scrape`` writes its JSON (still named after
-#: Pivot-RP's own layout — see that script's module docstring). Grants and
-#: conferences never write here anymore (they collect straight into the
-#: container's Postgres via ``collect_opportunities``), but a JSON file from
-#: before this migration can still be sitting on disk on a host nobody has
-#: cleaned up — see ``_purge_stale_pivot_json``.
-PIVOT_DIR = ROOT / "data" / "pivot"
+#: Where ``scrape_fellowships.py scrape`` writes its JSON. Grants and
+#: conferences never write here (they collect straight into the container's
+#: Postgres via ``collect_opportunities``), but a JSON file from an older layout
+#: can still be sitting on disk on a host nobody has cleaned up — see
+#: ``_tidy_scrape_dir``.
+FELLOWSHIPS_DIR = ROOT / "data" / "fellowships"
+#: The directory's previous name. Moved once, on the first run that finds it.
+LEGACY_SCRAPE_DIR = ROOT / "data" / "pivot"
+#: Files the older layout wrote (the fellowship JSON is now fellowships.json).
+STALE_SCRAPE_FILES = ("pivot_grants.json", "pivot_conferences.json", "pivot_fellowships.json")
 
 #: The dblp venue registry cache (plan D5a) — read by the conference
 #: collector's resolve stage, written by the ``refresh_dblp_registry``
@@ -464,46 +465,51 @@ def _write_run_state(**kwargs) -> None:
     write_run_state(**kwargs)
 
 
-def _purge_stale_pivot_json() -> None:
-    """Delete any leftover grants/conferences JSON from before this migration.
+def _tidy_scrape_dir() -> None:
+    """Move the old ``data/pivot`` directory to ``data/fellowships`` once, and
+    delete the JSON files the older layout left there.
 
-    ``scrape_fellowships.py`` (which replaced Pivot-RP's own ``pivot.py`` —
-    plan Phase 6) only ever reads/writes ``pivot_fellowships.json`` by exact
-    path, never a glob, so it can no longer accidentally re-ingest a stale
-    ``pivot_grants.json`` / ``pivot_conferences.json`` left over from a run
-    before this migration the way Pivot-RP's own ``pivot.py import`` could
-    (it globbed every ``pivot_*.json`` file under ``PIVOT_DIR`` with no way to
-    scope to one area). Those two files are nonetheless pure clutter now that
-    grants/conferences collect straight into the container's Postgres — this
-    is housekeeping, not a correctness guard the way it once was, and cheap
-    enough to keep doing right before the one area that still writes here.
+    The fellowship scraper only ever reads and writes its own file by exact
+    path, never a glob, so the leftovers cannot be re-ingested; removing them
+    is housekeeping, cheap enough to do right before the one area that still
+    writes here.
     """
-    for stale_name in ("pivot_grants.json", "pivot_conferences.json"):
-        stale_path = PIVOT_DIR / stale_name
-        if stale_path.exists():
-            print(
-                f"note: removing stale {stale_path} (grants/conferences no "
-                "longer scrape via Pivot)",
-                flush=True,
-            )
-            stale_path.unlink()
+    if LEGACY_SCRAPE_DIR.is_dir() and not FELLOWSHIPS_DIR.exists():
+        try:
+            LEGACY_SCRAPE_DIR.rename(FELLOWSHIPS_DIR)
+            print(f"note: moved {LEGACY_SCRAPE_DIR} to {FELLOWSHIPS_DIR}", flush=True)
+        except OSError as exc:
+            print(f"note: could not move {LEGACY_SCRAPE_DIR} ({exc})", flush=True)
+    for directory in (FELLOWSHIPS_DIR, LEGACY_SCRAPE_DIR):
+        for stale_name in STALE_SCRAPE_FILES:
+            stale_path = directory / stale_name
+            if stale_path.exists():
+                print(
+                    f"note: removing stale {stale_path} (left by an older layout)",
+                    flush=True,
+                )
+                stale_path.unlink()
 
 
 def _scrape_fellowships() -> bool:
     """Host-side Illinois Fellowship Finder scrape + import (Playwright), non-fatal.
 
     The one opportunity source that still needs a real browser — see the
-    module docstring. Unlike the retired Pivot-RP grant/conference scrape,
-    this needs no saved session at all: ``scrape_fellowships.py scrape``
-    reads a public listing page, so there is nothing here that needs to know
-    about SSO or a login window. Every step is logged, reported to Discord
+    module docstring. It needs no saved session: ``scrape_fellowships.py
+    scrape`` reads a public listing page, so there is nothing here that needs
+    to know about a login. Every step is logged, reported to Discord
     when it needs a human, and swallowed on failure, matching stage 1's
     overall non-fatal contract: a failed fellowship refresh must never stop
     the run from recommending over the existing corpus.
     """
+    # Before the scrape, so a scraper still writing the old directory name
+    # finds its own output where it left it for the import step.
+    _tidy_scrape_dir()
+
     if not have_uv():
         message = (
-            "`uv` is not on PATH — skipping the Illinois fellowship scrape; "
+            "`uv` is not on PATH — skipping the Illinois fellowship scrape (it "
+            "needs a browser on this host; the stack itself does not need uv); "
             "the later stages will match the fellowships already in the store."
         )
         print(f"note: {message}", flush=True)
@@ -524,8 +530,6 @@ def _scrape_fellowships() -> bool:
             action=f"Check the Playwright/Chromium install on {HOST}.",
         )
         return False
-
-    _purge_stale_pivot_json()
 
     if run_host(["uv", "run", "tools/retrieval/host/scrape_fellowships.py", "import"]) != 0:
         message = (
@@ -630,6 +634,22 @@ def scrape_opportunities(base: list[str]) -> bool:
     return collector_ok or fellowships_ok
 
 
+def model_off_on_purpose() -> bool:
+    """``llm.enabled = false`` in mycelium.toml: this instance runs without a
+    language model by choice, so a missing model is not an outage.
+
+    Read on the host with the standard-library config reader, which resolves
+    the file and the environment exactly as the backend does.
+    """
+    try:
+        sys.path.insert(0, str(ROOT / "ops" / "setup"))
+        import config_cli
+
+        return not bool(config_cli.resolve()["llm.enabled"])
+    except Exception:  # noqa: BLE001 - unreadable config: let llm_check decide
+        return False
+
+
 def preflight_llm(base: list[str]) -> bool:
     """Return True if the LLM endpoint is reachable; False (after reporting) if not.
 
@@ -643,6 +663,16 @@ def preflight_llm(base: list[str]) -> bool:
     back and the next run (or a manual re-run) can do it with the model up.
     """
     print("\n=== Pre-flight · Checking the LLM endpoint… ===", flush=True)
+    if model_off_on_purpose():
+        # No model by choice (setup's "none for now"): the run is what this
+        # instance offers, so it collects and ranks with deterministic drafts
+        # instead of skipping every night.
+        print(
+            "Language model off on purpose (llm.enabled = false): collecting and "
+            "ranking with deterministic write-ups.",
+            flush=True,
+        )
+        return True
     if run_manage("llm_check", ["--strict"], intro=None, base=base) != 0:
         _notify(
             "error",

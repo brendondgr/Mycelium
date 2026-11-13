@@ -6,12 +6,8 @@ prune_after only for true hard-dated deadlines, and missing-id rejection.
 Records are inline dicts taken from the real fellowships.json output (3 records
 representing true, anticipated, and continuous deadline types).
 
-Relocated from ``test_pivot_records.py``'s fellowship coverage (plan Phase 6 —
-the deletion of Pivot-RP): ``build_pivot_item`` used to dispatch on an ``area``
-string across three unrelated record shapes; ``build_fellowship_item`` is the
-fellowship branch alone, with no area parameter at all, so the old
-``test_unknown_area_raises`` case has no equivalent here — every record this
-function sees is a fellowship, always.
+``build_fellowship_item`` takes no area parameter — every record this function
+sees is a fellowship, always.
 """
 
 from tools.retrieval.fellowships.records import build_fellowship_item

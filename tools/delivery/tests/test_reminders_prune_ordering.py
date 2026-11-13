@@ -44,7 +44,7 @@ def pinned_prune_clock(monkeypatch):
 def _content_with_deadline(due: date):
     item = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=f"g-{due}",
         metadata={"title": "Grant", "prune_after": due.isoformat()},
     )

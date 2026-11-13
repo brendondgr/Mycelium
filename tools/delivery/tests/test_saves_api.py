@@ -38,9 +38,9 @@ def _paper(pid, title):
 def _grant(gid, title):
     return ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=gid,
-        source_url=f"https://pivot.proquest.com/funding_opps/{gid}",
+        source_url=f"https://example.org/funding_opps/{gid}",
         metadata={
             "title": title,
             "sponsor": "NSF",

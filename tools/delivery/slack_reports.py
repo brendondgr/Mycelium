@@ -85,8 +85,9 @@ def embed_to_blocks(embed: dict, *, link: str = "") -> list[dict]:
 
 
 def _report_link() -> str:
+    """The reports page, or "" (no link) when the instance has no public origin."""
     base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
-    return f"{base}/app/reports"
+    return f"{base}/app/reports" if base else ""
 
 
 def slack_only(user) -> bool:

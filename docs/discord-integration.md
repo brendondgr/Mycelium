@@ -261,37 +261,45 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
     `PUBLIC_HOSTNAME`.
 * **No privileged intents.** Slash-commands only; do not enable `MESSAGE_CONTENT`.
 * Interactions Endpoint URL: **leave blank** — interactions come over the gateway.
-* **Sync the gateway venv.** The Mylo bot runs from a venv at
-  `/opt/mylo-bot/venv` — deliberately **outside `$HOME`**. systemd (`init_t`)
-  resolves the `ExecStart` interpreter before dropping to `User=bdgr`, and
-  SELinux forbids `init_t` from reading anything under `user_home_t`; a venv in
-  the repo (or one whose `bin/python` symlinks back into `~/.local/share/uv`)
-  fails with `203/EXEC`. The venv is built against the **system** `python3.13`
-  (`/usr/bin/python3.13`, `bin_t`), not a uv-managed interpreter under home. The
-  bot configures Django in-process (`mylo/mycelium.py`), so it imports the
-  backend's models — including `apps/integrations/fields.py`'s `cryptography`
-  import. After any backend dependency the gateway imports is added (as
-  `cryptography` was), refresh the `/opt` venv and restart the bot:
+* **Run the gateway.** The bot is a host process under systemd
+  (`ops/systemd/mylo-bot.service`), not a container. It configures Django
+  in-process (`mylo/mycelium.py`), so it imports the backend's models and talks
+  to the stack's Postgres and Redis over the loopback ports (`127.0.0.1:11450`,
+  `:11550`, `:11551`), with the `DATABASE_URL`, `REDIS_URL` and
+  `AMBIENT_CACHE_URL` that `make setup` wrote into `.env` (they carry the
+  generated passwords). Steps, from the checkout:
 
   ```bash
-  # regenerate the export, then install into the OUT-OF-HOME venv.
-  # NOTE: use a real file, not <(...) — sudo can't read the process-sub fd.
-  uv export --no-hashes --format requirements-txt > data/mylo-requirements.txt
-  sudo uv pip install --python /opt/mylo-bot/venv/bin/python -r data/mylo-requirements.txt
-  sudo restorecon -Rv /opt/mylo-bot          # relabel new site-packages -> lib_t
-  sudo systemctl restart mylo-bot.service
+  # 1. the token: DISCORD_API_KEY=... in .env-mylo (mode 0600)
+  uv sync                                     # as yourself: the root .venv the unit runs
+  sudo python3 ops/mycelium install-service   # installs the units; enables the bot once a token is set
+  sudo systemctl enable --now mylo-bot.service
+  journalctl -u mylo-bot -f                   # "Logged in as Mylo" means it is connected
   ```
 
-  First-time build of the venv:
+  `make status` lists whichever of these is still missing. Setup never runs
+  `sudo` itself. The unit is hardened (`ProtectSystem=strict`,
+  `ProtectHome=read-only`, writes only under `data/`), so the bot cannot write
+  anywhere else in the checkout.
+
+  On an SELinux host (Fedora, RHEL), systemd (`init_t`) resolves the
+  `ExecStart` interpreter before it drops to the service user, and a venv under
+  a home directory is labelled `user_home_t`, which `init_t` may not execute:
+  the unit fails with `203/EXEC`. `install-service` relabels the venv's
+  interpreter `bin_t` (with `semanage` + `restorecon`) for exactly this. If your
+  policy still refuses it, build the venv outside the home directory instead,
+  against the system Python, and point the unit's `ExecStart` at it:
 
   ```bash
-  sudo dnf install -y python3.13
+  uv export --no-hashes --format requirements-txt > data/mylo-requirements.txt
   sudo uv venv --python /usr/bin/python3.13 /opt/mylo-bot/venv
   sudo uv pip install --python /opt/mylo-bot/venv/bin/python -r data/mylo-requirements.txt
   sudo restorecon -Rv /opt/mylo-bot
   ```
 
-  Skip the sync and every ORM-touching slash command (`/activate`,
+  Whichever venv the unit runs, refresh it after a backend dependency the
+  gateway imports is added (`uv sync`, or the `uv pip install` above) and
+  restart the bot; otherwise every ORM-touching slash command (`/activate`,
   `/activate-lab`, `/setup`, `/mylo status`) dies at `django.setup()` with
   `ModuleNotFoundError`, surfacing to the user as the generic "something went
   wrong on my end."
@@ -304,8 +312,10 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
 ## Configuration
 
 See `.env.example` (backend: `DISCORD_*`) and `.env-mylo.example` (gateway:
-`DISCORD_API_KEY`, `ERROR_CHANNEL`, `ACTIVATION_CHANNEL`). The bot token is reused
-from the gateway so there is one bot identity.
+`DISCORD_API_KEY`, the token and the only required value; `ERROR_CHANNEL`, an
+optional channel for run errors and summaries; `ACTIVATION_CHANNEL`). The bot
+token is reused from the gateway so there is one bot identity. With no token,
+Mylo stays out of Discord and the rest of the instance is unaffected.
 
 > **Do not hardcode `DISCORD_CACHE_URL` to a `localhost` URL.** `.env.example` is a
 > compose `env_file`, so any active value there is injected into the backend

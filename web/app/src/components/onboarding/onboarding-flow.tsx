@@ -949,19 +949,13 @@ export function OnboardingFlow({
           )}
         </div>
 
-        <div className="mt-5 flex items-center justify-center gap-4 border-t border-[var(--divider)] pt-4 text-sm">
-          <button
-            type="button"
-            className="text-[var(--text-muted)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={enterIntake}
-          >
-            Skip for now
-          </button>
-        </div>
-        <p className="mt-4 text-xs text-[var(--text-muted)]">
-          You&rsquo;re signed in either way. Verifying activates your account —
-          until then you can&rsquo;t create a lab or department, or invite
-          anyone. You can finish it later from your Account page.
+        {/* No "skip": on an instance that asks for verified addresses the API
+            answers nothing else until the address is proved (the server's
+            VerifiedEmailRequired gate), so skipping would only lead to a page
+            that cannot load. */}
+        <p className="mt-5 border-t border-[var(--divider)] pt-4 text-xs text-[var(--text-muted)]">
+          This Mycelium asks everyone to verify their address first. Verifying
+          activates your account; then we&rsquo;ll build your profile.
         </p>
       </div>
     );

@@ -5,6 +5,7 @@ import type { RootContent } from "mdast";
 
 import { parseAnswer } from "@/lib/portal/agent/markdown";
 import { splitCitations } from "@/lib/portal/agent/turns";
+import { SAFE_LINK } from "@/lib/safe-link";
 import type { AgentReference } from "@/lib/portal/agent/types";
 
 import { splitItemTitle } from "./open-ref";
@@ -36,8 +37,6 @@ export function AnswerText({
 function renderAll(nodes: RootContent[], ctx: Ctx): React.ReactNode {
   return nodes.map((node, i) => <React.Fragment key={i}>{render(node, ctx)}</React.Fragment>);
 }
-
-const SAFE_LINK = /^(https?:\/\/|mailto:)/i;
 
 function render(node: RootContent, ctx: Ctx): React.ReactNode {
   switch (node.type) {

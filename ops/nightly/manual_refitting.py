@@ -24,8 +24,8 @@ higher GPU cost.
 
 Usage:
     python ops/nightly/manual_refitting.py                              # all users, top-10 LLM
-    python ops/nightly/manual_refitting.py --user brendondgr --max 1    # one user, one refit
-    python ops/nightly/manual_refitting.py --user brendondgr --llm-limit all  # full LLM coverage
+    python ops/nightly/manual_refitting.py --user alice --max 1    # one user, one refit
+    python ops/nightly/manual_refitting.py --user alice --llm-limit all  # full LLM coverage
     python ops/nightly/manual_refitting.py --max 5                      # first 5 active users
     python ops/nightly/manual_refitting.py --no-llm                     # deterministic fallback
     python ops/nightly/manual_refitting.py --dry-run                    # run but don't persist

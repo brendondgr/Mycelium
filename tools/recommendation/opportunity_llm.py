@@ -2,8 +2,8 @@
 
 The opportunity twin of :mod:`tools.recommendation.suggest`. Retrieval + fusion give the
 opportunities most relevant to a researcher; this turns the top slice into the
-percent-match + reason the UI leads with, using an area-aware judgement ported
-from the ProQuest tool's multi-agent evaluator:
+percent-match + reason the UI leads with, using an area-aware judgement (one
+call per area that folds what were once separate specialist agents):
 
 - **Grants** are judged on scope alignment *and* eligibility — "can this specific
   researcher (career stage, institution) plausibly apply?" — the tool's two grant

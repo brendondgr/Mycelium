@@ -100,6 +100,7 @@ def test_rebuild_links_named_coauthors_and_shared_works_and_nothing_else(graph):
     # The same work held by two people links them with no co-author ids.
     for key in ("kim", "nia"):
         AuthorWork.objects.create(
+            verified=True,
             user=graph[key], source="openalex", source_id="W-shared", year=2024
         )
     result = coauthorship.rebuild()

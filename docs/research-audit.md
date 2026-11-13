@@ -1,6 +1,6 @@
 # Mycelium — Research Audit
 
-**Repository:** `/home/bdgr/Agents/Mycelium` · **Audited:** 3 August 2026 · **Commit:** `e8c95a2`
+**Repository:** Mycelium · **Audited:** 3 August 2026 · **Commit:** `e8c95a2`
 **Scope:** ~113,400 lines of first-party code (Python, TypeScript, Astro), 426 commits over 9 weeks (31 May – 2 Aug 2026).
 **Inferred inputs:** `PROJECT_NAME` = Mycelium (stated in README). `DOMAIN_HINT` = scholarly information access / research-lab operations (inferred from code; no domain was supplied). `TARGET_HORIZON` = ~12 months, workshop or conference (user-supplied).
 
@@ -216,7 +216,7 @@ The production logs are unambiguous.
 2026-07-20  ingest: 11 unique term(s) across 2 user(s)
 ```
 
-Every non-synthetic identifier appearing in any log: `brendondgr`, `bdgr`, `nicoler`, `pulse-lab`, plus three test artifacts. **That is the developer, a second account for the developer, one other person, and one lab.** The 383-user spike is loadtest residue, and on that day the fellowship path returned `error (0 scored, 0 new)` for essentially every synthetic user.
+Every non-synthetic identifier appearing in any log belongs to the developer (two accounts), one other user, or one lab (`pulse-lab`), plus three test artifacts. **That is the developer, a second account for the developer, one other person, and one lab.** The 383-user spike is loadtest residue, and on that day the fellowship path returned `error (0 scored, 0 new)` for essentially every synthetic user.
 
 Corpus scale is the one axis where the project has a genuine asset, and the README undersells it. Across the 26 non-loadtest logged runs, new papers ingested and embedded per run ranges **0 to 3,452, median ~870** (the 313 in `20260720T180617Z-cli.log` is a low day); a full run of 723 raw → 560 unique → 313 new completes in 25 seconds from 11 watch terms. 946 fellowships and 2,989 conference records sit on disk. Per-run candidate pools range **100–375** items.
 

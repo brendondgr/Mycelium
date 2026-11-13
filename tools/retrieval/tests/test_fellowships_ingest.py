@@ -3,11 +3,8 @@
 Injected embedder (no fastembed), in-memory Django DB (pytest-django @django_db),
 no network.
 
-Relocated from ``test_pivot_ingest.py``'s ``ingest_pivot`` fellowship coverage
-(plan Phase 6 — the deletion of Pivot-RP): ``ingest_pivot`` used to handle both
-Pivot's grant/conference upserts and the Illinois Fellowship Finder's, keyed on
-the same ``(source, external_id)`` upsert and the same type-scoped
-``prune_expired``. Now that grants/conferences ingest through the open
+Grants and conferences share the same ``(source, external_id)`` upsert and the
+same type-scoped ``prune_expired``. Since they ingest through the open
 collector's own ``tools.retrieval.collect.ingest`` (plan Phase 4), this module
 exercises the fellowship-only slice — :func:`tools.retrieval.fellowships.ingest
 .ingest_fellowships` — and the cross-type prune coverage through

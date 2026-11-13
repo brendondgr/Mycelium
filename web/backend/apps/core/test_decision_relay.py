@@ -65,7 +65,12 @@ def test_bytes_go_both_ways():
         upstream = await asyncio.start_server(echo, "127.0.0.1", port)
         # The relay listens on another loopback address, on the same port, as it
         # listens on the bridge address in the stack.
-        relay = await R.serve("127.0.0.2", port, target_host="127.0.0.1")
+        relay = await R.serve(
+            "127.0.0.2",
+            port,
+            target_host="127.0.0.1",
+            networks=R.allowed_networks({"DECISION_RELAY_ALLOW": "127.0.0.0/8"}),
+        )
         async with upstream, relay:
             reader, writer = await asyncio.open_connection("127.0.0.2", port)
             writer.write(b"ping")
@@ -75,3 +80,40 @@ def test_bytes_go_both_ways():
         return got
 
     assert asyncio.run(run()) == b"pong:ping"
+
+
+def test_a_peer_outside_the_allowed_networks_is_refused():
+    async def run():
+        async def echo(reader, writer):
+            writer.write(b"pong")
+            await writer.drain()
+            writer.close()
+
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+        upstream = await asyncio.start_server(echo, "127.0.0.1", port)
+        # Only Docker bridge ranges are allowed, so a loopback peer is refused.
+        relay = await R.serve(
+            "127.0.0.2",
+            port,
+            target_host="127.0.0.1",
+            networks=R.allowed_networks({}),
+        )
+        async with upstream, relay:
+            reader, writer = await asyncio.open_connection("127.0.0.2", port)
+            got = await asyncio.wait_for(reader.read(100), 5)
+            writer.close()
+        return got
+
+    assert asyncio.run(run()) == b""
+
+
+def test_allowed_networks_reads_the_env_and_defaults_to_docker_pools():
+    default = R.allowed_networks({})
+    assert R.peer_allowed(("172.18.0.5", 1234), default)
+    assert not R.peer_allowed(("10.1.2.3", 1234), default)
+    narrow = R.allowed_networks({"DECISION_RELAY_ALLOW": "172.29.0.0/24"})
+    assert R.peer_allowed(("172.29.0.9", 1), narrow)
+    assert not R.peer_allowed(("172.18.0.5", 1), narrow)
+    assert not R.peer_allowed(None, narrow)

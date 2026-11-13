@@ -1,8 +1,8 @@
 """Tests for :mod:`tools.retrieval.collect.mapping`.
 
 Every fixture below is either a real record pulled from the live collector
-stores (`/home/bdgr/Tools/Grant/data/collect/{opportunities,conferences}.db`,
-queried directly while writing this file) or, where the plan calls for a case
+stores (`data/collect/{opportunities,conferences}.db` under the repository
+root, queried directly while writing this file) or, where the plan calls for a case
 that does not currently exist on live data (the notification-only-future
 conference), a hand-built record in the same real shape — flagged as such at
 the point of use, the same way ``EXP-2026-08-007`` hand-built its

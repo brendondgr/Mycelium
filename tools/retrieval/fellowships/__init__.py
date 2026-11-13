@@ -1,9 +1,8 @@
-"""Fellowships scraper — vendored from the ProQuest tool's Fellowships package.
+"""Fellowships scraper.
 
-Illinois Fellowship Finder (public, no SSO) is the single source. The public
-entry point is :func:`scrape_fellowships`; it mirrors :func:`scrape_grants` /
-:func:`scrape_conferences` in the Pivot package: best-effort, never raises out
-of a refresh, owns its own asyncio event loop.
+Illinois Fellowship Finder (public, no login) is the single source. The public
+entry point is :func:`scrape_fellowships`: best-effort, never raises out of a
+refresh, owns its own asyncio event loop.
 
 ``playwright`` and ``bs4`` are optional extras — this package imports cleanly
 when they are absent; the imports happen inside functions (see ``illinois.py``).

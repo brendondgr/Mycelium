@@ -1,6 +1,6 @@
 [Unit]
 Description=Mycelium — Mylo Discord bot (persistent gateway)
-Documentation=https://github.com/brendondgr/mycelium
+Documentation=file:__MYCELIUM_ROOT__/docs/discord-integration.md
 # The gateway configures Django in-process (mylo/mycelium.py) and talks to the
 # stack's Postgres, so at boot it should come up after the stack. `Wants` (not
 # `Requires`) on purpose: if the stack is down the bot should still connect to
@@ -38,6 +38,21 @@ RestartSec=5
 User=__MYCELIUM_USER__
 Group=__MYCELIUM_USER__
 
+# Hardening. The bot reads the checkout (code, .env, .env-mylo, the venv) and
+# writes only under data/ (run state, logs, files people hand Mylo); it reaches
+# Postgres and Redis on 127.0.0.1 and Discord over the network, nothing else.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__MYCELIUM_ROOT__/data
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
 StandardOutput=journal
 StandardError=journal
 
@@ -46,10 +61,12 @@ WantedBy=multi-user.target
 
 # Enable on this (or any) host. The installer substitutes __MYCELIUM_ROOT__ and
 # __MYCELIUM_USER__ for this checkout, so do NOT `cp` this file by hand:
-#     uv sync                              # build the root .venv first
-#     sudo scripts/mycelium install-service
-#     sudo systemctl start mylo-bot.service
+#     uv sync                                            # as yourself: build the root .venv
+#     sudo python3 ops/mycelium install-service          # from the checkout
+#     sudo systemctl enable --now mylo-bot.service
 #     journalctl -u mylo-bot -f
-# Requires the gitignored .env-mylo (token + channel ids) at the repo root.
-# First deploy only: register the slash commands once from inside a server where
-# Mylo is present:  @Mylo sync global   (owner-only; propagation can take an hour)
+# Requires the gitignored .env-mylo (DISCORD_API_KEY at least) at the repo root.
+# install-service enables the bot at boot only once that token is set.
+# First deploy only: register the slash commands once. As an owner listed in
+# DISCORD_OWNER_IDS, send Mylo a direct message:
+#     !mylo sync global      (propagation can take up to an hour)

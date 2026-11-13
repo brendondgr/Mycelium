@@ -158,7 +158,7 @@ def test_reminder_fires_correctly_across_dst_boundary() -> None:
     lab = Lab.objects.create(name="Lab", slug="lab", timezone="America/New_York")
     LabMembership.objects.create(user=User.objects.create_user("m"), lab=lab)
     item = ContentItem.objects.create(
-        type=ContentItem.Type.GRANT, source="pivot", external_id="g-dst"
+        type=ContentItem.Type.GRANT, source="legacy", external_id="g-dst"
     )
     ContentDeadline.objects.create(
         content=item,

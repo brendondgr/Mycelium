@@ -4,7 +4,13 @@ import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
-from apps.accounts.models import DeptMembership, Lab, LabMembership
+from apps.accounts.models import (
+    DeptMembership,
+    Lab,
+    LabInvitation,
+    LabMembership,
+    OrgInvite,
+)
 from apps.billing.entitlements import Tier, effective_tier
 from apps.billing.models import Seat
 from apps.billing.services import (
@@ -43,7 +49,18 @@ def test_manager_adds_lab_member_and_seats_them(client: APIClient) -> None:
         format="json",
     )
 
-    assert resp.status_code == 201
+    # An invitation, not a membership: they join (and are seated) on accepting.
+    assert resp.status_code == 202
+    assert not LabMembership.objects.filter(lab=lab, user=newbie).exists()
+    invitation = LabInvitation.objects.get(lab=lab, invitee=newbie)
+
+    client.force_authenticate(newbie)
+    accept = client.post(
+        f"/api/auth/invitations/{invitation.id}/respond/",
+        {"action": "accept"},
+        format="json",
+    )
+    assert accept.status_code == 200
     assert LabMembership.objects.filter(lab=lab, user=newbie).exists()
     assert effective_tier(newbie) == Tier.LAB
 
@@ -123,6 +140,8 @@ def test_department_add_member_and_effective_roster(client: APIClient) -> None:
     dept = provision_workspace(head, "department", org_name="Systems").department
     activate_department_subscription(dept)
     direct = _user("analyst")
+    direct.email = "analyst@uni.edu"
+    direct.save(update_fields=["email"])
     client.force_authenticate(head)
 
     add = client.post(
@@ -130,7 +149,14 @@ def test_department_add_member_and_effective_roster(client: APIClient) -> None:
         {"username": "analyst", "role": "member"},
         format="json",
     )
-    assert add.status_code == 201
+    # An emailed invitation, not a membership: not in the roster until accepted.
+    assert add.status_code == 202
+    assert not DeptMembership.objects.filter(department=dept, user=direct).exists()
+    invite = OrgInvite.objects.get(department=dept, email="analyst@uni.edu")
+
+    from apps.accounts import invites
+
+    invites.redeem(invite, direct)
     assert DeptMembership.objects.filter(department=dept, user=direct).exists()
     assert effective_tier(direct) == Tier.CANOPY
 
@@ -148,15 +174,28 @@ def test_department_attach_lab_lists_and_reseats(client: APIClient) -> None:
     lab = create_lab_workspace(pi, "Sub Lab").lab
     client.force_authenticate(head)
 
-    resp = client.post(
+    asked = client.post(
         f"/api/auth/departments/{dept.id}/labs/",
         {"slug": lab.slug},
         format="json",
     )
+    # The head does not own the lab: a request waits on its owner.
+    assert asked.status_code == 202
+    lab.refresh_from_db()
+    assert lab.department_id is None
 
-    assert resp.status_code == 201
+    client.force_authenticate(pi)
+    pending = client.get(f"/api/auth/labs/{lab.slug}/attach-requests/")
+    assert [row["department_id"] for row in pending.data] == [str(dept.id)]
+    accepted = client.post(
+        f"/api/auth/labs/{lab.slug}/attach-requests/{pending.data[0]['id']}/accept/"
+    )
+    assert accepted.status_code == 200
     lab.refresh_from_db()
     assert lab.department_id == dept.id
+
+    client.force_authenticate(head)
+    resp = client.get(f"/api/auth/departments/{dept.id}/labs/")
     # Attach alone does not put the lab on the plan (opt-in).
     assert effective_tier(pi) != Tier.CANOPY
     slugs = {row["slug"] for row in resp.data}

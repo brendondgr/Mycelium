@@ -87,7 +87,7 @@ qdrant-data/
 # or private: the collector store (data/collect), the evaluation corpora and
 # embedding caches (data/eval-cache, tens of GB), the FastEmbed model cache
 # (data/models), demo credentials (data/logins), fellowship scrape output
-# (data/pivot), queued Discord attachments (data/outbox), nightly analytics and
+# (data/fellowships), queued Discord attachments (data/outbox), nightly analytics and
 # run state (data/logs, data/analytics), sandbox corpora, load-test reports
 # (data/loadtest), grant API sample CSVs (data/grants), and database dumps, which
 # carry the real user table. None of it is source, so none of it is committed.
@@ -120,10 +120,8 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# Pivot-RP (ProQuest) grants/conferences ingestion secrets
+# Saved browser sessions (Playwright storage state): login cookies, never source
 storage_state.json
-**/pivot/storage_state.json
-pivot.db
 
 # Retrieval evaluation harness (eval/). `results/` IS committed — the small JSON
 # score records are the run history. The corpora, embedding caches, and TREC run

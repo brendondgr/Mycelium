@@ -79,8 +79,14 @@ def _day(iso: str) -> str:
 
 
 def mylo_and_you_url() -> str:
+    """The Mylo & you page, or "" when the instance has no public origin."""
     base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
-    return f"{base}/app/mylo-and-you"
+    return f"{base}/app/mylo-and-you" if base else ""
+
+
+def _linked(text: str, url: str) -> str:
+    """``[text](url)``, or the plain text when there is no URL to point at."""
+    return f"[{text}]({url})" if url else text
 
 
 def collect(packet, *, target_filter: dict, projects: list, reader, today: date):
@@ -227,7 +233,7 @@ def interpretation(packet) -> str:
     return (
         f"You confirmed an exploration of **{row['topic']}** on {weekday}, so this "
         f"week's papers give it more attention [O{row['n']}]. "
-        f"Not right? [Tell me]({mylo_and_you_url()})."
+        f"Not right? {_linked('Tell me', mylo_and_you_url())}."
     )
 
 
@@ -289,8 +295,9 @@ def what_changed_block(packet, *, reader=None) -> str:
             )
     if not is_lab:
         lines.append("")
+        where = _linked("Mylo & you", mylo_and_you_url())
         lines.append(
-            f"See, edit or undo any of these on [Mylo & you]({mylo_and_you_url()})."
+            f"See, edit or undo any of these on {where}."
         )
     return "\n".join(lines)
 

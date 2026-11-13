@@ -1,16 +1,15 @@
 """Display-time text formatting shared across content serializers.
 
-``normalize_amount`` was vendored (alongside the rest of ``pivot/normalize.py``)
-from the ProQuest tool's ``utils/ProQuest/normalize.py``. It moved here — out of
-``apps.scraper.pivot`` — because it is not a scrape-time transform at all: both
+``normalize_amount`` lives here, not in a scrape package, because it is not a
+scrape-time transform at all: both
 :class:`~tools.delivery.serializers.GrantSerializer` and
 :class:`~tools.delivery.serializers.SearchResultSerializer` call it **at read
 time**, on every request, to distill whatever a source's raw amount field
 happens to hold into something short enough to show on a card. Living inside a
-provider-specific scrape package made that read-time dependency invisible; a
-Pivot-only cleanup could delete it and 500 every content endpoint without
-touching a single content-app file. It has no models/DB/network dependency, so
-it is trivially unit-testable on its own.
+provider-specific scrape package would make that read-time dependency
+invisible; removing that provider could delete it and 500 every content
+endpoint without touching a single content-app file. It has no
+models/DB/network dependency, so it is trivially unit-testable on its own.
 """
 
 from __future__ import annotations

@@ -20,7 +20,7 @@ from tools.retrieval.models import ContentItem
 def _grant(external_id: str, title: str) -> ContentItem:
     return ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=external_id,
         metadata={"title": title},
     )

@@ -5,7 +5,7 @@ import type { SourceLink } from "@/lib/portal/types";
 
 /**
  * Per-source attribution + licence line for a card's footer — the provenance
- * the open-collector migration added that Pivot never carried (plan Phase 9:
+ * the open-collector migration added (plan Phase 9:
  * every opportunity now exposes `source`/`license`/`license_url`/
  * `source_links`). Renders nothing when the item carries none of the three —
  * a pre-migration snapshot row or an area with no licence data — so no card

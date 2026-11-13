@@ -1,8 +1,11 @@
+import os
 import re
+import sys
 from pathlib import Path
 
 import environ
 from celery.schedules import crontab
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
@@ -28,6 +31,20 @@ def env_str(name: str, default: str = "") -> str:
     that empty value over the default and hand out URLs like `/login`.
     """
     return (env(name, default="") or "").strip() or default
+
+
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"})
+
+
+def is_loopback_origin(url: str) -> bool:
+    """Whether ``url``'s host is a loopback address (so it must not be published)."""
+    host = re.sub(r"^[a-z]+://", "", str(url or "").strip(), flags=re.IGNORECASE)
+    host = host.split("/", 1)[0]
+    if host.startswith("["):  # bracketed IPv6 literal, e.g. [::1]:11050
+        host = host.split("]", 1)[0] + "]"
+    else:
+        host = host.split(":", 1)[0]
+    return host.casefold() in _LOOPBACK_HOSTS
 
 
 # The instance configuration (config/instance.py): defaults → deployment profile →
@@ -76,12 +93,65 @@ DEMO_QUESTION_MAX_CHARS = _cfg["demo.question_max_chars"]
 # visitor on the public host back to localhost. Assumed HTTPS, since that is
 # what a tunnel or public proxy terminates.
 PUBLIC_HOSTNAME = env_str("PUBLIC_HOSTNAME")
-PUBLIC_BASE_URL = (
-    f"https://{PUBLIC_HOSTNAME}" if PUBLIC_HOSTNAME else "http://localhost:11050"
+# The port nginx is published on (compose's NGINX_PORT), for the local origin.
+NGINX_PORT = env_str("NGINX_PORT", "11050")
+LOCAL_BASE_URL = f"http://localhost:{NGINX_PORT}"
+PUBLIC_BASE_URL = f"https://{PUBLIC_HOSTNAME}" if PUBLIC_HOSTNAME else LOCAL_BASE_URL
+
+SECRET_KEY = env_str("DJANGO_SECRET_KEY")
+DEBUG = env.bool("DJANGO_DEBUG", default=False)
+
+#: The test suite runs with whatever (or no) .env the checkout has, so the
+#: start-up refusals below do not apply to it.
+RUNNING_TESTS = (
+    "pytest" in sys.modules
+    # pytest exports this for the session, so the tools import script it
+    # starts in a subprocess counts as a test run too.
+    or "PYTEST_VERSION" in os.environ
+    or sys.argv[1:2] == ["test"]
 )
 
-SECRET_KEY = env("DJANGO_SECRET_KEY", default="django-insecure-local-dev-only")
-DEBUG = env("DJANGO_DEBUG", default=False)
+#: Secret keys that are placeholders, not secrets.
+_PLACEHOLDER_SECRET_KEYS = frozenset({"", "change-me", "changeme", "secret"})
+
+
+def startup_problems(
+    *, debug: bool, public_hostname: str, secret_key: str
+) -> list[str]:
+    """Why this configuration must not serve anyone, or ``[]``.
+
+    Two mistakes that are easy to ship and expensive once public: DEBUG on a
+    public hostname (tracebacks, settings and SQL shown to any visitor), and a
+    secret key anyone can read in this repository (forged sessions and
+    password-reset tokens). Development with DEBUG on may keep a throwaway key.
+    """
+    problems = []
+    if debug and public_hostname:
+        problems.append(
+            "DJANGO_DEBUG is on while PUBLIC_HOSTNAME is set. Debug pages show "
+            "settings and stack traces to every visitor. Set DJANGO_DEBUG=False "
+            "in .env (or unset PUBLIC_HOSTNAME for local development)."
+        )
+    key = secret_key.strip()
+    if not debug and (
+        key.lower() in _PLACEHOLDER_SECRET_KEYS or key.startswith("django-insecure-")
+    ):
+        problems.append(
+            "DJANGO_SECRET_KEY is empty or a published placeholder. Generate one "
+            "(python3 -c 'import secrets; print(secrets.token_urlsafe(50))') "
+            "and put it in .env as DJANGO_SECRET_KEY=..."
+        )
+    return problems
+
+
+if not RUNNING_TESTS:
+    _problems = startup_problems(
+        debug=DEBUG, public_hostname=PUBLIC_HOSTNAME, secret_key=SECRET_KEY
+    )
+    if _problems:
+        raise ImproperlyConfigured(" ".join(_problems))
+# Reached only with DEBUG on or under tests: a fixed key keeps sessions stable.
+SECRET_KEY = SECRET_KEY or "django-insecure-local-dev-only"
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
     default=["localhost", "127.0.0.1"],
@@ -215,31 +285,36 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+# compose points this at data/static, which nginx serves at /static/.
+STATIC_ROOT = Path(env_str("DJANGO_STATIC_ROOT", str(BASE_DIR / "staticfiles")))
 STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CORS_ALLOWED_ORIGINS = env.list(
-    "DJANGO_CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:11050", "http://localhost:11250"],
-)
+_LOCAL_ORIGINS = [LOCAL_BASE_URL, f"http://127.0.0.1:{NGINX_PORT}"]
+CORS_ALLOWED_ORIGINS = env.list("DJANGO_CORS_ALLOWED_ORIGINS", default=_LOCAL_ORIGINS)
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = env.list(
-    "DJANGO_CSRF_TRUSTED_ORIGINS",
-    default=["http://localhost:11050", "http://localhost:11250"],
-)
+CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=_LOCAL_ORIGINS)
 
-# Same rule as ALLOWED_HOSTS: the public origin is always trusted when
-# PUBLIC_HOSTNAME is set, so a login POST from the public host is not rejected
-# as a CSRF failure just because the configured lists still say localhost.
+
+def public_origins(origins: list[str]) -> list[str]:
+    """Served at a public hostname, the public origin first and no loopback one.
+
+    A loopback origin left in the lists from local work would let any page on
+    the operator's own machine post with their cookies. An explicit
+    non-loopback origin (a second public name) is kept.
+    """
+    return [PUBLIC_BASE_URL] + [
+        o for o in origins if o != PUBLIC_BASE_URL and not is_loopback_origin(o)
+    ]
+
+
 if PUBLIC_HOSTNAME:
-    for _origin_list in (CORS_ALLOWED_ORIGINS, CSRF_TRUSTED_ORIGINS):
-        if PUBLIC_BASE_URL not in _origin_list:
-            _origin_list.append(PUBLIC_BASE_URL)
+    CORS_ALLOWED_ORIGINS = public_origins(CORS_ALLOWED_ORIGINS)
+    CSRF_TRUSTED_ORIGINS = public_origins(CSRF_TRUSTED_ORIGINS)
 
 # Namespace the auth cookies. Browsers key cookies by domain but NOT by port, so
 # several Django apps on `localhost:<port>` share one cookie jar and Django's
@@ -262,18 +337,52 @@ CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
-if not DEBUG:
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+# "Served over HTTPS" decides secure cookies and HSTS, not DEBUG: a production
+# instance reached only at http://localhost has no TLS, and a Secure cookie
+# would never come back over plain HTTP from another machine. PUBLIC_HOSTNAME is
+# assumed HTTPS (a TLS proxy or tunnel ends it); SECURE_COOKIES overrides.
+SERVED_OVER_HTTPS = env.bool("SECURE_COOKIES", default=bool(PUBLIC_HOSTNAME))
+SESSION_COOKIE_SECURE = SERVED_OVER_HTTPS
+CSRF_COOKIE_SECURE = SERVED_OVER_HTTPS
+# A year, without preload or subdomains: those commit every other name under
+# the domain to HTTPS, which is the domain owner's call, not this app's.
+SECURE_HSTS_SECONDS = 31536000 if SERVED_OVER_HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+# TLS ends at the front proxy, which also redirects plain HTTP; Django sees the
+# scheme through SECURE_PROXY_SSL_HEADER above. Redirecting here would loop on
+# every health check that reaches nginx directly over loopback.
+SECURE_SSL_REDIRECT = False
+SECURE_CONTENT_TYPE_NOSNIFF = True
+# `check --deploy` (run by `make doctor`) warns about the choices made above on
+# purpose: no SSL redirect (the front proxy does it), no includeSubDomains and no
+# preload (the domain owner's call).
+SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
+        # Inert unless the instance asks for verified addresses
+        # (signup.verify_email, or signup.mode = "domain"); see the class.
+        "apps.accounts.permissions.VerifiedEmailRequired",
     ],
+    # Session only. Basic auth took a password on every request with no CSRF,
+    # no lockout and no sign-in record — a second, unguarded login door.
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
     ],
+    # JSON only by default: a cross-site HTML form can send form-encoded or
+    # multipart bodies without a CORS preflight, JSON it cannot. The few views
+    # that take uploads declare MultiPartParser themselves.
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+    ],
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
+    # Exactly one proxy (nginx) sits in front of Django and *sets*
+    # X-Forwarded-For to the address it saw, so throttles read the right-most
+    # hop — never one the client wrote. apps.accounts.client_ip is the same
+    # rule for code that is not a DRF throttle.
+    "NUM_PROXIES": 1,
     # Per-endpoint throttles opt in by scope; registration caps anonymous
     # account creation so the open AllowAny endpoint can't be hammered.
     "DEFAULT_THROTTLE_RATES": {
@@ -285,16 +394,44 @@ REST_FRAMEWORK = {
         # Signed-in, so the cap is per account: it bounds resend spam and the
         # rate at which one user can grind at codes.
         "email_verify": env("DJANGO_EMAIL_VERIFY_THROTTLE_RATE", default="30/hour"),
+        # Per account: requests that create invitations (each may mail a
+        # stranger). The per-day ceilings per creator and per org live in
+        # apps.accounts.invites.
+        "invite_create": env("DJANGO_INVITE_THROTTLE_RATE", default="60/hour"),
         # Every /api/demo/ request, per network address: the demo is an
         # unauthenticated read path, so it gets the same kind of cap.
         "demo": env("DJANGO_DEMO_THROTTLE_RATE", default="1200/hour"),
     },
 }
 
+# Sign-in lockout (apps.accounts.login_guard): wrong passwords per (username,
+# client address), and per address across usernames, within the window. Covers
+# /api/auth/login and Django admin's login through the first backend below.
+LOGIN_MAX_FAILURES = env.int("LOGIN_MAX_FAILURES", default=10)
+LOGIN_MAX_FAILURES_PER_IP = env.int("LOGIN_MAX_FAILURES_PER_IP", default=50)
+LOGIN_LOCKOUT_SECONDS = env.int("LOGIN_LOCKOUT_SECONDS", default=900)
+AUTHENTICATION_BACKENDS = [
+    "apps.accounts.login_guard.LoginThrottleBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# A session lasts two weeks (Django's default, stated so it is a decision) and
+# "sign out everywhere" (POST /api/auth/sessions/revoke/) ends every other one.
+SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=14 * 24 * 3600)
+
 # How long an emailed password-reset link stays usable. Django's default is three
 # days, which is a long time for a link that grants a password change to sit in a
 # mailbox; an hour is enough for someone acting on the mail they just asked for.
 PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=3600)
+# Reset mail is looked up and sent by the Celery worker, so the request's timing
+# says nothing about whether the address has an account (falls back to inline
+# when no broker answers). False sends inline — tests, single-process setups.
+PASSWORD_RESET_MAIL_ASYNC = env.bool("PASSWORD_RESET_MAIL_ASYNC", default=True)
+# The API-wide activation gate (apps.accounts.permissions.VerifiedEmailRequired):
+# when the instance asks for verified addresses, an unverified account reaches
+# only the routes it needs to verify, leave, or answer an invitation. Off only in
+# the test suite, whose fixtures predate it (config.pytest_plugin).
+API_REQUIRE_VERIFIED_EMAIL = env.bool("API_REQUIRE_VERIFIED_EMAIL", default=True)
 
 # Sign-up gate: registration is invite-only, so a new account must carry a valid
 # verification code. One shared code is live at a time (rotate it by setting the
@@ -350,7 +487,7 @@ CELERY_BROKER_URL = env(
 )
 CELERY_RESULT_BACKEND = env(
     "CELERY_RESULT_BACKEND",
-    default="redis://localhost:11550/1",
+    default=re.sub(r"/\d+$", "/1", env("REDIS_URL", default="redis://localhost:11550/0")),
 )
 
 # Scheduled background work. Celery Beat (the `beat` compose service) reads this
@@ -499,9 +636,13 @@ S3_BUCKET_NAME = env("S3_BUCKET_NAME", default="")
 # any OpenAI-compatible `/v1` API; the API key is required by the OpenAI SDK but
 # is ignored by vLLM (use "EMPTY"). Reasoning controls assume the server already
 # has its reasoning parser and tooling configured (see apps/core/llm.py).
-LLM_BASE_URL = env("LLM_BASE_URL", default="http://localhost:8001/v1")
-LLM_API_KEY = env("LLM_API_KEY", default="EMPTY")
-LLM_MODEL = env("LLM_MODEL", default="")
+LLM_BASE_URL = env_str("LLM_BASE_URL", "http://localhost:8001/v1")
+LLM_API_KEY = env_str("LLM_API_KEY", "EMPTY")
+# Empty until the operator names one: every model seam then takes its
+# deterministic fallback. `llm.enabled = false` (mycelium.toml) records that
+# running without a model is deliberate, so checks do not call it an outage.
+LLM_ENABLED = _cfg["llm.enabled"]
+LLM_MODEL = env_str("LLM_MODEL") if LLM_ENABLED else ""
 LLM_TIMEOUT = env.float("LLM_TIMEOUT", default=60.0)
 # How long to wait to *reach* the server, as opposed to waiting for it to answer.
 # Generation is slow, so LLM_TIMEOUT is generous; a connect that takes seconds
@@ -968,35 +1109,26 @@ DISCORD_TOKEN_ENC_KEY = env("DISCORD_TOKEN_ENC_KEY", default="")
 # PUBLIC_HOSTNAME leaves PUBLIC_BASE_URL on its localhost default, and a lab's
 # Discord channel then receives "http://localhost:11050/app/daily" — a link that
 # works only on the operator's own machine, with nothing in the stack objecting.
-# So when the resolved origin is a loopback host we substitute the deployment's
-# public origin instead. An explicit DISCORD_APP_BASE_URL still wins outright,
-# and nothing else in the app is affected — this only governs links written *into*
-# Discord, never what a browser is redirected to.
-PUBLIC_FALLBACK_HOSTNAME = env_str(
-    "PUBLIC_FALLBACK_HOSTNAME", "mycelium.brendondgr.com"
-)
-_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"})
-
-
-def is_loopback_origin(url: str) -> bool:
-    """Whether ``url``'s host is a loopback address (so it must not be published)."""
-    host = re.sub(r"^[a-z]+://", "", str(url or "").strip(), flags=re.IGNORECASE)
-    host = host.split("/", 1)[0]
-    if host.startswith("["):  # bracketed IPv6 literal, e.g. [::1]:11050
-        host = host.split("]", 1)[0] + "]"
-    else:
-        host = host.split(":", 1)[0]
-    return host.casefold() in _LOOPBACK_HOSTS
+# So when the resolved origin is a loopback host we substitute
+# PUBLIC_FALLBACK_HOSTNAME when one is set, and otherwise write no origin at all:
+# the message then goes out without the link. An explicit DISCORD_APP_BASE_URL
+# still wins outright, and nothing else in the app is affected — this only
+# governs links written *into* Discord, never what a browser is redirected to.
+PUBLIC_FALLBACK_HOSTNAME = env_str("PUBLIC_FALLBACK_HOSTNAME")
 
 
 def outbound_base_url(configured: str) -> str:
-    """The origin safe to write into an outbound message, never a loopback one."""
+    """The origin safe to write into an outbound message, never a loopback one.
+
+    ``""`` when no public origin is known: callers then leave the link out
+    rather than send one that works only on the operator's machine.
+    """
     configured = str(configured or "").rstrip("/")
     if configured and not is_loopback_origin(configured):
         return configured
     if PUBLIC_FALLBACK_HOSTNAME:
         return f"https://{PUBLIC_FALLBACK_HOSTNAME}"
-    return configured
+    return ""
 
 
 DISCORD_APP_BASE_URL = outbound_base_url(
@@ -1160,8 +1292,13 @@ EMAIL_BACKEND = env_str("EMAIL_BACKEND", _email_backend)
 # Absolute origin for links written into email (reset links, invitation links).
 # Same reasoning as DISCORD_APP_BASE_URL: these are composed outside any HTTP
 # request, so they cannot be derived from one, and a loopback origin would send a
-# real recipient to their own machine.
-EMAIL_APP_BASE_URL = outbound_base_url(env_str("EMAIL_APP_BASE_URL", PUBLIC_BASE_URL))
+# real recipient to their own machine. Unlike a Discord post, an email's link is
+# the whole message (a reset or an invitation), so with no public origin known it
+# keeps the local one rather than none: set PUBLIC_HOSTNAME before turning mail
+# on for people who are not on this machine.
+EMAIL_APP_BASE_URL = (
+    outbound_base_url(env_str("EMAIL_APP_BASE_URL", PUBLIC_BASE_URL)) or LOCAL_BASE_URL
+)
 
 # ---------------------------------------------------------------------------
 # The ambient evidence ledger (apps.ambient)

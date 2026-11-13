@@ -1,11 +1,9 @@
 """``tools.delivery.formatting.normalize_amount`` — display-time amount distillation.
 
-This file exists because the function's only prior coverage
-(``test_normalize_amount_distills_prose`` in the now-deleted
-``tools/retrieval/tests/test_pivot_ingest.py``) was deleted along with the rest of
-the Pivot package during the open-collector migration, even though
-``normalize_amount`` itself was lifted out of Pivot and into
-``tools.delivery.formatting`` first — precisely so it would keep running. The
+This file exists because the function's only prior coverage was deleted with
+the scrape package it used to live in, even though ``normalize_amount`` itself
+moved into ``tools.delivery.formatting`` first — precisely so it would keep
+running. The
 function is called at **read time** from both ``GrantSerializer`` and
 ``SearchResultSerializer`` on every grant card on every feed
 (``tools/delivery/serializers.py``), so a regression here is not a scrape-time

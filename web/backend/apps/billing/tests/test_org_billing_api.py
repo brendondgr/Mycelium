@@ -19,8 +19,42 @@ def _user(name: str) -> User:
 
 
 @pytest.mark.django_db
+def test_plan_activation_needs_staff_when_billing_on(client: APIClient) -> None:
+    """A lead cannot grant their whole lab a paid tier by clicking activate."""
+    from apps.accounts.models import AuditEvent
+
+    founder = _user("pi")
+    lab = create_lab_workspace(founder, "Rivera Lab").lab
+    head = _user("head")
+    dept = provision_workspace(head, "department", org_name="Systems").department
+
+    client.force_authenticate(founder)
+    resp = client.post(f"/api/labs/{lab.slug}/billing/activate/")
+    assert resp.status_code == 403
+    assert client.get(f"/api/labs/{lab.slug}/billing/").data["is_active"] is False
+
+    client.force_authenticate(head)
+    resp = client.post(f"/api/departments/{dept.id}/billing/activate/")
+    assert resp.status_code == 403
+    assert AuditEvent.objects.filter(action="billing.activation_requested").count() == 2
+
+
+@pytest.mark.django_db
+def test_lead_activates_while_billing_off(client: APIClient, settings) -> None:
+    settings.BILLING_ENABLED = False
+    settings.BILLING_MODE = "off"
+    founder = _user("pi")
+    lab = create_lab_workspace(founder, "Rivera Lab").lab
+    client.force_authenticate(founder)
+    assert client.post(f"/api/labs/{lab.slug}/billing/activate/").status_code == 200
+
+
+@pytest.mark.django_db
 def test_lab_billing_state_and_activation(client: APIClient) -> None:
     founder = _user("pi")
+    # A staff account that manages the lab is the approval billing asks for.
+    founder.is_staff = True
+    founder.save(update_fields=["is_staff"])
     lab = create_lab_workspace(founder, "Rivera Lab").lab
     member = _user("student")
     LabMembership.objects.create(user=member, lab=lab, role=LabMembership.Role.MEMBER)
@@ -59,6 +93,8 @@ def test_non_manager_cannot_activate_lab(client: APIClient) -> None:
 @pytest.mark.django_db
 def test_department_billing_activation_seats_effective(client: APIClient) -> None:
     head = _user("head")
+    head.is_staff = True  # the approval activation needs while billing is on
+    head.save(update_fields=["is_staff"])
     dept = provision_workspace(head, "department", org_name="Systems").department
     pi = _user("pi")
     lab = create_lab_workspace(pi, "Sub Lab").lab

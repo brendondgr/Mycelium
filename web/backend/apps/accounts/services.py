@@ -10,6 +10,7 @@ from .models import (
     Department,
     DeptMembership,
     Lab,
+    LabAttachRequest,
     LabInvitation,
     LabMembership,
 )
@@ -128,9 +129,19 @@ def invite_to_lab(
     account. Raises DRF ``ValidationError`` for empty input, an unknown username,
     an existing member, or a duplicate pending invite.
     """
+    from .permissions import user_can_invite_with_lab_role
+
     identifier = (identifier or "").strip()
     if not identifier:
         raise ValidationError({"identifier": ["An email or username is required."]})
+
+    if role not in dict(LabMembership.Role.choices):
+        role = LabMembership.Role.MEMBER
+    # The rank rule runs before the identifier is looked at, so a refusal never
+    # depends on who was named. An invitation never mints an owner, and only the
+    # owner hands out admin.
+    if not user_can_invite_with_lab_role(inviter, lab, role):
+        _refuse_lab_role(inviter, lab, role, action="lab.invite.refused")
 
     invitee: User | None = None
     invited_email = ""
@@ -138,7 +149,13 @@ def invite_to_lab(
 
     if "@" in identifier:
         invited_email = identifier.lower()
-        invitee = User.objects.filter(email__iexact=invited_email).first()
+        # Bound to an account only when that account has *proved* the address.
+        # An unverified account that merely typed it at sign-up must not receive
+        # someone else's invitation; the invite stays an email invite and is
+        # claimed when the real owner of the mailbox verifies it.
+        invitee = User.objects.filter(
+            email__iexact=invited_email, profile__is_verified=True
+        ).first()
     else:
         invited_username = identifier
         invitee = User.objects.filter(username__iexact=identifier).first()
@@ -170,9 +187,6 @@ def invite_to_lab(
         raise ValidationError(
             {"identifier": ["There is already a pending invitation for that person."]}
         )
-
-    if role not in dict(LabMembership.Role.choices):
-        role = LabMembership.Role.MEMBER
 
     invitation = LabInvitation.objects.create(
         lab=lab,
@@ -235,11 +249,17 @@ def accept_invitation(invitation: LabInvitation, user: User) -> LabMembership:
     from apps.billing.seat_sync import sync_lab_member
     from apps.billing.seats import SeatCeilingExceeded
 
+    if not invitation_addressed_to(invitation, user):
+        raise PermissionDenied("This invitation is not addressed to you.")
     ensure_lab_has_room(invitation.lab, user)
     membership, _ = LabMembership.objects.get_or_create(
         lab=invitation.lab,
         user=user,
-        defaults={"role": invitation.role},
+        defaults={
+            "role": grantable_lab_role(
+                invitation.inviter, invitation.lab, invitation.role
+            )
+        },
     )
     try:
         # Seats on the correct paying scope: the lab's plan, or its department's plan
@@ -282,14 +302,39 @@ def _close_invitation(
     )
 
 
-def claim_pending_invitations(user: User) -> int:
-    """Attach pending email invites to a freshly registered user (not auto-accept).
+def invitation_addressed_to(invitation: LabInvitation, user: User) -> bool:
+    """Whether ``user`` may answer ``invitation``.
 
-    Matches pending, unclaimed invites by email so the new user sees them in the
-    notifications panel. Skips a lab where the user already has a pending invite
-    to avoid colliding with the one-live-invite-per-lab constraint.
+    It must be bound to them, and an invitation that was addressed to an *email*
+    is only theirs once they have proved that mailbox: ``Profile.is_verified``
+    and the same address now. Typing someone's address at sign-up is a claim, not
+    proof, and must never be enough to walk into the lab that invited them.
     """
-    if not user.email:
+    if invitation.invitee_id != user.id:
+        return False
+    if not invitation.invited_email:
+        return True  # addressed to this account by name, not by mailbox
+    profile = getattr(user, "profile", None)
+    return bool(
+        profile is not None
+        and profile.is_verified
+        and (user.email or "").strip().lower() == invitation.invited_email.lower()
+    )
+
+
+def claim_pending_invitations(user: User) -> int:
+    """Attach pending email invites to a user who has proved their address.
+
+    Matches pending, unclaimed invites by email so the user sees them in the
+    notifications panel (it never auto-accepts). Only an account whose address is
+    verified may claim: the invite was sent to a mailbox, and anyone can type an
+    address at sign-up. Called at registration (a no-op for an unverified
+    account) and again when an address is verified. Skips a lab where the user
+    already has a pending invite to avoid colliding with the
+    one-live-invite-per-lab constraint.
+    """
+    profile = getattr(user, "profile", None)
+    if not user.email or profile is None or not profile.is_verified:
         return 0
     claimed = 0
     invites = LabInvitation.objects.filter(
@@ -317,19 +362,78 @@ def claim_pending_invitations(user: User) -> int:
 # their seat. Memberships are never re-parented silently — billing follows structure.
 
 
+def _refuse_lab_role(actor: User | None, lab: Lab, role: str, *, action: str):
+    """Audit, then raise the refusal for a lab role the actor may not hand out."""
+    record_audit_event(
+        actor=actor,
+        action=action,
+        target_type="lab",
+        target_id=str(lab.id),
+        metadata={"role": role},
+    )
+    if role == LabMembership.Role.OWNER:
+        raise PermissionDenied(
+            "Ownership is handed over by transfer, never by an invitation."
+        )
+    if role == LabMembership.Role.ADMIN:
+        raise PermissionDenied("Only the lab's PI can make someone an admin.")
+    raise PermissionDenied("You cannot bring people into this lab.")
+
+
+def grantable_lab_role(grantor: User | None, lab: Lab, role: str) -> str:
+    """The role an invitation actually grants when it is spent.
+
+    Checked again at the moment of joining, not only when the invitation was
+    made: an admin link made by someone who has since been demoted, or a legacy
+    row that asked for ``owner``, falls back to ``member``. ``viewer`` and
+    ``member`` stand as written — revoking the invitation is how a lab withdraws
+    those.
+    """
+    from .permissions import user_can_invite_with_lab_role
+
+    if role not in dict(LabMembership.Role.choices):
+        return LabMembership.Role.MEMBER
+    if role == LabMembership.Role.OWNER:
+        return LabMembership.Role.MEMBER
+    if role == LabMembership.Role.ADMIN and not (
+        grantor is not None and user_can_invite_with_lab_role(grantor, lab, role)
+    ):
+        return LabMembership.Role.MEMBER
+    return role
+
+
 def add_lab_member(
     lab: Lab,
     user: User,
     *,
     role: str = LabMembership.Role.MEMBER,
     actor: User | None = None,
+    enforce_rank: bool = True,
 ) -> LabMembership:
-    """Add an existing user to a lab and seat them on the paying scope (rules 1/2)."""
+    """Add an existing user to a lab and seat them on the paying scope (rules 1/2).
+
+    Never grants ``owner`` (that is :func:`transfer_lab_ownership`'s job). When
+    an ``actor`` other than the user is named, they must be allowed to hand out
+    ``role`` (:func:`~apps.accounts.permissions.user_can_invite_with_lab_role`).
+    ``enforce_rank=False`` is for a caller that already settled the role — an
+    invitation being spent, through :func:`grantable_lab_role`.
+    """
     from apps.billing.seat_sync import sync_lab_member
     from apps.billing.seats import SeatCeilingExceeded
 
+    from .permissions import user_can_invite_with_lab_role
+
     if role not in dict(LabMembership.Role.choices):
         role = LabMembership.Role.MEMBER
+    if role == LabMembership.Role.OWNER:
+        _refuse_lab_role(actor, lab, role, action="lab.member.add.refused")
+    if (
+        enforce_rank
+        and actor is not None
+        and actor != user
+        and not user_can_invite_with_lab_role(actor, lab, role)
+    ):
+        _refuse_lab_role(actor, lab, role, action="lab.member.add.refused")
     with transaction.atomic():
         ensure_lab_has_room(lab, user)
         membership, _ = LabMembership.objects.get_or_create(
@@ -500,18 +604,72 @@ def remove_lab_member(lab: Lab, user: User, *, actor: User | None = None) -> Non
         )
 
 
+def _refuse_dept_role(
+    actor: User | None, department: Department, role: str, *, action: str
+):
+    """Audit, then raise the refusal for a department role the actor may not grant."""
+    record_audit_event(
+        actor=actor,
+        action=action,
+        target_type="department",
+        target_id=str(department.id),
+        metadata={"role": role},
+    )
+    if role == DeptMembership.Role.OWNER:
+        raise PermissionDenied(
+            "A department's head is its owner; that is not handed out by invitation."
+        )
+    raise PermissionDenied("You can only grant a role below your own.")
+
+
+def grantable_dept_role(
+    grantor: User | None, department: Department, role: str
+) -> str:
+    """The department role an invitation grants when it is spent (see
+    :func:`grantable_lab_role`): ``owner`` never, ``admin`` only while the
+    grantor still outranks it, otherwise as written."""
+    from .permissions import user_can_grant_dept_role
+
+    if role not in dict(DeptMembership.Role.choices):
+        return DeptMembership.Role.MEMBER
+    if role == DeptMembership.Role.OWNER:
+        return DeptMembership.Role.MEMBER
+    if role == DeptMembership.Role.ADMIN and not (
+        grantor is not None and user_can_grant_dept_role(grantor, department, role)
+    ):
+        return DeptMembership.Role.MEMBER
+    return role
+
+
 def add_dept_member(
     department: Department,
     user: User,
     *,
     role: str = DeptMembership.Role.MEMBER,
     actor: User | None = None,
+    enforce_rank: bool = True,
 ) -> DeptMembership:
-    """Add a direct department member and seat them on the department plan (rule 2)."""
+    """Add a direct department member and seat them on the department plan (rule 2).
+
+    Same rank rule as the lab: never ``owner``, and an ``actor`` other than the
+    user may only grant a role strictly below their own
+    (:func:`~apps.accounts.permissions.user_can_grant_dept_role`).
+    """
     from apps.billing.seat_sync import sync_dept_member
+
+    from .permissions import user_can_grant_dept_role
 
     if role not in dict(DeptMembership.Role.choices):
         role = DeptMembership.Role.MEMBER
+    if role == DeptMembership.Role.OWNER:
+        _refuse_dept_role(actor, department, role, action="dept.member.add.refused")
+    if (
+        enforce_rank
+        and actor is not None
+        and actor != user
+        and not user_can_grant_dept_role(actor, department, role)
+    ):
+        _refuse_dept_role(actor, department, role, action="dept.member.add.refused")
     with transaction.atomic():
         membership, _ = DeptMembership.objects.get_or_create(
             department=department, user=user, defaults={"role": role}
@@ -551,10 +709,143 @@ def remove_dept_member(
         )
 
 
+def invite_lab_member_by_username(
+    lab: Lab, username: str, *, actor: User, role: str = LabMembership.Role.MEMBER
+) -> LabInvitation | None:
+    """Ask the account named ``username`` to join ``lab``; never add them outright.
+
+    What used to be "add by username" wrote a membership on the manager's say-so,
+    which put a stranger in a roster — and their email address in front of every
+    member — without their ever agreeing. It now leaves an in-app invitation the
+    person accepts or declines.
+
+    Deliberately silent about the target: an unknown username, an existing
+    member and an already-pending invitation all return ``None`` and the view
+    answers the same either way, so the endpoint cannot be walked to learn who
+    has an account or who is in which lab. The rank rule runs first, so a refusal
+    never depends on who was named.
+    """
+    from .permissions import user_can_invite_with_lab_role
+
+    if role not in dict(LabMembership.Role.choices):
+        role = LabMembership.Role.MEMBER
+    if not user_can_invite_with_lab_role(actor, lab, role):
+        _refuse_lab_role(actor, lab, role, action="lab.member.add.refused")
+
+    target = User.objects.filter(username__iexact=str(username or "").strip()).first()
+    if target is None or target == actor:
+        return None
+    if LabMembership.objects.filter(lab=lab, user=target).exists():
+        return None
+    if LabInvitation.objects.filter(
+        lab=lab, invitee=target, status=LabInvitation.Status.PENDING
+    ).exists():
+        return None
+    invitation = LabInvitation.objects.create(
+        lab=lab,
+        inviter=actor,
+        invitee=target,
+        invited_username=target.username,
+        role=role,
+    )
+    record_audit_event(
+        actor=actor,
+        action="lab.invite",
+        target_type="lab_invitation",
+        target_id=str(invitation.id),
+        metadata={"lab_id": str(lab.id), "role": role, "invitee_id": target.id},
+    )
+    return invitation
+
+
+# -- Putting an existing lab under a department ---------------------------------
+
+
+def request_lab_attach(
+    department: Department, lab: Lab, *, actor: User
+) -> tuple[Lab | None, LabAttachRequest | None]:
+    """Attach ``lab`` now if ``actor`` owns it; otherwise ask its owner.
+
+    Attaching shows the department's heads every project and member of the lab
+    (``Project.objects.visible_to``, the department roster), so it is the lab
+    owner's decision. Returns ``(lab, None)`` when attached, ``(None, request)``
+    when a request now waits on the owner. A request already pending is returned
+    as is rather than duplicated.
+    """
+    from .permissions import user_owns_lab
+
+    if lab.department_id and lab.department_id != department.id:
+        raise ValidationError({"detail": ["That lab already belongs to a department."]})
+    if lab.department_id == department.id:
+        return lab, None
+    if user_owns_lab(actor, lab):
+        return attach_existing_lab_to_department(department, lab, actor=actor), None
+
+    existing = LabAttachRequest.objects.filter(
+        department=department, lab=lab, status=LabAttachRequest.Status.PENDING
+    ).first()
+    if existing is not None:
+        return None, existing
+    request = LabAttachRequest.objects.create(
+        department=department, lab=lab, requested_by=actor
+    )
+    record_audit_event(
+        actor=actor,
+        action="dept.lab.attach_requested",
+        target_type="department",
+        target_id=str(department.id),
+        metadata={"lab_id": str(lab.id), "request_id": str(request.id)},
+    )
+    return None, request
+
+
+def respond_to_lab_attach(request, *, actor: User, accept: bool) -> Lab:
+    """The lab's owner accepts or declines a department's request to attach it."""
+    from .permissions import user_owns_lab
+
+    lab = request.lab
+    if not user_owns_lab(actor, lab):
+        raise PermissionDenied("Only the lab's owner can answer this request.")
+    if request.status != LabAttachRequest.Status.PENDING:
+        raise ValidationError({"detail": ["That request has already been answered."]})
+    with transaction.atomic():
+        if accept:
+            if lab.department_id and lab.department_id != request.department_id:
+                raise ValidationError(
+                    {"detail": ["That lab already belongs to a department."]}
+                )
+            attach_existing_lab_to_department(request.department, lab, actor=actor)
+        request.status = (
+            LabAttachRequest.Status.ACCEPTED
+            if accept
+            else LabAttachRequest.Status.DECLINED
+        )
+        request.responded_at = timezone.now()
+        request.responded_by = actor
+        request.save(update_fields=["status", "responded_at", "responded_by"])
+        record_audit_event(
+            actor=actor,
+            action=(
+                "dept.lab.attach_accepted" if accept else "dept.lab.attach_declined"
+            ),
+            target_type="lab",
+            target_id=str(lab.id),
+            metadata={
+                "department_id": str(request.department_id),
+                "request_id": str(request.id),
+            },
+        )
+    return lab
+
+
 def attach_existing_lab_to_department(
     department: Department, lab: Lab, *, actor: User | None = None
 ) -> Lab:
-    """Attach an unowned lab to a department, re-seating its members (B2)."""
+    """Attach an unowned lab to a department, re-seating its members (B2).
+
+    Trusted: the caller has already established that the lab's owner agreed
+    (:func:`request_lab_attach` / :func:`respond_to_lab_attach`).
+    """
     from apps.billing.services import attach_lab_to_department
 
     if lab.department_id and lab.department_id != department.id:

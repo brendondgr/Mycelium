@@ -1,6 +1,6 @@
 [Unit]
 Description=Mycelium — pull latest images and rolling restart
-Documentation=https://github.com/brendondgr/mycelium
+Documentation=file:__MYCELIUM_ROOT__/docs/configuration.md
 # Only run while the main stack service is active
 After=mycelium.service
 Requires=mycelium.service

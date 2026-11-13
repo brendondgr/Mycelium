@@ -43,11 +43,17 @@ def _year(value) -> int | None:
     return year if 1500 <= year <= 2200 else None
 
 
-def store_author_works(user, draft, *, source: str) -> int:
+def store_author_works(user, draft, *, source: str, verified: bool = False) -> int:
     """Persist one draft's works for ``user``. Returns how many rows were written.
 
     Never raises. The import's product is the interest draft; the works are a
     bonus, and losing them must not cost someone their profile import.
+
+    ``verified`` says whether the author record is known to be ``user``'s own
+    (``AuthorWork.verified``). A self-service import is not — anyone can type
+    anyone's ORCID — so it defaults to ``False``; an operator provisioning an
+    account from an author record passes ``True``. A re-import never downgrades a
+    work that was already verified.
     """
     from apps.accounts.models import AuthorWork
 
@@ -63,7 +69,7 @@ def store_author_works(user, draft, *, source: str) -> int:
             continue
         source_id = str(row.get("source_id") or "").strip()[:200] or _fallback_id(title)
         try:
-            AuthorWork.objects.update_or_create(
+            work, _ = AuthorWork.objects.update_or_create(
                 user=user,
                 source=source[:40],
                 source_id=source_id,
@@ -86,6 +92,9 @@ def store_author_works(user, draft, *, source: str) -> int:
                     **_field(row),
                 },
             )
+            if verified and not work.verified:
+                work.verified = True
+                work.save(update_fields=["verified", "updated_at"])
             written += 1
         except Exception:  # noqa: BLE001 — a bonus must never sink the import
             import logging

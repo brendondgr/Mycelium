@@ -55,7 +55,7 @@ function OpenChip({ label }: { label: string }) {
 }
 
 // --------------------------------------------------------------------------- //
-// Rank badges (plan D2) — the quality signal Pivot never had
+// Rank badges (plan D2) — the venue's quality signal
 // --------------------------------------------------------------------------- //
 
 /** Every rank badge shares this one neutral token, regardless of the letter it

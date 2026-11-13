@@ -9,10 +9,10 @@
 # Waits for the phase-1 process, then encodes SPLADE over the 2025-01 subset,
 # scores the three-channel arm, and computes the replication intervals.
 set -u
-cd /home/bdgr/Agents/Mycelium
+cd "$(dirname "$0")/../../../../.."  # the repository root
 
 export IR_DATASETS_HOME=data/eval-cache/ir_datasets
-export FASTEMBED_CACHE_PATH=/home/bdgr/Agents/Mycelium/data/eval-cache/fastembed
+export FASTEMBED_CACHE_PATH="$PWD/data/eval-cache/fastembed"
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 export HF_HUB_DISABLE_TELEMETRY=1

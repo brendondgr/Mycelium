@@ -7,6 +7,7 @@ through ``service``; no view decides access itself.
 from __future__ import annotations
 
 from django.http import StreamingHttpResponse
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.renderers import BaseRenderer, JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -148,6 +149,9 @@ class ThreadView(_Base):
 
 
 class MessagesView(_Base):
+    # The API default is JSON only; a message may carry file attachments.
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
     def post(self, request, thread_id):
         thread = self.thread(request, thread_id)
         caller = web.caller(request, thread)
@@ -382,7 +386,7 @@ class PolicyView(_Base):
                 "discord_channels_off": [],
                 "max_risk": "read",
                 "members_inform_org": True,
-                "discord_guests": "full",
+                "discord_guests": service.org_guest_level(kind, org),
                 **guests,
                 "set": False,
             }
@@ -391,7 +395,7 @@ class PolicyView(_Base):
             "discord_channels_off": policy.discord_channels_off,
             "max_risk": policy.max_risk,
             "members_inform_org": policy.members_inform_org,
-            "discord_guests": policy.discord_guests,
+            "discord_guests": service.org_guest_level(kind, org),
             **guests,
             "set": True,
         }

@@ -295,7 +295,7 @@ def _event_dates_line(meta: dict) -> str:
     Chained the same way as the venue line: the collector writes
     ``event_dates_text`` (deliberately verbatim — one source alone produces 131
     distinct date-format skeletons, so the string as written is the truth),
-    Pivot wrote ``event_dates``. Both shapes coexist during the migration, so
+    legacy rows carry ``event_dates``. Both shapes coexist, so
     every reader chains rather than choosing.
 
     A bare run of digits is refused rather than shown: the ``openreview``
@@ -371,8 +371,8 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     saved_labs = serializers.SerializerMethodField()
     # Provenance, universal since the open-collector migration (plan Phase 9):
     # every area now carries which adapter produced the row, what it may be
-    # reused under, and who to credit. Pivot never carried any of this — a
-    # matched item's origin was invisible past its outbound link.
+    # reused under, and who to credit, so a matched item's origin is visible
+    # beyond its outbound link.
     source = serializers.SerializerMethodField()
     license = serializers.SerializerMethodField()
     license_url = serializers.SerializerMethodField()
@@ -450,8 +450,8 @@ class _OpportunitySerializer(ClusterAttributionMixin, serializers.Serializer):
     def get_source(self, score: RelevanceScore) -> str:
         # e.g. "grants:nsf", "conf:ccf_deadlines", "illinois-fellowship-finder" —
         # which adapter/provider produced this row. Namespaced by area (plan D6)
-        # so a card can always tell a Pivot-era leftover from an open-collector
-        # one mid-migration, and the frontend can credit the right source.
+        # so a card can always tell a legacy row from an open-collector one, and
+        # the frontend can credit the right source.
         return score.content.source if score.content_id else ""
 
     def get_license(self, score: RelevanceScore) -> str:
@@ -638,7 +638,7 @@ class GrantSerializer(_OpportunitySerializer):
     matched_topics = serializers.SerializerMethodField()
     posted = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
-    # The open-collector fields (plan Phase 3/9) that Pivot never carried: the
+    # The open-collector fields (plan Phase 3/9) legacy rows lack: the
     # funder's own identifiers and dates, and the full multi-round array behind
     # the single ``deadline_date`` the base class already exposes.
     opportunity_number = serializers.SerializerMethodField()
@@ -692,8 +692,8 @@ class GrantSerializer(_OpportunitySerializer):
 
     def get_sponsor(self, score: RelevanceScore) -> str:
         # Chained, not swapped, and in the same order ``daily_report._source_line``
-        # already reads a grant's provenance line: Pivot wrote ``sponsor``, the
-        # open collector writes ``funder``. Reading only the Pivot key blanked
+        # already reads a grant's provenance line: legacy rows carry ``sponsor``,
+        # the open collector writes ``funder``. Reading only the legacy key blanked
         # the sponsor on all 2,171 rebuilt grants — the funder is the single
         # most identifying thing on a funding card, and it was missing from the
         # card, the sponsor facet and the search extra alike.
@@ -718,8 +718,8 @@ class GrantSerializer(_OpportunitySerializer):
     def get_matched_topics(self, score: RelevanceScore) -> str:
         """The grant's topic tags, semicolon-delimited (the shape the page splits).
 
-        Same Pivot-key-outlives-Pivot failure as ``sponsor`` above:
-        ``matched_topics`` is Pivot's key and no rebuilt grant carries it, so
+        Same legacy-key failure as ``sponsor`` above: ``matched_topics`` is a
+        legacy key and no rebuilt grant carries it, so
         the Opportunities page's whole topic facet was derived from an empty
         string on every row. The delimiter is load-bearing —
         ``grant-filters.tsx::splitTopics`` splits on ``";"`` — so the type and
@@ -747,7 +747,7 @@ class GrantSerializer(_OpportunitySerializer):
         # The funder's own publication date (``mapping.py``'s ``posted_date``),
         # not when Mylo first ingested the row. Exposed separately from
         # ``posted`` (below) because the two questions genuinely differ once the
-        # feed carries pre-migration Pivot leftovers with no such key.
+        # feed carries pre-migration legacy rows with no such key.
         return self._meta(score).get("published_on") or ""
 
     def get_posted(self, score: RelevanceScore) -> str:
@@ -756,7 +756,7 @@ class GrantSerializer(_OpportunitySerializer):
         # because this read ``signals["first_seen"]`` unconditionally. Prefer
         # the funder's own ``metadata["published_on"]`` and fall back to the old
         # behaviour only for a row that carries no such key — a pre-migration
-        # Pivot leftover still living in the corpus, not a genuine "unknown".
+        # legacy row still living in the corpus, not a genuine "unknown".
         published_on = self._meta(score).get("published_on")
         if published_on:
             return published_on
@@ -937,9 +937,9 @@ class ConferenceSerializer(_OpportunitySerializer):
     status = serializers.SerializerMethodField()
     scope = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
-    # Quality signals the open collector carries that Pivot never did (plan
-    # D2): rankings are visual-only badges. See RANK_EXPLANATIONS above for the
-    # hover copy a client resolves them against.
+    # Quality signals the open collector carries (plan D2): rankings are
+    # visual-only badges. See RANK_EXPLANATIONS above for the hover copy a
+    # client resolves them against.
     acronym = serializers.SerializerMethodField()
     year_label = serializers.SerializerMethodField()
     rankings = serializers.SerializerMethodField()
@@ -986,8 +986,8 @@ class ConferenceSerializer(_OpportunitySerializer):
 
     def get_location(self, score: RelevanceScore) -> str:
         meta = self._meta(score)
-        # Chained: the collector writes ``place_text``, Pivot wrote ``location``,
-        # and both shapes coexist during the migration. Swapping rather than
+        # Chained: the collector writes ``place_text``, legacy rows carry
+        # ``location``, and both shapes coexist. Swapping rather than
         # chaining would blank the venue for every record already in the table.
         place = meta.get("place_text") or meta.get("location")
         return ", ".join(p for p in (place, meta.get("country")) if p)
@@ -997,17 +997,18 @@ class ConferenceSerializer(_OpportunitySerializer):
 
     def get_event_dates(self, score: RelevanceScore) -> str:
         # Chained (see :func:`_event_dates_line`): the collector writes
-        # ``event_dates_text``, Pivot wrote ``event_dates``, and reading only
-        # the Pivot key left every rebuilt conference card with no date line.
+        # ``event_dates_text``, legacy rows carry ``event_dates``, and reading
+        # only the legacy key left every rebuilt conference card with no date
+        # line.
         return _event_dates_line(self._meta(score))
 
     def get_deadlines(self, score: RelevanceScore) -> str:
         return self._meta(score).get("deadlines") or ""
 
     def get_keywords(self, score: RelevanceScore) -> str:
-        """Pivot's space-joined keyword blob — same shape, new source.
+        """A space-joined keyword blob — the legacy shape, new source.
 
-        ``keywords`` is Pivot's key and no rebuilt conference carries it. The
+        ``keywords`` is a legacy key and no rebuilt conference carries it. The
         collector's equivalent is ``topics``, and the verified extraction's
         ``ai_fields["topics"]`` is better still (see :func:`_topic_list`): it
         covers 776 of 912 conferences against ``topics``' 70, and it carries
@@ -1026,7 +1027,7 @@ class ConferenceSerializer(_OpportunitySerializer):
 
     def get_matched_subjects(self, score: RelevanceScore) -> str:
         # Semicolon-delimited subject categories — clean, chippable topic tags
-        # (unlike ``keywords``, which Pivot returns space-joined). Same source
+        # (unlike ``keywords``, which legacy rows hold space-joined). Same source
         # chain and same silent-emptiness fix as ``keywords`` above; the
         # delimiter is load-bearing (``conference-filters.tsx::subjectTags`` and
         # the card both split on ";"), so only the source of the values changed.
@@ -1040,7 +1041,7 @@ class ConferenceSerializer(_OpportunitySerializer):
 
         Drives the event-date window filter and sort; ``event_dates`` above
         remains the human display string. Chained: the collector writes
-        ``event_start``, Pivot wrote ``event_date``.
+        ``event_start``, legacy rows carry ``event_date``.
 
         Only an already-ISO value is passed through. The collector's own
         ``event_start`` is ISO on all 347 live rows that carry one, so the
@@ -1070,7 +1071,7 @@ class ConferenceSerializer(_OpportunitySerializer):
     def _submission_open(self, score: RelevanceScore, family: str) -> bool:
         """Is a still-future deadline of ``family`` on this record?
 
-        ``metadata["abstract_open"]`` / ``["manuscript_open"]`` are Pivot keys
+        ``metadata["abstract_open"]`` / ``["manuscript_open"]`` are legacy keys
         that the open collector never writes, so both flags read False for the
         whole rebuilt corpus while the dates that decide them sat in
         ``metadata["deadlines_structured"]`` — 174 abstract and 750 submission
@@ -1089,7 +1090,7 @@ class ConferenceSerializer(_OpportunitySerializer):
         Deadline day itself counts as open, matching
         ``deadlines_projection._conference_specs``' ``due < today_date`` cut. A
         context with no usable ``today`` cannot answer the question at all and
-        returns the Pivot flag alone rather than a guess.
+        returns the legacy flag alone rather than a guess.
         """
         meta = self._meta(score)
         legacy = bool(
@@ -1150,7 +1151,7 @@ class ConferenceSerializer(_OpportunitySerializer):
         return score.signals.get("status") or self._meta(score).get("status") or ""
 
     def get_scope(self, score: RelevanceScore) -> str:
-        # Pivot's "Scope" section verbatim — in practice the venue's own prose
+        # A legacy row's "Scope" section verbatim — in practice the venue's own prose
         # description of the call, not a one-word label. Kept for compatibility;
         # ``description`` is the cleaned-up field the card renders.
         return self._meta(score).get("scope") or ""
@@ -1158,18 +1159,18 @@ class ConferenceSerializer(_OpportunitySerializer):
     def get_description(self, score: RelevanceScore) -> str:
         """The conference blurb, preferring the verified extraction.
 
-        This override exists because Pivot filed a conference's blurb under
-        ``scope`` rather than ``abstract``, so the base implementation's
-        fallback was wrong for this one type. That reason expired with Pivot:
-        the open collector writes no ``scope`` at all, and the description a
+        This override exists because legacy rows file a conference's blurb
+        under ``scope`` rather than ``abstract``, so the base implementation's
+        fallback was wrong for this one type. The open collector writes no
+        ``scope`` at all, and the description a
         reader should see is the LLM extraction that ``extract.py`` verified
         and that the record was embedded on.
 
         Reading ``scope`` alone made this silently return "" for every one of
         912 conferences while 776 of them held a verified ``ai_summary`` --
         the same shape as the ``location``/``place_text`` regression, a
-        Pivot-era key outliving Pivot inside an override. ``scope`` stays last
-        in the chain for as long as any Pivot-era row survives; drop it, and
+        legacy key outliving its source inside an override. ``scope`` stays
+        last in the chain for as long as any legacy row survives; drop it, and
         this whole override, once none do.
 
         Whitespace-collapsed; "" when nothing carries a blurb, which the card
@@ -1443,8 +1444,9 @@ class SearchResultSerializer(serializers.Serializer):
 
     def get_sponsor(self, item: ContentItem) -> str:
         # The same chain, and the same reason for it, as
-        # ``GrantSerializer.get_sponsor``: Pivot's ``sponsor`` outlived Pivot in
-        # this reader too, so a grant hit in unified search carried no funder.
+        # ``GrantSerializer.get_sponsor``: the legacy ``sponsor`` key outlived
+        # its source in this reader too, so a grant hit in unified search
+        # carried no funder.
         meta = self._meta(item)
         return (
             meta.get("sponsor")
@@ -1461,8 +1463,8 @@ class SearchResultSerializer(serializers.Serializer):
 
     def get_location(self, item: ContentItem) -> str:
         meta = self._meta(item)
-        # Chained: the collector writes ``place_text``, Pivot wrote ``location``,
-        # and both shapes coexist during the migration. Swapping rather than
+        # Chained: the collector writes ``place_text``, legacy rows carry
+        # ``location``, and both shapes coexist. Swapping rather than
         # chaining would blank the venue for every record already in the table.
         place = meta.get("place_text") or meta.get("location")
         return ", ".join(p for p in (place, meta.get("country")) if p)

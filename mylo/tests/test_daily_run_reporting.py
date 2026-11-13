@@ -29,11 +29,11 @@ class ScrapeReportingTests(unittest.TestCase):
         )
         notify_patcher.start()
         self.addCleanup(notify_patcher.stop)
-        # ``_scrape_fellowships`` purges stale pivot_grants.json/pivot_conferences.json
-        # from the real ``data/pivot/`` directory as a side effect of a successful
-        # scrape; stubbed out so these tests never touch the filesystem regardless
-        # of what happens to be sitting on the machine running them.
-        purge_patcher = mock.patch.object(manual_all, "_purge_stale_pivot_json")
+        # ``_scrape_fellowships`` tidies the real scrape directory (a one-off
+        # rename and stale JSON files) before scraping; stubbed out so these
+        # tests never touch the filesystem regardless of what happens to be
+        # sitting on the machine running them.
+        purge_patcher = mock.patch.object(manual_all, "_tidy_scrape_dir")
         purge_patcher.start()
         self.addCleanup(purge_patcher.stop)
 

@@ -7,20 +7,18 @@ logic those records feed into is covered separately in
 ``test_fellowship_constraints.py``.
 
 Phase 2 of ``docs/plans/open-opportunity-collector.md`` fixed a real bug here: the
-function used to filter ``source=PIVOT_SOURCE`` ("pivot"), but fellowships are
-ingested under ``FELLOWSHIP_SOURCE`` ("illinois-fellowship-finder") — Pivot never
-owned fellowships. The queryset was therefore always empty and this extraction
-pass had never actually run on a single real fellowship, silently: it just
-returned 0 and the ingest moved on. No test anywhere exercised the function
+function used to filter on another source's id, but fellowships are ingested
+under ``FELLOWSHIP_SOURCE`` ("illinois-fellowship-finder"). The queryset was
+therefore always empty and this extraction pass had never actually run on a
+single real fellowship, silently: it just returned 0 and the ingest moved on.
+No test anywhere exercised the function
 (``grep -rn extract_fellowship_constraints`` matched none), which is exactly why
 the bug survived a full test suite. These tests exercise the selection logic
 directly against the ORM so a source-filter regression like this one fails loudly
 instead of quietly doing nothing.
 
-Phase 6 relocated ``extract_fellowship_constraints`` out of
-``apps.scraper.pivot.ingest`` (deleted alongside the rest of Pivot-RP) into
-``tools.retrieval.fellowships.ingest`` — the module's own name never changed, only
-its address, since the function was already fellowship-only.
+Phase 6 moved ``extract_fellowship_constraints`` into
+``tools.retrieval.fellowships.ingest``; the function was already fellowship-only.
 
 All model calls are stubbed — ``extract_fellowship_constraints`` takes ``complete``
 for injection precisely so tests never need the network or a model server, and

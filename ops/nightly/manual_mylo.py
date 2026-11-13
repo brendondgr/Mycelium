@@ -39,7 +39,7 @@ scopes the report refresh, so the two stages stay in step.
 Usage:
     python ops/nightly/manual_mylo.py                          # all users, top-10 LLM, refresh reports
     python ops/nightly/manual_mylo.py --max 5                  # first 5 active users only
-    python ops/nightly/manual_mylo.py --user brendondgr        # one user (refit + report)
+    python ops/nightly/manual_mylo.py --user alice        # one user (refit + report)
     python ops/nightly/manual_mylo.py --llm-limit all          # send every surfaced item to the model
     python ops/nightly/manual_mylo.py --areas papers grants    # a subset of areas
     python ops/nightly/manual_mylo.py --dry-run                # refit but persist nothing (no report refresh)

@@ -41,18 +41,15 @@ def _cache():
 def client_subject(request) -> str:
     """The client identity a ban is keyed on: the originating IP.
 
-    ``X-Forwarded-For`` is honoured because the stack runs behind a reverse proxy;
-    its left-most entry is the original client. That header is spoofable, which is
-    why the ban is a *nuisance* control layered on top of the DRF register throttle
-    and the code itself, not the only thing standing between a prober and an
-    account.
+    Read by the same rule as every other per-client control
+    (:func:`apps.accounts.client_ip.client_ip`): the right-most
+    ``X-Forwarded-For`` hop, which nginx sets. The left-most hop used to be read
+    here, and the client writes that one — so a prober could rotate it on every
+    request and never reach the ban.
     """
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if forwarded:
-        first = forwarded.split(",")[0].strip()
-        if first:
-            return first
-    return (request.META.get("REMOTE_ADDR") or "unknown").strip()
+    from .client_ip import client_ip
+
+    return client_ip(request)
 
 
 def code_matches(value: str) -> bool:

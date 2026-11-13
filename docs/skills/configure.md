@@ -81,6 +81,12 @@ server that listens only on the host's `127.0.0.1`, set it to
 `decision-relay` service forwards that port too. Then `make restart` and run
 `llm_check` inside the backend.
 
+The relay accepts connections only from Docker's bridge ranges
+(`172.16.0.0/12`, `192.168.0.0/16`). On a server other people also run
+containers on, narrow that to this stack's own network: find its subnet with
+`docker network inspect <project>_default` and set `DECISION_RELAY_ALLOW` to
+it in `.env`, otherwise their containers can reach the forwarded server too.
+
 Then get a structured recommendation instead of reasoning one out yourself:
 
 ```bash
@@ -106,11 +112,31 @@ mail provider, verification with nowhere to send the code, a code mode with no
 code in `.env`). Fix each one with the user before restarting — never restart
 on a failing `validate`.
 
+After the restart, `make doctor` checks the instance end to end (stack,
+migrations, model, embedding model, corpus, secret-file modes, exposure, and
+`check --deploy` when `PUBLIC_HOSTNAME` is set) and exits 1 with the reason and
+the fix. `make status` lists the steps that need root (the systemd timer, the
+Discord bot): give the user those commands; never run `sudo` yourself.
+
+## A fresh instance
+
+`make setup` is the entry point. Without a terminal it asks nothing and reads
+`PUBLIC_HOSTNAME`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` (and `PROFILE=…`)
+from the environment; pass them as the user answered. No model named means
+"none for now": it sets `llm.enabled = false`, so the instance runs on plain
+drafts and the nightly run and `make doctor` do not treat it as an outage. To
+connect one later: set `LLM_*` in `.env`, `ops/mycelium config set llm.enabled
+true`, `make restart`, then `make doctor`. The first admin's password is
+printed once by setup; `make admin NAME=<user>` sets a new one. The first
+collection is `make nightly`.
+
 ## Model servers
 
 The instance's own model is the server named `local`: the endpoint in `.env`
-(`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`). It stays the default and stays in
-use. Other servers are made *available*; nothing switches to one until the host
+(`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`). There is no default endpoint or
+model: until `LLM_MODEL` names one, every model seam uses its deterministic
+draft (`llm.enabled = false` records that this is deliberate). It stays the
+default and stays in use. Other servers are made *available*; nothing switches to one until the host
 routes a component to it.
 
 ```toml
@@ -167,8 +193,11 @@ Who may ask Mylo in Discord is the host's choice, in `[tools.agent]`:
 - `discord_guest_level`: the most any lab may let a guest see —
   `full` (what a lab member would be told there, people included),
   `no_people`, `public` (the thread's post and the corpus) or `off`. A lab or
-  department lowers it for its own server with `/mylo chat guests …` or in its
-  settings (`AgentOrgPolicy.discord_guests`); the lower of the two applies.
+  department that has not chosen gives guests `public` only — no people, so
+  someone without an account cannot list the lab's members or their
+  interests. It raises or lowers that for its own server with
+  `/mylo chat guests …` or in its settings (`AgentOrgPolicy.discord_guests`);
+  the lower of the lab's level and this ceiling applies.
   Say plainly that being in the server is treated as trust (S-16).
 - Limits: `discord_guest_daily_turns` (questions per guest per day) and
   `discord_place_daily_turns` (guest questions per server per day). Both are

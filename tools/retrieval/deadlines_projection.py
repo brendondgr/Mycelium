@@ -34,17 +34,12 @@ The conference path, post-Phase-6
 — the array :func:`tools.retrieval.collect.mapping.map_conference` always sets, even
 to ``[]`` for a conference the collector found genuinely no dated deadlines for.
 An empty list and an absent key are treated identically (both yield zero rows):
-there is no longer a second, Pivot-era shape to fall back to.
+there is no second, legacy shape to fall back to.
 
-Before Phase 6 (Pivot-RP's deletion) this function dispatched on whether that key
-was present at all, falling back to a lazy import of
-:mod:`apps.scraper.pivot.deadlines` to re-parse Pivot's free-text ``deadlines``
-string for every Pivot-sourced conference still in the table. That branch —
-``_legacy_conference_specs`` — and its import were deleted in Phase 6, once
-Pivot's own conference ingest (the only writer of that free-text shape) stopped
-running. Its two-line rationale here, for anyone diffing against an older
-version of this file: keeping both paths was deliberate *until* Pivot's ingest
-was gone, not a bug.
+Before Phase 6 this function dispatched on whether that key was present at all,
+re-parsing a legacy free-text ``deadlines`` string for conferences from an
+earlier source. That branch — ``_legacy_conference_specs`` — was deleted once
+the only writer of that free-text shape stopped running.
 """
 
 from __future__ import annotations

@@ -1,9 +1,7 @@
 """Upsert Illinois Fellowship Finder records into ``ContentItem`` (+embed).
 
-Relocated from :mod:`apps.scraper.pivot.ingest` (plan Phase 6 — the deletion of
-Pivot-RP). That module's ``ingest_pivot``/``upsert_pivot_items`` handled three
-areas generically; fellowships were always the one area with nothing to do with
-Pivot itself (D8), so this module keeps exactly that slice, under its own name.
+Fellowships only: grants and conferences come from the open collector
+(``tools.retrieval.collect``), which has its own ingest.
 
 Pruning is **not** duplicated here. Plan Phase 4 already converged expiry onto
 one function — :func:`tools.retrieval.collect.ingest.prune_expired` — which is
@@ -13,7 +11,7 @@ this module needing a second copy of the same delete-expired logic. Call that
 function after this module's :func:`ingest_fellowships`, or independently on
 its own schedule; both are safe to call any number of times.
 
-Three guarantees the daily job relies on, same as Pivot's:
+Three guarantees the daily job relies on:
 
 * **Idempotent upsert** keyed by ``(source="illinois-fellowship-finder",
   external_id)`` — a re-scrape updates in place, never duplicates.

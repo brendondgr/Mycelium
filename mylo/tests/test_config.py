@@ -42,10 +42,21 @@ class LoadConfigTests(unittest.TestCase):
         with self.assertRaises(ConfigError):
             cfg.require_bot()
 
-    def test_require_bot_raises_without_channel(self) -> None:
+    def test_require_bot_runs_without_an_error_channel(self) -> None:
+        """The channel is optional: without it, reports go to the log only."""
         cfg = MyloConfig(token="tok", error_channel_id=None)
-        with self.assertRaises(ConfigError):
-            cfg.require_bot()
+        self.assertIs(cfg.require_bot(), cfg)
+
+    def test_the_bot_exits_cleanly_without_a_token(self) -> None:
+        """No token is "stay off", not a crash a service manager would loop on."""
+        from unittest import mock
+
+        from mylo.bot import __main__ as entry
+
+        with mock.patch.object(entry, "load_config", lambda: MyloConfig(token="", error_channel_id=None)):
+            with self.assertRaises(SystemExit) as exited:
+                entry.main()
+        self.assertEqual(exited.exception.code, 0)
 
     def test_require_bot_returns_self_when_complete(self) -> None:
         cfg = MyloConfig(token="tok", error_channel_id=1)

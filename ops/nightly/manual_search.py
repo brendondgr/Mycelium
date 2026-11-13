@@ -12,7 +12,7 @@ embedding model. Any extra arguments are passed straight through to that command
 
 Usage:
     python ops/nightly/manual_search.py                    # all users, synchronous
-    python ops/nightly/manual_search.py --user brendondgr  # just one user (repeatable)
+    python ops/nightly/manual_search.py --user alice  # just one user (repeatable)
     python ops/nightly/manual_search.py --no-llm           # deterministic fallback, no model
     python ops/nightly/manual_search.py --dry-run          # run but don't persist scores
     python ops/nightly/manual_search.py --async            # hand off to the Celery worker

@@ -10,6 +10,7 @@ from __future__ import annotations
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -374,6 +375,9 @@ class TranscriptUploadView(APIView):
     the transcript is read into the buffer and the reply is the counts.
     """
 
+    # The API default is JSON only; this view takes a file upload.
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def post(self, request: Request) -> Response:
         import json
 
@@ -444,7 +448,15 @@ class TranscriptUploadView(APIView):
 
 
 def _meeting_scope(request):
+    """The project or lab a transcript is for — one the caller belongs to.
+
+    Checked before anything is read back: the preview answers with the scope's
+    members (ids and names), so resolving a lab by slug alone handed any signed-in
+    account the roster of any lab whose slug it could guess. A lab the caller is
+    not in and a lab that does not exist get the same refusal.
+    """
     from apps.accounts.models import Lab
+    from apps.accounts.permissions import user_has_lab_access
     from apps.research.models import Project
 
     project_id = request.data.get("project")
@@ -455,7 +467,10 @@ def _meeting_scope(request):
         if project is None:
             raise PermissionDenied("You can't add a meeting to that project.")
         return project, None
-    lab = Lab.objects.filter(slug=str(request.data.get("lab") or "")).first()
-    if lab is None:
+    slug = str(request.data.get("lab") or "").strip()
+    if not slug:
         raise ValidationError({"project": ["Choose a project or a lab."]})
+    lab = Lab.objects.filter(slug=slug).first()
+    if lab is None or not user_has_lab_access(request.user, lab):
+        raise PermissionDenied("You can't add a meeting to that lab.")
     return None, lab

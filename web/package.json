@@ -17,6 +17,8 @@
     "dev:backend": "uv run --project backend python backend/manage.py runserver 0.0.0.0:8000",
     "build": "npm run sync:assets && npm --workspace @mycelium/config run build && npm --workspace @mycelium/landing run build && npm --workspace @mycelium/app run build",
     "lint": "npm --workspace @mycelium/landing run lint && npm --workspace @mycelium/app run lint",
+    "build:landing": "npm run sync:assets && npm --workspace @mycelium/landing exec -- astro build",
+    "build:app": "npm --workspace @mycelium/app run build",
     "start:landing": "npm --workspace @mycelium/landing run preview -- --host 0.0.0.0 --port 4321",
     "start:app": "npm --workspace @mycelium/app run start -- --hostname 0.0.0.0 --port 3000"
   },
@@ -27,10 +29,7 @@
     "typescript": "^5"
   },
   "overrides": {
-    "next": {
-      "postcss": "^8.5.15"
-    },
-    "postcss": "^8.5.15",
+    "postcss": "^8.5.23",
     "yaml": "^2.9.0",
     "yaml-language-server": "^1.23.0"
   }

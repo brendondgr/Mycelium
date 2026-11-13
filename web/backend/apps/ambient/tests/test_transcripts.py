@@ -251,3 +251,32 @@ def test_the_upload_is_closed_while_off(team, client, settings):
     client.force_login(team.ada)
     response = client.post("/api/ambient/transcripts/", {"text": VTT})
     assert response.status_code == 403
+
+
+def test_transcript_preview_requires_lab_membership(team, client):
+    """The preview lists a lab's members; a stranger naming the slug gets nothing."""
+    stranger = _person("stranger")
+    client.force_login(stranger)
+    response = client.post(
+        "/api/ambient/transcripts/",
+        {"text": VTT, "lab": team.lab.slug, "title": "Not my meeting"},
+    )
+    assert response.status_code == 403
+    assert "members" not in response.json()
+    # A lab that does not exist is refused the same way, so slugs cannot be probed.
+    missing = client.post(
+        "/api/ambient/transcripts/",
+        {"text": VTT, "lab": "no-such-lab", "title": "x"},
+    )
+    assert missing.status_code == 403
+    assert missing.json() == response.json()
+
+
+def test_transcript_preview_for_own_lab_lists_members(team, client):
+    client.force_login(team.ada)
+    response = client.post(
+        "/api/ambient/transcripts/",
+        {"text": VTT, "lab": team.lab.slug, "title": "Lab meeting"},
+    )
+    assert response.status_code == 200
+    assert {m["id"] for m in response.json()["members"]} == {team.ada.pk, team.bo.pk}

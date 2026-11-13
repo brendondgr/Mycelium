@@ -170,6 +170,11 @@ question_max_chars = 500
 # [llm.providers.<name>] sections and chosen per component in [llm.routes].
 # Keys stay in .env.
 [llm]
+# false: run without a language model on purpose. Write-ups, profile synthesis
+# and Mylo's answers use their deterministic drafts, and `make doctor` and the
+# nightly run do not treat the missing model as an outage. Set it back to true
+# once LLM_* in .env (or a server below) names a model.
+enabled = true                           # env LLM_ENABLED
 # Most tokens one model reply may use, thinking included. 0 sends no cap, so a
 # reasoning model is never starved before it answers; set a number only if
 # your endpoint needs one.

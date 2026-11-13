@@ -43,7 +43,10 @@ jobs:
       - name: Backend and tool tests
         run: uv run --no-sync --directory web/backend pytest -q
       - name: Mylo tests
-        run: uv run --no-sync --project web/backend python -m unittest discover -s mylo/tests -t .
+        # The root environment carries discord.py; the backend's does not.
+        run: |
+          uv sync --locked
+          uv run --no-sync python -m unittest discover -s mylo/tests -t .
       - name: Research record
         run: make validate-research
 
@@ -84,8 +87,14 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: pip-audit
         run: |
-          uv export --frozen --project web/backend --extra embeddings --extra scrapers --no-hashes --no-emit-project > /tmp/requirements.txt
-          uvx pip-audit -r /tmp/requirements.txt --strict
+          uv export --frozen --project web/backend --extra embeddings --extra scrapers --no-dev --no-hashes --no-emit-project > /tmp/requirements.txt
+          # Pillow is held below 13 by fastembed's pin. Mycelium never decodes
+          # an untrusted image with it (fastembed's image models are unused;
+          # reportlab only draws the project's own art), so these four are
+          # accepted until fastembed allows Pillow 13. Remove the ignores then.
+          uvx pip-audit -r /tmp/requirements.txt --strict \
+            --ignore-vuln CVE-2026-96778 --ignore-vuln GHSA-78g4-xqwv-q3g8 \
+            --ignore-vuln CVE-2026-128067 --ignore-vuln CVE-2026-128066
       - name: gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:

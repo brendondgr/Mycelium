@@ -41,12 +41,114 @@ def trickle_server():
 
 def test_trickling_download_is_cut_off(tmp_path, monkeypatch, trickle_server):
     monkeypatch.setattr(S, "BODY_DEADLINE", 1)
-    f = Fetcher({}, tmp_path)
+    f = Fetcher({}, tmp_path, guard=False)  # the test server is on 127.0.0.1
     t = time.time()
     url = f"http://127.0.0.1:{trickle_server.server_port}/a.pdf"
     md, _, note = f.download("crossref", url, set())
     assert md == "" and note == "error BodyTimeout"
     assert time.time() - t < 5
+
+
+# -- outbound guard (SSRF) ------------------------------------------------- #
+
+PUBLIC = {"repo.example": "93.184.216.34", "inside.example": "10.0.0.5"}
+
+
+def _fake_dns(host, port, *a, **kw):
+    import socket
+
+    ip = PUBLIC.get(host, host)
+    family = socket.AF_INET6 if ":" in ip else socket.AF_INET
+    return [(family, socket.SOCK_STREAM, 6, "", (ip, port))]
+
+
+@pytest.fixture
+def redirecting(monkeypatch):
+    """Every request the transport would send is recorded; the first answers
+    with a redirect to ``target["to"]``. Nothing touches the network."""
+    from requests.adapters import HTTPAdapter
+
+    monkeypatch.setattr(fetcher_mod.socket, "getaddrinfo", _fake_dns)
+    sent: list[str] = []
+    target = {"to": ""}
+
+    def send(self, request, *a, **kw):
+        sent.append(request.url)
+        r = requests.Response()
+        r.status_code = 302
+        r.headers["Location"] = target["to"]
+        r._content = b""
+        r._content_consumed = True
+        r.url = request.url
+        r.request = request
+        return r
+
+    monkeypatch.setattr(HTTPAdapter, "send", send)
+    return sent, target
+
+
+@pytest.mark.parametrize(
+    "to",
+    [
+        "http://127.0.0.1/admin",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://[::1]/",
+        "http://[::ffff:127.0.0.1]/",
+        "http://inside.example/x.pdf",
+        "https://repo.example:8443/x.pdf",
+        "file:///etc/passwd",
+    ],
+)
+def test_a_redirect_to_a_private_address_is_refused(tmp_path, redirecting, to):
+    sent, target = redirecting
+    target["to"] = to
+    f = Fetcher({}, tmp_path)
+    with pytest.raises(requests.RequestException) as err:
+        f.get("openalex", "https://repo.example/paper.pdf", attempts=1)
+    refused = (fetcher_mod.BlockedURL, requests.exceptions.InvalidSchema)
+    assert isinstance(err.value, refused)
+    # the public first hop went out; the redirect target never did
+    assert sent == ["https://repo.example/paper.pdf"]
+
+
+def test_a_private_first_url_is_never_sent(tmp_path, redirecting):
+    sent, _ = redirecting
+    f = Fetcher({}, tmp_path)
+    md, _, note = f.download("unpaywall", "http://169.254.169.254/x.pdf", set())
+    assert (md, note) == ("", "blocked")
+    assert sent == []
+    # remembered: asked again, it is not even attempted
+    again = f.download("unpaywall", "http://169.254.169.254/x.pdf", set())
+    assert again[2] == "blocked"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/",
+        "http://10.1.2.3/",
+        "http://192.168.0.1/",
+        "http://169.254.169.254/",
+        "http://100.64.0.1/",
+        "http://224.0.0.1/",
+        "http://0.0.0.0/",
+        "http://[fe80::1]/",
+        "http://[fc00::1]/",
+        "http://repo.example:22/",
+        "gopher://repo.example/",
+        "http:///nohost",
+    ],
+)
+def test_check_url_refuses(url, monkeypatch):
+    monkeypatch.setattr(fetcher_mod.socket, "getaddrinfo", _fake_dns)
+    with pytest.raises(fetcher_mod.BlockedURL):
+        fetcher_mod.check_url(url)
+
+
+def test_check_url_allows_a_public_host(monkeypatch):
+    monkeypatch.setattr(fetcher_mod.socket, "getaddrinfo", _fake_dns)
+    fetcher_mod.check_url("https://repo.example/a.pdf")
+    fetcher_mod.check_url("http://repo.example:80/a.pdf")
 
 
 def _response(status, body=b"", content_type="application/json"):

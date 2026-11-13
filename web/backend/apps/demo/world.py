@@ -3,8 +3,8 @@
 Demo people are ordinary users, recognised by one mark: an address under
 :data:`DOMAIN`. ``.invalid`` is reserved by RFC 2606, so no mail the product
 sends can ever reach anyone, and the domain is distinct from ``seed_demo``'s
-(``demo.mycelium.test``) and ``seed_fsu_sc``'s, so no command's teardown
-touches another's rows.
+(``demo.mycelium.test``), so neither command's teardown touches the other's
+rows.
 """
 
 from __future__ import annotations

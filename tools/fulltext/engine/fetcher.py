@@ -15,22 +15,32 @@ Behaviour kept from PubMedExtraction, because each one was learned the hard way:
   from this network), so a run cannot silently waste thousands of requests;
 * definitive answers ("closed", "http 404", "not-found") are remembered and
   never asked again; transient ones (errors, quota) are not.
+
+Every request, and every redirect hop of it, passes :func:`check_url` first:
+the repository URLs come from OpenAlex, Unpaywall, Semantic Scholar and CORE
+records, which anyone can influence, so the fetcher only speaks http(s) on
+ports 80/443 to hosts that resolve to public addresses — never loopback, a
+private network, link-local (cloud metadata at ``169.254.169.254``),
+reserved or multicast space.
 """
 
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import logging
 import re
+import socket
 import threading
 import time
 from collections import Counter, OrderedDict
 from collections.abc import Mapping
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from xml.etree import ElementTree as ET
 
 import requests
+from requests.adapters import HTTPAdapter
 
 from . import sources as S
 from .cache import DiskCache
@@ -62,6 +72,71 @@ DEFINITIVE = (
 
 class BodyTimeout(requests.Timeout):
     """The response started but did not finish within the deadline or size cap."""
+
+
+class BlockedURL(requests.RequestException):
+    """A URL the fetcher refuses to request: not http(s), an unusual port, or a
+    host that resolves to a non-public address."""
+
+
+_PORTS = (None, 80, 443)
+
+
+def _public(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return ip.is_global and not (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+def check_url(url: str, *, resolve=None) -> None:
+    """Raise :class:`BlockedURL` unless ``url`` is http(s) on port 80/443 (or
+    none) and every address its host resolves to is public."""
+    parts = urlsplit(url or "")
+    scheme = parts.scheme.lower()
+    if scheme not in ("http", "https"):
+        raise BlockedURL(f"refused scheme {scheme or '(none)'!r}")
+    try:
+        port = parts.port
+    except ValueError as exc:
+        raise BlockedURL("refused malformed port") from exc
+    if port not in _PORTS:
+        raise BlockedURL(f"refused port {port}")
+    host = parts.hostname
+    if not host:
+        raise BlockedURL("refused URL without a host")
+    resolve = resolve or socket.getaddrinfo
+    try:
+        infos = resolve(
+            host, port or (443 if scheme == "https" else 80), proto=socket.IPPROTO_TCP
+        )
+    except (socket.gaierror, UnicodeError) as exc:
+        raise requests.ConnectionError(f"cannot resolve {host}") from exc
+    if not infos:
+        raise requests.ConnectionError(f"cannot resolve {host}")
+    for info in infos:
+        address = str(info[4][0]).split("%", 1)[0]
+        try:
+            ip = ipaddress.ip_address(address)
+        except ValueError as exc:
+            raise BlockedURL(f"refused unparseable address for {host}") from exc
+        if not _public(ip):
+            raise BlockedURL(f"refused {host}: resolves to non-public {ip}")
+
+
+class GuardedAdapter(HTTPAdapter):
+    """Checks every request it sends, so a redirect hop (``requests`` sends each
+    one through the adapter) is held to the same rule as the first URL."""
+
+    def send(self, request, *args, **kwargs):
+        check_url(request.url)
+        return super().send(request, *args, **kwargs)
 
 
 def read_body(r: requests.Response, deadline: float | None = None) -> requests.Response:
@@ -110,6 +185,7 @@ class Fetcher:
         retry: bool = False,
         locate_only: bool = False,
         disable_ttl: float = DEFAULT_DISABLE_TTL,
+        guard: bool = True,
     ):
         self.env = dict(env or {})
         self.cache = DiskCache(cache_dir)
@@ -120,6 +196,9 @@ class Fetcher:
         self.disable_ttl = disable_ttl
         self.email = cfg(self.env, "CONTACT_EMAIL") or ""
         self.session = requests.Session()
+        if guard:  # off only in tests that serve from 127.0.0.1
+            self.session.mount("http://", GuardedAdapter())
+            self.session.mount("https://", GuardedAdapter())
         self.session.headers["User-Agent"] = S.USER_AGENT + (
             f" mailto:{self.email}" if self.email else ""
         )
@@ -211,8 +290,8 @@ class Fetcher:
                         stream=True,
                     )
                 )
-            except BodyTimeout:
-                raise  # a stalling host will stall again
+            except (BodyTimeout, BlockedURL):
+                raise  # a stalling host will stall again; a refusal stands
             except requests.RequestException:
                 if attempt == attempts - 1:
                     raise
@@ -275,6 +354,10 @@ class Fetcher:
                 return "", "", past
             try:
                 r = self.get(source, url, headers=headers, timeout=90)
+            except BlockedURL as exc:
+                log.warning("full text: %s: %s", source, exc)
+                self._remember("url:" + key, "download", "blocked")
+                return "", "", "blocked"
             except requests.RequestException as exc:
                 return "", "", f"error {type(exc).__name__}"
             if r.status_code != 200:

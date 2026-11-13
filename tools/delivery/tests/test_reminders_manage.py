@@ -33,7 +33,7 @@ def _grant(ext="g1", *, due=None):
     due = due or (timezone.localdate() + timedelta(days=90))
     item = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=ext,
         metadata={"title": "Neural grant", "website": "https://x.test"},
     )

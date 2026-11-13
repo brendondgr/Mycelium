@@ -120,7 +120,7 @@ None.
 S=<scratchpad holding EXP-2026-11-007's states.json>
 E=docs/research/experiments/EXP-2026-11-012-d3-lite-batched-throughput
 uv run --no-sync --project web/backend python $E/code/dump_bodies.py --states $S/states.json --out $S/bodies.json
-BENCH_SCRATCH=$S /home/bdgr/Agents/GAIFA/services/decide/.venv/bin/python -I $E/code/bench.py --bodies $S/bodies.json --out $E/data/bench.json
+BENCH_SCRATCH=$S GAIFA_DIR=<a GAIFA checkout> $GAIFA_DIR/services/decide/.venv/bin/python -I $E/code/bench.py --bodies $S/bodies.json --out $E/data/bench.json
 llama-server -m Qwen3-4B-Q4_K_M.gguf --alias qwen3-4b-q4_k_m -ngl 99 -c 32768 -np 8 --host 127.0.0.1 --port 5180 &
 uv run --no-sync --project web/backend python $E/code/qwen_real.py --states $S/states.json --url http://127.0.0.1:5180 --out $E/data/qwen_real.json
 python3 $E/code/analyse.py

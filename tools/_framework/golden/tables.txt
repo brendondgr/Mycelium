@@ -5,6 +5,7 @@ accounts_deptmembership	DeptMembership
 accounts_deptprofile	DeptProfile
 accounts_emailverification	EmailVerification
 accounts_lab	Lab
+accounts_labattachrequest	LabAttachRequest
 accounts_labinvitation	LabInvitation
 accounts_labmembership	LabMembership
 accounts_labprofile	LabProfile

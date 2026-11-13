@@ -62,7 +62,9 @@ def test_invite_by_email_matches_existing_user_case_insensitively(
     client: APIClient,
 ) -> None:
     pi, lab = _lab_with_pi()
-    invitee = User.objects.create_user(username="k", password="p", email="Kai@X.edu")
+    invitee = verified(
+        User.objects.create_user(username="k", password="p", email="Kai@X.edu")
+    )
 
     client.force_authenticate(pi)
     resp = _invite(client, lab, "kai@x.edu")
@@ -71,6 +73,106 @@ def test_invite_by_email_matches_existing_user_case_insensitively(
     inv = LabInvitation.objects.get(lab=lab)
     assert inv.invitee == invitee
     assert inv.invited_email == "kai@x.edu"
+
+
+@pytest.mark.django_db
+def test_email_invite_not_bound_to_unverified_account(client: APIClient) -> None:
+    """An account that only *typed* an address does not receive its invitations."""
+    pi, lab = _lab_with_pi()
+    squatter = User.objects.create_user(
+        username="squat", password="p", email="victim@x.edu"
+    )
+
+    client.force_authenticate(pi)
+    assert _invite(client, lab, "victim@x.edu").status_code == 201
+    inv = LabInvitation.objects.get(lab=lab)
+    assert inv.invitee is None
+
+    client.force_authenticate(squatter)
+    assert client.get("/api/auth/invitations/").data == []
+    resp = client.post(
+        f"/api/auth/invitations/{inv.id}/respond/", {"action": "accept"}, format="json"
+    )
+    assert resp.status_code == 403
+    assert not LabMembership.objects.filter(lab=lab, user=squatter).exists()
+
+
+@pytest.mark.django_db
+def test_unverified_account_cannot_accept_email_bound_invitation(
+    client: APIClient,
+) -> None:
+    """A row bound by email before the rule existed still needs a proved address."""
+    pi, lab = _lab_with_pi()
+    squatter = User.objects.create_user(
+        username="squat", password="p", email="victim@x.edu"
+    )
+    inv = LabInvitation.objects.create(
+        lab=lab, inviter=pi, invitee=squatter, invited_email="victim@x.edu"
+    )
+    client.force_authenticate(squatter)
+    resp = client.post(
+        f"/api/auth/invitations/{inv.id}/respond/", {"action": "accept"}, format="json"
+    )
+    assert resp.status_code == 403
+    assert not LabMembership.objects.filter(lab=lab, user=squatter).exists()
+
+    verified(squatter)  # proving the mailbox is what makes it theirs
+    resp = client.post(
+        f"/api/auth/invitations/{inv.id}/respond/", {"action": "accept"}, format="json"
+    )
+    assert resp.status_code == 200
+    assert LabMembership.objects.filter(lab=lab, user=squatter).exists()
+
+
+@pytest.mark.django_db
+def test_admin_cannot_invite_admin_or_owner(client: APIClient) -> None:
+    pi, lab = _lab_with_pi()
+    admin = verified(User.objects.create_user(username="adm", password="p"))
+    LabMembership.objects.create(user=admin, lab=lab, role=LabMembership.Role.ADMIN)
+    User.objects.create_user(username="target", password="p")
+
+    client.force_authenticate(admin)
+    for role in ("admin", "owner"):
+        resp = client.post(
+            f"/api/auth/labs/{lab.slug}/invitations/",
+            {"identifier": "target", "role": role},
+            format="json",
+        )
+        assert resp.status_code == 403, role
+    assert not LabInvitation.objects.exists()
+
+    # The owner may invite an admin, never an owner.
+    client.force_authenticate(pi)
+    owner_try = client.post(
+        f"/api/auth/labs/{lab.slug}/invitations/",
+        {"identifier": "target", "role": "owner"},
+        format="json",
+    )
+    assert owner_try.status_code == 403
+    ok = client.post(
+        f"/api/auth/labs/{lab.slug}/invitations/",
+        {"identifier": "target", "role": "admin"},
+        format="json",
+    )
+    assert ok.status_code == 201
+
+
+@pytest.mark.django_db
+def test_legacy_owner_invitation_grants_member(client: APIClient) -> None:
+    pi, lab = _lab_with_pi()
+    invitee = User.objects.create_user(username="j", password="p")
+    inv = LabInvitation.objects.create(
+        lab=lab, inviter=pi, invitee=invitee, role=LabMembership.Role.OWNER
+    )
+    client.force_authenticate(invitee)
+    resp = client.post(
+        f"/api/auth/invitations/{inv.id}/respond/", {"action": "accept"}, format="json"
+    )
+    assert resp.status_code == 200
+    assert (
+        LabMembership.objects.get(lab=lab, user=invitee).role
+        == LabMembership.Role.MEMBER
+    )
 
 
 @pytest.mark.django_db
@@ -111,8 +213,17 @@ def test_pending_email_invite_claimed_on_signup(client: APIClient) -> None:
 
     newbie = User.objects.get(username="newbie")
     inv.refresh_from_db()
+    # Not yet: typing the address at sign-up is a claim, not proof.
+    assert inv.invitee is None
+
+    # Proving the mailbox claims it — surfaced, not auto-accepted.
+    from apps.accounts.services import claim_pending_invitations
+
+    verified(newbie)
+    claim_pending_invitations(newbie)
+    inv.refresh_from_db()
     assert inv.invitee == newbie
-    assert inv.status == LabInvitation.Status.PENDING  # surfaced, not auto-accepted
+    assert inv.status == LabInvitation.Status.PENDING
 
     client.force_authenticate(newbie)
     feed = client.get("/api/auth/invitations/")

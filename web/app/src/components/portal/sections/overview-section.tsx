@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { usePortal } from "@/components/portal/portal-context";
+import { isPlatformAdmin, usePortal } from "@/components/portal/portal-context";
 import {
   useConferences,
   useDailyBriefing,
@@ -18,6 +18,7 @@ import { MyloFoundCard } from "@/components/portal/sections/mylo-found-card";
 import { DeadlinesPanel } from "@/components/portal/sections/overview-panels";
 import { LabOverviewSection } from "@/components/portal/sections/lab-overview-section";
 import { AskMyloButton } from "@/components/portal/mylo/ask-button";
+import { GettingStarted, NothingYet, useSetupStatus } from "@/components/portal/sections/getting-started";
 import {
   ClosingSoon,
   FoldedReport,
@@ -34,9 +35,16 @@ import {
  * written report and this week's new items grouped by theme across all four
  * feeds; the side column holds what closes soon, Mylo's questions, project
  * pulse, what Mylo found, and the reader's saved deadlines.
+ *
+ * A new instance has none of that yet. Its administrators get the "Getting
+ * started" checklist above everything until its steps are done; anyone else
+ * looking at an overview with nothing in it gets a plain explanation instead
+ * of a page of zeros.
  */
 export function OverviewSection() {
-  const { scopeLabel, currentLab, currentDepartment } = usePortal();
+  const { user, scopeLabel, currentLab, currentDepartment } = usePortal();
+  const isAdmin = isPlatformAdmin(user);
+  const setupQuery = useSetupStatus(isAdmin);
   const briefingQuery = useDailyBriefing();
   const windowCountsQuery = useWindowCounts();
   const dailyReportQuery = useDailyReport();
@@ -57,6 +65,14 @@ export function OverviewSection() {
   );
   const feedsLoading =
     dailyReportQuery.isLoading || grantsQuery.isLoading || fellowshipsQuery.isLoading || conferencesQuery.isLoading;
+  const nothingYet =
+    !feedsLoading &&
+    !briefingQuery.isLoading &&
+    items.length === 0 &&
+    !(briefingQuery.data?.briefing?.body ?? "").trim();
+  // An administrator of an unfinished instance sees the checklist in place of
+  // the empty panels; once it is done, the overview is the usual one.
+  const checklistOpen = isAdmin && !setupQuery.isError && !setupQuery.data?.complete;
 
   // When a lab is the active workspace, its overview replaces the personal one.
   if (currentLab) {
@@ -79,6 +95,14 @@ export function OverviewSection() {
         }
       />
       <p className="ws-meta-text ws-overview-scope">You&apos;re viewing {scopeLabel}.</p>
+      {isAdmin ? (
+        <div className="mb-[var(--d-section,24px)]">
+          <GettingStarted enabled />
+        </div>
+      ) : null}
+      {nothingYet && !isAdmin ? (
+        <NothingYet />
+      ) : nothingYet && checklistOpen ? null : (
       <div className="ws-split">
         <div className="ws-split-main">
           <FoldedReport>
@@ -97,6 +121,7 @@ export function OverviewSection() {
           <DeadlinesPanel items={deadlinesQuery.data?.items ?? []} isLoading={deadlinesQuery.isLoading} />
         </div>
       </div>
+      )}
     </div>
   );
 }

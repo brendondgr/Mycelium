@@ -16,7 +16,7 @@ from tools.retrieval.models import ContentItem
 pytestmark = pytest.mark.django_db
 
 
-def _item(kind: str, source: str = "pivot") -> ContentItem:
+def _item(kind: str, source: str = "legacy") -> ContentItem:
     return ContentItem.objects.create(
         type=kind,
         source=source,
@@ -72,8 +72,8 @@ def test_unknown_type_is_rejected_rather_than_ignored():
 
 def test_source_filter_restricts_the_wipe():
     keep = _item(ContentItem.Type.GRANT, source="grants:nsf")
-    _item(ContentItem.Type.GRANT, source="pivot")
+    _item(ContentItem.Type.GRANT, source="legacy")
 
-    call_command("reset_opportunities", "--source", "pivot", "--yes")
+    call_command("reset_opportunities", "--source", "legacy", "--yes")
 
     assert list(ContentItem.objects.values_list("id", flat=True)) == [keep.id]

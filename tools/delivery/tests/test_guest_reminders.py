@@ -111,7 +111,9 @@ def test_the_guest_gate_still_checks_the_server_and_the_plan(fake) -> None:
     _target, _ann, post = _post()
 
     # The lab's plan does not cover Mylo in Discord: no reminder.
-    status, payload = announcement_actions.remind_set(GUEST, post.id, ["1w"], "dm", "g1")
+    status, payload = announcement_actions.remind_set(
+        GUEST, post.id, ["1w"], "dm", "g1"
+    )
     assert status == "not_entitled", payload
     assert not AnnouncementNudge.objects.exists()
 

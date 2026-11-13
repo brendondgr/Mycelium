@@ -38,6 +38,7 @@ def _person(
     user.profile.save()
     if method or problem:
         work = AuthorWork.objects.create(
+            verified=True,
             user=user,
             source="openalex",
             source_id=f"W-{username}",

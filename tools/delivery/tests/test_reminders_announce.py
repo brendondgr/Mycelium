@@ -39,7 +39,7 @@ def user(db):
 def _content(due, *, confidence=_Conf.CONFIRMED):
     item = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=f"g-{due}",
         metadata={"title": "Grant", "deadline_date": due.isoformat()},
     )

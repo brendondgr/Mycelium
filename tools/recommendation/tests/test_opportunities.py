@@ -317,7 +317,7 @@ def test_model_verdict_does_not_reorder_the_feed():
 def _persisted_grant(gid, title):
     return ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=gid,
         metadata={"title": title, "search_text": title},
     )
@@ -339,7 +339,7 @@ def test_compute_pins_flags_every_recently_seen_item():
     def _item(gid, first_seen):
         return ContentItem.objects.create(
             type=ContentItem.Type.GRANT,
-            source="pivot",
+            source="legacy",
             external_id=gid,
             metadata={"first_seen": first_seen, "title": gid},
         )
@@ -421,8 +421,8 @@ def _grant(gid, title, deadline_date="2026-12-01"):
 
 
 def _seed_grants(pairs, *, embedder, today, prune=False):
-    """Stand-in for the retired ``ingest_pivot`` test fixture (plan Phase 6
-    deleted Pivot's grant ingest). These tests only ever seeded grants — never
+    """Stand-in for a retired grant-ingest test fixture (plan Phase 6). These
+    tests only ever seeded grants — never
     conferences/fellowships — to exercise the *matching* pipeline, not ingest,
     so this builds ``ContentItem`` grant rows directly and embeds them with the
     injected embedder, mirroring ``_persisted_grant`` / ``_embedded_conf`` above
@@ -659,7 +659,7 @@ def test_grant_match_threshold_surfaces_only_related(pgvector, settings):
 def _embedded_conf(cid, name, scope):
     return ContentItem.objects.create(
         type=ContentItem.Type.CONFERENCE,
-        source="pivot",
+        source="legacy",
         external_id=cid,
         embedding=_fake_embed([f"{name} {scope}"])[0],
         metadata={

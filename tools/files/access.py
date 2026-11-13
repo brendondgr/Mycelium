@@ -111,17 +111,51 @@ def can_delete(user, stored) -> bool:
     return False
 
 
-def visible_queryset(user, *, kind: str | None = None, owner=None):
+def visible_q(user):
+    """:func:`can_see` as one SQL condition, so listing files never loads every
+    file on the instance to test each in Python."""
+    from apps.accounts.models import DeptMembership, LabMembership
+    from apps.research.models import Project
+    from django.db.models import Q
+
+    if not getattr(user, "is_authenticated", False):
+        return Q(pk__in=[])
+    labs = LabMembership.objects.filter(user=user)
+    return (
+        Q(uploaded_by=user)
+        | Q(owner_user=user)
+        | Q(owner_lab__in=labs.values("lab_id"))
+        # a department: its owner, a direct member, or a member of one of its labs
+        | Q(owner_department__owner=user)
+        | Q(
+            owner_department__in=DeptMembership.objects.filter(user=user).values(
+                "department_id"
+            )
+        )
+        | Q(
+            owner_department__in=labs.filter(lab__department__isnull=False).values(
+                "lab__department_id"
+            )
+        )
+        | Q(
+            owner_project__in=Project.objects.visible_to(user)
+            .filter(is_archived=False)
+            .values("pk")
+        )
+    )
+
+
+def visible_queryset(user, *, kind: str | None = None, owner=None, q: str = ""):
+    """The files ``user`` may see (optionally of one owner, or whose name
+    contains ``q``), filtered in the database."""
     from .models import StoredFile
 
-    rows = StoredFile.objects.filter(deleted_at__isnull=True)
+    rows = StoredFile.objects.filter(deleted_at__isnull=True).filter(visible_q(user))
     if kind and owner is not None:
         rows = rows.filter(**{OWNER_KINDS[kind]: owner})
-    return [
-        f
-        for f in rows.select_related("owner_project", "owner_lab", "owner_department")
-        if can_see(user, f)
-    ]
+    if q:
+        rows = rows.filter(filename__icontains=q)
+    return list(rows.select_related("owner_project", "owner_lab", "owner_department"))
 
 
 def output_width(stored) -> str:

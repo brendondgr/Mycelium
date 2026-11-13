@@ -34,7 +34,7 @@ def _paper(title):
 def _grant(title):
     return ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id=title,
         metadata={"title": title, "sponsor": "NSF", "deadline_date": "2026-12-01"},
     )

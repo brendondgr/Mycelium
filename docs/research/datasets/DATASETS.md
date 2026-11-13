@@ -11,20 +11,16 @@ data came from and whether they can have it.
 |---|---|---|---|---|
 | LongEval-Sci (CLEF) | `longeval-sci-2026/snapshot-1/train`, `longeval-sci/2024-11`, `longeval-sci/2025-01` | Open download via `ir-datasets-longeval`; no registration | Yes — by pointing at the package, not by copying | [`cards/longeval-sci.md`](cards/longeval-sci.md) |
 | Mycelium paper corpus | rolling, OpenAlex-derived | CC0 (OpenAlex) | Yes | [`cards/mycelium-papers.md`](cards/mycelium-papers.md) |
-| Mycelium opportunity corpus | rolling | Pivot-RP (Clarivate, institutional SSO) + Illinois Fellowship Finder scrape | **No** | [`cards/mycelium-opportunities.md`](cards/mycelium-opportunities.md) |
+| Mycelium opportunity corpus | rolling | Public grant and conference listings (open collector) + Illinois Fellowship Finder scrape | Grants and conferences: largely, per source. Fellowship text: **No** | [`cards/mycelium-opportunities.md`](cards/mycelium-opportunities.md) |
 
 ## The redistribution problem
 
-The opportunity corpus is the one that blocks artifact evaluation. Pivot-RP is a
-commercial Clarivate product behind institutional SSO and the Illinois Fellowship
-Finder is one university's website; neither can be redistributed, and no
-experiment resting on them can be independently reproduced.
-
-The route out is known and is tracked as W10 in
-[`../OPEN_QUESTIONS.md`](../OPEN_QUESTIONS.md): rebuild the corpus from CORDIS,
-NIH RePORTER, NSF Awards, and public university listings. It costs the Pivot
-conference CFPs, which have no open equivalent. Any paper resting on grants or
-fellowships needs this done first.
+Grants and conference CFPs now come from public sources (W10 in
+[`../OPEN_QUESTIONS.md`](../OPEN_QUESTIONS.md)), so results resting on them can
+be reproduced by re-running the collector. Fellowships still come from the
+Illinois Fellowship Finder, one university's website, whose text cannot be
+redistributed; a paper resting on fellowships can ship ids, labels and the
+collector, not the records.
 
 ## Where the bytes live
 

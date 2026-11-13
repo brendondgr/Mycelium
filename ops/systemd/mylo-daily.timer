@@ -1,6 +1,6 @@
 [Unit]
 Description=Mycelium — run the daily research pipeline once a day
-Documentation=https://github.com/brendondgr/mycelium
+Documentation=file:__MYCELIUM_ROOT__/docs/configuration.md
 
 [Timer]
 # 07:00 local time (system timezone) — after the retired in-container hours
@@ -19,7 +19,8 @@ WantedBy=timers.target
 
 # Enable on this (or any) host. The installer substitutes the checkout path and
 # user into mylo-daily.service, so do NOT `cp` these by hand:
-#     sudo scripts/mycelium install-service
+#     uv sync                                            # as yourself, from the checkout
+#     sudo python3 ops/mycelium install-service
 # Check it:
 #     systemctl list-timers mylo-daily.timer
 #     journalctl -u mylo-daily -f

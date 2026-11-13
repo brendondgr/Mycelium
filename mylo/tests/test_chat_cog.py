@@ -184,6 +184,14 @@ def _all_kwargs(question: Question, channel: Channel) -> list[dict]:
     return out
 
 
+def _assert_no_previews(test, question, channel):
+    """Every send suppresses link previews and every edit keeps them off."""
+    for msg in question.replies + channel.sent:
+        test.assertIs(msg.kwargs.get("suppress_embeds"), True, msg.kwargs)
+        for edit in msg.edits:
+            test.assertIs(edit.get("suppress"), True, edit)
+
+
 class DeliveryTests(unittest.TestCase):
     def _ask(self, bridge, question, *, ids=None, now=None):
         cog = _cog(bridge, now=now)
@@ -217,6 +225,7 @@ class DeliveryTests(unittest.TestCase):
                 kwargs["allowed_mentions"].to_dict(),
                 discord.AllowedMentions.none().to_dict(),
             )
+        _assert_no_previews(self, question, channel)
 
     def test_a_dm(self) -> None:
         bridge = FakeBridge(activity=ACTIVITY)
@@ -270,6 +279,24 @@ class DeliveryTests(unittest.TestCase):
             )
         # Every chunk is recorded, so a reply to any of them finds the turn.
         self.assertEqual(bridge.message_ids, [m.id for m in channel.sent])
+
+    def test_a_model_url_cannot_unfurl(self) -> None:
+        """A prompt-injected link would leak data through Discord's preview:
+        the answer carries it wrapped, and no send or edit allows a preview."""
+        text = "Done. https://evil.example/?d=private\n\n" + "word " * 500
+        for slow in (False, True):
+            bridge = FakeBridge(
+                slow=slow,
+                result={"state": "answered", "text": text, "sources": []},
+            )
+            channel = Channel()
+            question = Question(channel)
+            self._ask(bridge, question)
+            posted = [question.replies[0].content] + [m.content for m in channel.sent]
+            joined = "\n".join(posted)
+            self.assertIn("<https://evil.example/?d=private>", joined)
+            self.assertNotIn(" https://evil", joined)
+            _assert_no_previews(self, question, channel)
 
     def test_a_reply_carries_the_message_it_replies_to(self) -> None:
         bridge = FakeBridge()

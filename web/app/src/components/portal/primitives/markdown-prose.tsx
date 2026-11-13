@@ -11,6 +11,7 @@ import {
   splitRationale,
 } from "@/components/portal/primitives/report-entry";
 import { formatIsoDate } from "@/components/portal/sections/opportunity-bits";
+import { isSafeLink } from "@/lib/safe-link";
 import { cn } from "@/lib/utils";
 
 /**
@@ -81,6 +82,14 @@ function renderInline(rawText: string, keyBase: string): React.ReactNode[] {
           </strong>,
         );
       }
+    } else if (match[3] !== undefined && !isSafeLink(match[4])) {
+      // Only http(s) and mailto become links (the agent renderer's rule): a
+      // `javascript:` URL in report text stays inert, shown as its label.
+      nodes.push(
+        <React.Fragment key={`${keyBase}-u${i}`}>
+          {renderInline(match[3], `${keyBase}-u${i}`)}
+        </React.Fragment>,
+      );
     } else if (match[3] !== undefined) {
       // A link into Discord (the report's "announced → #grants" line) carries
       // Discord's mark and says where it opens (plan D17).
@@ -382,7 +391,7 @@ const WHOLE_TITLE_LINK = /^\*{0,2}\[([^\]]+)\]\(([^)\s]+)\)\*{0,2}$/;
 /** `[label, url]` when the whole title is one link; `["", ""]` otherwise. */
 function titleLink(text: string): [string, string] {
   const found = WHOLE_TITLE_LINK.exec(text.trim());
-  return found ? [found[1], found[2]] : ["", ""];
+  return found && isSafeLink(found[2]) ? [found[1], found[2]] : ["", ""];
 }
 
 /**

@@ -112,7 +112,7 @@ def _paper(
     )
 
 
-def _grant(title: str, *, sponsor: str = "", source="pivot", ext=None):
+def _grant(title: str, *, sponsor: str = "", source="legacy", ext=None):
     return ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
         source=source,
@@ -335,7 +335,7 @@ def test_fuzzy_recovers_a_typo_when_lexical_cannot(pg) -> None:
 def test_deadline_sort_soonest_first_nulls_last(pg) -> None:
     grant = ContentItem.objects.create(
         type=ContentItem.Type.GRANT,
-        source="pivot",
+        source="legacy",
         external_id="q-grant",
         metadata={"title": "Quantum grant", "deadline_date": "2026-09-01"},
     )

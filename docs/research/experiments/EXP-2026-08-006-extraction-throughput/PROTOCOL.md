@@ -12,7 +12,7 @@ how does that change with reasoning effort and worker concurrency?
 
 The plan currently carries an estimate of **5–6 hours**, extrapolated from a
 throughput table in the standalone collector
-(`/home/bdgr/Tools/Grant/pipeline.py:51-63`):
+(`pipeline.py:51-63` in the standalone collector's own checkout):
 
 ```
 workers  1 → 0.05 rec/s   median latency 25s
@@ -98,13 +98,14 @@ rather than smoothed over.
 Real records, not synthetic prompts — prompt length drives latency and the
 synthetic version would understate it.
 
-- **15 grants** sampled from `/home/bdgr/Tools/Grant/data/collect/opportunities.db`,
+- **15 grants** sampled from the standalone collector's
+  `data/collect/opportunities.db`,
   stratified across the four sources that have rows (`grants_gov`, `nih_guide`,
   `nsf`, `eu_portal`) so the description-length spread is represented
   (measured means: nsf 11,411 chars, eu_portal 4,975, grants_gov 1,648,
   nih_guide 894).
 - **15 conferences** sampled from
-  `/home/bdgr/Tools/Grant/data/collect/conferences.db`. These are the thin case:
+  the same store's `data/collect/conferences.db`. These are the thin case:
   `cfp_text` is `""` on all 2,234 rows, so the prompt carries title, acronym,
   series name and CCF area codes only.
 

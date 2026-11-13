@@ -185,6 +185,8 @@ def test_a_teams_only_reader_gets_their_daily_in_teams(settings, monkeypatch, db
     from apps.integrations.models import TeamsOutboxMessage
 
     settings.SLACK_ENABLED = False
+    # A public origin, so the report link is written (with none, it is left out).
+    settings.DISCORD_APP_BASE_URL = "https://mycelium.example.edu"
     settings.TEAMS_ENABLED = True
     tia = _teams_person()
     monkeypatch.setattr("tools.recommendation.tasks.select_users", lambda _names: [tia])
@@ -240,3 +242,14 @@ def test_a_teams_only_person_is_asked_with_an_adaptive_card(settings, db):
     [card] = row.attachments
     s = PendingSuggestion.objects.get()
     assert card["content"]["actions"][0]["data"] == {"ambient": f"{s.pk}:reports"}
+
+
+def test_no_public_origin_means_no_report_link(settings):
+    """A local-only instance writes no link rather than a bare relative path."""
+    settings.DISCORD_APP_BASE_URL = ""
+    assert slack_reports._report_link() == ""
+    assert "Read the full report" not in slack_reports.embed_to_text(
+        {"title": "Daily"}, link=slack_reports._report_link()
+    )
+    settings.DISCORD_APP_BASE_URL = "https://mycelium.example.edu/"
+    assert slack_reports._report_link() == "https://mycelium.example.edu/app/reports"

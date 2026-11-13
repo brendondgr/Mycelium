@@ -12,9 +12,13 @@ import { InstitutionFromEmail } from "@/components/ui/institution-from-email";
 import {
   changeEmail,
   changePassword,
+  deleteAccount,
+  downloadAccountData,
   getAccount,
+  requestAccountDeletion,
   requestPasswordChange,
   resendVerificationCode,
+  signOutEverywhere,
   updateAccount,
   verifyEmailCode,
 } from "@/lib/auth-client";
@@ -94,7 +98,255 @@ export function AccountSection() {
       <AmbientSettingsCard />
 
       <BillingSection />
+
+      <div className="mt-9 grid grid-cols-1 gap-[22px] lg:grid-cols-2 lg:items-start">
+        <DataAndSessionsCard />
+        <DeleteAccountCard email={account?.email ?? ""} />
+      </div>
     </div>
+  );
+}
+
+// -- your data and your sessions ----------------------------------------------
+
+function DataAndSessionsCard() {
+  const [busy, setBusy] = React.useState<"export" | "sessions" | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
+
+  async function exportData() {
+    setError(null);
+    setNotice(null);
+    setBusy("export");
+    try {
+      await downloadAccountData();
+      setNotice("Your data has been downloaded.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not prepare your data.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function endOtherSessions() {
+    setError(null);
+    setNotice(null);
+    setBusy("sessions");
+    try {
+      const ended = await signOutEverywhere();
+      setNotice(
+        ended === 0
+          ? "No other devices were signed in."
+          : `Signed out of ${ended} other ${ended === 1 ? "session" : "sessions"}.`,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Could not sign out your other sessions.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Card className="p-[22px]">
+      <h2 className="mb-1 text-base font-semibold text-[var(--text-primary)]">
+        Your data and devices
+      </h2>
+      <p className="mb-4 text-sm text-[var(--text-secondary)]">
+        Download a copy of everything Mycelium holds about you, or sign out
+        every other browser where this account is still signed in.
+      </p>
+
+      {error ? (
+        <p
+          className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p
+          className="mb-4 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm text-[var(--text-primary)]"
+          role="status"
+        >
+          {notice}
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-3">
+        <Button
+          className="rounded-full"
+          variant="secondary"
+          type="button"
+          disabled={busy !== null}
+          onClick={() => void exportData()}
+        >
+          {busy === "export" ? "Preparing…" : "Download my data"}
+        </Button>
+        <Button
+          className="rounded-full"
+          variant="secondary"
+          type="button"
+          disabled={busy !== null}
+          onClick={() => void endOtherSessions()}
+        >
+          {busy === "sessions" ? "Signing out…" : "Sign out everywhere else"}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+// -- danger zone: deleting the account -----------------------------------------
+
+function DeleteAccountCard({ email }: { email: string }) {
+  const [stage, setStage] = React.useState<"start" | "confirm">("start");
+  const [code, setCode] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [typed, setTyped] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function sendCode() {
+    setError(null);
+    setBusy(true);
+    try {
+      await requestAccountDeletion();
+      setStage("confirm");
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Could not send a confirmation code.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmDelete(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await deleteAccount(password, code);
+      // The session is gone with the account; leave for the public site.
+      window.location.assign("/");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not delete your account.");
+      setBusy(false);
+    }
+  }
+
+  const ready = code.length === 6 && password.length > 0 && typed === "delete";
+
+  return (
+    <Card className="border-destructive/40 p-[22px]">
+      <h2 className="mb-1 text-base font-semibold text-destructive">Delete account</h2>
+      <p className="mb-4 text-sm text-[var(--text-secondary)]">
+        Removes your profile, interests, saved items, personal projects and
+        everything Mycelium learned about your work. It cannot be undone. If you
+        are the only owner of a lab or department others belong to, hand it over
+        first.
+      </p>
+
+      {error ? (
+        <p
+          className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      {stage === "start" ? (
+        <Button
+          className="rounded-full"
+          variant="destructive"
+          type="button"
+          disabled={busy || !email}
+          onClick={() => void sendCode()}
+        >
+          {busy ? "Sending…" : "Email me a code to delete my account"}
+        </Button>
+      ) : (
+        <form className="space-y-3" onSubmit={confirmDelete} noValidate>
+          <p className="text-sm text-[var(--text-secondary)]">
+            We sent a code to <strong>{email}</strong>. Enter it with your
+            password, then type <strong>delete</strong> to confirm.
+          </p>
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="delete-code">
+              Confirmation code
+            </label>
+            <input
+              id="delete-code"
+              className={fieldClass}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="123456"
+              value={code}
+              disabled={busy}
+              onChange={(event) =>
+                setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="delete-password">
+              Password
+            </label>
+            <input
+              id="delete-password"
+              type="password"
+              autoComplete="current-password"
+              className={fieldClass}
+              value={password}
+              disabled={busy}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className={labelClass} htmlFor="delete-typed">
+              Type delete to confirm
+            </label>
+            <input
+              id="delete-typed"
+              className={fieldClass}
+              autoComplete="off"
+              value={typed}
+              disabled={busy}
+              onChange={(event) => setTyped(event.target.value.trim().toLowerCase())}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              className="rounded-full"
+              variant="destructive"
+              type="submit"
+              disabled={busy || !ready}
+            >
+              {busy ? "Deleting…" : "Delete my account"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setStage("start");
+                setCode("");
+                setPassword("");
+                setTyped("");
+                setError(null);
+              }}
+              disabled={busy}
+              className="text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </Card>
   );
 }
 

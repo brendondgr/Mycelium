@@ -154,7 +154,13 @@ def role_of(caller, kind: str, obj) -> str | None:
 def guest_level(caller) -> str:
     """What a guest may be told here: the host's ceiling, then the place's
     lab or department policy; the lower wins (S-16). ``off`` unless the host
-    lets guests ask at all (``discord_access = "public"``)."""
+    lets guests ask at all (``discord_access = "public"``).
+
+    An org that never chose a level gives guests ``public`` material only
+    (no people): someone with no account must not be able to list a lab's
+    members and their interests until the lab says so."""
+    from .models import DEFAULT_DISCORD_GUESTS
+
     if config.get("discord_access") != "public":
         return "off"
     level = config.get("discord_guest_level") or "full"
@@ -162,8 +168,8 @@ def guest_level(caller) -> str:
         # A server where Mylo cannot tell whose room it is: public material
         # only, for everyone (plan D, "Places").
         return level if guest_rank(level) < guest_rank("public") else "public"
-    for policy in org_policies(caller.scope):
-        own = policy.discord_guests or "full"
+    chosen = [p.discord_guests for p in org_policies(caller.scope) if p.discord_guests]
+    for own in chosen or [DEFAULT_DISCORD_GUESTS]:
         if guest_rank(own) < guest_rank(level):
             level = own
     return level if level in GUEST_LEVELS else "off"

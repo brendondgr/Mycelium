@@ -1,0 +1,17 @@
+Hello{% if recipient_name %} {{ recipient_name }}{% endif %},
+
+Someone signed in to your Mycelium account asked to delete it. Enter this
+code, with your password, to confirm:
+
+    {{ code }}
+
+It expires in {{ expires_in }}. Deleting the account removes your profile,
+your saved items, your projects and everything Mycelium learned about your
+work, and it cannot be undone. Mycelium will never ask you for this code -- if
+someone does, do not share it.
+
+If you did not ask for this, do not enter the code. Your account has not been
+touched. Someone may be signed in to it, so set a new password yourself as
+soon as you can: doing so signs every other device out.
+
+-- Mycelium

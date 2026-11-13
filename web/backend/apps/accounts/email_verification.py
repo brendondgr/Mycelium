@@ -39,6 +39,7 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 
@@ -69,6 +70,7 @@ _HMAC_SALT = "apps.accounts.email_verification"
 #: what the code will do so an unexpected one reads as an alarm.
 _TEMPLATES = {
     EmailVerification.Purpose.PASSWORD: "password_change_code",
+    EmailVerification.Purpose.DELETE: "account_delete_code",
 }
 _DEFAULT_TEMPLATE = "verification_code"
 
@@ -173,16 +175,24 @@ def verify(
         verification.save(update_fields=["consumed_at"])
         raise CodeExpired("That code has expired. Ask for a new one.")
 
-    if verification.attempts >= MAX_ATTEMPTS:
-        verification.consumed_at = now
-        verification.save(update_fields=["consumed_at"])
+    # Reserve an attempt *before* comparing, in one conditional UPDATE. Reading
+    # the counter and writing it back later let concurrent guesses each see the
+    # same count and each get a comparison, so the budget of MAX_ATTEMPTS could be
+    # spent many times over by firing requests in parallel. Here the database
+    # hands out at most MAX_ATTEMPTS comparisons per code, however many arrive.
+    reserved = EmailVerification.objects.filter(
+        pk=verification.pk, consumed_at__isnull=True, attempts__lt=MAX_ATTEMPTS
+    ).update(attempts=F("attempts") + 1)
+    if not reserved:
+        EmailVerification.objects.filter(
+            pk=verification.pk, consumed_at__isnull=True
+        ).update(consumed_at=now)
         raise TooManyAttempts("Too many wrong codes. Ask for a new one.")
+    verification.refresh_from_db(fields=["attempts"])
 
     if not submitted or not hmac.compare_digest(
         verification.code_hash, _hash(verification.pk, submitted)
     ):
-        verification.attempts += 1
-        verification.save(update_fields=["attempts"])
         remaining = MAX_ATTEMPTS - verification.attempts
         if remaining <= 0:
             raise TooManyAttempts("Too many wrong codes. Ask for a new one.")
@@ -210,6 +220,11 @@ def verify(
     # nothing to tell either party why. Deferred to commit, and never allowed to
     # fail the verification it rides on.
     transaction.on_commit(lambda: invites.claim_for_verified_email(user))
+    # Legacy in-app lab invitations sent to this address become visible (and
+    # answerable) only now that the mailbox is proved.
+    from .services import claim_pending_invitations
+
+    transaction.on_commit(lambda: claim_pending_invitations(user))
 
     return verification
 

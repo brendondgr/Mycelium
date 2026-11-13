@@ -1,6 +1,6 @@
 # Re-issues the FTS trigger function from 0004 (plan Phase 9, open-collector
 # migration). The open collector's ``mapping.py`` carries two identifying
-# fields Pivot never did — a grant's funder-issued ``opportunity_number`` and
+# fields the earlier source never did — a grant's funder-issued ``opportunity_number`` and
 # a conference's ``acronym`` — and neither was searchable: a reader typing
 # "PAR-25-144" or "SIGMOD" got no hit unless that exact string happened to
 # also appear in the title/name. The trigger function hard-codes every

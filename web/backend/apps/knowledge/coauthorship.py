@@ -57,9 +57,13 @@ def derive() -> dict[tuple[int, int], tuple[int, int | None]]:
         if year and year > years.get(pair, 0):
             years[pair] = year
 
-    for uid, source, source_id, year, ids in AuthorWork.objects.values_list(
-        "user_id", "source", "source_id", "year", "coauthor_ids"
-    ).iterator(chunk_size=2000):
+    # Verified works only: a self-service import of someone else's author id
+    # must not make its importer anybody's co-author.
+    for uid, source, source_id, year, ids in (
+        AuthorWork.objects.filter(verified=True)
+        .values_list("user_id", "source", "source_id", "year", "coauthor_ids")
+        .iterator(chunk_size=2000)
+    ):
         work = (source, source_id)
         holders[work].add(uid)
         year_of[work] = year

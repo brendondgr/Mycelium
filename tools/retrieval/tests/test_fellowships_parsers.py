@@ -1,5 +1,4 @@
-"""Tests for the fellowships parsers — adapted from the ProQuest tool's
-``tests/test_fellowships.py``.
+"""Tests for the fellowships parsers.
 
 Tests are pure-Python (no DB, no Django, no network). They cover deadline
 parsing (incl. anticipated/previous-deadline/MM-YYYY), amount parsing (incl.

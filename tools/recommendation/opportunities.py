@@ -3,7 +3,7 @@
 For one user and one area (grants or conferences) this reuses the paper pipeline's
 retrieval + multi-interest fusion
 (:func:`tools.recommendation.pipeline.fuse_interests_pool`,
-scoped by ``content_type``) over the Pivot corpus, scores the top slice with the
+scoped by ``content_type``) over the opportunity corpus, scores the top slice with the
 opportunity-aware model (:mod:`.opportunity_llm`), tags brand-new items
 (:mod:`.pinning`), and persists one :class:`RelevanceScore` per item — the same
 store the paper digest uses, discriminated by ``content.type`` and a ``signals.area``.
@@ -1369,8 +1369,8 @@ def run_daily_opportunities_batch(
     Phase 1 (prune): delete expired grants/conferences/fellowships so the pool
     stays current. **No live scrape happens here.** Before plan Phase 6 this
     function also accepted ``ingest``/``embed`` flags and tried a Playwright
-    refresh of the Pivot corpus when ``ingest`` was true; that source is
-    retired. The open collector that replaces it (D6) is a scheduled,
+    refresh of a retired source's corpus when ``ingest`` was true. The open
+    collector that replaces it (D6) is a scheduled,
     full-corpus crawl across a dozen HTTP adapters plus a SPARQL registry
     lookup (``tools.retrieval.collect``, wired into the nightly chain as its own
     stage — plan Phase 12, ``manual_all.py``'s ``collect_opportunities``

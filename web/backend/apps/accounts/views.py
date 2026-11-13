@@ -17,6 +17,7 @@ from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import (
     api_view,
     permission_classes,
@@ -24,7 +25,7 @@ from rest_framework.decorators import (
 )
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import SAFE_METHODS, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -39,9 +40,11 @@ from apps.billing.services import (
 )
 
 from . import (
+    account_data,
     email_verification,
     institution,
     invites,
+    login_guard,
     password_reset,
     signup_gate,
     signup_policy,
@@ -51,18 +54,19 @@ from .intake import (
     AuthorImportError,
     IntakeAgent,
     ResolutionError,
-    extract_text,
     import_author,
     source_text_from_links,
     synthesize_interests,
     synthesize_lab_interests,
 )
+from .intake.resume import extract_upload
 from .interests import validate_interests
 from .models import (
     Department,
     DeptMembership,
     EmailVerification,
     Lab,
+    LabAttachRequest,
     LabInvitation,
     LabMembership,
     LabWatchPreference,
@@ -79,7 +83,9 @@ from .permissions import (
     user_can_manage_lab,
     user_has_department_access,
     user_has_lab_access,
+    user_outranks_dept_member,
     user_outranks_lab_member,
+    user_owns_lab,
 )
 from .serializers import (
     AccountSerializer,
@@ -101,9 +107,6 @@ from .serializers import (
 )
 from .services import (
     accept_invitation,
-    add_dept_member,
-    add_lab_member,
-    attach_existing_lab_to_department,
     cancel_invitation,
     claim_pending_invitations,
     create_lab_in_department,
@@ -111,10 +114,14 @@ from .services import (
     department_labs_payload,
     department_members_payload,
     detach_lab_from_department,
+    invitation_addressed_to,
+    invite_lab_member_by_username,
     invite_to_lab,
     record_audit_event,
     remove_dept_member,
     remove_lab_member,
+    request_lab_attach,
+    respond_to_lab_attach,
     set_lab_department_inclusion,
     set_lab_member_role,
     transfer_lab_ownership,
@@ -143,9 +150,30 @@ def csrf(request: Request) -> Response:
     return Response({"detail": "ok"})
 
 
+def enforce_csrf(request: Request) -> None:
+    """Run Django's CSRF check on a request DRF would let through.
+
+    DRF only checks CSRF for a request that is already signed in, so the two
+    anonymous doors that *create* a session — sign-in and sign-up — were open to
+    login CSRF: a hostile page posting the attacker's credentials and leaving the
+    visitor signed in to the attacker's account, where everything they then
+    type is the attacker's to read. The app fetches ``/api/auth/csrf`` and sends
+    ``X-CSRFToken`` before both, so a real sign-in always carries the token.
+    """
+    SessionAuthentication().enforce_csrf(request)
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def login_view(request: Request) -> Response:
+    """Sign in with a username and password.
+
+    CSRF-checked although anonymous (:func:`enforce_csrf`), and behind the
+    sign-in lockout (:mod:`apps.accounts.login_guard`): too many wrong passwords
+    for one username from one address — or from one address across usernames —
+    answer ``429`` until the window passes, right password or not.
+    """
+    enforce_csrf(request)
     username = str(request.data.get("username", "")).strip()
     password = str(request.data.get("password", ""))
 
@@ -153,6 +181,13 @@ def login_view(request: Request) -> Response:
         return Response(
             {"non_field_errors": ["Enter both username and password."]},
             status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if login_guard.is_locked(username, request):
+        login_guard.record_failure(username, request)
+        return Response(
+            {"detail": login_guard.LOCKED_MESSAGE},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
     user = authenticate(request, username=username, password=password)
@@ -207,7 +242,11 @@ def register_view(request: Request) -> Response:
     by the address it was addressed to: Mycelium mailed a secret to that mailbox
     and it came back, which is the same proof the code goes looking for, so the
     account is already activated and is not asked twice.
+
+    CSRF-checked although anonymous, for the same reason as sign-in: it ends
+    with the caller signed in.
     """
+    enforce_csrf(request)
     subject = signup_gate.client_subject(request)
     current_mode = signup_policy.mode()
     # Only the code mode has a secret to guess, so only it consults the ban (which
@@ -319,9 +358,6 @@ def register_view(request: Request) -> Response:
             user, "personal", personal_tier=signup_grant_tier()
         )
 
-        # Surface any lab invitations that were sent to this email before signup.
-        claim_pending_invitations(user)
-
         joined = None
         if invite is not None:
             try:
@@ -337,6 +373,12 @@ def register_view(request: Request) -> Response:
                 profile.is_verified = True
                 profile.save(update_fields=["is_verified"])
                 institution.verified_then_sync(user)
+
+        # Surface lab invitations sent to this address before sign-up — only if
+        # the address is already proved (an email invite just proved it). An
+        # unverified account claims them when it verifies, never on a typed
+        # address alone.
+        claim_pending_invitations(user)
 
         record_audit_event(
             actor=user,
@@ -356,7 +398,9 @@ def register_view(request: Request) -> Response:
     if signup_policy.verification_required() and not user.profile.is_verified:
         email_verification.issue(user, user.email)
 
-    login(request, user)  # set the session immediately, same as login_view
+    # Set the session immediately, same as login_view. The backend is named
+    # because the sign-in lockout is a backend too, and Django will not guess.
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     payload = user_to_dict(user)
     # Someone invited by email who signed up here instead of through their link
     # is told an invitation is waiting, and joins the moment they verify (see
@@ -438,6 +482,15 @@ class AccountView(APIView):
             profile.save(update_fields=profile_fields)
 
         return Response(_account_payload(user))
+
+    def delete(self, request: Request) -> Response:
+        """Erase the account: ``{password, code}`` (code from ``delete/request``).
+
+        Refused (``409``) while the caller is the only owner of a lab or
+        department others belong to. Everything that exists because of the
+        account goes with it; see :mod:`apps.accounts.account_data`.
+        """
+        return _delete_account(request)
 
 
 def _typed_institution_refused(user: User, data) -> Response | None:
@@ -562,6 +615,140 @@ class PasswordChangeView(APIView):
             target_id=str(user.pk),
         )
         return Response({"detail": "Your password has been changed."})
+
+
+class SessionsRevokeView(APIView):
+    """``POST``: sign out everywhere else.
+
+    Ends every session this account holds except the one making the request,
+    which is given a fresh key so a copied cookie for it dies too. For "I left
+    myself signed in on a lab computer" and "I think someone has my session".
+    """
+
+    def post(self, request: Request) -> Response:
+        from django.contrib.sessions.models import Session
+        from django.utils import timezone
+
+        user = request.user
+        current = request.session.session_key
+        ended = 0
+        for session in Session.objects.filter(expire_date__gt=timezone.now()):
+            if session.session_key == current:
+                continue
+            try:
+                owner = session.get_decoded().get("_auth_user_id")
+            except Exception:  # noqa: BLE001 — an undecodable session is not ours
+                continue
+            if str(owner) == str(user.pk):
+                session.delete()
+                ended += 1
+        request.session.cycle_key()
+        record_audit_event(
+            actor=user,
+            action="account.sessions_revoked",
+            target_type="user",
+            target_id=str(user.pk),
+            metadata={"ended": ended},
+        )
+        return Response({"ended": ended})
+
+
+class AccountDeleteRequestView(APIView):
+    """``POST``: mail the code that, with the password, deletes the account.
+
+    Deletion asks for both proofs the account has: the password (someone at an
+    unlocked screen does not have it) and the mailbox (someone who phished the
+    password does not have that). The code is issued for this purpose only, so
+    a code mailed for anything else cannot be spent here.
+    """
+
+    throttle_classes = [EmailVerifyThrottle]
+
+    def post(self, request: Request) -> Response:
+        address = request.user.email
+        if not address:
+            return Response(
+                {"detail": ["Your account has no email address to confirm with."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        blockers = account_data.deletion_blockers(request.user)
+        if blockers:
+            return Response(
+                {"detail": blockers, "reason": "sole_owner"},
+                status=status.HTTP_409_CONFLICT,
+            )
+        try:
+            email_verification.issue(
+                request.user,
+                address,
+                EmailVerification.Purpose.DELETE,
+                enforce_cooldown=True,
+            )
+        except email_verification.ResendTooSoon as exc:
+            return Response(
+                {"detail": [str(exc)]}, status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        record_audit_event(
+            actor=request.user,
+            action="account.delete_requested",
+            target_type="user",
+            target_id=str(request.user.pk),
+        )
+        return Response(
+            {"detail": f"We sent a confirmation code to {address}."},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+def _delete_account(request: Request) -> Response:
+    """``DELETE /api/auth/account/`` — erase the caller (password + mailed code)."""
+    user = request.user
+    password = str(request.data.get("password", ""))
+    code = str(request.data.get("code", ""))
+    # The password check here is a password check like any other, so it spends
+    # the same lockout budget as the sign-in form.
+    if login_guard.is_locked(user.get_username(), request):
+        return Response(
+            {"detail": login_guard.LOCKED_MESSAGE},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+    if not password or not user.check_password(password):
+        login_guard.record_failure(user.get_username(), request)
+        return Response(
+            {"password": ["That password is not correct."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    blockers = account_data.deletion_blockers(user)
+    if blockers:
+        return Response(
+            {"detail": blockers, "reason": "sole_owner"},
+            status=status.HTTP_409_CONFLICT,
+        )
+    try:
+        email_verification.verify(user, code, EmailVerification.Purpose.DELETE)
+    except email_verification.VerificationError as exc:
+        return Response({"code": [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
+    logout(request)
+    account_data.delete_account(user)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AccountExportView(APIView):
+    """``GET``: download everything this account holds, as one JSON file."""
+
+    def get(self, request: Request) -> Response:
+        record_audit_event(
+            actor=request.user,
+            action="account.export",
+            target_type="user",
+            target_id=str(request.user.pk),
+        )
+        response = Response(account_data.export(request.user))
+        response["Content-Disposition"] = (
+            f'attachment; filename="mycelium-{request.user.username}-data.json"'
+        )
+        response["Cache-Control"] = "no-store"
+        return response
 
 
 class EmailChangeView(APIView):
@@ -726,7 +913,9 @@ def password_reset_request_view(request: Request) -> Response:
     does not vary — not in the body, not in the status.
     """
     email = str(request.data.get("email", "")).strip()
-    password_reset.request_reset(email)
+    # Queued, not sent here: an inline send took longer for a real account, and
+    # that difference was itself the answer this endpoint refuses to give.
+    password_reset.request_reset_later(email)
     return Response({"detail": RESET_REQUESTED_MESSAGE})
 
 
@@ -822,8 +1011,15 @@ class LabProfileView(RetrieveUpdateAPIView):
         return lab.profile
 
 
-#: Max lab-logo upload size (2 MB) and the raster/vector types we accept.
+#: Max lab-logo upload size (2 MB) and the raster types we accept, with the
+#: extension each is stored under. No SVG — see ``sniff_image_content_type``.
 LAB_LOGO_MAX_BYTES = 2 * 1024 * 1024
+LAB_LOGO_TYPES: dict[str, str] = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+}
 
 
 def _lab_logo_payload(lab: Lab) -> dict[str, object]:
@@ -835,9 +1031,10 @@ def sniff_image_content_type(data: bytes) -> str | None:
     """Return the image content type from magic bytes, or ``None`` if unknown.
 
     Dependency-free (no Pillow): recognises PNG/JPEG/GIF/WebP by signature and
-    SVG by a leading ``<svg``/``<?xml`` marker. SVG is safe here because the logo
-    is only ever rendered via ``<img src>`` (scripts inside it never execute) and
-    served with ``X-Content-Type-Options: nosniff``.
+    SVG by a leading ``<svg``/``<?xml`` marker. SVG is *recognised* so that it can
+    be refused by name — an SVG is a document that can carry script, and a lab
+    lead could plant one that runs for any member who opens the logo URL in a
+    tab. Uploads accept raster formats only (:data:`LAB_LOGO_TYPES`).
     """
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
@@ -876,12 +1073,18 @@ class LabLogoView(APIView):
             raise PermissionDenied("You do not have access to this lab.")
         if not lab.logo:
             raise Http404("This lab has no logo.")
-        response = FileResponse(
-            lab.logo.open("rb"),
-            content_type=lab.logo_content_type or "application/octet-stream",
-        )
+        content_type = lab.logo_content_type or "application/octet-stream"
+        response = FileResponse(lab.logo.open("rb"), content_type=content_type)
         response["X-Content-Type-Options"] = "nosniff"
-        response["Content-Disposition"] = "inline"
+        # A logo is an image, never a document: nothing in it may run, and an
+        # SVG stored before uploads stopped accepting them is handed over as a
+        # download rather than rendered at this origin.
+        response["Content-Security-Policy"] = (
+            "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+        )
+        response["Content-Disposition"] = (
+            "inline" if content_type in LAB_LOGO_TYPES else "attachment"
+        )
         response["Cache-Control"] = "private, max-age=300"
         return response
 
@@ -902,18 +1105,12 @@ class LabLogoView(APIView):
             )
         content_type = sniff_image_content_type(upload.read(4096))
         upload.seek(0)
-        if content_type is None:
+        if content_type not in LAB_LOGO_TYPES:
             return Response(
-                {"file": ["Use a PNG, JPG, GIF, WebP, or SVG image."]},
+                {"file": ["Use a PNG, JPG, GIF, or WebP image."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        ext = {
-            "image/png": "png",
-            "image/jpeg": "jpg",
-            "image/gif": "gif",
-            "image/webp": "webp",
-            "image/svg+xml": "svg",
-        }[content_type]
+        ext = LAB_LOGO_TYPES[content_type]
         if lab.logo:
             lab.logo.delete(save=False)
         lab.logo.save(f"{lab.slug}.{ext}", upload, save=False)
@@ -1046,15 +1243,43 @@ class MyLabsView(ListAPIView):
         )
 
 
-class LabMembersView(ListAPIView):
-    """A lab's member roster: any member reads; a manager adds an existing user.
+class InviteRateThrottle(UserRateThrottle):
+    """Per-account cap on invitation requests (rate ``invite_create``).
 
-    ``GET`` lists members. ``POST {username, role}`` adds an existing user directly
-    (distinct from an emailed invitation) and seats them on the lab's paying scope; a
-    seat-ceiling breach returns 400.
+    The burst control; ``invites.check_daily_quota`` is the per-day ceiling per
+    creator and per org that stops an instance being used to send bulk mail.
+    """
+
+    scope = "invite_create"
+
+
+#: The one answer an "invite by username" gets, whoever was named.
+INVITE_BY_USERNAME_MESSAGE = (
+    "If that username belongs to a Mycelium account, they have been invited. "
+    "They join once they accept."
+)
+
+
+def _quota_refused(exc: Exception) -> Response:
+    return Response({"detail": str(exc)}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+
+class LabMembersView(ListAPIView):
+    """A lab's member roster: any member reads; a manager invites by username.
+
+    ``GET`` lists members — only people who are members, never someone who has
+    merely been invited. ``POST {username, role}`` no longer adds anybody: it
+    leaves the named account an invitation to accept, and answers ``202`` with
+    the same body whether or not the username exists (see
+    :func:`apps.accounts.services.invite_lab_member_by_username`).
     """
 
     serializer_class = LabMemberSerializer
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [InviteRateThrottle()]
+        return super().get_throttles()
 
     def get_queryset(self):
         lab = get_object_or_404(Lab, slug=self.kwargs["slug"])
@@ -1070,12 +1295,22 @@ class LabMembersView(ListAPIView):
         lab = get_object_or_404(Lab, slug=slug)
         if not user_can_manage_lab(request.user, lab):
             raise PermissionDenied("Only a lab owner or admin can add members.")
+        require_verified_email(request.user)
         username = str(request.data.get("username", "")).strip()
-        target = get_object_or_404(User, username=username)
+        if not username:
+            return Response(
+                {"username": ["Name the account to invite."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         role = str(request.data.get("role", "") or LabMembership.Role.MEMBER)
-        membership = add_lab_member(lab, target, role=role, actor=request.user)
+        try:
+            invites.check_daily_quota(request.user, lab=lab)
+        except invites.InviteQuotaExceeded as exc:
+            return _quota_refused(exc)
+        invite_lab_member_by_username(lab, username, actor=request.user, role=role)
         return Response(
-            LabMemberSerializer(membership).data, status=status.HTTP_201_CREATED
+            {"detail": INVITE_BY_USERNAME_MESSAGE, "status": "invited"},
+            status=status.HTTP_202_ACCEPTED,
         )
 
 
@@ -1169,11 +1404,20 @@ class LabInvitationsView(APIView):
         ).all()
         return Response(LabInvitationSerializer(invitations, many=True).data)
 
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [InviteRateThrottle()]
+        return super().get_throttles()
+
     def post(self, request: Request, slug: str) -> Response:
         lab = self._get_lab()
         # Sending an invitation puts Mycelium's name in a stranger's inbox on
         # this account's behalf. Answer your own mail first.
         require_verified_email(request.user)
+        try:
+            invites.check_daily_quota(request.user, lab=lab)
+        except invites.InviteQuotaExceeded as exc:
+            return _quota_refused(exc)
         invitation = invite_to_lab(
             lab=lab,
             inviter=request.user,
@@ -1192,7 +1436,7 @@ class MyInvitationsView(ListAPIView):
     serializer_class = MyInvitationSerializer
 
     def get_queryset(self):
-        return (
+        rows = (
             LabInvitation.objects.filter(
                 invitee=self.request.user,
                 status=LabInvitation.Status.PENDING,
@@ -1200,14 +1444,21 @@ class MyInvitationsView(ListAPIView):
             .select_related("lab", "inviter")
             .order_by("-created_at")
         )
+        # One sent to an address is shown only once that address is proved —
+        # the same rule that decides whether it may be accepted.
+        return [row for row in rows if invitation_addressed_to(row, self.request.user)]
 
 
 class InvitationRespondView(APIView):
-    """The invitee accepts, rejects, or ignores one of their invitations."""
+    """The invitee accepts, rejects, or ignores one of their invitations.
+
+    An invitation addressed to an email is answerable only by an account that
+    has proved that address (:func:`apps.accounts.services.invitation_addressed_to`).
+    """
 
     def post(self, request: Request, pk) -> Response:
         invitation = get_object_or_404(LabInvitation, pk=pk)
-        if invitation.invitee_id != request.user.id:
+        if not invitation_addressed_to(invitation, request.user):
             raise PermissionDenied("This invitation is not addressed to you.")
         if invitation.status != LabInvitation.Status.PENDING:
             return Response(
@@ -1246,7 +1497,17 @@ class LabInvitationCancelView(APIView):
 
 
 class DeptMembersView(APIView):
-    """Effective dept roster (any member reads); a manager adds a direct member."""
+    """Effective dept roster (any member reads); a manager invites by username.
+
+    ``POST {username, role}`` mails the named account an invitation and answers
+    ``202`` with the same body whether or not the username exists; nobody joins
+    a department, or appears in its roster, until they accept.
+    """
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [InviteRateThrottle()]
+        return super().get_throttles()
 
     def get(self, request: Request, pk) -> Response:
         department = get_object_or_404(Department, id=pk)
@@ -1258,27 +1519,56 @@ class DeptMembersView(APIView):
         department = get_object_or_404(Department, id=pk)
         if not user_can_manage_department(request.user, department):
             raise PermissionDenied("Only an owner or admin can add members.")
+        require_verified_email(request.user)
         username = str(request.data.get("username", "")).strip()
-        target = get_object_or_404(User, username=username)
+        if not username:
+            return Response(
+                {"username": ["Name the account to invite."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         role = str(request.data.get("role", "") or DeptMembership.Role.MEMBER)
-        add_dept_member(department, target, role=role, actor=request.user)
+        try:
+            invites.invite_dept_member_by_username(
+                department, username, actor=request.user, role=role
+            )
+        except invites.InviteQuotaExceeded as exc:
+            return _quota_refused(exc)
         return Response(
-            department_members_payload(department), status=status.HTTP_201_CREATED
+            {"detail": INVITE_BY_USERNAME_MESSAGE, "status": "invited"},
+            status=status.HTTP_202_ACCEPTED,
         )
 
 
 class DeptMemberDetailView(APIView):
-    """A department manager removes a direct member (deferred seat removal)."""
+    """A department manager removes a direct member (deferred seat removal).
+
+    Obeys the department rank rule: an admin removes members and viewers, never
+    another admin; leaving yourself is always allowed.
+    """
 
     def delete(self, request: Request, pk, username: str) -> Response:
         department = get_object_or_404(Department, id=pk)
-        if not user_can_manage_department(request.user, department):
-            raise PermissionDenied("Only an owner or admin can remove members.")
         target = get_object_or_404(User, username=username)
+        leaving = request.user == target
+        if not leaving and not user_can_manage_department(request.user, department):
+            raise PermissionDenied("Only an owner or admin can remove members.")
         if department.owner_id == target.id:
             return Response(
                 {"detail": "The department owner cannot be removed."},
                 status=status.HTTP_409_CONFLICT,
+            )
+        if not leaving and not user_outranks_dept_member(
+            request.user, department, target
+        ):
+            record_audit_event(
+                actor=request.user,
+                action="dept.member.remove.refused",
+                target_type="department",
+                target_id=str(department.id),
+                metadata={"user_id": target.id},
+            )
+            raise PermissionDenied(
+                "You cannot remove someone at or above your own role."
             )
         remove_dept_member(department, target, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -1302,7 +1592,24 @@ class DeptLabsView(APIView):
         name = str(request.data.get("name", "")).strip()
         if slug:
             lab = get_object_or_404(Lab, slug=slug)
-            attach_existing_lab_to_department(department, lab, actor=request.user)
+            # Attaching shows this department every project and member of the
+            # lab, so only the lab's owner can do it. Anyone else's attach
+            # becomes a request the owner accepts or declines.
+            attached, pending = request_lab_attach(
+                department, lab, actor=request.user
+            )
+            if attached is None:
+                return Response(
+                    {
+                        "detail": (
+                            "Request sent. The lab joins this department once its "
+                            "owner accepts."
+                        ),
+                        "status": "requested",
+                        "request_id": str(pending.id),
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
         elif name:
             create_lab_in_department(department, name, request.user, actor=request.user)
         else:
@@ -1313,6 +1620,58 @@ class DeptLabsView(APIView):
         return Response(
             department_labs_payload(department), status=status.HTTP_201_CREATED
         )
+
+
+def _attach_request_row(row: LabAttachRequest) -> dict[str, object]:
+    from apps.core.people import display_name
+
+    return {
+        "id": str(row.id),
+        "department_id": str(row.department_id),
+        "department_name": row.department.name,
+        "requested_by": display_name(row.requested_by) if row.requested_by else "",
+        "status": row.status,
+        "created_at": row.created_at.isoformat(),
+    }
+
+
+def _owned_lab(request: Request, slug: str) -> Lab:
+    lab = get_object_or_404(Lab, slug=slug)
+    if not user_owns_lab(request.user, lab):
+        raise PermissionDenied("Only the lab's owner can answer department requests.")
+    return lab
+
+
+class LabAttachRequestsView(APIView):
+    """``GET`` the departments asking to take in this lab — its owner only."""
+
+    def get(self, request: Request, slug: str) -> Response:
+        lab = _owned_lab(request, slug)
+        rows = lab.attach_requests.filter(
+            status=LabAttachRequest.Status.PENDING
+        ).select_related("department", "requested_by")
+        return Response([_attach_request_row(row) for row in rows])
+
+
+class LabAttachRequestRespondView(APIView):
+    """``POST`` accept or decline one department's request to attach this lab."""
+
+    accept = True
+
+    def post(self, request: Request, slug: str, pk) -> Response:
+        lab = _owned_lab(request, slug)
+        row = get_object_or_404(
+            LabAttachRequest.objects.select_related("department", "requested_by"),
+            pk=pk,
+            lab=lab,
+        )
+        respond_to_lab_attach(row, actor=request.user, accept=self.accept)
+        row.refresh_from_db()
+        return Response(_attach_request_row(row))
+
+
+class LabAttachRequestDeclineView(LabAttachRequestRespondView):
+    accept = False
 
 
 class DeptLabDetailView(APIView):
@@ -1375,7 +1734,11 @@ class ImportAuthorView(APIView):
         # is what left the reports unable to tell a reader's own paper from a
         # discovery (plan M9). Keyed on (user, source, work id), so a re-import
         # updates in place rather than accumulating copies.
-        store_author_works(request.user, draft, source=source)
+        #
+        # Stored *unverified*: nothing here proves the id typed is the caller's
+        # own, so the works keep their own papers out of their feed but never
+        # feed co-authorship or "demonstrated" edges other people read.
+        store_author_works(request.user, draft, source=source, verified=False)
         return Response(
             {
                 "draft": _draft_payload(request.user, draft),
@@ -1510,7 +1873,13 @@ class ProposeClustersView(APIView):
 SYNTHESIZE_SOURCES = {"openalex", "semantic", "scholar", "orcid"}
 
 
-class SynthesizeView(APIView):
+class _UploadParsers:
+    """The API default is JSON only; these views also take file uploads."""
+
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+
+class SynthesizeView(_UploadParsers, APIView):
     """Build one interest draft from an optional author id and/or a résumé upload.
 
     Accepts ``multipart/form-data`` with optional ``source`` + ``identifier`` (at
@@ -1571,11 +1940,7 @@ class SynthesizeView(APIView):
 
         if upload is not None:
             try:
-                resume_text = extract_text(
-                    upload.read(),
-                    content_type=getattr(upload, "content_type", "") or "",
-                    filename=getattr(upload, "name", "") or "",
-                )
+                resume_text = extract_upload(upload)
             except AuthorImportError as exc:
                 # A bad upload is the caller's error, not an upstream failure.
                 return Response(
@@ -1635,7 +2000,7 @@ def _as_str_list(value) -> list[str]:
     return [s for s in (str(item).strip() for item in items) if s]
 
 
-class LabIntakeSynthesizeView(APIView):
+class LabIntakeSynthesizeView(_UploadParsers, APIView):
     """Draft a lab's ``{statement, areas, keywords}`` from the PI's own words.
 
     Accepts ``multipart/form-data`` (or JSON): the lab ``description``, any
@@ -1664,11 +2029,7 @@ class LabIntakeSynthesizeView(APIView):
                 source_chunks.append(link_text)
         for upload in uploads:
             try:
-                text = extract_text(
-                    upload.read(),
-                    content_type=getattr(upload, "content_type", "") or "",
-                    filename=getattr(upload, "name", "") or "",
-                )
+                text = extract_upload(upload)
             except AuthorImportError:
                 continue  # skip an unreadable file rather than fail the draft
             if text.strip():
@@ -1790,6 +2151,11 @@ class _OrgInvitesView(APIView):
     def _target(self, org) -> dict:
         raise NotImplementedError
 
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [InviteRateThrottle()]
+        return super().get_throttles()
+
     def get(self, request: Request, **kwargs) -> Response:
         org = self._resolve(**kwargs)
         rows = org.join_invites.select_related("created_by").all()
@@ -1810,7 +2176,12 @@ class _OrgInvitesView(APIView):
         org = self._resolve(**kwargs)
         require_verified_email(request.user)
         target = self._target(org)
+        try:
+            return self._create(request, target)
+        except invites.InviteQuotaExceeded as exc:
+            return _quota_refused(exc)
 
+    def _create(self, request: Request, target: dict) -> Response:
         if "emails" in request.data:
             batch = invites.create_invites(
                 creator=request.user,
@@ -1883,6 +2254,51 @@ class LabInviteRevokeView(APIView):
         invite = get_object_or_404(OrgInvite, pk=pk, lab=lab)
         invites.revoke_invite(invite, actor=request.user)
         return Response(invites.invite_payload(invite))
+
+
+class LabInviteRegenerateView(APIView):
+    """Give one of a lab's live invitations a fresh link, retiring the old one.
+
+    The only way to see a share link again after the response that created it:
+    the token is stored as a digest, so the old one cannot be shown, only replaced.
+    """
+
+    def post(self, request: Request, slug: str, pk) -> Response:
+        lab = get_object_or_404(Lab, slug=slug)
+        if not user_can_invite_to_lab(request.user, lab):
+            raise PermissionDenied("Only a lab lead or admin can manage invitations.")
+        invite = get_object_or_404(OrgInvite, pk=pk, lab=lab)
+        return _regenerated(invite, request.user)
+
+
+class DeptInviteRegenerateView(APIView):
+    """The department twin of :class:`LabInviteRegenerateView`."""
+
+    def post(self, request: Request, pk, invite_id) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if not user_can_invite_to_department(request.user, department):
+            raise PermissionDenied(
+                "Only the department owner or an admin can manage invitations."
+            )
+        invite = get_object_or_404(OrgInvite, pk=invite_id, department=department)
+        return _regenerated(invite, request.user)
+
+
+def _regenerated(invite: OrgInvite, actor: User) -> Response:
+    if not invites.is_live(invite):
+        return Response(
+            {"detail": "That invitation is no longer live. Create a new one."},
+            status=status.HTTP_409_CONFLICT,
+        )
+    # An emailed invite is bound to its recipient, who already holds the link;
+    # a new one for them is a new invitation, not a regenerated one.
+    if invite.kind != OrgInvite.Kind.LINK:
+        return Response(
+            {"detail": "Only a share link can be regenerated."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    invites.regenerate_invite(invite, actor=actor)
+    return Response(invites.invite_payload(invite))
 
 
 class DeptInviteRevokeView(APIView):

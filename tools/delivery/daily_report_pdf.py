@@ -320,6 +320,20 @@ _NUMBERED_RE = re.compile(r"^(\d{1,3})[.)]\s+(.*)$")
 _CITATION_RE = report_grammar.CITATION
 
 
+_SAFE_SCHEME = re.compile(r"^https?://", re.I)
+
+
+def _href(url) -> str:
+    """``url`` as a value for ``<a href="…">``, or ``""`` when it must not be
+    a link. Only http(s) links; ``&``, ``<``, ``>`` and ``"`` are escaped so a
+    URL from a scraped page cannot close the attribute and add markup of its
+    own (``x" color="red``), and a ``javascript:`` URL is never clickable."""
+    url = str(url or "").strip()
+    if not _SAFE_SCHEME.match(url):
+        return ""
+    return escape(url, {'"': "&quot;"})
+
+
 def _inline(text: str, *, verdicts: bool = False) -> str:
     """Escape XML, then re-apply the report's markdown as reportlab tags.
 
@@ -347,8 +361,13 @@ def _inline(text: str, *, verdicts: bool = False) -> str:
     out = report_grammar.CHANGE_CITATION.sub(
         lambda m: f'<font size="7" color="{_MUTED_HEX}">[O{m.group(1)}]</font>', out
     )
+    # the text is already escaped, so the URL only still needs its quotes
     out = _LINK_RE.sub(
-        lambda m: f'<a href="{m.group(2)}" color="{_LINK_HEX}">{m.group(1)}</a>', out
+        lambda m: (
+            f'<a href="{m.group(2).replace(chr(34), "&quot;")}" '
+            f'color="{_LINK_HEX}">{m.group(1)}</a>'
+        ),
+        out,
     )
     out = _NEW_MARKER_RE.sub(f'<font color="{_NEW_HEX}"><b>NEW</b></font>', out)
     if verdicts:
@@ -983,8 +1002,8 @@ def _item_flowables(
         # call — an entry reading *NeurIPS 2027* tells a returning reader
         # everything a "reopened" chip would, so there is no second badge.
         title = f"{title} {escape(str(item.edition))}"
-    if item.url:
-        title = f'<a href="{escape(item.url)}" color="{_TITLE_HEX}">{title}</a>'
+    if href := _href(item.url):
+        title = f'<a href="{href}" color="{_TITLE_HEX}">{title}</a>'
 
     # Everything that identifies rather than argues — when it is due, where it came
     # from — goes to the strip. Above it these were competing lines between the
@@ -1019,8 +1038,8 @@ def _standing_row(
     is to report change ends up dominated by the things that did not.
     """
     title = _inline(item.title)
-    if item.url:
-        title = f'<a href="{escape(item.url)}" color="{_TITLE_HEX}">{title}</a>'
+    if href := _href(item.url):
+        title = f'<a href="{href}" color="{_TITLE_HEX}">{title}</a>'
     due = (
         f"due {_format_date(item.deadline_date)}" if item.deadline_date else ""
     )
@@ -1534,10 +1553,10 @@ def _extend_alerts(
         body: list = [
             Paragraph(
                 (
-                    f'<a href="{escape(block.url)}" color="{_TITLE_HEX}">'
+                    f'<a href="{_href(block.url)}" color="{_TITLE_HEX}">'
                     f"{_inline(block.title)}</a>"
                 )
-                if block.url
+                if _href(block.url)
                 else _inline(block.title),
                 styles["ItemTitle"],
             )

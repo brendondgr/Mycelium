@@ -123,6 +123,42 @@ class SourcesAndModelTests(unittest.TestCase):
         self.assertIn("-# Qwen", chunks[0])
 
 
+class UrlTests(unittest.TestCase):
+    """Discord previews a link in a bot message without a click, so a URL the
+    model writes (perhaps on an injected page's say-so) never unfurls."""
+
+    def test_a_bare_model_url_is_wrapped(self) -> None:
+        out = render.defang_urls("See https://evil.example/?d=secret now.")
+        self.assertEqual(out, "See <https://evil.example/?d=secret> now.")
+
+    def test_a_masked_link_target_is_wrapped(self) -> None:
+        out = render.defang_urls("[click](https://evil.example/x?d=1)")
+        self.assertEqual(out, "[click](<https://evil.example/x?d=1>)")
+
+    def test_a_wrapped_url_and_code_are_left_alone(self) -> None:
+        text = "<https://ok.example/> and `curl https://a.example/`"
+        self.assertEqual(render.defang_urls(text), text)
+
+    def test_an_answer_never_carries_a_bare_url(self) -> None:
+        chunks = render.answer_chunks(
+            "Exfil: https://evil.example/?d=abc (#1)",
+            [{"n": 1, "title": "Call", "url": "https://x.org/c"}],
+            None,
+            first=False,
+        )
+        self.assertEqual(
+            chunks[0],
+            "Exfil: <https://evil.example/?d=abc> ([#1](<https://x.org/c>))",
+        )
+
+    def test_a_question_url_is_wrapped(self) -> None:
+        out = render.question_text(
+            {"question": "Open https://evil.example/q?", "options": ["http://b.example"]}
+        )
+        self.assertIn("<https://evil.example/q>?", out)
+        self.assertIn("- <http://b.example>", out)
+
+
 class StatusTests(unittest.TestCase):
     def test_activity_becomes_a_status_line_never_thinking_text(self) -> None:
         self.assertEqual(

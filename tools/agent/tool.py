@@ -110,7 +110,8 @@ class AgentTool(Tool):
             "full",
             "The most any lab may let a guest see in its server: full, no_people "
             "(no people functions), public (the thread's post and the corpus) or "
-            "off. A lab's own setting can only lower it.",
+            "off. A lab that has not chosen gives guests public only; a lab can "
+            "raise its own level up to this ceiling, never past it.",
             choices=("full", "no_people", "public", "off"),
         ),
         _s(
