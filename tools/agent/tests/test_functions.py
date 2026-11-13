@@ -169,4 +169,7 @@ def test_load_functions_adds_only_allowed_names(world):
     )
     assert "Loaded: projects_feed" in out["content"] and "nope" in out["content"]
     thread.refresh_from_db()
-    assert thread.settings["loaded"] == ["projects_feed"]
+    # the rest of its group comes with it, in one step (EXP-2026-11-013)
+    assert thread.settings["loaded"][0] == "projects_feed"
+    assert {"projects_get", "projects_list"} <= set(thread.settings["loaded"])
+    assert "nope" not in thread.settings["loaded"]

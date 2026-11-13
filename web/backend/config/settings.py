@@ -1046,6 +1046,7 @@ DECISION_PORT_URL = _cfg["decision.port_url"]
 DECISION_PORT_PROTOCOL = _cfg["decision.port_protocol"]
 DECISION_PORT_MODEL = _cfg["decision.port_model"]
 DECISION_PORT_TIMEOUT = _cfg["decision.port_timeout"]
+DECISION_PORT_MAX_IN_FLIGHT = _cfg["decision.port_max_in_flight"]
 DECISION_PORT_API_KEY = env("DECISION_PORT_API_KEY", default="")
 TYPESAFE_RERANK_WINDOW = env.int("TYPESAFE_RERANK_WINDOW", default=20)
 TYPESAFE_RERANK_CONTENT_TYPES = env.list(

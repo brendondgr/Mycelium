@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 
-from django.db.models import F
+from django.db.models import Exists, F, OuterRef
 from django.utils import timezone
 
 from tools._framework import events as bus
@@ -21,7 +21,7 @@ from tools._framework import events as bus
 from . import config, store
 from .events import THREAD_QUIET
 from .memory_after import learning_on_for
-from .models import AgentThread
+from .models import AgentEvent, AgentThread
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,14 @@ def due_threads(now=None):
         last_activity_at__lte=now - idle, shared=False, demo_visitor=""
     ).exclude(state="running")
     rows = rows.filter(learn_after__isnull=True) | rows.filter(learn_after__lte=now)
+    # Only threads with something new since the last pass. Without this, the
+    # oldest 200 idle threads — long since read — filled ``run_pass``'s batch
+    # and no newer thread was ever reached (found 2026-11-13 when an
+    # evaluation database passed 200 threads; EXP-2026-11-011 attempt 5).
+    unread = AgentEvent.objects.filter(
+        thread=OuterRef("pk"), seq__gt=OuterRef("learned_seq")
+    )
+    rows = rows.filter(Exists(unread))
     return rows.select_related("user").order_by("last_activity_at")
 
 

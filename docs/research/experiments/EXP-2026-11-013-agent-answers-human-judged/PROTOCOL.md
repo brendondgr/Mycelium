@@ -150,3 +150,52 @@ done before any sheet left the folder.
 Arm (b) repeated unchanged (`--arm b --budget-from data/arm_a_main.jsonl
 --tag rep2`) to show the single call's run-to-run variation in tokens and
 seconds. Only `main` goes to raters.
+
+## Amendment 3 — 2026-11-13, after the verifier was changed, before re-scoring
+
+The verifier (`tools/agent/verify.py`) was changed in response to this
+experiment's findings: (1) a venue, funder, publisher or place line passes only
+when every distinctive word is in the evidence (was: three in five); (2) a
+number beside an author list is checked; (3) an amount written in short form
+("€1.5–15M", "€2.5M") is matched against the evidence's numbers at their
+scale, and a decimal with a scale suffix is now read as a figure at all.
+
+`code/rescore.py` re-checks, with the changed verifier and nothing else
+changed, the stored injected copies of all three repetitions
+(`data/inject_<tag>.jsonl`) and the 150 stored original answers
+(`data/arm_a_<tag>.jsonl`), against the same stored evidence. It reports per
+class and placement the old and new catch counts, and every original answer
+the new verifier flags (a candidate false alarm), listed individually. It
+writes `data/rescore_v2.json`. Predictions, fixed now: invented venues as fact
+lines are caught far more often (most of the 19 + 2 × repetitions misses were
+word-overlap passes); prose catches are unchanged except for amounts; the
+amount rows keep their recall; the `main` and `rep3` removals of "€1.5–15M"
+are no longer flagged. Any new flag on an original answer is reported as a
+false-alarm candidate, not explained away. The rated `main` answers are not
+regenerated: raters still judge what the old verifier produced.
+
+Data join (found on the first re-score, before anything was changed to fix
+it): `inject_main.jsonl` was written before Amendment 1's rename, so its
+`ta0N` copies come from two different answers. `code/rescore.py` matches each
+such copy to the original whose text it was made from. The first, unmatched
+re-score is kept at the session scratch path; its only difference is that join.
+
+## Amendment 4 — 2026-11-13, after the Amendment 3 re-score, before the next
+
+The Amendment 3 verifier flagged three original answers (`main` co10, `rep2`
+co02 and co10), all for "€8.9M" written for the evidence's "€8,925,000" —
+correct rounding the new scale reading turned into a false alarm (before
+Amendment 3 a decimal with an "M" after it was not read as a figure at all).
+That result stands in `data/rescore_v2.json`. One further change: an amount
+written with a scale ("8.9M") is backed when an evidence number rounds to it
+at the written precision (here within ±0.05M). Percentages and unscaled
+decimals keep the literal match. The same re-score is run again into
+`data/rescore_v3.json`. This is a change made after seeing the data, on this
+data, so `v3`'s false-alarm count is not an independent estimate; a fresh set
+of answers is needed for that.
+
+Within Amendment 4, before its re-score was recorded: the first run of it
+missed one planted amount (`rep3` co04, "$3.8 million") because the number
+reader parsed a DOI's digits as 3,770,855. Links and DOIs are now left out of
+the evidence's numbers. `data/rescore_v3.json` is the run after that fix;
+the run before it differs only in that one copy.

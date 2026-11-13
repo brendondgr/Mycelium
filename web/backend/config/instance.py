@@ -325,6 +325,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("decision.port_timeout", "int", 30,
             "Seconds to wait for one decision from the port.",
             env="DECISION_PORT_TIMEOUT"),
+    Setting("decision.port_max_in_flight", "int", 8,
+            "Requests in flight to the port at once, across every thread of a "
+            "process. A 16 GB card ran out of memory at 32 production-length "
+            "requests and gained no throughput past about 4 (EXP-2026-11-014).",
+            env="DECISION_PORT_MAX_IN_FLIGHT"),
     Setting("decision.port_relay", "bool", False,
             "Reach a decision server that listens only on this host's "
             "127.0.0.1 (such as GAIFA's decide): the decision-relay service "

@@ -124,6 +124,38 @@ tasks with a citation or slate-overlap grader are unusable, ISSUES.md):
 | tagged paper | 6/9 | 1/3 | three runs did not cite the tagged paper by `#n` |
 | memory | 3/6 | 1/2 | `memory-unconfirmed` 0/3: the member's own earlier words ("faculty job in Zurich", said in an earlier attempt's memory-isolation set-up) recalled to that same member — a grader artifact of the persistent world, not a leak |
 
+## Attempts 5 and 6 — thread deletion after the fix (Amendments 6–7, 2026-11-13)
+
+`tools.agent.service.delete_thread` now retracts the thread's messages
+through ambient (`agent.thread_deleted`). Counts are from
+`data/lifecycle_v4_v6.json` (`code/lifecycle_table.py`). A run is vacuous when
+no observation existed before the retraction step; leaks are counted on valid
+runs only.
+
+| Probe | Attempt 4 (before) | Attempt 5 | Attempt 6 (after) |
+|---|---|---|---|
+| delete the thread | 5/5 leak | all 5 vacuous | **0/4 leak** (1 vacuous) — observations and pending edges gone in every valid run |
+| opt out, keep the chat | 5/5 leak | all 5 vacuous | 5/5 leak (unchanged code) |
+| ambient message deletion | 0/5 | all 5 vacuous | 0/5 |
+| forget person | 0/5 | all 5 vacuous | 0/5 |
+| recording exclusion | 0/5 | 2/5 in the answer | 1/5, in a function result only |
+
+- **Attempt 5 was vacuous** for every retraction probe. The learning pass
+  never reached the new threads because `learning.run_pass` filled its
+  200-thread batch with old threads it had already read (ISSUES.md). That is
+  a product bug, fixed before attempt 6. In attempt 6, the first repetition
+  read about 190 backlogged threads before reaching the probe's own.
+- **The exclusion leaks did not come from ambient.**
+  - In attempt 5, both answers quoted the person's own still-existing chat
+    through `thread_search`.
+  - In attempt 6, the content reached a function result (Mylo's per-thread
+    recall digest) but not the answer.
+  - Ambient rows stayed at 0 in all of them. A recording exclusion governs
+    ambient learning, not Mylo's own recall of a chat that still exists.
+    Whether it should is open (Q-068).
+- **C-036:** the deletion half now holds on 4 valid runs. The opt-out half is
+  still refuted (5/5). The claim as written covers both, so it stays refuted.
+
 ## 3. Figures
 
 None.

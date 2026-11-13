@@ -43,6 +43,10 @@ ASK_USER = "ask_user"
 REPEAT_LIMIT = 3
 #: Wrap up after this many steps in a row whose calls all failed.
 THRASH_STEPS = 3
+#: Refuse a function after it failed this many times in one turn, whatever
+#: the arguments (EXP-2026-11-013: one answer called an introduction-path
+#: lookup eight times on people it cannot reach).
+FAILURE_LIMIT = 2
 #: Told to the model when its answer got stuck repeating itself.
 RUNAWAY_RETRY = (
     "Your last answer got stuck repeating the same words, so it was thrown "
@@ -281,6 +285,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
     window = compaction.window()
     steps = 0
     seen: dict[str, int] = {}
+    failures: dict[str, list[str]] = {}
     failed_steps = 0
     overflowed = False
     repaired = False
@@ -529,6 +534,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                 )
             if not thread.shared and _drain_queue(thread):
                 steps, failed_steps, repaired, force_final, seen = 0, 0, False, "", {}
+                failures = {}
                 continue
             return AgentThread.State.IDLE
 
@@ -557,7 +563,24 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
         for c in calls:
             if c["name"] == ASK_USER:
                 continue
-            if c["repeat"] >= REPEAT_LIMIT:
+            if len(failures.get(c["name"], [])) >= FAILURE_LIMIT:
+                said = "; ".join(dict.fromkeys(failures[c["name"]]))
+                results.append(
+                    {
+                        "call_id": c["call_id"],
+                        "name": c["name"],
+                        "status": "error",
+                        "error": {
+                            "code": "keeps_failing",
+                            "detail": f"{c['name']} has failed {FAILURE_LIMIT} times "
+                            f"this turn ({said}), so it is not run again.",
+                            "fix": "It does not cover this. Use another function, "
+                            "or answer with what you have and say what you could "
+                            "not find.",
+                        },
+                    }
+                )
+            elif c["repeat"] >= REPEAT_LIMIT:
                 results.append(
                     {
                         "call_id": c["call_id"],
@@ -579,6 +602,13 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                 thread, "progress", name=result.get("name"), status=result.get("status")
             )
             store.append(thread, "tool_result", result)
+        for result in results:
+            error = result.get("error") or {}
+            refused_here = error.get("code") in ("repeated_call", "keeps_failing")
+            if result.get("status") in ("error", "denied") and not refused_here:
+                failures.setdefault(result.get("name") or "", []).append(
+                    str(error.get("detail") or error.get("code") or "error")
+                )
         if results and all(r.get("status") != "ok" for r in results):
             failed_steps += 1
         else:

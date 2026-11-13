@@ -20,6 +20,8 @@ from tools._framework.agentspec import width_rank
 
 PROFILE_CAP = 3000
 PROJECT_CAP = 1500
+#: A project read on purpose with ``projects_get``: the whole record.
+PROJECT_READ_CAP = 6000
 
 
 def _since(dt) -> str:
@@ -137,13 +139,62 @@ def _project_lines(user) -> list[str]:
     return ["Their projects: " + "; ".join(parts)]
 
 
-def project_block(project, *, reader) -> str:
-    """Name, goals, aliases, confirmed state and developments in effect."""
+def _project_goal_lines(project, goals: dict) -> list[str]:
+    """What the app stores about a project: its description and status (the
+    project page), its focus (statement, areas, keywords, themes — what its
+    feed is ranked on), and what it watches. Read through the same helpers the
+    recommender uses, so Mylo sees the project the way the ranking does."""
+    from tools.recommendation.targets import (
+        project_interests,
+        project_watch_categories,
+        project_watch_topics,
+    )
+
+    def _text(value) -> str:
+        return value.strip() if isinstance(value, str) else ""
+
+    out: list[str] = []
+    description = _text(goals.get("description")) or _text(goals.get("goal"))
+    focus = project_interests(project)
+    statement = _text(focus.get("statement"))
+    if description:
+        out.append(f"Description: {description}")
+    if statement and statement != description:
+        out.append(f"Focus statement: {statement}")
+    if _text(goals.get("status")):
+        out.append(f"Status: {_text(goals.get('status'))}")
+    progress = goals.get("progress")
+    if isinstance(progress, (int, float)) and not isinstance(progress, bool):
+        out.append(f"Progress: {progress:g}%")
+    if focus.get("areas"):
+        out.append("Research areas: " + "; ".join(focus["areas"]))
+    if focus.get("keywords"):
+        out.append("Keywords: " + "; ".join(focus["keywords"]))
+    themes = [
+        str(c.get("label")).strip()
+        for c in focus.get("clusters") or []
+        if isinstance(c, dict) and str(c.get("label") or "").strip()
+    ]
+    if themes:
+        out.append("Themes: " + "; ".join(themes))
+    watched = project_watch_topics(project)
+    if watched and watched != list(focus.get("areas") or []):
+        out.append("Watched topics: " + "; ".join(watched))
+    if isinstance(goals.get("watch_categories"), list):
+        out.append("Feeds it receives: " + ", ".join(project_watch_categories(project)))
+    return out
+
+
+def project_block(project, *, reader, cap: int = PROJECT_CAP) -> str:
+    """Name, description, focus, aliases, confirmed state, developments in
+    effect and members. ``cap`` is the prompt-memory budget; reading the
+    project on purpose (``projects_get``) passes a larger one."""
     from apps.ambient.read import developments_in_effect
 
     lines = [f"Project: {project.name} (scope: {project.scope})"]
     goals = project.goals or {}
     if isinstance(goals, dict):
+        lines += _project_goal_lines(project, goals)
         for key in ("summary", "goals", "methods", "datasets", "deadlines", "needs"):
             value = goals.get(key)
             if value:
@@ -183,6 +234,10 @@ def project_block(project, *, reader) -> str:
             )
         if state.confirmed_at:
             lines.append(f"State last confirmed {state.confirmed_at:%Y-%m-%d}.")
+    if state is None or not state.state_version or not state.confirmed_at:
+        # Said outright, so a question about it is answered rather than
+        # searched for (EXP-2026-11-013: 16 function loads hunting this date).
+        lines.append("State: never confirmed by its members.")
     devs = list(developments_in_effect(project, reader=reader)[:8])
     if devs:
         lines.append(
@@ -194,7 +249,7 @@ def project_block(project, *, reader) -> str:
         lines.append(
             "Members: " + ", ".join(m.get_full_name() or m.username for m in members)
         )
-    return _clip("\n".join(lines), PROJECT_CAP)
+    return _clip("\n".join(lines), cap)
 
 
 def lab_block(lab) -> str:

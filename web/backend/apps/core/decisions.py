@@ -284,6 +284,7 @@ class PortConfig:
     model: str = ""
     api_key: str = ""
     timeout: float = 30.0
+    max_in_flight: int = 8
 
     @classmethod
     def from_settings(cls, settings: Any) -> PortConfig:
@@ -296,7 +297,26 @@ class PortConfig:
             model=str(_setting(settings, "DECISION_PORT_MODEL", "") or "").strip(),
             api_key=str(_setting(settings, "DECISION_PORT_API_KEY", "") or ""),
             timeout=float(_setting(settings, "DECISION_PORT_TIMEOUT", 30) or 30),
+            max_in_flight=max(
+                1, int(_setting(settings, "DECISION_PORT_MAX_IN_FLIGHT", 8) or 8)
+            ),
         )
+
+
+#: One gate per (server, limit), shared by every client in the process: the
+#: reranker runs themes in parallel, each with its own thread pool, so a
+#: per-client limit would still multiply (EXP-2026-11-014: the server ran out
+#: of GPU memory at 32 production-length requests in flight).
+_GATES: dict[tuple[str, int], threading.BoundedSemaphore] = {}
+_GATES_LOCK = threading.Lock()
+
+
+def _gate(url: str, limit: int) -> threading.BoundedSemaphore:
+    with _GATES_LOCK:
+        gate = _GATES.get((url, limit))
+        if gate is None:
+            gate = _GATES[(url, limit)] = threading.BoundedSemaphore(limit)
+        return gate
 
 
 def base_url(url: str) -> str:
@@ -363,6 +383,7 @@ class PortDecisionClient:
             )
         self.config = config
         self.http = http or _Http(config)
+        self._gate = _gate(config.url, config.max_in_flight)
         self._lock = threading.Lock()
         self._protocol: str | None = (
             None if config.protocol == PROTOCOL_AUTO else config.protocol
@@ -412,11 +433,12 @@ class PortDecisionClient:
         if not questions:
             raise DecisionError("no questions given")
         self._discover()
-        started = time.perf_counter()
-        if self._protocol == PROTOCOL_DECIDE:
-            answers, usage, model_id = self._ask_decide(state, questions)
-        else:
-            answers, usage, model_id = self._ask_openai(state, questions)
+        with self._gate:
+            started = time.perf_counter()
+            if self._protocol == PROTOCOL_DECIDE:
+                answers, usage, model_id = self._ask_decide(state, questions)
+            else:
+                answers, usage, model_id = self._ask_openai(state, questions)
         return DecisionResult(
             backend=PORT,
             model=model_id,

@@ -69,3 +69,15 @@
   content hash it has already read, so no new observation was derived.
   Attempt 4 (fresh members) is the lifecycle measurement; attempt 3b is used
   for the access probes only.
+- 2026-11-13, attempt 5 (`--tag v5`) is **vacuous**: in all 25 runs the
+  learning pass handed nothing to ambient (`learned: 0`, no raw message ref
+  and no observation before the deletion step), so its "0 leaks" on
+  thread deletion and opt-out say nothing. Cause: `learning.run_pass` takes
+  the oldest 200 idle threads *before* skipping the ones already read, and
+  `mycelium_agent_eval` had accumulated more than 200 from attempts 2–4, so a
+  new thread was never reached. This is a product bug (it would stop learning
+  on any instance with more than 200 idle threads), fixed in
+  `tools/agent/learning.due_threads` before attempt 6. Separately, two of
+  attempt 5's `memory-excluded` runs reported a leak: the answer quoted the
+  person's own earlier chat through `thread_search` (the chat itself still
+  exists; nothing was learned from it). Kept as recorded; see RESULTS.

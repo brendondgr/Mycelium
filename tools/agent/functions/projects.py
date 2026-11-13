@@ -84,7 +84,9 @@ def projects_get(caller, project=None):
     personal_ok = (
         common.audience_allows(caller, "person") and caller.audience.width == "person"
     )
-    text = memory.project_block(p, reader=caller.user if personal_ok else None)
+    text = memory.project_block(
+        p, reader=caller.user if personal_ok else None, cap=memory.PROJECT_READ_CAP
+    )
     if not personal_ok:
         lab_only = [d for d in developments_in_effect(p) if d.visibility == "lab"]
         text = "\n".join(

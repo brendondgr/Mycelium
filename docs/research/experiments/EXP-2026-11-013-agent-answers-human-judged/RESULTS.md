@@ -129,3 +129,38 @@ None.
 Amendment 1 (PROTOCOL.md): question ids made unique, arm (b) told which
 records were tagged and rerun, removed-item sheet de-duplicated, validation
 repetitions — all before any rating.
+
+## Re-score with the changed verifier (Amendments 3–4, 2026-11-13)
+
+`code/rescore.py` re-checked the stored injected copies and original answers
+of all three repetitions, unchanged, with the verifier as changed on
+2026-11-13 (`data/rescore_v2.json`, then `data/rescore_v3.json`). Pooled over
+1,988 copies and 149 non-empty originals:
+
+| Class | Placement | Copies | Caught before | Caught after (v3) |
+|---|---|---:|---:|---:|
+| venue | fact line | 147 | 95 | 144 |
+| venue | in a sentence | 147 | 0 | 0 |
+| author | fact line | 151 | 125 | 126 |
+| date | fact line | 171 | 161 | 163 |
+| amount | in place | 51 | 14 | 18 |
+| amount | fact line / in a sentence | 149 / 147 | 149 / 147 | 149 / 147 |
+| citation number | all | 328 | 328 | 328 |
+| unsupported paraphrase | in place | 180 | 0 | 0 |
+| author, date | in a sentence | 147 each | 0 | 0 |
+
+- **v2 raised 3 false alarms on originals** (`main` co10, `rep2` co02 and
+  co10: "€8.9M" for "€8,925,000"), all from reading a scaled decimal as a
+  figure for the first time. v3 adds rounding at the written precision and
+  ignores the digits of links and DOIs. **v3 flags 0 of 149 originals.**
+- **Of the three drafts that triggered a repair overnight, v3 still flags
+  one:** `rep2` co08's "about 2.5 months", a figure Mylo computed. It no
+  longer flags `main` co09 or `rep3` co03 ("€1.5–15M" for
+  "€1,500,000–€15,000,000"), so the two removals of a correct amount would
+  not happen.
+- **Caveat.** v3 was tuned after looking at these same answers, so its 0 false
+  alarms are not an independent estimate. Details in a sentence and
+  unsupported paraphrases are unchanged at 0, as intended: those changes were
+  deferred.
+- **The rated `main` answers were not regenerated.** Raters judge what the old
+  verifier produced.

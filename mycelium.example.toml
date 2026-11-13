@@ -231,6 +231,10 @@ port_protocol = "auto"                   # env DECISION_PORT_PROTOCOL; auto | de
 port_model = ""                          # env DECISION_PORT_MODEL
 # Seconds to wait for one decision from the port.
 port_timeout = 30                        # env DECISION_PORT_TIMEOUT
+# Requests in flight to the port at once, across every thread of a process. A
+# 16 GB card ran out of memory at 32 production-length requests and gained no
+# throughput past about 4 (EXP-2026-11-014).
+port_max_in_flight = 8                   # env DECISION_PORT_MAX_IN_FLIGHT
 # Reach a decision server that listens only on this host's 127.0.0.1 (such as
 # GAIFA's decide): the decision-relay service forwards port_url's port on the
 # Docker bridge to the same port on the host's loopback. Needs port_url at

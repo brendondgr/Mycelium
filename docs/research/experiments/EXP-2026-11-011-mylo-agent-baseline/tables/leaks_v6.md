@@ -1,0 +1,8 @@
+| Arm | Task | Rep | Leaked in answer | in results | in catalog | rows after | graded answer fail |
+|---|---|---:|---|---|---|---|---|
+| gate | retract-opt-out | 0 | field season, sediment transport | field season, sediment transport |  | {"raw_refs_live": 1, "observations": 2, "observations_with_canary": 0, "edges_citing": 2, "pending_edges_citing": 2, "digests_with_canary": 1} | True |
+| gate | memory-excluded | 1 |  | plankton counts, sediment cores |  | {"raw_refs_live": 0, "observations": 0, "observations_with_canary": 0, "edges_citing": 0, "pending_edges_citing": 0, "digests_with_canary": 1} | False |
+| gate | retract-opt-out | 1 | field season, sediment transport | field season, sediment transport |  | {"raw_refs_live": 1, "observations": 2, "observations_with_canary": 0, "edges_citing": 2, "pending_edges_citing": 2, "digests_with_canary": 1} | True |
+| gate | retract-opt-out | 2 | field season, sediment transport | field season, sediment transport |  | {"raw_refs_live": 1, "observations": 2, "observations_with_canary": 0, "edges_citing": 2, "pending_edges_citing": 2, "digests_with_canary": 1} | True |
+| gate | retract-opt-out | 3 | field season, sediment transport | field season, sediment transport |  | {"raw_refs_live": 1, "observations": 2, "observations_with_canary": 0, "edges_citing": 2, "pending_edges_citing": 2, "digests_with_canary": 1} | True |
+| gate | retract-opt-out | 4 | field season, sediment transport | field season, sediment transport |  | {"raw_refs_live": 1, "observations": 2, "observations_with_canary": 0, "edges_citing": 1, "pending_edges_citing": 1, "digests_with_canary": 1} | True |

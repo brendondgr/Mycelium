@@ -52,8 +52,14 @@ _FACT_LINE = re.compile(
     re.I | re.M,
 )
 _DOI = re.compile(r"\b10\.\d{4,9}/[^\s)\]>*`\"']+")
-#: A measured figure stated in prose: 92%, 0.87, 3.5x.
-_FIGURE = re.compile(r"(?<![#\w.])\d+(?:\.\d+)?\s?%|(?<![#\w.])\d+\.\d+(?![\w.])")
+#: A measured figure stated in prose: 92%, 0.87, €2.5M (the scale is read
+#: by ``_figure_backed``, not matched).
+_FIGURE = re.compile(
+    r"(?<![#\w.])\d+(?:\.\d+)?\s?%"
+    r"|(?<![#\w.])\d+\.\d+"
+    r"(?=\s?(?:k|m|mn|b|bn|thousand|million|billion)\b|(?![\w.]))",
+    re.I,
+)
 _NAME_SPLIT = re.compile(r",|;|\band\b|&", re.I)
 _STOP = frozenset(
     "the and for with from into this that their of in on at to by an a "
@@ -79,6 +85,98 @@ def _words(text: str) -> list[str]:
     return [w for w in re.findall(r"[^\W\d_]{3,}", text) if w not in _STOP]
 
 
+#: Labels whose value is a date: its numbers are the fact, its words a format.
+_DATE_LABELS = ("deadline", "due", "date", "year", "published")
+#: Labels whose value is money: numbers, read through ``_numbers_backed``.
+_MONEY_LABELS = ("amount", "award", "budget")
+#: "1.5M", "15 million", "€3k": the scale a written number stands for.
+_SCALE = {
+    "k": 1e3, "thousand": 1e3,
+    "m": 1e6, "mn": 1e6, "million": 1e6,
+    "b": 1e9, "bn": 1e9, "billion": 1e9,
+}
+_NUMBER = re.compile(
+    r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?"
+    r"(?:\s?(?P<scale>k|m|mn|b|bn|thousand|million|billion)\b)?",
+    re.I,
+)
+_RANGE_SCALE = re.compile(
+    r"^\s?[–—-]\s?[€$£]?\s?\d[\d,]*(?:\.\d+)?\s?"
+    r"(k|m|mn|b|bn|thousand|million|billion)\b",
+    re.I,
+)
+
+
+def _source_numbers(source: str) -> set[float]:
+    """Every number in the evidence, as written and at its stated scale:
+    "€1,500,000" gives 1500000; "€1.5 million" gives 1.5 and 1500000."""
+    out: set[float] = set()
+    # Links and DOIs are identifiers, not amounts: "10.1145/3770855.3818893"
+    # once backed an invented "$3.8 million" (EXP-2026-11-013 Amendment 4).
+    source = _DOI.sub(" ", re.sub(r"\bhttps?://\S+|\bwww\.\S+", " ", source))
+    for m in _NUMBER.finditer(source):
+        value = float(m.group(1).replace(",", "") + "." + (m.group(2) or "0"))
+        out.add(value)
+        if m.group("scale"):
+            out.add(value * _SCALE[m.group("scale").casefold()])
+    return out
+
+
+def _same_number(value: float, numbers: set[float], tolerance: float = 0.0) -> bool:
+    slack = max(tolerance, 1e-9)
+    return any(abs(value - n) <= slack * max(1.0, abs(n)) if not tolerance
+               else abs(value - n) <= tolerance for n in numbers)
+
+
+def _rounding(written: str, scale: float) -> float:
+    """Half a unit of the last written digit, at scale: "8.9" millions is
+    ±50,000, so "€8.9M" stands for "€8,925,000" (EXP-2026-11-013 Amendment 4)."""
+    decimals = len(written.split(".", 1)[1]) if "." in written else 0
+    return 0.5 * 10 ** (-decimals) * scale
+
+
+def _figure_backed(text: str, m: re.Match, numbers: set[float]) -> bool:
+    """A prose figure the evidence states in another form: "€1.5–15M" for
+    "€1,500,000–€15,000,000" (EXP-2026-11-013: two of three repairs removed a
+    correct amount over its formatting). Percentages are left to the literal
+    check: 0.87 and 87% are not interchangeable claims."""
+    raw = m.group(0).replace(" ", "")
+    if raw.endswith("%"):
+        return False
+    value = float(raw)
+    after = text[m.end():]
+    scale = re.match(r"\s?(k|m|mn|b|bn|thousand|million|billion)\b", after, re.I)
+    if scale is None:
+        scale = _RANGE_SCALE.match(after)  # the scale after a range's end
+    if _same_number(value, numbers):
+        return True
+    if scale is None:
+        return False
+    factor = _SCALE[scale.group(1).casefold()]
+    return _same_number(value * factor, numbers, _rounding(raw, factor))
+
+
+def _numbers_backed(value: str, source: str, *, money: bool = False) -> bool:
+    found = re.findall(r"\d[\d,.]*", value)
+    if not money:
+        return all(n.rstrip(".,") in source for n in found)
+    numbers = _source_numbers(source)
+    for m in _NUMBER.finditer(value):
+        n = m.group(1) + (f".{m.group(2)}" if m.group(2) else "")
+        if n in source:
+            continue
+        written = float(m.group(1).replace(",", "") + "." + (m.group(2) or "0"))
+        if _same_number(written, numbers):
+            continue
+        if not m.group("scale"):
+            return False
+        factor = _SCALE[m.group("scale").casefold()]
+        slack = _rounding(n.replace(",", ""), factor)
+        if not _same_number(written * factor, numbers, slack):
+            return False
+    return True
+
+
 def _supported(label: str, value: str, source: str) -> bool:
     label = label.casefold()
     if label == "doi":
@@ -88,18 +186,26 @@ def _supported(label: str, value: str, source: str) -> bool:
     if not value:
         return True
     if label.startswith("author"):
-        for part in _NAME_SPLIT.split(value):
+        # A year or count written beside the names is checked too
+        # ("Cheon and Kakinuma (2024)" passed when the item said 2026).
+        if not _numbers_backed(value, source):
+            return False
+        for part in _NAME_SPLIT.split(re.sub(r"\(?\d[\d,.]*\)?", " ", value)):
             names = _words(part)
             if names and names[-1] not in source:
                 return False
         return True
-    numbers =re.findall(r"\d[\d,.]*", value)
-    if numbers:
-        return all(n.rstrip(".,") in source for n in numbers)
-    words = _words(value)
-    if not words:
+    if label.startswith(_MONEY_LABELS):
+        return _numbers_backed(value, source, money=True)
+    if not _numbers_backed(value, source):
+        return False
+    if label.startswith(_DATE_LABELS) and label != "published in":
         return True
-    return sum(w in source for w in words) >= max(1, round(len(words) * 0.6))
+    # A venue, funder, publisher or place: every distinctive word must be in
+    # the evidence. Three in five was enough before, and an invented
+    # "Marine Forecasting Letters" passed on "marine" and "forecasting".
+    words = _words(value)
+    return all(w in source for w in words)
 
 
 def source_text(results: list[dict], extra: list[str] = ()) -> str:
@@ -129,11 +235,14 @@ def unsupported(text: str, source: str) -> list[str]:
         doi = m.group(0).rstrip(".,;")
         if _fold(doi) not in source and not any(doi in line for line in out):
             out.append(doi)
+    numbers = None
     for m in _FIGURE.finditer(text or ""):
         figure = m.group(0).replace(" ", "")
-        if figure not in source.replace(" ", "") and not any(
-            m.group(0) in line for line in out
-        ):
+        if figure in source.replace(" ", "") or any(m.group(0) in line for line in out):
+            continue
+        if numbers is None:
+            numbers = _source_numbers(source)
+        if not _figure_backed(text, m, numbers):
             out.append(m.group(0))
     return list(dict.fromkeys(out))
 
@@ -160,7 +269,9 @@ def grounding_message(unread_refs: list[int], claims: list[str]) -> str:
         parts.append(
             "These details are not in anything you read, so they may be wrong:\n"
             f"{shown}\nRead the item they are about, then answer again using only "
-            "what it says. Leave out any detail you cannot find."
+            "what it says. Leave out any detail you cannot find. Write the answer "
+            "as if for the first time: the person never saw your draft, so do not "
+            "mention a correction, a draft or this check."
         )
     return "\n\n".join(parts)
 

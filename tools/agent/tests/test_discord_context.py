@@ -148,6 +148,48 @@ def test_made_up_details_are_caught():
     assert "Zhang" not in stripped and "92%" not in stripped
 
 
+def test_an_invented_venue_sharing_words_with_the_evidence_is_caught():
+    # EXP-2026-11-013: "Marine Forecasting Letters" passed on two of its three
+    # words; now every distinctive word must be in what was read.
+    source = verify.source_text(
+        [{"content": "Marine heatwave forecasting with ML. Venue: Ocean Science"}]
+    )
+    assert verify.unsupported("- Venue: Marine Forecasting Letters", source) == [
+        "- Venue: Marine Forecasting Letters"
+    ]
+    assert verify.unsupported("- Venue: Ocean Science", source) == []
+
+
+def test_a_wrong_year_beside_the_authors_is_caught():
+    assert verify.unsupported(
+        "- **Authors:** Mouhamed Amine Bouchiha, Gregory Blanc (2024)", SOURCE
+    ) == ["- **Authors:** Mouhamed Amine Bouchiha, Gregory Blanc (2024)"]
+    assert verify.unsupported(
+        "- **Authors:** Mouhamed Amine Bouchiha, Gregory Blanc (2026)", SOURCE
+    ) == []
+
+
+def test_an_amount_in_short_form_is_backed_by_the_long_form():
+    # EXP-2026-11-013: two of three repairs removed "€1.5–15M" because the call
+    # said "€1,500,000–€15,000,000".
+    source = verify.source_text(
+        [{"content": "EU Space Partnership. Budget: €1,500,000–€15,000,000."}]
+    )
+    short = "#10 (EU Space Partnership — €1.5–15M, TRL 7–8)"
+    assert verify.unsupported(short, source) == []
+    assert verify.unsupported("- Amount: €1.5M to €15 million", source) == []
+    assert verify.unsupported("It is worth €2.5M.", source) == ["2.5"]
+    wrong = "- Amount: €20 million"
+    assert verify.unsupported(wrong, source) == [wrong]
+    # rounding at the written precision is not an error; past it is
+    rounded = verify.source_text([{"content": "Amount: €1,000,000–€8,925,000"}])
+    assert verify.unsupported("Budgets run €1.0M–€8.9M.", rounded) == []
+    assert verify.unsupported("Budgets run €1.0M–€8.7M.", rounded) == ["8.7"]
+    # a link's digits are not an amount
+    linked = verify.source_text([{"content": "Link: https://doi.org/10.1145/3770855.3818893"}])
+    assert verify.unsupported("It is worth $3.8 million.", linked) == ["3.8"]
+
+
 def test_a_citation_known_only_by_title_is_unread(shared_thread):
     assert verify.unread(shared_thread, "See #1 and #2.", seen={2}) == [1]
 

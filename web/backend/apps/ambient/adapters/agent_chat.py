@@ -77,3 +77,26 @@ def on_thread_quiet(*, thread_id, user_id, messages, title="", **_ignored) -> in
         if outcome.stored:
             stored += 1
     return stored
+
+
+def on_thread_deleted(*, thread_id, user_id, **_ignored) -> int:
+    """The person deleted a Mylo chat: retract every message of it the ledger
+    recorded, as if each had been deleted on a platform. Returns how many."""
+    from ..models import RawMessageRef
+    from ..reconcile import message_deleted
+
+    source = Source.objects.filter(
+        kind=Source.Kind.AGENT_CHAT, external_id=f"user:{user_id}"
+    ).first()
+    if source is None:
+        return 0
+    ids = list(
+        RawMessageRef.objects.filter(
+            source=source,
+            external_id__startswith=f"{thread_id}:",
+            deleted_at__isnull=True,
+        ).values_list("external_id", flat=True)
+    )
+    for external_id in ids:
+        message_deleted(source, external_id)
+    return len(ids)

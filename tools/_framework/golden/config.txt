@@ -72,6 +72,7 @@ decision.port_url	str	''	DECISION_PORT_URL
 decision.port_protocol	choice	'auto'	DECISION_PORT_PROTOCOL
 decision.port_model	str	''	DECISION_PORT_MODEL
 decision.port_timeout	int	30	DECISION_PORT_TIMEOUT
+decision.port_max_in_flight	int	8	DECISION_PORT_MAX_IN_FLIGHT
 decision.port_relay	bool	False	DECISION_PORT_RELAY
 tools.strict	bool	False	MYCELIUM_TOOLS_STRICT
 tools.disabled	list	[]	MYCELIUM_TOOLS_DISABLED

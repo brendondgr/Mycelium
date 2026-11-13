@@ -134,7 +134,13 @@ def knowledge_introduction_paths(caller, person):
     seen = visible_people(caller.user)
     target = seen.filter(username=common.ref_key(person)).first()
     if target is None:
-        raise FunctionError("not_visible", "That person is not available.")
+        raise FunctionError(
+            "not_visible",
+            "That person is not available.",
+            "Introduction paths reach only people with an account here whom you "
+            "can see. For an author outside the platform, say who they are from "
+            "what you read; there is no path to look up.",
+        )
     if target.pk == caller.user.pk:
         raise FunctionError("self", "That is you.", "Name someone else.")
     # Only people the caller can already see may be named on a path.

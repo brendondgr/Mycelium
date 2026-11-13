@@ -72,13 +72,22 @@ def load_functions(caller, names):
     data = dict(thread.settings or {})
     loaded = list(data.get("loaded", []))
     added, refused = [], []
+    # A function comes with the rest of its group (projects_*, feeds_*, …):
+    # EXP-2026-11-013 saw one answer spend 16 of its 25 steps loading one
+    # function at a time. Groups are small (at most six functions).
+    wanted = []
     for name in names or []:
-        if name in allowed:
-            if name not in loaded:
-                loaded.append(name)
-            added.append(name)
-        else:
+        if name not in allowed:
             refused.append(name)
+            continue
+        group = allowed[name].group
+        wanted += [name] + [
+            n for n, fn in allowed.items() if group and fn.group == group and n != name
+        ]
+    for name in dict.fromkeys(wanted):
+        if name not in loaded:
+            loaded.append(name)
+        added.append(name)
     data["loaded"] = loaded
     AgentThread.objects.filter(pk=thread.pk).update(settings=data)
     thread.settings = data

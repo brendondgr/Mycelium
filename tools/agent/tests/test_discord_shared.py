@@ -121,10 +121,11 @@ def test_two_members_and_a_guest_take_turns_each_with_their_own_functions(
         "Loaded.",
     )
     run(thread, model)
-    assert tool_names(model.requests[0]) == expected_tools(a, thread) - {
-        "org_lab_members",
-        "fulltext_availability",
-    }
+    # a load brings the rest of each function's group (EXP-2026-11-013)
+    expected = expected_tools(a, thread)
+    loaded = set((thread.settings or {}).get("loaded", []))
+    assert {"org_lab_members", "fulltext_availability"} <= loaded
+    assert tool_names(model.requests[0]) == expected - loaded
 
     ask(b, thread, "and for me?")
     model = scripted("Here.")

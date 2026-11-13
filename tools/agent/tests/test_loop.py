@@ -94,6 +94,22 @@ def test_third_identical_call_is_refused(person, scripted):
     assert results[-1]["error"]["code"] == "repeated_call"
 
 
+def test_a_function_that_keeps_failing_is_not_run_again(person, scripted):
+    # EXP-2026-11-013: the same lookup failed eight times with new arguments.
+    thread = thread_for(person)
+    _send(thread, "who can introduce me?")
+    model = scripted(
+        [("no_such_fn", {"who": "a"})],
+        [("no_such_fn", {"who": "b"})],
+        [("no_such_fn", {"who": "c"})],
+        "I could not find a path.",
+    )
+    loop.run_turn(thread.pk, port=model)
+    results = [e.payload for e in store.events(thread) if e.type == "tool_result"]
+    assert [r["error"]["code"] for r in results][-1] == "keeps_failing"
+    assert "not run again" in results[-1]["error"]["detail"]
+
+
 def test_thrashing_wraps_up(person, scripted):
     thread = thread_for(person)
     _send(thread, "break")

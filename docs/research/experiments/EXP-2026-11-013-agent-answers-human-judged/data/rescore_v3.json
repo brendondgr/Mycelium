@@ -1,0 +1,640 @@
+{
+ "tags": {
+  "main": {
+   "originals": 50,
+   "cells": {
+    "amount|all": {
+     "n": 113,
+     "old": 104,
+     "new": 105,
+     "new_clean_original": 105
+    },
+    "amount|factline": {
+     "n": 49,
+     "old": 49,
+     "new": 49,
+     "new_clean_original": 49
+    },
+    "amount|inplace": {
+     "n": 15,
+     "old": 6,
+     "new": 7,
+     "new_clean_original": 7
+    },
+    "amount|prose": {
+     "n": 49,
+     "old": 49,
+     "new": 49,
+     "new_clean_original": 49
+    },
+    "author|all": {
+     "n": 109,
+     "old": 43,
+     "new": 43,
+     "new_clean_original": 43
+    },
+    "author|factline": {
+     "n": 51,
+     "old": 43,
+     "new": 43,
+     "new_clean_original": 43
+    },
+    "author|inplace": {
+     "n": 9,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "author|prose": {
+     "n": 49,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "bad_cite|all": {
+     "n": 108,
+     "old": 108,
+     "new": 108,
+     "new_clean_original": 108
+    },
+    "bad_cite|inplace": {
+     "n": 103,
+     "old": 103,
+     "new": 103,
+     "new_clean_original": 103
+    },
+    "bad_cite|prose": {
+     "n": 5,
+     "old": 5,
+     "new": 5,
+     "new_clean_original": 5
+    },
+    "date|all": {
+     "n": 168,
+     "old": 54,
+     "new": 56,
+     "new_clean_original": 56
+    },
+    "date|factline": {
+     "n": 58,
+     "old": 53,
+     "new": 55,
+     "new_clean_original": 55
+    },
+    "date|inplace": {
+     "n": 61,
+     "old": 1,
+     "new": 1,
+     "new_clean_original": 1
+    },
+    "date|prose": {
+     "n": 49,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "paraphrase|all": {
+     "n": 60,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "paraphrase|inplace": {
+     "n": 60,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "venue|all": {
+     "n": 102,
+     "old": 30,
+     "new": 47,
+     "new_clean_original": 47
+    },
+    "venue|factline": {
+     "n": 49,
+     "old": 30,
+     "new": 47,
+     "new_clean_original": 47
+    },
+    "venue|inplace": {
+     "n": 4,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "venue|prose": {
+     "n": 49,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    }
+   }
+  },
+  "rep2": {
+   "originals": 49,
+   "cells": {
+    "amount|all": {
+     "n": 117,
+     "old": 102,
+     "new": 105,
+     "new_clean_original": 105
+    },
+    "amount|factline": {
+     "n": 49,
+     "old": 49,
+     "new": 49,
+     "new_clean_original": 49
+    },
+    "amount|inplace": {
+     "n": 19,
+     "old": 4,
+     "new": 7,
+     "new_clean_original": 7
+    },
+    "amount|prose": {
+     "n": 49,
+     "old": 49,
+     "new": 49,
+     "new_clean_original": 49
+    },
+    "author|all": {
+     "n": 111,
+     "old": 40,
+     "new": 41,
+     "new_clean_original": 41
+    },
+    "author|factline": {
+     "n": 50,
+     "old": 40,
+     "new": 41,
+     "new_clean_original": 41
+    },
+    "author|inplace": {
+     "n": 12,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "author|prose": {
+     "n": 49,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "bad_cite|all": {
+     "n": 110,
+     "old": 110,
+     "new": 110,
+     "new_clean_original": 110
+    },
+    "bad_cite|inplace": {
+     "n": 104,
+     "old": 104,
+     "new": 104,
+     "new_clean_original": 104
+    },
+    "bad_cite|prose": {
+     "n": 6,
+     "old": 6,
+     "new": 6,
+     "new_clean_original": 6
+    },
+    "date|all": {
+     "n": 166,
+     "old": 54,
+     "new": 54,
+     "new_clean_original": 54
+    },
+    "date|factline": {
+     "n": 57,
+     "old": 53,
+     "new": 53,
+     "new_clean_original": 53
+    },
+    "date|inplace": {
+     "n": 60,
+     "old": 1,
+     "new": 1,
+     "new_clean_original": 1
+    },
+    "date|prose": {
+     "n": 49,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "paraphrase|all": {
+     "n": 60,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "paraphrase|inplace": {
+     "n": 60,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "venue|all": {
+     "n": 102,
+     "old": 31,
+     "new": 49,
+     "new_clean_original": 49
+    },
+    "venue|factline": {
+     "n": 49,
+     "old": 31,
+     "new": 49,
+     "new_clean_original": 49
+    },
+    "venue|inplace": {
+     "n": 4,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "venue|prose": {
+     "n": 49,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    }
+   }
+  },
+  "rep3": {
+   "originals": 50,
+   "cells": {
+    "amount|all": {
+     "n": 117,
+     "old": 104,
+     "new": 104,
+     "new_clean_original": 104
+    },
+    "amount|factline": {
+     "n": 51,
+     "old": 51,
+     "new": 51,
+     "new_clean_original": 51
+    },
+    "amount|inplace": {
+     "n": 17,
+     "old": 4,
+     "new": 4,
+     "new_clean_original": 4
+    },
+    "amount|prose": {
+     "n": 49,
+     "old": 49,
+     "new": 49,
+     "new_clean_original": 49
+    },
+    "author|all": {
+     "n": 109,
+     "old": 42,
+     "new": 42,
+     "new_clean_original": 42
+    },
+    "author|factline": {
+     "n": 50,
+     "old": 42,
+     "new": 42,
+     "new_clean_original": 42
+    },
+    "author|inplace": {
+     "n": 10,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "author|prose": {
+     "n": 49,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "bad_cite|all": {
+     "n": 110,
+     "old": 110,
+     "new": 110,
+     "new_clean_original": 110
+    },
+    "bad_cite|inplace": {
+     "n": 109,
+     "old": 109,
+     "new": 109,
+     "new_clean_original": 109
+    },
+    "bad_cite|prose": {
+     "n": 1,
+     "old": 1,
+     "new": 1,
+     "new_clean_original": 1
+    },
+    "date|all": {
+     "n": 163,
+     "old": 56,
+     "new": 56,
+     "new_clean_original": 56
+    },
+    "date|factline": {
+     "n": 56,
+     "old": 55,
+     "new": 55,
+     "new_clean_original": 55
+    },
+    "date|inplace": {
+     "n": 58,
+     "old": 1,
+     "new": 1,
+     "new_clean_original": 1
+    },
+    "date|prose": {
+     "n": 49,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "paraphrase|all": {
+     "n": 60,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "paraphrase|inplace": {
+     "n": 60,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "venue|all": {
+     "n": 103,
+     "old": 34,
+     "new": 48,
+     "new_clean_original": 48
+    },
+    "venue|factline": {
+     "n": 49,
+     "old": 34,
+     "new": 48,
+     "new_clean_original": 48
+    },
+    "venue|inplace": {
+     "n": 5,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    },
+    "venue|prose": {
+     "n": 49,
+     "old": 0,
+     "new": 0,
+     "new_clean_original": 0
+    }
+   }
+  }
+ },
+ "pooled": {
+  "amount|all": {
+   "n": 347,
+   "old": 310,
+   "new": 314,
+   "new_ci": [
+    0.8695,
+    0.9315
+   ],
+   "new_clean_original": 314
+  },
+  "amount|factline": {
+   "n": 149,
+   "old": 149,
+   "new": 149,
+   "new_ci": [
+    0.9749,
+    1.0
+   ],
+   "new_clean_original": 149
+  },
+  "amount|inplace": {
+   "n": 51,
+   "old": 14,
+   "new": 18,
+   "new_ci": [
+    0.2363,
+    0.4901
+   ],
+   "new_clean_original": 18
+  },
+  "amount|prose": {
+   "n": 147,
+   "old": 147,
+   "new": 147,
+   "new_ci": [
+    0.9745,
+    1.0
+   ],
+   "new_clean_original": 147
+  },
+  "author|all": {
+   "n": 329,
+   "old": 125,
+   "new": 126,
+   "new_ci": [
+    0.3321,
+    0.4366
+   ],
+   "new_clean_original": 126
+  },
+  "author|factline": {
+   "n": 151,
+   "old": 125,
+   "new": 126,
+   "new_ci": [
+    0.767,
+    0.8853
+   ],
+   "new_clean_original": 126
+  },
+  "author|inplace": {
+   "n": 31,
+   "old": 0,
+   "new": 0,
+   "new_ci": [
+    -0.0,
+    0.1103
+   ],
+   "new_clean_original": 0
+  },
+  "author|prose": {
+   "n": 147,
+   "old": 0,
+   "new": 0,
+   "new_ci": [
+    0.0,
+    0.0255
+   ],
+   "new_clean_original": 0
+  },
+  "bad_cite|all": {
+   "n": 328,
+   "old": 328,
+   "new": 328,
+   "new_ci": [
+    0.9884,
+    1.0
+   ],
+   "new_clean_original": 328
+  },
+  "bad_cite|inplace": {
+   "n": 316,
+   "old": 316,
+   "new": 316,
+   "new_ci": [
+    0.988,
+    1.0
+   ],
+   "new_clean_original": 316
+  },
+  "bad_cite|prose": {
+   "n": 12,
+   "old": 12,
+   "new": 12,
+   "new_ci": [
+    0.7575,
+    1.0
+   ],
+   "new_clean_original": 12
+  },
+  "date|all": {
+   "n": 497,
+   "old": 164,
+   "new": 166,
+   "new_ci": [
+    0.294,
+    0.3766
+   ],
+   "new_clean_original": 166
+  },
+  "date|factline": {
+   "n": 171,
+   "old": 161,
+   "new": 163,
+   "new_ci": [
+    0.9104,
+    0.9761
+   ],
+   "new_clean_original": 163
+  },
+  "date|inplace": {
+   "n": 179,
+   "old": 3,
+   "new": 3,
+   "new_ci": [
+    0.0057,
+    0.0481
+   ],
+   "new_clean_original": 3
+  },
+  "date|prose": {
+   "n": 147,
+   "old": 0,
+   "new": 0,
+   "new_ci": [
+    0.0,
+    0.0255
+   ],
+   "new_clean_original": 0
+  },
+  "paraphrase|all": {
+   "n": 180,
+   "old": 0,
+   "new": 0,
+   "new_ci": [
+    0.0,
+    0.0209
+   ],
+   "new_clean_original": 0
+  },
+  "paraphrase|inplace": {
+   "n": 180,
+   "old": 0,
+   "new": 0,
+   "new_ci": [
+    0.0,
+    0.0209
+   ],
+   "new_clean_original": 0
+  },
+  "venue|all": {
+   "n": 307,
+   "old": 95,
+   "new": 144,
+   "new_ci": [
+    0.414,
+    0.5249
+   ],
+   "new_clean_original": 144
+  },
+  "venue|factline": {
+   "n": 147,
+   "old": 95,
+   "new": 144,
+   "new_ci": [
+    0.9417,
+    0.993
+   ],
+   "new_clean_original": 144
+  },
+  "venue|inplace": {
+   "n": 13,
+   "old": 0,
+   "new": 0,
+   "new_ci": [
+    0.0,
+    0.2281
+   ],
+   "new_clean_original": 0
+  },
+  "venue|prose": {
+   "n": 147,
+   "old": 0,
+   "new": 0,
+   "new_ci": [
+    0.0,
+    0.0255
+   ],
+   "new_clean_original": 0
+  }
+ },
+ "original_flags": [],
+ "repaired_drafts": [
+  {
+   "tag": "main",
+   "id": "co09",
+   "flagged_then": [
+    "1.5"
+   ],
+   "flagged_now": []
+  },
+  {
+   "tag": "rep2",
+   "id": "co08",
+   "flagged_then": [
+    "2.5"
+   ],
+   "flagged_now": [
+    "2.5"
+   ]
+  },
+  {
+   "tag": "rep3",
+   "id": "co03",
+   "flagged_then": [
+    "1.5"
+   ],
+   "flagged_now": []
+  }
+ ],
+ "copies": 1988,
+ "originals": 149
+}

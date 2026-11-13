@@ -1,0 +1,128 @@
+{
+ "v4": {
+  "memory-excluded": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-delete-thread": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 5,
+   "leak_results_only": 0,
+   "rows_left_after": 5
+  },
+  "retract-message-deleted": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-forget-person": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-opt-out": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 5,
+   "leak_results_only": 0,
+   "rows_left_after": 5
+  }
+ },
+ "v5": {
+  "memory-excluded": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 2,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-delete-thread": {
+   "runs": 5,
+   "vacuous": 5,
+   "valid": 0,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-message-deleted": {
+   "runs": 5,
+   "vacuous": 5,
+   "valid": 0,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-forget-person": {
+   "runs": 5,
+   "vacuous": 5,
+   "valid": 0,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-opt-out": {
+   "runs": 5,
+   "vacuous": 5,
+   "valid": 0,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  }
+ },
+ "v6": {
+  "memory-excluded": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 0,
+   "leak_results_only": 1,
+   "rows_left_after": 0
+  },
+  "retract-delete-thread": {
+   "runs": 5,
+   "vacuous": 1,
+   "valid": 4,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-message-deleted": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-forget-person": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 0,
+   "leak_results_only": 0,
+   "rows_left_after": 0
+  },
+  "retract-opt-out": {
+   "runs": 5,
+   "vacuous": 0,
+   "valid": 5,
+   "leak_answer": 5,
+   "leak_results_only": 0,
+   "rows_left_after": 5
+  }
+ }
+}

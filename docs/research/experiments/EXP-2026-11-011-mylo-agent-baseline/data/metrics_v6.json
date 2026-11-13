@@ -1,0 +1,45 @@
+{
+ "tag": "v6",
+ "arms": {
+  "gate": {
+   "runs": 25,
+   "probe_runs": 24,
+   "probe_runs_leaking": 6,
+   "leak_rate": 0.25,
+   "leak_rate_ci95": [
+    0.0977,
+    0.4671
+   ],
+   "probe_pass_rate": 0.76,
+   "controls_passed": "0/0",
+   "vacuous_probe_runs": 1,
+   "access_probe_runs": 0,
+   "access_leaks_answer": 0,
+   "access_leak_rate_answer": null,
+   "access_leak_rate_answer_ci95": [
+    null,
+    null
+   ],
+   "access_leaks_any_point": 0,
+   "lifecycle_probe_runs": 24,
+   "lifecycle_leaks": 6,
+   "lifecycle_leak_rate": 0.25,
+   "lifecycle_leak_rate_ci95": [
+    0.0977,
+    0.4671
+   ],
+   "errored_probe_runs": 0,
+   "categories": {
+    "scope/memory_probe": {
+     "runs": 25,
+     "tasks": 5,
+     "pass_rate": 0.76,
+     "pass_all_reps": 3,
+     "tokens_mean": 7714,
+     "seconds_mean": 3.16,
+     "errors": 0
+    }
+   }
+  }
+ }
+}

@@ -210,8 +210,24 @@ def _truthy(value) -> bool:
 
 def delete_thread(user, thread_id) -> None:
     """Deletes the thread and its events. Files attached in it stay with their
-    owner; observations already recorded follow ambient's own deletion path."""
-    get_thread(user, thread_id).delete()
+    owner. What Mylo learned from it is retracted first, through ambient's own
+    deletion path (``agent.thread_deleted``): the chat is gone "for good", as
+    the app promises, not only from the list."""
+    from django.db import transaction
+
+    from tools._framework import events as bus
+
+    from .events import THREAD_DELETED
+
+    thread = get_thread(user, thread_id)
+    with transaction.atomic():
+        bus.publish(
+            THREAD_DELETED,
+            raise_errors=True,
+            thread_id=str(thread.pk),
+            user_id=thread.user_id,
+        )
+        thread.delete()
 
 
 def fork_thread(user, thread_id, seq: int) -> AgentThread:

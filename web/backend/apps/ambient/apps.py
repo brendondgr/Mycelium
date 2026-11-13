@@ -14,3 +14,7 @@ class AmbientConfig(AppConfig):
         events.subscribe(
             "agent.thread_quiet", "apps.ambient.adapters.agent_chat:on_thread_quiet"
         )
+        events.subscribe(
+            "agent.thread_deleted",
+            "apps.ambient.adapters.agent_chat:on_thread_deleted",
+        )

@@ -298,3 +298,34 @@ def test_port_calls_are_counted_in_the_ledger():
     client.ask({}, QUESTIONS)
     row = LLMUsageDaily.objects.get(component="port_rerank.paper")
     assert row.calls == 1
+
+
+def test_requests_in_flight_are_capped_across_clients():
+    # EXP-2026-11-014: the server ran out of GPU memory at 32 requests in flight;
+    # the reranker's per-theme pools multiply, so the cap is per process.
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    lock = threading.Lock()
+    now = {"in": 0, "peak": 0}
+
+    def slow(path, body):
+        with lock:
+            now["in"] += 1
+            now["peak"] = max(now["peak"], now["in"])
+        time.sleep(0.02)
+        with lock:
+            now["in"] -= 1
+        return _decide_answer(path, body)
+
+    clients = [
+        PortDecisionClient(
+            PortConfig(url="http://127.0.0.1:5199", max_in_flight=3),
+            http=FakeHttp(DECIDE_MODELS, slow),
+        )
+        for _ in range(4)
+    ]
+    with ThreadPoolExecutor(max_workers=24) as pool:
+        list(pool.map(lambda i: clients[i % 4].ask({"x": i}, QUESTIONS), range(48)))
+    assert now["peak"] == 3
