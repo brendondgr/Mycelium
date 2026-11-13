@@ -706,7 +706,10 @@ class ProjectDetailView(APIView):
             target_id=str(project.id),
             metadata={"name": project.name},
         )
+        scope_change = {}
         if project.visibility != old_scope:
+            from . import lifecycle
+
             record_audit_event(
                 actor=request.user,
                 action="project.visibility",
@@ -714,14 +717,21 @@ class ProjectDetailView(APIView):
                 target_id=str(project.id),
                 metadata={"from": old_scope, "to": project.visibility},
             )
+            # Widening tells every member; narrowing takes effect on everything
+            # not yet sent, which every read already re-checks (Phase 5).
+            scope_change = lifecycle.scope_changed(
+                project, old_scope, actor=request.user
+            )
         # A focus / category edit changes what the project should match — re-seed
         # over the existing corpus (best-effort) so the feed reflects the change.
         # A rename or a status change does not, and must not cost a refit.
         if self._search_surface(project) != before:
             _seed_project(project)
-        return Response(
-            ProjectSerializer(project, context=self._context(request, project)).data
-        )
+        context = self._context(request, project)
+        payload = ProjectSerializer(project, context=context).data
+        if scope_change:
+            payload = {**payload, "scope_change": scope_change}
+        return Response(payload)
 
 
 class ProjectArchiveView(APIView):
@@ -1743,3 +1753,105 @@ class ProjectStateExtractView(APIView):
 
         outcome = extract_project_state(text)
         return Response(outcome.as_dict())
+
+
+# --------------------------------------------------------------------------- #
+# Ownership and transfer (scoping plan, Phase 5)
+# --------------------------------------------------------------------------- #
+
+
+class ProjectOwnershipView(APIView):
+    """``POST {"username"}``: hand a project to someone.
+
+    The owner hands it to a member. The scope's managers — the lab's PI, owner
+    and admins, or a department's heads — may take it themselves (audited, the
+    members told), as the plan's oversight allows."""
+
+    def post(self, request: Request, pk) -> Response:
+        from . import lifecycle
+        from .permissions import user_manages_project_scope
+
+        project = _visible_project(request, pk)
+        username = str(request.data.get("username") or "").strip()
+        target = get_object_or_404(User, username=username)
+        taking = target == request.user and user_manages_project_scope(
+            request.user, project
+        )
+        if not taking and not user_can_change_visibility(request.user, project):
+            raise PermissionDenied("Only the project's owner hands it over.")
+        if not taking and not scope.is_participant(target, project):
+            raise ValidationError(
+                {"username": ["Ownership goes to someone already on the project."]}
+            )
+        if project.scope_user_id is not None:
+            raise ValidationError("A personal project stays with its person.")
+        lifecycle.make_owner(
+            project,
+            target,
+            actor=request.user,
+            reason="taken by the lab's managers" if taking else "handed over",
+        )
+        return Response(ProjectSerializer(project, context={"request": request}).data)
+
+
+class ProjectTransferView(APIView):
+    """``POST``: the owner offers a lab project to its lab's department.
+    ``DELETE``: the owner withdraws the open offer."""
+
+    def post(self, request: Request, pk) -> Response:
+        from . import lifecycle
+
+        project = _visible_project(request, pk)
+        if not user_can_change_visibility(request.user, project):
+            raise PermissionDenied("Only the project's owner offers it.")
+        try:
+            row = lifecycle.offer_transfer(project, request.user)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+        return Response(
+            {"id": row.pk, "state": row.state, "department": row.department_id},
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request: Request, pk) -> Response:
+        from .models import ProjectTransfer
+
+        project = _visible_project(request, pk)
+        if not user_can_change_visibility(request.user, project):
+            raise PermissionDenied("Only the project's owner withdraws it.")
+        ProjectTransfer.objects.filter(
+            project=project, state=ProjectTransfer.State.PENDING
+        ).update(
+            state=ProjectTransfer.State.WITHDRAWN,
+            decided_by=request.user,
+            decided_at=timezone.now(),
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProjectTransferAcceptView(APIView):
+    """``POST``: a head of the department accepts the open offer."""
+
+    def post(self, request: Request, pk) -> Response:
+        from apps.accounts.permissions import user_can_edit_dept_profile
+
+        from . import lifecycle
+        from .models import ProjectTransfer
+
+        project = get_object_or_404(Project, pk=pk)
+        transfer = ProjectTransfer.objects.filter(
+            project=project, state=ProjectTransfer.State.PENDING
+        ).select_related("department").first()
+        if transfer is None or not user_can_edit_dept_profile(
+            request.user, transfer.department
+        ):
+            if transfer is None or not scope.can_see(request.user, project):
+                raise NotFound()
+            raise PermissionDenied("Only a head of the department accepts it.")
+        if (
+            project.scope_lab_id is None
+            or project.scope_lab.department_id != transfer.department_id
+        ):
+            raise ValidationError("The lab is no longer in that department.")
+        project = lifecycle.accept_transfer(transfer, request.user)
+        return Response(ProjectSerializer(project, context={"request": request}).data)

@@ -119,6 +119,37 @@ urlpatterns = [
     # project is joined by invitation. Both slash and no-slash variants — the
     # Next `/api` proxy strips the trailing slash and Django's APPEND_SLASH cannot
     # redirect a POST (it would 500).
+    # Ownership hand-over and transfer to the department (scoping plan, Phase 5).
+    path(
+        "projects/<uuid:pk>/ownership/",
+        views.ProjectOwnershipView.as_view(),
+        name="project-ownership",
+    ),
+    path(
+        "projects/<uuid:pk>/ownership",
+        views.ProjectOwnershipView.as_view(),
+        name="project-ownership-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/transfer/",
+        views.ProjectTransferView.as_view(),
+        name="project-transfer",
+    ),
+    path(
+        "projects/<uuid:pk>/transfer",
+        views.ProjectTransferView.as_view(),
+        name="project-transfer-no-slash",
+    ),
+    path(
+        "projects/<uuid:pk>/transfer/accept/",
+        views.ProjectTransferAcceptView.as_view(),
+        name="project-transfer-accept",
+    ),
+    path(
+        "projects/<uuid:pk>/transfer/accept",
+        views.ProjectTransferAcceptView.as_view(),
+        name="project-transfer-accept-no-slash",
+    ),
     path(
         "projects/<uuid:pk>/leave/",
         views.ProjectLeaveView.as_view(),

@@ -12,6 +12,7 @@ import {
 import { usePortal } from "@/components/portal/portal-context";
 import {
   VisibilityPicker,
+  scopeChangeNote,
   type ProjectHome,
 } from "@/components/portal/projects/visibility-picker";
 import type { ClusterGroup } from "@/lib/auth-types";
@@ -410,9 +411,12 @@ export function ProjectEditorModal({
             disabled={!project.can_change_visibility}
           />
           {project.can_change_visibility ? (
-            <p className="text-[11.5px] leading-relaxed text-[var(--text-secondary)]">
-              A change applies to everything Mylo has not sent yet. Posts,
-              PDFs and DMs already delivered stay where they are.
+            <p
+              role="status"
+              className="text-[11.5px] leading-relaxed text-[var(--text-secondary)]"
+            >
+              {scopeChangeNote(project.visibility, visibility, home) ??
+                "A change applies to everything Mylo has not sent yet. Posts, PDFs and DMs already delivered stay where they are."}
             </p>
           ) : (
             <p className="text-[11.5px] leading-relaxed text-[var(--text-secondary)]">

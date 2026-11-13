@@ -61,6 +61,7 @@ web/backend/apps/knowledge/tests/test_linker.py	retrieval.embeddings
 web/backend/apps/knowledge/tests/test_projection.py	retrieval.embeddings
 web/backend/apps/knowledge/tests/test_works.py	retrieval.embeddings
 web/backend/apps/knowledge/works.py	retrieval.embeddings
+web/backend/apps/research/lifecycle.py	delivery.models
 web/backend/apps/research/serializers.py	recommendation.targets
 web/backend/apps/research/tests/test_project_collaboration.py	delivery.models
 web/backend/apps/research/tests/test_project_collaboration.py	recommendation.models
@@ -69,6 +70,7 @@ web/backend/apps/research/tests/test_project_collaboration.py	retrieval.resolver
 web/backend/apps/research/tests/test_project_collections.py	delivery.models
 web/backend/apps/research/tests/test_project_collections.py	retrieval.models
 web/backend/apps/research/tests/test_project_state.py	delivery.timeline_settings
+web/backend/apps/research/tests/test_scope_lifecycle.py	delivery.models
 web/backend/apps/research/views.py	delivery.collaboration
 web/backend/apps/research/views.py	delivery.fanout
 web/backend/apps/research/views.py	delivery.models

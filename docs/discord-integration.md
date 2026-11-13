@@ -113,7 +113,7 @@ no Mylo database, schema, or migration history.
   department- and public-scoped projects, without their members' names. Mylo
   chat's audience in a server is the server's width (`department` audience for a
   lab's channel in its department's server; agent width `public` for a mixed
-  one). No Discord post says "N private projects not shown"; the count is on
+  one). A project narrowed after its announcement thread opened leaves the thread's team, *Who should look* and prose on the thread's next update (`discord_announcements.scrub_narrowed`); what was already posted stays. A deadline reminder made from inside an `invite_only` project can only be a DM. No Discord post says "N private projects not shown"; the count is on
   the managers' web view only. `manage.py smoke_reports` checks each width
   (`S5-lab`, `S5-department`, `S5-public`). Server-scoped commands that need a
   lab (listening, `lab_digest`) find it only when the server holds exactly one lab

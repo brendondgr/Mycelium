@@ -307,6 +307,58 @@ class ProjectJoinRequest(models.Model):
         return f"JoinRequest<{self.user} -> {self.project} ({self.state})>"
 
 
+class ProjectTransfer(models.Model):
+    """A lab project offered to the lab's department (scoping plan, Phase 5).
+
+    The project's owner offers; a head of the department accepts, and the
+    project becomes a department project with its members kept. An open offer
+    lapses when the lab leaves the department."""
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Offered"
+        ACCEPTED = "accepted", "Accepted"
+        WITHDRAWN = "withdrawn", "Withdrawn"
+        LAPSED = "lapsed", "Lapsed"
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="transfers"
+    )
+    department = models.ForeignKey(
+        "accounts.Department", on_delete=models.CASCADE, related_name="+"
+    )
+    offered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    state = models.CharField(
+        max_length=10, choices=State.choices, default=State.PENDING
+    )
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project"],
+                condition=Q(state="pending"),
+                name="research_unique_pending_transfer",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Transfer<{self.project} -> {self.department_id} ({self.state})>"
+
+
 class ProjectMember(models.Model):
     """Join between users and the projects they participate in (briefing §3).
 

@@ -136,6 +136,9 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `<id>/state/confirm/` | POST | "Still true" — the date only |
 | `<id>/state/extract/` | POST | Read a state **proposal** out of a document (saves nothing) |
 | `<id>/leave/` | POST | Leave (404 unless the caller can see the project; there is no self-join — a project is joined by invitation) |
+| `<id>/ownership/` | POST | `{ "username" }` — the owner hands the project to someone already on it (the old owner becomes an editor); the scope's managers (lab PI / owner / admins, department heads) may take it themselves with their own username. Audited; members are told on the bell |
+| `<id>/transfer/` | POST, DELETE | The owner offers a lab project to the lab's department (201), or withdraws the open offer |
+| `<id>/transfer/accept/` | POST | A head of the department accepts: the project becomes a department project, members kept, `lab` scope becoming `invite_only`. An open offer lapses if the lab leaves the department |
 | `<id>/members/` | GET, POST | Roster; add a lab member directly |
 | `<id>/members/<username>/` | PATCH, DELETE | Set `{ "role": "editor" \| "member" }` (the owner); remove a member (never the owner) |
 | `<id>/invitations/` | GET, POST | Pending invitations; invite by username or email |
@@ -191,6 +194,24 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `status/` | GET | `{"enabled", "identities", "lab_team"}` |
 | `unlink/` | POST | `{"tenant_id"}` |
 | `lab/` | POST | A lab manager's switches: `{"on"?, "primary"?}` |
+
+### Changing scope, and leaving
+
+`PATCH /api/projects/<id>/` with a new `visibility` adds `scope_change` to the
+response: `{ "widened": false }` for a narrowing, or `{ "widened": true,
+"newly_visible_to": "everyone in Biology", "told": 3 }` — a widening tells every
+member on the bell (kind `project_scope`). Either way the change applies from
+the next run; stored rows are re-checked at read, and nothing already sent is
+re-posted or unsent. Leaving or being removed from a lab ends membership in its
+projects; an owner who leaves or deletes their account hands the project to an
+editor, else the lab's PI (the department's owner for a department project). A
+lab leaving its department turns its `department` projects into `lab` ones and
+tells their owners.
+
+`POST /api/opportunities/save/` and `POST /api/reminders/` accept an optional
+`project_id` — the project the save or reminder was made from. The caller must
+be able to open it (404 otherwise), and from inside an `invite_only` project a
+lab save or a lab-channel reminder is refused (400): it stays with the person.
 
 ### `GET /api/projects/department/<id>/`
 

@@ -418,6 +418,12 @@ api/projects/<uuid:pk>/state/extract/	project-state-extract	ProjectStateExtractV
 api/projects/<uuid:pk>/state/extract	project-state-extract-no-slash	ProjectStateExtractView
 api/projects/<uuid:pk>/archive/	project-archive	ProjectArchiveView
 api/projects/<uuid:pk>/archive	project-archive-no-slash	ProjectArchiveView
+api/projects/<uuid:pk>/ownership/	project-ownership	ProjectOwnershipView
+api/projects/<uuid:pk>/ownership	project-ownership-no-slash	ProjectOwnershipView
+api/projects/<uuid:pk>/transfer/	project-transfer	ProjectTransferView
+api/projects/<uuid:pk>/transfer	project-transfer-no-slash	ProjectTransferView
+api/projects/<uuid:pk>/transfer/accept/	project-transfer-accept	ProjectTransferAcceptView
+api/projects/<uuid:pk>/transfer/accept	project-transfer-accept-no-slash	ProjectTransferAcceptView
 api/projects/<uuid:pk>/leave/	project-leave	ProjectLeaveView
 api/projects/<uuid:pk>/leave	project-leave-no-slash	ProjectLeaveView
 api/projects/<uuid:pk>/members/	project-members	ProjectMembersView

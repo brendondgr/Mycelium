@@ -71,6 +71,31 @@ export function visibilityConsequence(
   }
 }
 
+const RANK: Record<ProjectVisibility, number> = {
+  invite_only: 0,
+  lab: 1,
+  department: 2,
+  public: 3,
+};
+
+/**
+ * What changing a project's scope from `from` to `to` does, said before the
+ * owner saves (plan Phase 5). Narrowing takes effect on everything not yet
+ * sent; widening names who newly sees what, tells every member, and posts
+ * nothing historical. `null` when nothing changes.
+ */
+export function scopeChangeNote(
+  from: ProjectVisibility,
+  to: ProjectVisibility,
+  home: ProjectHome,
+): string | null {
+  if (from === to) return null;
+  if (RANK[to] < RANK[from]) {
+    return `Narrowing to ${VISIBILITY_LABEL[to].toLowerCase()} takes effect on everything Mylo has not sent yet: the next lab post, alerts and change lists leave it out, and open announcement threads drop its team on their next update. Posts, PDFs and DMs already delivered stay where they are — Mylo cannot unsend them.`;
+  }
+  return `Widening: ${visibilityConsequence(to, home)} This applies from the next run; nothing already sent is posted again. Every member of the project is told.`;
+}
+
 /**
  * The scope picker: one radio per scope the project may take, each with what
  * it means. A request to join still needs the owner's or an editor's

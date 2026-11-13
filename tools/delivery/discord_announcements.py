@@ -488,6 +488,56 @@ def may_post_in(announcement: Announcement, binding) -> bool:
     return all(visibility.may_surface(p, width) for p in projects)
 
 
+def scrub_narrowed(alignment: dict, write_up: dict, width: str):
+    """The alignment and write-up with every project too narrow for ``width``
+    taken out — its team, its *Who should look* entry, and its name in the
+    prose — for a thread whose project was narrowed after it was posted (plan
+    Phase 5: open threads are edited on their next update). Returns
+    ``(alignment, write_up, dropped_names)``; unchanged when nothing drops."""
+    from apps.research import visibility
+    from apps.research.models import Project
+
+    teams = (alignment or {}).get("project_teams") or []
+    ids = [t.get("project_id") for t in teams if t.get("project_id")]
+    allowed = {
+        str(p.pk)
+        for p in Project.objects.filter(id__in=ids)
+        if visibility.may_surface(p, width)
+    }
+    dropped = [
+        t.get("name") or ""
+        for t in teams
+        if t.get("project_id") and str(t["project_id"]) not in allowed
+    ]
+    dropped = [name for name in dropped if name]
+    if not dropped:
+        return alignment, write_up, []
+    alignment = {
+        **alignment,
+        "project_teams": [
+            t
+            for t in teams
+            if not t.get("project_id") or str(t["project_id"]) in allowed
+        ],
+        "projects": [p for p in alignment.get("projects") or [] if p not in dropped],
+    }
+    write_up = dict(write_up or {})
+    write_up["who_should_look"] = [
+        entry
+        for entry in write_up.get("who_should_look") or []
+        if not (entry.get("kind") == "project" and entry.get("name") in dropped)
+    ]
+    for key in ("headline", "why_it_matters", "next_step"):
+        text = write_up.get(key)
+        if isinstance(text, str):
+            for name in dropped:
+                text = text.replace(f"The {name} project", "A project")
+                text = text.replace(f"the {name} project", "a project")
+                text = text.replace(name, "a project")
+            write_up[key] = text
+    return alignment, write_up, dropped
+
+
 def post(
     announcement: Announcement, *, drain: bool = True, bindings=None
 ) -> list[AnnouncementPost]:
@@ -807,7 +857,22 @@ def _update_thread(changed, today: date, target) -> bool:
         checks = usability.assess(announcement.content, reader, today)
         announcement.checks = [c.as_dict() for c in checks]
     announcement.facts = changed.facts
-    announcement.save(update_fields=["checks", "facts", "updated_at"])
+    # A project narrowed since the thread opened leaves it on this update.
+    width = resolve.widest(
+        [
+            "department" if announcement.target_department_id else "lab",
+            *(resolve.binding_width(p.binding) for p in posts),
+        ]
+    )
+    alignment, write_up, dropped = scrub_narrowed(
+        announcement.alignment or {}, announcement.write_up or {}, width
+    )
+    fields = ["checks", "facts", "updated_at"]
+    if dropped:
+        announcement.alignment = alignment
+        announcement.write_up = write_up
+        fields += ["alignment", "write_up"]
+    announcement.save(update_fields=fields)
 
     users = followers(announcement)
     line, allowed = mentions_for(users)
