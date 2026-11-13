@@ -1,0 +1,446 @@
+{
+ "tag": "main",
+ "arm_a": {
+  "answers": 50,
+  "errors": 0,
+  "tokens_mean": 27088,
+  "tokens_median": 21996.0,
+  "tokens_max": 113444,
+  "seconds_mean": 40.5,
+  "seconds_median": 36.66,
+  "seconds_max": 150.57,
+  "answers_with_citation": 45,
+  "model_calls_mean": 6.46,
+  "function_calls_mean": 8.28,
+  "hit_max_steps": 1,
+  "thrash_stop": 4,
+  "repair_runs": 1,
+  "final_stripped": 1,
+  "final_clean": 49,
+  "empty_answers": 0
+ },
+ "arm_b": {
+  "answers": 50,
+  "errors": 0,
+  "tokens_mean": 9582,
+  "tokens_median": 9901.5,
+  "tokens_max": 14340,
+  "seconds_mean": 18.76,
+  "seconds_median": 17.88,
+  "seconds_max": 51.28,
+  "answers_with_citation": 40
+ },
+ "by_category": {
+  "compound": {
+   "a": {
+    "answers": 10,
+    "errors": 0,
+    "tokens_mean": 48859,
+    "tokens_median": 34801.0,
+    "tokens_max": 108243,
+    "seconds_mean": 69.63,
+    "seconds_median": 51.69,
+    "seconds_max": 150.57,
+    "answers_with_citation": 10,
+    "model_calls_mean": 8.4,
+    "function_calls_mean": 16.6,
+    "hit_max_steps": 0,
+    "thrash_stop": 1,
+    "repair_runs": 1,
+    "final_stripped": 1,
+    "final_clean": 9,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 10,
+    "errors": 0,
+    "tokens_mean": 9849,
+    "tokens_median": 9901.5,
+    "tokens_max": 14340,
+    "seconds_mean": 16.68,
+    "seconds_median": 15.02,
+    "seconds_max": 29.74,
+    "answers_with_citation": 9
+   }
+  },
+  "feed_project": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 27540,
+    "tokens_median": 24498.0,
+    "tokens_max": 45895,
+    "seconds_mean": 43.19,
+    "seconds_median": 38.6,
+    "seconds_max": 69.34,
+    "answers_with_citation": 8,
+    "model_calls_mean": 7,
+    "function_calls_mean": 9.12,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 9335,
+    "tokens_median": 9679.5,
+    "tokens_max": 10676,
+    "seconds_mean": 28.74,
+    "seconds_median": 21.41,
+    "seconds_max": 51.28,
+    "answers_with_citation": 8
+   }
+  },
+  "project_status": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 35778,
+    "tokens_median": 24492.0,
+    "tokens_max": 113444,
+    "seconds_mean": 47.33,
+    "seconds_median": 44.62,
+    "seconds_max": 112.67,
+    "answers_with_citation": 8,
+    "model_calls_mean": 9.88,
+    "function_calls_mean": 9.88,
+    "hit_max_steps": 1,
+    "thrash_stop": 1,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 10204,
+    "tokens_median": 10246.0,
+    "tokens_max": 13058,
+    "seconds_mean": 21.09,
+    "seconds_median": 19.14,
+    "seconds_max": 39.39,
+    "answers_with_citation": 4
+   }
+  },
+  "tagged_opportunity": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 11379,
+    "tokens_median": 5712.0,
+    "tokens_max": 45237,
+    "seconds_mean": 16.21,
+    "seconds_median": 13.17,
+    "seconds_max": 41.12,
+    "answers_with_citation": 5,
+    "model_calls_mean": 3.25,
+    "function_calls_mean": 2.5,
+    "hit_max_steps": 0,
+    "thrash_stop": 1,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 8312,
+    "tokens_median": 8109.0,
+    "tokens_max": 11841,
+    "seconds_mean": 11.97,
+    "seconds_median": 10.07,
+    "seconds_max": 28.59,
+    "answers_with_citation": 8
+   }
+  },
+  "tagged_paper": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 11900,
+    "tokens_median": 11259.0,
+    "tokens_max": 27592,
+    "seconds_mean": 20.21,
+    "seconds_median": 18.68,
+    "seconds_max": 48.1,
+    "answers_with_citation": 6,
+    "model_calls_mean": 3.88,
+    "function_calls_mean": 3,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 10966,
+    "tokens_median": 11273.0,
+    "tokens_max": 12433,
+    "seconds_mean": 18.57,
+    "seconds_median": 19.24,
+    "seconds_max": 23.96,
+    "answers_with_citation": 7
+   }
+  },
+  "who_fits": {
+   "a": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 21628,
+    "tokens_median": 19746.0,
+    "tokens_max": 35906,
+    "seconds_mean": 39.11,
+    "seconds_median": 31.81,
+    "seconds_max": 75.4,
+    "answers_with_citation": 8,
+    "model_calls_mean": 5.88,
+    "function_calls_mean": 6.5,
+    "hit_max_steps": 0,
+    "thrash_stop": 1,
+    "repair_runs": 0,
+    "final_stripped": 0,
+    "final_clean": 8,
+    "empty_answers": 0
+   },
+   "b": {
+    "answers": 8,
+    "errors": 0,
+    "tokens_mean": 8760,
+    "tokens_median": 9406.0,
+    "tokens_max": 13939,
+    "seconds_mean": 16.01,
+    "seconds_median": 17.5,
+    "seconds_max": 24.51,
+    "answers_with_citation": 4
+   }
+  }
+ },
+ "repair": {
+  "repaired_turns": 1,
+  "repair_succeeded_final_clean": 0,
+  "turns_where_off_would_remove_text": 1,
+  "turns_with_flagged_details_kept_after_repair": 0,
+  "repair_tokens_mean": null,
+  "repair_seconds_mean": null,
+  "repair_model_calls_mean": null,
+  "repair_cost_known_turns": 0,
+  "flags": {
+   "unmatched": 0,
+   "unread": 0,
+   "unsupported": 1
+  }
+ },
+ "injected": {
+  "base_answers": 49,
+  "originals_flagged": 0,
+  "classes": {
+   "bad_cite": {
+    "n": 108,
+    "caught": 108,
+    "recall": 1.0,
+    "recall_ci95": [
+     0.9657,
+     1.0
+    ],
+    "inplace": {
+     "n": 103,
+     "caught": 103,
+     "recall": 1.0,
+     "ci95": [
+      0.964,
+      1.0
+     ]
+    },
+    "prose": {
+     "n": 5,
+     "caught": 5,
+     "recall": 1.0,
+     "ci95": [
+      0.5655,
+      1.0
+     ]
+    }
+   },
+   "unread_cite": {
+    "n": 0,
+    "caught": 0,
+    "recall": null,
+    "recall_ci95": [
+     null,
+     null
+    ]
+   },
+   "date": {
+    "n": 168,
+    "caught": 54,
+    "recall": 0.3214,
+    "recall_ci95": [
+     0.2555,
+     0.3954
+    ],
+    "inplace": {
+     "n": 61,
+     "caught": 1,
+     "recall": 0.0164,
+     "ci95": [
+      0.0029,
+      0.0872
+     ]
+    },
+    "prose": {
+     "n": 49,
+     "caught": 0,
+     "recall": 0.0,
+     "ci95": [
+      0.0,
+      0.0727
+     ]
+    },
+    "factline": {
+     "n": 58,
+     "caught": 53,
+     "recall": 0.9138,
+     "ci95": [
+      0.8136,
+      0.9626
+     ]
+    }
+   },
+   "author": {
+    "n": 109,
+    "caught": 43,
+    "recall": 0.3945,
+    "recall_ci95": [
+     0.3078,
+     0.4883
+    ],
+    "inplace": {
+     "n": 9,
+     "caught": 0,
+     "recall": 0.0,
+     "ci95": [
+      0.0,
+      0.2992
+     ]
+    },
+    "prose": {
+     "n": 49,
+     "caught": 0,
+     "recall": 0.0,
+     "ci95": [
+      0.0,
+      0.0727
+     ]
+    },
+    "factline": {
+     "n": 51,
+     "caught": 43,
+     "recall": 0.8431,
+     "ci95": [
+      0.7199,
+      0.9183
+     ]
+    }
+   },
+   "venue": {
+    "n": 102,
+    "caught": 30,
+    "recall": 0.2941,
+    "recall_ci95": [
+     0.2145,
+     0.3887
+    ],
+    "inplace": {
+     "n": 4,
+     "caught": 0,
+     "recall": 0.0,
+     "ci95": [
+      0.0,
+      0.4899
+     ]
+    },
+    "prose": {
+     "n": 49,
+     "caught": 0,
+     "recall": 0.0,
+     "ci95": [
+      0.0,
+      0.0727
+     ]
+    },
+    "factline": {
+     "n": 49,
+     "caught": 30,
+     "recall": 0.6122,
+     "ci95": [
+      0.4725,
+      0.7357
+     ]
+    }
+   },
+   "amount": {
+    "n": 113,
+    "caught": 104,
+    "recall": 0.9204,
+    "recall_ci95": [
+     0.8555,
+     0.9575
+    ],
+    "inplace": {
+     "n": 15,
+     "caught": 6,
+     "recall": 0.4,
+     "ci95": [
+      0.1982,
+      0.6425
+     ]
+    },
+    "prose": {
+     "n": 49,
+     "caught": 49,
+     "recall": 1.0,
+     "ci95": [
+      0.9273,
+      1.0
+     ]
+    },
+    "factline": {
+     "n": 49,
+     "caught": 49,
+     "recall": 1.0,
+     "ci95": [
+      0.9273,
+      1.0
+     ]
+    }
+   },
+   "paraphrase": {
+    "n": 60,
+    "caught": 0,
+    "recall": 0.0,
+    "recall_ci95": [
+     -0.0,
+     0.0602
+    ],
+    "inplace": {
+     "n": 60,
+     "caught": 0,
+     "recall": 0.0,
+     "ci95": [
+      -0.0,
+      0.0602
+     ]
+    }
+   }
+  }
+ }
+}

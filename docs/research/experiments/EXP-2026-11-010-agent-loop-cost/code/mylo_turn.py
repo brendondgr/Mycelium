@@ -73,7 +73,7 @@ class TimedPort:
             "first_delta_s": round(first[0] - started, 3) if first else None,
             "prompt_tokens": usage.get("prompt_tokens"),
             "completion_tokens": usage.get("completion_tokens"),
-            "function_calls": len(getattr(reply, "calls", None) or []),
+            "function_calls": len(getattr(reply, "tool_calls", None) or getattr(reply, "calls", None) or []),
             "tool_choice": tool_choice,
             "n_tools": len(tools or []),
         })

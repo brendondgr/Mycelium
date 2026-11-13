@@ -75,6 +75,16 @@ def evidence_for_b(ctx, q, budget_tokens):
     return blocks, found.content
 
 
+def tagged_note(q):
+    """The agent is told which object the asker tagged; arm b gets the same
+    fact (the tagged items are always the first evidence numbers)."""
+    n = len(q.get("mentions", []))
+    if not n:
+        return ""
+    listed = ", ".join(f"#{i}" for i in range(1, n + 1))
+    return f"The asker tagged {listed} with this question (\"this paper\", \"this call\" refers to it).\n\n"
+
+
 def arm_b(ctx, q, budget_tokens):
     from tools.agent.llmcall import default_port
 
@@ -82,7 +92,7 @@ def arm_b(ctx, q, budget_tokens):
     evidence = "\n\n".join(b["text"] for b in blocks)
     messages = [
         {"role": "system", "content": SYSTEM_B.format(lab=ctx["lab"].name)},
-        {"role": "user", "content": f"Evidence:\n\n{evidence}\n\nQuestion: {q['text']}"},
+        {"role": "user", "content": f"Evidence:\n\n{evidence}\n\n{tagged_note(q)}Question: {q['text']}"},
     ]
     port = default_port()
     t0 = time.monotonic()
@@ -91,7 +101,7 @@ def arm_b(ctx, q, budget_tokens):
     usage = dict(reply.usage or {})
     import re
 
-    text = reply.text or ""
+    text = getattr(reply, "content", None) or getattr(reply, "text", None) or ""
     return {
         "id": q["id"], "category": q["category"], "wall_s": round(time.monotonic() - t0, 3),
         "final_text": text, "evidence": blocks, "budget_tokens": budget_tokens,

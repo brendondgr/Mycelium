@@ -1,0 +1,106 @@
+{
+ "a1": {
+  "r1": {
+   "1": {
+    "turn_latency_s_mean": 2.65,
+    "turn_latency_s_max": 6.13,
+    "turn_tokens_mean": 3716,
+    "peak_prompt_tokens_max": 2032,
+    "function_calls_made_mean": 1,
+    "step_latency_s_mean": 1.326,
+    "first_delta_s_median": 0.251,
+    "reps": 3
+   },
+   "5": {
+    "turn_latency_s_mean": 3.35,
+    "turn_latency_s_max": 3.55,
+    "turn_tokens_mean": 16326,
+    "peak_prompt_tokens_max": 3797,
+    "function_calls_made_mean": 5,
+    "step_latency_s_mean": 0.559,
+    "first_delta_s_median": 0.399,
+    "reps": 3
+   },
+   "15": {
+    "turn_latency_s_mean": 11.9,
+    "turn_latency_s_max": 17.96,
+    "turn_tokens_mean": 76503,
+    "peak_prompt_tokens_max": 7888,
+    "function_calls_made_mean": 15,
+    "step_latency_s_mean": 0.744,
+    "first_delta_s_median": 0.255,
+    "reps": 3
+   }
+  }
+ },
+ "a2": {
+  "a2": {
+   "turns": 36,
+   "errors": 0,
+   "single": {
+    "n": 12,
+    "wall_s_median": 2.38,
+    "wall_s_max": 7.54,
+    "wall_s_mean": 2.61,
+    "first_activity_s_median": 0.95,
+    "first_activity_s_max": 7.28,
+    "model_calls_median": 2.0,
+    "model_calls_max": 3,
+    "function_calls_median": 1.0,
+    "function_calls_max": 2,
+    "tokens_median": 5779.0,
+    "tokens_max": 7612,
+    "tokens_mean": 6136,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "few": {
+    "n": 12,
+    "wall_s_median": 13.21,
+    "wall_s_max": 38.7,
+    "wall_s_mean": 16.98,
+    "first_activity_s_median": 1.01,
+    "first_activity_s_max": 9.56,
+    "model_calls_median": 6.0,
+    "model_calls_max": 9,
+    "function_calls_median": 7.0,
+    "function_calls_max": 17,
+    "tokens_median": 22883.0,
+    "tokens_max": 49657,
+    "tokens_mean": 26199,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "compound": {
+    "n": 12,
+    "wall_s_median": 29.22,
+    "wall_s_max": 70.51,
+    "wall_s_mean": 34.57,
+    "first_activity_s_median": 1.04,
+    "first_activity_s_max": 5.04,
+    "model_calls_median": 9.5,
+    "model_calls_max": 23,
+    "function_calls_median": 17.0,
+    "function_calls_max": 32,
+    "tokens_median": 55104.5,
+    "tokens_max": 211566,
+    "tokens_mean": 73090,
+    "hit_max_steps": 0,
+    "thrash_stop": 1,
+    "timed_out": 0,
+    "repair": 1
+   },
+   "turns_with_4_to_6_model_calls": {
+    "n": 10,
+    "wall_s_max": 29.23,
+    "over_60s": 0,
+    "tokens_max": 28303
+   },
+   "over_60s_any": 1
+  }
+ }
+}

@@ -1,0 +1,7 @@
+arm,first_activity_s_max,first_activity_s_median,first_delta_s_median,function_calls_made_mean,function_calls_max,function_calls_median,group,hit_max_steps,model_calls_max,model_calls_median,n,peak_prompt_tokens_max,repair,reps,run,step_latency_s_mean,thrash_stop,timed_out,tokens_max,tokens_mean,tokens_median,turn_latency_s_max,turn_latency_s_mean,turn_tokens_mean,wall_s_max,wall_s_mean,wall_s_median
+A1,,,0.251,1,,,1_calls,,,,,2032,,3,r1,1.326,,,,,,6.13,2.65,3716,,,
+A1,,,0.399,5,,,5_calls,,,,,3797,,3,r1,0.559,,,,,,3.55,3.35,16326,,,
+A1,,,0.255,15,,,15_calls,,,,,7888,,3,r1,0.744,,,,,,17.96,11.9,76503,,,
+A2,7.28,0.95,,,2,1.0,single,0,3,2.0,12,,0,,a2,,0,0,7612,6136,5779.0,,,,7.54,2.61,2.38
+A2,9.56,1.01,,,17,7.0,few,0,9,6.0,12,,0,,a2,,0,0,49657,26199,22883.0,,,,38.7,16.98,13.21
+A2,5.04,1.04,,,32,17.0,compound,0,23,9.5,12,,1,,a2,,1,0,211566,73090,55104.5,,,,70.51,34.57,29.22

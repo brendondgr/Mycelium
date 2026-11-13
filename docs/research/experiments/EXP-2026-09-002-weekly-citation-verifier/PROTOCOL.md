@@ -82,3 +82,47 @@ added, so the entailment call's marginal value is visible rather than assumed.
 Not yet written. It will be `code/run.py` in this folder, reading a labelled CSV
 committed under `data/` and the stored `DailyBriefing.verification` records, and
 writing `data/metrics.json` and `data/metrics.csv`.
+
+## Amendment 1 — 2026-11-12, before any labelling
+
+Written after a census and a rebuild test, before any sentence was labelled or
+any injected copy was scored. The verifier now lives in
+`tools/delivery/weekly_verify.py`.
+
+**What the instance holds** (`code/run.py census`, `data/census.json`):
+71 weeklies from 2026-09-14 to 2026-11-09. 64 of them were written by the
+deterministic fallback; only 7 (all the week of 2026-11-09) carry
+model-written sentences, covering 31 project sections. The stored
+verification records report 2,295 checked sentences and **0 removed**. The
+precondition "real weeklies with model-written sentences across at least five
+projects" holds; the sampling rule "at least fifteen removed sentences" cannot
+be met, so **removal precision cannot be measured from this instance**, and
+C-025 stays `unsupported` for that half.
+
+**The packet is not stored.** A weekly row keeps its body, its verification
+counts and `context_version`, not the evidence packet. `code/run.py rebuild`
+rebuilds each model-written weekly's packet with the production builder for
+the same owner and week, and counts a rebuild as faithful only if the
+references block it renders is byte-identical to the one stored in the body
+*and* re-verification of the stored model-written text removes nothing.
+Result before any labelling: **0 of 7 faithful** (references blocks differ in
+all seven; re-verification removes 0–17 sentences per weekly, which is packet
+drift, not a verifier verdict). Labelling a sentence against a packet the
+writer never saw would measure something else, so **no labelling sheet is
+produced**.
+
+**What is measured instead, without people:** an injected-error recall test
+of the deterministic checks on real sentences (`code/run.py inject
+--use-rebuilt`). For each rebuilt weekly, up to 20 kept sentences that cite a
+packet item and pass `verify_line` against the rebuilt packet each get
+corrupted copies, one error per copy: an unresolvable `[P#]`; a number in the
+sentence changed in place; an invented percentage appended; and a
+model-written unsupported paraphrase with no new numbers (instance model,
+fixed prompt in `run.py`, at most 40). Recall per class with Wilson 95%
+intervals. The packet is today's rebuild, not the original — the test is
+internally consistent (errors are relative to the packet the check is given)
+but says nothing about precision. Prediction: the first three classes are
+caught; the paraphrase is not (no entailment check is configured).
+
+**Follow-up, outside this experiment:** store the packet (or its references
+and numbers) with each weekly so the verifier can be audited after the fact.

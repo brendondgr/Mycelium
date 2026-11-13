@@ -1,5 +1,5 @@
 {
- "note": "EXP-2026-11-013. Fixed 2026-11-12 before any answer was generated. Asked as the demo PI (a fictional person) in the demo lab's scope; mentions are real corpus items (item:<ContentItem id>) chosen from the demo lab's highest relevance scores on 2026-11-12. No question names a real person.",
+ "note": "EXP-2026-11-013. Fixed 2026-11-12 before any answer was generated. Asked as the demo PI (a fictional person) in the demo lab's scope; mentions are real corpus items (item:<ContentItem id>) chosen from the demo lab's highest relevance scores on 2026-11-12. No question names a real person. IDs of the tagged_opportunity questions renamed ta->to on 2026-11-12 23:47 (they collided with tagged_paper); text unchanged.",
  "questions": [
   {
    "id": "ta01",
@@ -66,7 +66,7 @@
    ]
   },
   {
-   "id": "ta01",
+   "id": "to01",
    "category": "tagged_opportunity",
    "text": "When does this call close, and how much funding does it offer?",
    "mentions": [
@@ -74,7 +74,7 @@
    ]
   },
   {
-   "id": "ta02",
+   "id": "to02",
    "category": "tagged_opportunity",
    "text": "Does this call fit the Marine heatwave early warning project?",
    "mentions": [
@@ -82,7 +82,7 @@
    ]
   },
   {
-   "id": "ta03",
+   "id": "to03",
    "category": "tagged_opportunity",
    "text": "Who runs this funding programme, and is it open now?",
    "mentions": [
@@ -90,7 +90,7 @@
    ]
   },
   {
-   "id": "ta04",
+   "id": "to04",
    "category": "tagged_opportunity",
    "text": "What kinds of work does this call fund?",
    "mentions": [
@@ -98,7 +98,7 @@
    ]
   },
   {
-   "id": "ta05",
+   "id": "to05",
    "category": "tagged_opportunity",
    "text": "Who is eligible for this fellowship, and when is it due?",
    "mentions": [
@@ -106,7 +106,7 @@
    ]
   },
   {
-   "id": "ta06",
+   "id": "to06",
    "category": "tagged_opportunity",
    "text": "Is this fellowship for students or postdocs, and when is the next deadline?",
    "mentions": [
@@ -114,7 +114,7 @@
    ]
   },
   {
-   "id": "ta07",
+   "id": "to07",
    "category": "tagged_opportunity",
    "text": "Is this fellowship open now, and what was its previous deadline?",
    "mentions": [
@@ -122,7 +122,7 @@
    ]
   },
   {
-   "id": "ta08",
+   "id": "to08",
    "category": "tagged_opportunity",
    "text": "Would a postdoc in our lab be eligible for this, and when is it due?",
    "mentions": [

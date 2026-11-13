@@ -1,0 +1,89 @@
+{
+ "question_version": "2026-09-17.1",
+ "by_type": {
+  "paper": {
+   "worth": {
+    "type": "yesno",
+    "instructions": "Is this item worth this researcher's attention today, for this strand of their work?",
+    "true": "The item's subject matches this strand's listed interests specifically enough that the researcher could realistically act on it \u2014 read it, apply, submit, or build on it.",
+    "false": "The item is generic, aimed at a different field or method, or matches only a shared word rather than the strand's actual work."
+   },
+   "fit": {
+    "type": "score",
+    "instructions": "Where does this item sit for THIS strand of the researcher's work? Judge fit to the strand's listed interests and the researcher's stated methods, not to the researcher in general.",
+    "levels": [
+     "Skip. Probably not worth your time. Off-topic for this strand, or only superficially related.",
+     "File. Relevant, but not urgent. Keep it for later. On-topic but not something to act on now.",
+     "Skim. Worth a look \u2014 the abstract may be enough. Clearly relevant; worth reading the summary to decide.",
+     "Read. Worth your attention today. A strong, specific match to this strand that the researcher should act on."
+    ]
+   }
+  },
+  "grant": {
+   "worth": {
+    "type": "yesno",
+    "instructions": "Is this item worth this researcher's attention today, for this strand of their work?",
+    "true": "The item's subject matches this strand's listed interests specifically enough that the researcher could realistically act on it \u2014 read it, apply, submit, or build on it.",
+    "false": "The item is generic, aimed at a different field or method, or matches only a shared word rather than the strand's actual work."
+   },
+   "fit": {
+    "type": "score",
+    "instructions": "Where does this item sit for THIS strand of the researcher's work? Judge fit to the strand's listed interests and the researcher's stated methods, not to the researcher in general.",
+    "levels": [
+     "Skip. Probably not worth your time. Off-topic for this strand, or only superficially related.",
+     "File. Relevant, but not urgent. Keep it for later. On-topic but not something to act on now.",
+     "Skim. Worth a look \u2014 the abstract may be enough. Clearly relevant; worth reading the summary to decide.",
+     "Read. Worth your attention today. A strong, specific match to this strand that the researcher should act on."
+    ]
+   },
+   "eligible": {
+    "type": "yesno",
+    "instructions": "Can this researcher, at their stated career stage and institution, plausibly apply to this grant as a principal or co-investigator?",
+    "true": "The stated eligibility and applicant types include someone in the researcher's position, or place no restriction that excludes them.",
+    "false": "The eligibility text names a category (career stage, institution type, nationality, organisation) that excludes the researcher."
+   }
+  },
+  "conference": {
+   "worth": {
+    "type": "yesno",
+    "instructions": "Is this item worth this researcher's attention today, for this strand of their work?",
+    "true": "The item's subject matches this strand's listed interests specifically enough that the researcher could realistically act on it \u2014 read it, apply, submit, or build on it.",
+    "false": "The item is generic, aimed at a different field or method, or matches only a shared word rather than the strand's actual work."
+   },
+   "fit": {
+    "type": "score",
+    "instructions": "Where does this item sit for THIS strand of the researcher's work? Judge fit to the strand's listed interests and the researcher's stated methods, not to the researcher in general.",
+    "levels": [
+     "Skip. Probably not worth your time. Off-topic for this strand, or only superficially related.",
+     "File. Relevant, but not urgent. Keep it for later. On-topic but not something to act on now.",
+     "Skim. Worth a look \u2014 the abstract may be enough. Clearly relevant; worth reading the summary to decide.",
+     "Read. Worth your attention today. A strong, specific match to this strand that the researcher should act on."
+    ]
+   },
+   "venue_fit": {
+    "type": "yesno",
+    "instructions": "Would a paper from this strand be in scope for this conference's call, as the call describes its topics and tracks?",
+    "true": "The call's scope or tracks name the strand's topics or methods.",
+    "false": "The call is for a different community; the strand would be out of scope or a poor fit for the tracks listed."
+   }
+  },
+  "fellowship": {
+   "worth": {
+    "type": "yesno",
+    "instructions": "Is this item worth this researcher's attention today, for this strand of their work?",
+    "true": "The item's subject matches this strand's listed interests specifically enough that the researcher could realistically act on it \u2014 read it, apply, submit, or build on it.",
+    "false": "The item is generic, aimed at a different field or method, or matches only a shared word rather than the strand's actual work."
+   },
+   "fit": {
+    "type": "score",
+    "instructions": "Where does this item sit for THIS strand of the researcher's work? Judge fit to the strand's listed interests and the researcher's stated methods, not to the researcher in general.",
+    "levels": [
+     "Skip. Probably not worth your time. Off-topic for this strand, or only superficially related.",
+     "File. Relevant, but not urgent. Keep it for later. On-topic but not something to act on now.",
+     "Skim. Worth a look \u2014 the abstract may be enough. Clearly relevant; worth reading the summary to decide.",
+     "Read. Worth your attention today. A strong, specific match to this strand that the researcher should act on."
+    ]
+   }
+  }
+ }
+}

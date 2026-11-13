@@ -1,0 +1,93 @@
+[
+ {
+  "weekly": "cfc953069d",
+  "generated_on": "2026-11-09",
+  "owner": "user",
+  "references_identical": false,
+  "stored_refs_lines": 18,
+  "rebuilt_refs_lines": 9,
+  "context_version_match": true,
+  "reverify_claims": 54,
+  "reverify_removed": 15,
+  "stored_claims": 54,
+  "faithful": false
+ },
+ {
+  "weekly": "c667813463",
+  "generated_on": "2026-11-09",
+  "owner": "user",
+  "references_identical": false,
+  "stored_refs_lines": 34,
+  "rebuilt_refs_lines": 26,
+  "context_version_match": true,
+  "reverify_claims": 118,
+  "reverify_removed": 14,
+  "stored_claims": 118,
+  "faithful": false
+ },
+ {
+  "weekly": "a4c95d899e",
+  "generated_on": "2026-11-09",
+  "owner": "org",
+  "references_identical": false,
+  "stored_refs_lines": 90,
+  "rebuilt_refs_lines": 88,
+  "context_version_match": true,
+  "reverify_claims": 315,
+  "reverify_removed": 0,
+  "stored_claims": 315,
+  "faithful": false
+ },
+ {
+  "weekly": "151c96eed8",
+  "generated_on": "2026-11-09",
+  "owner": "user",
+  "references_identical": false,
+  "stored_refs_lines": 18,
+  "rebuilt_refs_lines": 15,
+  "context_version_match": true,
+  "reverify_claims": 49,
+  "reverify_removed": 5,
+  "stored_claims": 49,
+  "faithful": false
+ },
+ {
+  "weekly": "8d750085dd",
+  "generated_on": "2026-11-09",
+  "owner": "user",
+  "references_identical": false,
+  "stored_refs_lines": 42,
+  "rebuilt_refs_lines": 32,
+  "context_version_match": true,
+  "reverify_claims": 163,
+  "reverify_removed": 17,
+  "stored_claims": 163,
+  "faithful": false
+ },
+ {
+  "weekly": "7be583cead",
+  "generated_on": "2026-11-09",
+  "owner": "user",
+  "references_identical": false,
+  "stored_refs_lines": 74,
+  "rebuilt_refs_lines": 64,
+  "context_version_match": true,
+  "reverify_claims": 276,
+  "reverify_removed": 17,
+  "stored_claims": 276,
+  "faithful": false
+ },
+ {
+  "weekly": "e57e35d4cd",
+  "generated_on": "2026-11-09",
+  "owner": "user",
+  "references_identical": false,
+  "stored_refs_lines": 42,
+  "rebuilt_refs_lines": 34,
+  "context_version_match": true,
+  "reverify_claims": 162,
+  "reverify_removed": 12,
+  "stored_claims": 162,
+  "faithful": false
+ }
+]

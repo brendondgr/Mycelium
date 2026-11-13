@@ -1,0 +1,85 @@
+{
+ "weeklies": 71,
+ "by_origin": {
+  "fallback": 64,
+  "llm": 7
+ },
+ "weeks": {
+  "2026-09-14": {
+   "weeklies": 4,
+   "llm": 0,
+   "claims": 52,
+   "removed": 0,
+   "llm_claims": 0,
+   "project_sections": 0
+  },
+  "2026-09-21": {
+   "weeklies": 7,
+   "llm": 0,
+   "claims": 122,
+   "removed": 0,
+   "llm_claims": 0,
+   "project_sections": 0
+  },
+  "2026-09-28": {
+   "weeklies": 8,
+   "llm": 0,
+   "claims": 146,
+   "removed": 0,
+   "llm_claims": 0,
+   "project_sections": 0
+  },
+  "2026-10-05": {
+   "weeklies": 8,
+   "llm": 0,
+   "claims": 142,
+   "removed": 0,
+   "llm_claims": 0,
+   "project_sections": 0
+  },
+  "2026-10-12": {
+   "weeklies": 8,
+   "llm": 0,
+   "claims": 149,
+   "removed": 0,
+   "llm_claims": 0,
+   "project_sections": 0
+  },
+  "2026-10-19": {
+   "weeklies": 8,
+   "llm": 0,
+   "claims": 155,
+   "removed": 0,
+   "llm_claims": 0,
+   "project_sections": 0
+  },
+  "2026-10-26": {
+   "weeklies": 8,
+   "llm": 0,
+   "claims": 144,
+   "removed": 0,
+   "llm_claims": 0,
+   "project_sections": 0
+  },
+  "2026-11-02": {
+   "weeklies": 8,
+   "llm": 0,
+   "claims": 151,
+   "removed": 0,
+   "llm_claims": 0,
+   "project_sections": 0
+  },
+  "2026-11-09": {
+   "weeklies": 12,
+   "llm": 7,
+   "claims": 1234,
+   "removed": 0,
+   "llm_claims": 1137,
+   "project_sections": 31
+  }
+ },
+ "llm_weeklies": 7,
+ "llm_project_sections": 31,
+ "claims_total": 2295,
+ "removed_total": 0
+}
