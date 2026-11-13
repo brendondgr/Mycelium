@@ -6,24 +6,16 @@
  * but they must never disagree about which sections a scope offers. So the
  * answer lives here once and both render it.
  *
- * The department case is the reason this is a model rather than a pair of JSX
- * branches. A department has **no research feeds**: every feed route scopes on
- * `?lab=`, so Papers / Grants / Fellowships / Conferences are absent from a
- * department's navigation rather than present and permanently empty — an entry
- * that always shows nothing teaches people the product is broken. What it has
- * instead is one **Opportunities** page: the calls only a department can take on
- * (`apps/content/dept_level.py`), scored for it only while its announcements are
- * on.
+ * A department works like a lab: it has the same four research feeds — Papers,
+ * Grants, Fellowships, Conferences — read from
+ * `/api/departments/<id>/recommendations/`, which is the lab's feed over the
+ * department's own profile. Beside them it keeps one page a lab does not have,
+ * **Opportunities**: the calls only a department can take on
+ * (`tools/delivery/dept_level.py`).
  */
 
 import type { SectionKey } from "@/lib/portal/routes";
-import {
-  FEATURE,
-  type LabMember,
-  type LabRole,
-  type MyDepartment,
-  type MyLab,
-} from "@/lib/portal/types";
+import { FEATURE, type MyDepartment, type MyLab } from "@/lib/portal/types";
 import type { WorkspaceScope } from "@/lib/portal/workspace";
 
 export type NavItem = {
@@ -47,60 +39,10 @@ export type NavIcon =
   | "projects"
   | "admin"
   | "mylo"
-  | "account";
+  | "account"
+  | "settings";
 
 export type NavGroup = { label: string; items: NavItem[] };
-
-/** A member with owner/admin/PI rights may edit the lab configuration. */
-export function canManageLab(lab: Pick<MyLab, "is_lead" | "role">): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
-
-/**
- * Lab roles ranked, mirroring ``apps.accounts.permissions.LAB_ROLE_RANK``.
- *
- * The server is the authority; this exists so the UI can hide a control it
- * knows will be refused rather than offer it and show a 403. Keep the two in
- * step — a drift here is a button that lies, not a security hole.
- */
-export const LAB_ROLE_RANK: Record<LabRole, number> = {
-  owner: 3,
-  admin: 2,
-  member: 1,
-  viewer: 0,
-};
-
-/** Whether the caller may hand out `role` — strictly below their own. */
-export function canGrantLabRole(
-  lab: Pick<MyLab, "is_lead" | "role">,
-  role: LabRole,
-): boolean {
-  return LAB_ROLE_RANK[lab.role] > LAB_ROLE_RANK[role];
-}
-
-/** The roles the caller may assign, highest first. */
-export function grantableLabRoles(
-  lab: Pick<MyLab, "is_lead" | "role">,
-): LabRole[] {
-  return (["admin", "member", "viewer"] as LabRole[]).filter((role) =>
-    canGrantLabRole(lab, role),
-  );
-}
-
-/** Whether the caller may act on this member at all — re-role or remove them. */
-export function outranksLabMember(
-  lab: Pick<MyLab, "is_lead" | "role">,
-  member: Pick<LabMember, "role">,
-): boolean {
-  return LAB_ROLE_RANK[lab.role] > LAB_ROLE_RANK[member.role];
-}
-
-/** Whether the caller may administer a department. */
-export function canManageDepartment(
-  dept: Pick<MyDepartment, "can_manage" | "is_owner">,
-): boolean {
-  return Boolean(dept.can_manage || dept.is_owner);
-}
 
 /** What the caller's rights and plan allow, passed in rather than read here. */
 export type NavContext = {
@@ -124,16 +66,16 @@ const FEED_ITEMS: Record<string, NavItem> = {
  * a caller can render this straight through without re-deciding anything.
  */
 export function navGroupsFor(ctx: NavContext): NavGroup[] {
-  const { scope, currentLab, currentDepartment, isAdmin, hasFeature } = ctx;
+  const { scope, isAdmin, hasFeature } = ctx;
 
   const common: NavItem[] = [
     { key: "saves", label: "Saves", icon: "saves" },
     { key: "reminders", label: "Reminders", icon: "reminders" },
   ];
 
-  // A lab is on its own paid plan, so its members always get the lab feeds; the
-  // personal feeds are gated on the personal plan.
-  const inLab = scope.kind === "lab";
+  // A lab or a department is on its own plan, so its members always get its
+  // feeds; the personal feeds are gated on the personal plan.
+  const inLab = scope.kind === "lab" || scope.kind === "department";
   const feeds: NavItem[] = [
     FEED_ITEMS.papers,
     ...(inLab || hasFeature(FEATURE.GRANT_ALERTS) ? [FEED_ITEMS.grants] : []),
@@ -148,79 +90,49 @@ export function navGroupsFor(ctx: NavContext): NavGroup[] {
 
   const groups: NavGroup[] = [];
 
+  // One Settings entry at the foot, for everyone. It opens the active
+  // workspace's context in the Settings area, where every page the reader may
+  // open is listed — so no settings page is a workspace entry any more.
+  const settings: NavGroup = {
+    label: "Settings",
+    items: [{ key: "settings", label: "Settings", icon: "settings" }],
+  };
+
   if (scope.kind === "department") {
-    const manage = currentDepartment
-      ? canManageDepartment(currentDepartment)
-      : false;
     groups.push({
       label: "Workspace",
       items: [
         { key: "overview", label: "Overview", icon: "overview" },
         { key: "deptOpportunities", label: "Opportunities", icon: "grants" },
-        { key: "labs", label: "Labs", icon: "labs" },
+        // One directory: the department's labs, then its people.
         { key: "members", label: "Members", icon: "members" },
-        ...(manage
-          ? [
-              {
-                key: "profile" as SectionKey,
-                label: "Department settings",
-                icon: "profile" as NavIcon,
-              },
-            ]
-          : []),
         ...common,
       ],
     });
-    // Projects only. See the module docstring for why there are no feeds.
-    groups.push({ label: "Research", items: [projects] });
-    if (manage) {
-      groups.push({
-        label: "Account",
-        items: [{ key: "account", label: "Account", icon: "account" }],
-      });
-    }
+    // The lab's four feeds over the department's own profile; Opportunities
+    // stays its own page in the Workspace group above.
+    groups.push({ label: "Research", items: [...feeds, projects] });
+    groups.push(settings);
     return groups;
   }
 
   if (scope.kind === "lab") {
-    const manage = currentLab ? canManageLab(currentLab) : false;
     groups.push({
       label: "Workspace",
       items: [
         { key: "overview", label: "Overview", icon: "overview" },
         { key: "members", label: "Members", icon: "members" },
-        ...(manage
-          ? [
-              {
-                key: "profile" as SectionKey,
-                label: "Lab settings",
-                icon: "profile" as NavIcon,
-              },
-            ]
-          : []),
         ...common,
       ],
     });
     groups.push({ label: "Research", items: [...feeds, projects] });
-    // A lab's plan is its managers' business; members don't get the entry.
-    if (manage) {
-      groups.push({
-        label: "Account",
-        items: [{ key: "account", label: "Account", icon: "account" }],
-      });
-    }
+    groups.push(settings);
     return groups;
   }
 
   groups.push({
     label: "Workspace",
-    items: [
-      { key: "overview", label: "Overview", icon: "overview" },
-      { key: "profile", label: "Profile", icon: "profile" },
-      // What Mylo understood from your conversations: personal, always.
-      { key: "mylo", label: "Mylo & you", icon: "mylo" },
-      ...common,
-    ],
+    items: [{ key: "overview", label: "Overview", icon: "overview" }, ...common],
   });
   groups.push({ label: "Research", items: [...feeds, projects] });
   if (isAdmin) {
@@ -229,10 +141,7 @@ export function navGroupsFor(ctx: NavContext): NavGroup[] {
       items: [{ key: "admin", label: "Admin dashboard", icon: "admin" }],
     });
   }
-  groups.push({
-    label: "Account",
-    items: [{ key: "account", label: "Account", icon: "account" }],
-  });
+  groups.push(settings);
   return groups;
 }
 
@@ -258,14 +167,19 @@ const ALWAYS_ALLOWED: SectionKey[] = [
   "labs",
   "daily",
   "suggested",
+  // Your own settings pages and the Settings area belong to no workspace: the
+  // area decides from its own path what the reader may open.
   "account",
+  "profile",
+  "mylo",
+  "settings",
 ];
 
 /**
- * Whether a section may be shown in this scope. This is what stops a department
- * scope rendering *personal* feed results: every feed section falls back to the
- * personal feed when `currentLab` is null, so without a guard
- * `/app/grants?ws=<dept>` would quietly show the reader their own grants.
+ * Whether a section may be shown in this scope. This is what stops a scope
+ * rendering a section that would answer for the wrong owner: every feed section
+ * falls back to the *personal* feed when the workspace has no org, so a section
+ * reached by a stale link must be checked against what the scope offers.
  *
  * It is a navigation guard, not a permission boundary — the API enforces access.
  */

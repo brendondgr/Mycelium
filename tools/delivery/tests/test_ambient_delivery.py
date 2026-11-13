@@ -98,7 +98,7 @@ def test_a_fact_told_to_mylo_is_echoed_once_and_an_undone_one_is_not(ada):
     call_command("deliver_ambient_questions")
     [bell] = Notification.objects.filter(kind="change_applied")
     assert bell.title.startswith("Noted on Imaging pipeline: annotation budget")
-    assert bell.url == "/app/mylo-and-you"
+    assert bell.url == "/app/settings/you/mylo"
     call_command("deliver_ambient_questions")
     assert Notification.objects.filter(kind="change_applied").count() == 1
 

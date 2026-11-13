@@ -8,6 +8,8 @@ import {
   useDailyBriefing,
   useDailyReport,
   useDeadlines,
+  useDepartmentDailyBriefing,
+  useDepartmentRecommendations,
   useFellowships,
   useGrants,
   useWindowCounts,
@@ -45,7 +47,13 @@ export function OverviewSection() {
   const { user, scopeLabel, currentLab, currentDepartment } = usePortal();
   const isAdmin = isPlatformAdmin(user);
   const setupQuery = useSetupStatus(isAdmin);
-  const briefingQuery = useDailyBriefing();
+  const personalBriefing = useDailyBriefing();
+  // A department works like a lab: its overview reads its own report and its
+  // own four feeds, not the reader's personal ones.
+  const deptId = !currentLab && currentDepartment ? currentDepartment.id : undefined;
+  const deptBriefing = useDepartmentDailyBriefing(deptId);
+  const deptRec = useDepartmentRecommendations(deptId);
+  const briefingQuery = deptId ? deptBriefing : personalBriefing;
   const windowCountsQuery = useWindowCounts();
   const dailyReportQuery = useDailyReport();
   const deadlinesQuery = useDeadlines();
@@ -55,16 +63,35 @@ export function OverviewSection() {
 
   const items = React.useMemo(
     () =>
-      overviewItems({
-        papers: dailyReportQuery.data?.suggestions,
-        grants: grantsQuery.data?.items,
-        fellowships: fellowshipsQuery.data?.items,
-        conferences: conferencesQuery.data?.items,
-      }),
-    [dailyReportQuery.data, grantsQuery.data, fellowshipsQuery.data, conferencesQuery.data],
+      deptId
+        ? overviewItems({
+            papers: deptRec.data?.papers,
+            grants: deptRec.data?.grants,
+            fellowships: deptRec.data?.fellowships,
+            conferences: deptRec.data?.conferences,
+            recommendedFor: deptRec.data?.recommended_for,
+          })
+        : overviewItems({
+            papers: dailyReportQuery.data?.suggestions,
+            grants: grantsQuery.data?.items,
+            fellowships: fellowshipsQuery.data?.items,
+            conferences: conferencesQuery.data?.items,
+          }),
+    [
+      deptId,
+      deptRec.data,
+      dailyReportQuery.data,
+      grantsQuery.data,
+      fellowshipsQuery.data,
+      conferencesQuery.data,
+    ],
   );
-  const feedsLoading =
-    dailyReportQuery.isLoading || grantsQuery.isLoading || fellowshipsQuery.isLoading || conferencesQuery.isLoading;
+  const feedsLoading = deptId
+    ? deptRec.isLoading
+    : dailyReportQuery.isLoading ||
+      grantsQuery.isLoading ||
+      fellowshipsQuery.isLoading ||
+      conferencesQuery.isLoading;
   const nothingYet =
     !feedsLoading &&
     !briefingQuery.isLoading &&
@@ -82,7 +109,7 @@ export function OverviewSection() {
   return (
     <div className="ws-overview" data-layout="split">
       <OverviewHead
-        subject="your"
+        subject={currentDepartment ? "the department's" : "your"}
         action={
           // A department's workspace opens on this overview: ask about the department.
           currentDepartment ? (
@@ -106,7 +133,16 @@ export function OverviewSection() {
       <div className="ws-split">
         <div className="ws-split-main">
           <FoldedReport>
-            <MyloReportCard data={briefingQuery.data} isLoading={briefingQuery.isLoading} />
+            {deptId ? (
+              <MyloReportCard
+                data={briefingQuery.data}
+                isLoading={briefingQuery.isLoading}
+                title="Department Mylo Report"
+                statsSubject="the department"
+              />
+            ) : (
+              <MyloReportCard data={briefingQuery.data} isLoading={briefingQuery.isLoading} />
+            )}
           </FoldedReport>
           <TodayByTheme items={items} isLoading={feedsLoading} />
         </div>

@@ -12,13 +12,8 @@ import { updateProjectState } from "@/lib/portal/mutations";
 import { ProjectCapReachedError } from "@/lib/portal/mutations";
 import type { MyLab } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
+import { CAPABILITY, can, holding } from "@/lib/portal/capabilities";
 
-/** A member with owner/admin/PI rights may create/manage projects for that lab
- * (mirrors the backend's create-permission check and the Save-button scope
- * picker's `canManageLab`). */
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 type Scope = { kind: "personal" } | { kind: "lab"; slug: string; name: string };
 
@@ -45,10 +40,10 @@ function samesScope(a: Scope, b: Scope): boolean {
  */
 export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
   const { labs, currentLab, openProject } = usePortal();
-  const managedLabs = React.useMemo(() => labs.filter(canManageLab), [labs]);
+  const managedLabs = React.useMemo(() => labs.filter(holding(CAPABILITY.PROFILE_EDIT)), [labs]);
 
   const defaultScope: Scope = React.useMemo(() => {
-    if (currentLab && canManageLab(currentLab)) {
+    if (currentLab && can(currentLab, CAPABILITY.PROFILE_EDIT)) {
       return { kind: "lab", slug: currentLab.slug, name: currentLab.name };
     }
     return { kind: "personal" };

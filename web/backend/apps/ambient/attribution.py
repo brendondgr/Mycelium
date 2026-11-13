@@ -403,9 +403,12 @@ def candidate_projects(speaker, source, *, place_kind: str):
     Only projects the speaker is **on** — their personal projects and those
     they are a member of — plus, in a lab channel only, the lab's projects that
     are shared into lab reports. A DM never attributes to a project the speaker
-    is not on: that is a hard filter, not a score.
+    is not on: that is a hard filter, not a score. A project the speaker asked
+    Mylo not to record them about is never a candidate for them.
     """
     from apps.research.models import Project
+
+    from .eligibility import excluded_project_ids
 
     on = Q(scope_user=speaker) | Q(memberships__user=speaker)
     if place_kind != "dm" and getattr(source, "lab_id", None):
@@ -413,6 +416,7 @@ def candidate_projects(speaker, source, *, place_kind: str):
     return (
         Project.objects.filter(is_archived=False)
         .filter(on)
+        .exclude(pk__in=excluded_project_ids(speaker))
         .select_related("state")
         .prefetch_related("memberships")
         .distinct()

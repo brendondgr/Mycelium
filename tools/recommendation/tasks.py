@@ -48,30 +48,50 @@ def select_users(usernames: list[str] | None) -> list[User]:
     return [u for u in users if u.id in entitled]
 
 
-#: Where the departments to score come from. A department has no feed of its
-#: own: it is scored only because something built on recommendation needs its
-#: slate (announcements register their enabled departments, see
+#: Extra departments something built on recommendation needs scored beyond the
+#: entitled ones (announcements register theirs, see
 #: :func:`register_department_source`). Recommendation never imports that code.
+#: Scoring no longer *depends* on a source: a department is scored on the lab's
+#: terms whether or not its announcements are on.
 _DEPARTMENT_SOURCES: list = []
 
 
 def register_department_source(source) -> None:
-    """Add a zero-argument callable returning the departments it needs scored."""
+    """Add a zero-argument callable returning departments it needs scored."""
     if source not in _DEPARTMENT_SOURCES:
         _DEPARTMENT_SOURCES.append(source)
 
 
 def select_departments(usernames: list[str] | None) -> list:
-    """Departments to score on a full run: whatever the registered sources ask
-    for (today, those with announcements switched on and a plan that covers
-    them), each once. A targeted run (``usernames`` given) scores none."""
+    """Departments to score on a full run, each once.
+
+    A department works like a lab (settings plan): it is scored on the same
+    terms — an **active** department plan, the rule :func:`select_targets` applies
+    to a lab — for papers and for every opportunity kind, whether or not its
+    announcements are on. Any department a registered source still asks for is
+    added. The demo's department is left out while the demo is off. A targeted
+    run (``usernames`` given) scores none.
+    """
     if usernames:
         return []
+    from apps.accounts.models import Department
+    from apps.billing.models import Subscription
     from apps.demo.world import nightly_skipped_scopes
 
-    _labs, seen = nightly_skipped_scopes()  # the demo's, while it is off
-    seen = set(seen)
+    _labs, skipped = nightly_skipped_scopes()  # the demo's, while it is off
+    seen = set(skipped)
+    active_ids = set(
+        Subscription.objects.filter(
+            status=Subscription.Status.ACTIVE, scope_department__isnull=False
+        ).values_list("scope_department_id", flat=True)
+    )
     out: list = []
+    for department in Department.objects.filter(pk__in=active_ids).select_related(
+        "profile"
+    ).order_by("created_at", "pk"):
+        if department.pk not in seen:
+            seen.add(department.pk)
+            out.append(department)
     for source in _DEPARTMENT_SOURCES:
         for department in source():
             if department.pk not in seen:
@@ -171,16 +191,18 @@ def run_daily_suggestions(
     """Ingest once, then recommend per user; return the ingest + per-user summary."""
     users = select_users(usernames)
     labs, projects = select_targets(usernames)
+    departments = select_departments(usernames)
     runlog = new_run_log(settings.DAILY_SUGGESTIONS_LOG_DIR, label="beat")
     runlog.line(
         f"daily run start: {len(users)} user(s), {len(labs)} lab(s), "
-        f"{len(projects)} project(s)"
+        f"{len(departments)} department(s), {len(projects)} project(s)"
     )
     logger.info("daily suggestions run log: %s", runlog.path)
     try:
         batch = run_daily_batch(
             users,
             labs=labs,
+            departments=departments,
             projects=projects,
             days_back=days_back,
             days_forward=days_forward,
@@ -227,7 +249,7 @@ def run_daily_opportunities(
     runlog = new_run_log(settings.DAILY_SUGGESTIONS_LOG_DIR, label="opportunities")
     runlog.line(
         f"daily opportunities start: {len(users)} user(s), {len(labs)} lab(s), "
-        f"{len(projects)} project(s)"
+        f"{len(departments)} department(s), {len(projects)} project(s)"
     )
     logger.info("daily opportunities run log: %s", runlog.path)
     try:

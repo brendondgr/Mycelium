@@ -215,6 +215,16 @@ export async function fetchLabDailyBriefing(
   );
 }
 
+/** A department's Mylo Report — the lab's briefing envelope. */
+export async function fetchDepartmentDailyBriefing(
+  id: string,
+): Promise<DailyBriefing> {
+  return getJson<DailyBriefing>(
+    buildApiUrl(getPublicApiBase(), "departments", id, "daily-briefing"),
+    "Could not load the department's daily briefing.",
+  );
+}
+
 /** The caller's retained briefings, newest day first — dates and counts only. */
 export async function fetchBriefings(
   kind: BriefingKind = "daily",
@@ -445,6 +455,17 @@ export async function fetchLabProfile(slug: string): Promise<LabProfileData> {
   );
 }
 
+/**
+ * A department's profile. The same shape as a lab's (`DeptProfile` and
+ * `LabProfile` share one interest surface), so one type serves both.
+ */
+export async function fetchDeptProfile(id: string): Promise<LabProfileData> {
+  return getJson<LabProfileData>(
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "profile"),
+    "Could not load the department's profile.",
+  );
+}
+
 /** What Mylo watches for a lab (same shape as a user's watch settings). */
 export async function fetchLabWatch(slug: string): Promise<WatchData> {
   return getJson<WatchData>(
@@ -460,6 +481,17 @@ export async function fetchLabRecommendations(
   return getJson<TargetRecommendations>(
     buildApiUrl(getPublicApiBase(), "labs", slug, "recommendations"),
     "Could not load the lab's recommendations.",
+  );
+}
+
+/** A department's matched papers, grants, fellowships and conferences — the
+ * lab's feed over the department's own profile. */
+export async function fetchDepartmentRecommendations(
+  id: string,
+): Promise<TargetRecommendations> {
+  return getJson<TargetRecommendations>(
+    buildApiUrl(getPublicApiBase(), "departments", id, "recommendations"),
+    "Could not load the department's recommendations.",
   );
 }
 

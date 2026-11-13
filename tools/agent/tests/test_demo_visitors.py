@@ -99,7 +99,7 @@ def test_a_refused_send_refunds_the_question(demo, no_turns):
     assert sent.status_code == 202
 
 
-def test_demo_threads_are_never_learned_from(demo):
+def test_demo_threads_are_never_learned_from(demo, monkeypatch):
     from tools.agent import learning, memory_after
     from tools.agent.models import AgentThread
 
@@ -108,7 +108,11 @@ def test_demo_threads_are_never_learned_from(demo):
     )
     assert thread not in list(learning.due_threads())
     called = []
-    memory_after.title_and_purpose = lambda *a, **k: called.append(a)
+    # monkeypatch, not assignment: a bare assignment outlived this test and
+    # blanked every later thread's title and purpose (test_loop, test_memory).
+    monkeypatch.setattr(
+        memory_after, "title_and_purpose", lambda *a, **k: called.append(a)
+    )
     memory_after.after_turn(None, thread, None)
     assert called == []
     # Outside the demo, the demo viewer's thread list is empty.

@@ -11,11 +11,11 @@ import { sectionAllowed } from "@/lib/portal/nav";
  * workspace offers.
  *
  * Hiding the entry from the navigation is not enough on its own. Every feed
- * section is written as `if (currentLab) return <LabFeed/>` and otherwise
- * renders the *personal* feed — so in a department scope, where `currentLab` is
- * null by construction, `/app/grants?ws=<dept>` would quietly show the reader
- * their own personal grants under a department's name. That is the worst class
- * of bug here: not an error, just the wrong answer presented confidently.
+ * section reads the workspace's org (a lab's or a department's feed) and
+ * otherwise renders the *personal* feed — so a section a scope does not offer,
+ * reached by an old link, would quietly show the reader the wrong owner's
+ * matches. That is the worst class of bug here: not an error, just the wrong
+ * answer presented confidently.
  *
  * This is a navigation guard, not a permission boundary. The API decides what
  * anyone may actually read.

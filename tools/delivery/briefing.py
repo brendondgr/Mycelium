@@ -69,7 +69,7 @@ from tools.recommendation.slates import (
     cluster_rank,
     entered_cluster_on,
 )
-from tools.recommendation.targets import target_for_lab, target_for_user
+from tools.recommendation.targets import target_for_user
 from tools.recommendation.top_feed import is_entrant, order_by_slate
 from tools.retrieval.models import ContentItem
 
@@ -340,6 +340,43 @@ def hidden_lab_projects(lab) -> int:
     return (
         Project.objects.active()
         .filter(scope_lab=lab, share_in_lab_reports=False)
+        .count()
+    )
+
+
+def report_projects_for_org(scope) -> list:
+    """The active projects a lab's or a department's shared surfaces cover.
+
+    A lab reads :func:`report_projects_for_lab`. A department's surfaces are
+    read by every department member and posted to its server, so they hold to
+    the same rule: only its own projects whose editors opted them in.
+    """
+    from tools.delivery.org_scope import org
+
+    scope = org(scope)
+    if scope.is_lab:
+        return report_projects_for_lab(scope.obj)
+    from apps.research.models import Project
+
+    return list(
+        Project.objects.active()
+        .filter(scope_department=scope.obj, share_in_lab_reports=True)
+        .order_by("name", "id")
+    )
+
+
+def hidden_org_projects(scope) -> int:
+    """:func:`hidden_lab_projects` for a lab or a department."""
+    from tools.delivery.org_scope import org
+
+    scope = org(scope)
+    if scope.is_lab:
+        return hidden_lab_projects(scope.obj)
+    from apps.research.models import Project
+
+    return (
+        Project.objects.active()
+        .filter(scope_department=scope.obj, share_in_lab_reports=False)
         .count()
     )
 
@@ -870,7 +907,9 @@ def context_version(owner: dict, projects: list) -> str:
     from tools.recommendation.understanding import context_version as compute
 
     try:
-        return compute(owner.get("user"), owner.get("lab"), projects)
+        # A department's profile has the lab's shape, so it digests the same way.
+        org_owner = owner.get("lab") or owner.get("department")
+        return compute(owner.get("user"), org_owner, projects)
     except Exception:  # noqa: BLE001 - interpretability must not cost the report
         return ""
 
@@ -958,14 +997,16 @@ def generate_briefing_for_lab(
     *,
     complete: briefing_sections.CompleteFn | None = None,
 ) -> DailyBriefing:
-    """Build and persist a lab's daily report over its aggregate matches.
+    """Build and persist a lab's — or a department's — daily report.
 
-    Same shape as the personal briefing, but grounded in the lab's shared interest
-    profile (:func:`tools.recommendation.targets.target_for_lab`) and its ``target_lab``
-    scores, and limited to the categories a lab is scored for
-    (:data:`LAB_BRIEFING_CATEGORIES`, now all four). The row is keyed on the lab, so
-    a lab's briefing is distinct from any member's own, and its own part is headed
-    with the lab's name rather than "Personal".
+    Takes a ``Lab`` or a ``Department`` (a department works like a lab: same
+    report, same code; :mod:`tools.delivery.org_scope` is where the two differ).
+    Same shape as the personal briefing, but grounded in the org's shared
+    interest profile and its ``target_lab`` / ``target_department`` scores, and
+    limited to the categories an org is scored for
+    (:data:`LAB_BRIEFING_CATEGORIES`, all four). The row is keyed on the org, so
+    its briefing is distinct from any member's own, and its own part is headed
+    with the org's name rather than "Personal".
 
     The report does *not* name who each item suits. The member-fit layer is still
     computed and still drives the "Best suited to" strip on a lab's feed cards,
@@ -975,46 +1016,53 @@ def generate_briefing_for_lab(
     :func:`_showcase_item` records it on the stored showcase for those surfaces.
     """
     from tools.delivery.alert_report import attention_section, block_for, open_alerts
+    from tools.delivery.org_scope import org
     from tools.delivery.report_stats import record_run_stats
 
-    blocks = [block_for(alert) for alert in open_alerts({"target_lab": lab})]
+    scope = org(lab)
+    alerts = open_alerts(scope.alert_filter) if scope.alert_filter else []
+    blocks = [block_for(alert) for alert in alerts]
     summaries = [
         (block.project_label, block.trigger_label, block.title) for block in blocks
     ]
     from tools.delivery.weekly_changes import changed_today, with_changed_today
 
-    shared = report_projects_for_lab(lab)
-    changed = changed_today(reader=lab, projects=shared, is_lab=True)
+    shared = scope.shared_projects()
+    changed = changed_today(reader=scope.obj, projects=shared, is_lab=True)
     # With announcements live, each grant, fellowship and conference already has
     # its own thread: the report keeps papers and one line per kind (plan D6).
     from tools.delivery.announce import announcements_live, report_body, report_line
 
-    announcing = announcements_live(lab)
+    announcing = announcements_live(scope)
     briefing = _write_briefing(
-        owner={"lab": lab},
-        target=target_for_lab(lab),
-        target_filter={"target_lab": lab},
-        watch=getattr(lab, "watch", None),
+        owner=scope.owner,
+        target=scope.match_target(),
+        target_filter=scope.target_filter,
+        watch=scope.watch,
         allow=("papers",) if announcing else LAB_BRIEFING_CATEGORIES,
-        member_names=_lab_member_names(lab),
+        member_names=_member_names(scope.target_filter),
         projects=shared,
-        hidden_projects=hidden_lab_projects(lab),
-        # The lab's aggregate part is the lab, so it is named after it. "Personal"
+        hidden_projects=scope.hidden_projects(),
+        # The org's aggregate part is the org, so it is named after it. "Personal"
         # is what a *person's* own matches are called; on a lab's report it named
         # nobody.
-        personal_label=lab.name,
+        personal_label=scope.name,
         complete=complete,
         # Ambient Plan 09: a stated-state change accepted today, one line each.
         attention=with_changed_today(attention_section(blocks), changed),
         alert_summaries=summaries,
     )
     if announcing:
-        line = report_line(lab, timezone.localdate())
+        line = report_line(scope, timezone.localdate())
         body = report_body(briefing.body or "", line)
         if body != briefing.body:
             briefing.body = body
             briefing.save(update_fields=["body"])
     return record_run_stats(briefing)
+
+
+#: The same function under the name that says what it takes.
+generate_briefing_for_org = generate_briefing_for_lab
 
 
 def _lab_member_names(lab) -> dict[str, str]:

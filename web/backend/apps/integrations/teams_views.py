@@ -22,6 +22,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts import capabilities as caps
+
 from .services import slack_link, teams_auth, teams_events, teams_resolve
 
 
@@ -74,6 +76,8 @@ class TeamsLinkCodeView(APIView):
 
 
 class TeamsLabCodeView(APIView):
+    capabilities = {"POST": caps.SERVERS_MANAGE}
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -130,6 +134,8 @@ class TeamsUnlinkView(APIView):
 
 
 class TeamsLabView(APIView):
+    capabilities = {"POST": caps.SERVERS_MANAGE}
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):

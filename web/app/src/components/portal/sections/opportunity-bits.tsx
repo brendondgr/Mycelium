@@ -25,13 +25,10 @@ import {
 } from "@/lib/portal/hooks";
 import { formatIsoDate } from "@/lib/portal/dates";
 import { useDismissable } from "@/lib/portal/use-dismissable";
-import type { DeadlineOption, MyLab } from "@/lib/portal/types";
+import type { DeadlineOption } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
+import { CAPABILITY, holding } from "@/lib/portal/capabilities";
 
-/** A member with owner/admin/PI rights may save to that lab's shared saves. */
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 /**
  * Mylo's read on why an opportunity fits — the LLM's tailored explanation in a
@@ -421,7 +418,7 @@ export function SaveButton({
   const { save, unsave } = useSaveOpportunity();
   const labsQuery = useMyLabs();
   const managedLabs = React.useMemo(
-    () => (labsQuery.data ?? []).filter(canManageLab),
+    () => (labsQuery.data ?? []).filter(holding(CAPABILITY.PROFILE_EDIT)),
     [labsQuery.data],
   );
   const { open, setOpen, ref } = useDismissable<HTMLDivElement>();

@@ -653,7 +653,7 @@ export function OnboardingFlow({
       goStep(step - 1, -1);
     } else if (editing) {
       // Step 0 in edit mode has no verify screen behind it — leave the flow.
-      router.push("/app/profile");
+      router.push("/app/settings/you/profile");
     } else if (!verified) {
       setScreen("verify");
     }
@@ -760,7 +760,7 @@ export function OnboardingFlow({
           queryClient.invalidateQueries({ queryKey: ["portal", "profile"] }),
           queryClient.invalidateQueries({ queryKey: ["portal", "watch"] }),
         ]);
-        router.push("/app/profile");
+        router.push("/app/settings/you/profile");
         router.refresh();
       } catch (error) {
         setBusy(false);

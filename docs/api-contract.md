@@ -66,13 +66,16 @@ routes clients depend on most.
 | `labs/<slug>/attach-requests/` | GET | Departments asking to take in this lab (lab owner only) |
 | `labs/<slug>/attach-requests/<id>/accept/` `…/decline/` | POST | The lab owner answers one |
 | `labs/<slug>/members/<username>/` | PATCH, DELETE | Change role / remove |
+| `labs/<slug>/leave/` | POST | Leave the lab yourself (any member) |
 | `labs/<slug>/invitations/` | GET, POST | Lab's invitations; invite someone |
 | `labs/<slug>/invitations/<id>/cancel/` | POST | Withdraw an invitation |
 | `invitations/` | GET | The caller's pending invitations |
 | `invitations/<id>/respond/` | POST | Accept / reject / ignore |
-| `departments/<id>/profile/` | GET, PATCH | Department interest profile |
+| `departments/<id>/profile/` | GET, PATCH | Department interest profile (same fields as a lab's); both slash forms |
 | `departments/<id>/labs/` `…/labs/<slug>/` | GET, POST / DELETE | Labs under a department; attaching someone else's lab files a request its owner answers (`202`) |
-| `departments/<id>/members/` `…/members/<username>/` | GET, POST / PATCH, DELETE | Department roster; `POST` mails an invitation by username (`202`, same answer either way) |
+| `departments/<id>/members/` `…/members/<username>/` | GET, POST / PATCH, DELETE | Department roster; `POST` mails an invitation by username (`202`, same answer either way); re-role and remove run downward only |
+| `departments/<id>/transfer-ownership/` | POST | Hand the department to a direct member |
+| `departments/<id>/leave/` | POST | Give up your direct place in a department |
 
 ### Recommendations & content — `/api/`
 
@@ -88,6 +91,9 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `briefings/<YYYY-MM-DD>/` | GET | One archived personal report |
 | `labs/<slug>/briefings/` | GET | A lab's retained report history |
 | `labs/<slug>/briefings/<YYYY-MM-DD>/` | GET | One archived lab report |
+| `departments/<uuid>/daily-briefing/` | GET | A department's written report — the lab's envelope |
+| `departments/<uuid>/briefings/` | GET | A department's retained report history |
+| `departments/<uuid>/briefings/<YYYY-MM-DD>/` | GET | One archived department report |
 | `announcements/?lab=<slug>\|department=<id>` | GET | Opportunity announcements: `settings`, `can_manage`, `feature_on`, `announced` (each with `checks`, `write_up`, `interested`, `updated_on`, `dept_reasons` and a `discord` list of links), `held` (with `reason`), `closing_soon` (next 14 days, with links), and `servers` (one per binding, with `announcement_routes`). Members read (403 otherwise; 400 without a target) |
 | `announcements/settings/?lab=\|department=` | GET, PUT | Announcement settings (`enabled`, the three kinds, `daily_cap` with `-1` for no limit, `default_nudge` `none\|2d\|1w\|2w\|3w\|1m\|2m`, `closing_soon_list`, `strong_match_tagging`, `save_on_interest`, `activation_seed`, `min_award`). Managers write; 400 with per-field messages. The first switch-on returns `activating: true` and queues the activation seed |
 | `announcements/test/?lab=\|department=` | POST | A labelled test thread in each forum (once per forum: a department's kinds share one); `{"results": [{"guild_name", "purpose", "channel_name", "ok"}]}`. Managers only |
@@ -99,6 +105,7 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `opportunities/ranking-reference/` | GET | Static hover copy for conference rank badges |
 | `opportunities/fellowships/` | GET | Eligibility-gated, ranked fellowships |
 | `labs/<slug>/recommendations/` | GET | A lab's four feeds + counts + window counts |
+| `departments/<uuid>/recommendations/` | GET | A department's four feeds, in the lab's envelope |
 | `projects/<id>/recommendations/[?digest=1]` | GET | A project's four feeds, or its short list |
 | `reflections/` | GET | Mylo's pending proposals about the caller's project state |
 | `reflections/<id>/action/` | POST | Accept (applies it) or reject one |
@@ -207,6 +214,8 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `understanding/<concept_id>/<relation>/reopen/` | POST | Include a declined or faded topic after all |
 | `settings/` | GET, PUT | Listening on Discord (and on Slack and Teams, `listening_slack` / `listening_teams`, once linked), Mylo's questions on/off, a quiet period; a free plan (under subscriptions) may turn things off only. GET also says whether transcripts are on |
 | `observations/delete/` | POST | `{"confirm": true}` — delete every summary and everything derived from them |
+| `recording/` | GET, POST | What Mylo records of me per server and per project. GET: `{"servers": [{"id", "label", "platform", "orgs", "server_listening", "excluded", "recording", "locked", "locked_reason"}], "projects": [{"id", "name", "excluded"}]}` — servers are the sources of my labs' and departments' servers; projects are those I can see. POST `{"server": id, "record": bool}` or `{"project": id, "record": bool}` keeps one out or lifts that; lifting a server exclusion is **403** while its head has listening off (the head's off wins); 404 for a server or project that is not mine. No-slash form too |
+| `servers/<lab\|department>/<slug\|id>/` | GET, POST | The head's switch: the org's live Discord servers, `[{"guild_id", "name", "listening", "available", "shared_with"}]`; POST `{"guild_id", "on"}` turns listening on or off there (off wins over every member's switch). `org.servers.manage` (403 otherwise); 404 for a server the org is not bound in; 409 while ambient listening is off for the instance. No-slash form too |
 | `projects/<id>/developments/` | GET | A project's development timeline, for anyone who can see the project; private ones for their speaker only |
 | `labs/<slug>/changes/` | GET | A lab's "What changed": lab-visible changes to its shared projects; members only |
 | `transcripts/` | POST | A meeting transcript (Plan 11): multipart `file` or `text`, `title`, `project` or `lab`. Without `speakers`, nothing is read: returns `{"labels", "members"}`. With `speakers` (JSON map label → user id) and `occurred_at`: reads the turns of mapped, opted-in members into the buffer, returns `{"meeting", "turns", "counts", "participants"}`. 403 while `AMBIENT_TRANSCRIPTS_ENABLED` is off, for a project the caller cannot see, or for a lab they are not a member of (a missing lab answers the same) — checked before the member list is returned |
@@ -416,6 +425,38 @@ link — never at sign-up, where the address is only typed.
 ### `POST /api/auth/logout/` · `GET /api/auth/me/`
 
 `logout` returns `204`. `me` returns the user summary, `401` when anonymous.
+It also carries the caller's **capabilities** in every lab and department they
+act in, keyed by lab slug and department id:
+
+```json
+"capabilities": {
+  "labs": { "reyes-lab": ["org.profile.edit", "org.people.view", "..."] },
+  "departments": { "uuid": ["org.people.view"] }
+}
+```
+
+### Capabilities
+
+What a person may do in an org is a closed list, resolved on the server from
+fixed role presets (`apps/accounts/capabilities.py`) and read — never
+recomputed — by the app, which asks `can(org, capability)`:
+
+`org.profile.edit`, `org.people.view`, `org.people.manage`,
+`org.invites.issue`, `org.projects.policy`, `org.projects.oversee`,
+`org.servers.manage`, `org.announcements.manage`, `org.mylo.policy`,
+`org.billing.manage`, `org.transfer`.
+
+| Role | Capabilities |
+|---|---|
+| Lab owner · department head | all |
+| Admin · lab lead PI · a non-head `owner` department row | all but `org.transfer` |
+| Member · viewer · someone in a department only through one of its labs | `org.people.view` |
+
+Departments listed are the ones the caller heads or holds a direct role in.
+Each org-scoped view declares the capability each of its methods needs; plain
+membership reads are declared as `org.membership`, which is not a capability.
+The Discord gate's levels map onto the same list: `manage` →
+`org.servers.manage`, `edit` → `org.profile.edit`, `access` → membership.
 
 ## Account, email verification & password
 
@@ -634,7 +675,7 @@ rule, ranked `owner > admin > member > viewer`: an actor may only act on a
 target **below** them, and may only grant a role **below** their own. So the PI
 alone creates admins, the PI alone creates owners (and only through the transfer
 route), and an admin can neither re-role nor remove another admin or the owner.
-A refusal is `403` with `reason` `role_above_you`, and is recorded as
+A refusal is `403` with a plain `detail` message, and is recorded as
 `lab.member.role.refused`.
 
 Every other way of **granting** a lab role follows the same rule: an invite by
@@ -643,6 +684,45 @@ invitation or share link (`invites/`). None grants `owner`; only the owner
 grants `admin`; a lead PI or admin invites as `member` or `viewer`. Refusals are
 `403`, audited as `lab.invite.refused`, `lab.member.add.refused` or
 `org.invite.refused`.
+
+A **lead PI** (`is_lead`) holds every right an admin does, whatever their
+`role`: they manage the lab on every endpoint an owner or admin can, grant
+`member` and `viewer`, and act on members and viewers. They do not outrank an
+admin, and only the owner creates admins.
+
+### Department roles: authority runs downward
+
+The same rule for a department, ranked `head > admin > member > viewer`. The
+head is `Department.owner`, with an `owner` membership row kept in step; any
+other `owner` row counts as an admin. An invitation by username (`POST departments/<id>/members/`),
+`PATCH`/`DELETE …/members/<username>/` and `POST departments/<id>/invites/`
+refuse a role the caller cannot grant (`403`, recorded as
+`dept.member.role.refused`); an admin cannot re-role or remove another admin
+(a refused removal is `403`, recorded as `dept.member.remove.refused`), and the
+head cannot be removed (`409`). Roster rows carry `is_head`, and `can_act`:
+whether the caller may re-role or remove that person (only with
+`org.people.manage`, direct members they outrank, never themselves; always
+`false` for someone there through a lab).
+
+### `POST /api/auth/departments/<id>/transfer-ownership/`
+
+Hand a department to a direct member: `{ "username": "..." }`. Only the head
+may; the target must be a direct member with a verified email. `Department.owner`
+moves, the new head's row becomes `owner`, the outgoing head's becomes `admin`
+(created if it was missing), and any other `owner` row drops to `admin`. Audited
+as `department.ownership.transfer`. Returns the department roster. Irreversible
+from the caller's side; `400` for a non-member, unverified target or the caller
+themselves, `403` for anyone but the head. Both slash forms.
+
+### `POST /api/auth/labs/<slug>/leave/` · `POST /api/auth/departments/<id>/leave/`
+
+Leave an org yourself — Settings → Your membership. Open to any member
+(`org.membership`), so someone who manages nothing can still leave; no body.
+`204` on success, `403` for a stranger. A lab's only `owner` gets `409` (hand
+the lab over first); a department's head gets `409`, and so does someone who
+belongs only through one of its labs (leaving that lab is what ends it).
+Audited as `lab.member.leave` / `dept.member.leave` beside the removal's own
+`lab.member.remove` / `dept.member.remove`. Both slash forms.
 
 ### `GET` / `PATCH` `/api/auth/watch/me/`
 
@@ -672,12 +752,16 @@ The caller's lab memberships, for the workspace switcher:
 ```json
 [
   { "slug": "reyes-lab", "name": "Reyes Lab", "role": "owner", "is_lead": true,
-    "department": "Biology", "has_logo": true, "logo_version": 1752719700 }
+    "department": "Biology", "has_logo": true, "logo_version": 1752719700,
+    "capabilities": ["org.profile.edit", "..."],
+    "grantable_roles": ["admin", "member", "viewer"] }
 ]
 ```
 
 `role` is `owner | admin | member | viewer`; `is_lead` marks a PI. `logo_version`
-is a cache-busting token (`null` when unset).
+is a cache-busting token (`null` when unset). `capabilities` is the caller's set
+here (see Capabilities); `grantable_roles` the roles they may hand out, highest
+first, never `owner`, and empty without `org.people.manage`.
 
 ### `POST /api/auth/labs/`
 
@@ -692,8 +776,12 @@ they can act on, not those they are folded into through a lab:
 
 ```json
 [{ "id": "uuid", "name": "Biology", "institution": "Northgate University",
-   "role": "owner", "is_owner": true, "can_manage": true }]
+   "role": "owner", "is_owner": true, "can_manage": true,
+   "capabilities": ["org.profile.edit", "..."],
+   "grantable_roles": ["admin", "member", "viewer"] }]
 ```
+
+`can_manage` is `org.people.manage`, kept for older readers.
 
 `POST { "name" }` creates one with the caller as head, a CANOPY plan that starts
 **inactive**, and a pending founder seat. Its `institution` is the caller's
@@ -729,8 +817,12 @@ mailing a join invitation (below) to the account's own address.
 
 ```json
 [{ "username": "lena", "name": "Lena Reyes", "initials": "LR",
-   "email": "l@uni.edu", "role": "owner", "is_lead": true }]
+   "email": "l@uni.edu", "role": "owner", "is_lead": true, "can_act": false }]
 ```
+
+`can_act` says whether the caller may re-role or remove that member: they hold
+`org.people.manage`, outrank them and are not them. The add, role-change and transfer responses
+carry the same row.
 
 ### Lab invitations
 
@@ -1245,6 +1337,21 @@ attachment and ages out with the outbox's own sweep, not with this window.
 ### `GET /api/labs/<slug>/briefings/` · `GET /api/labs/<slug>/briefings/<YYYY-MM-DD>/`
 
 The same pair for a lab, readable by any member. `403` for a non-member.
+
+### `GET /api/departments/<uuid>/daily-briefing/` · `…/briefings/` · `…/briefings/<YYYY-MM-DD>/`
+
+The lab's three briefing routes for a department: the same envelopes, over the
+`DailyBriefing` rows keyed on the department (`?kind=weekly` as for a lab).
+Readable by every department member — the head, a direct member, or a member of
+one of its labs; `403` otherwise. No-slash forms are the same routes.
+
+### `GET /api/departments/<uuid>/recommendations/`
+
+A department works like a lab: this is the lab payload below, over the
+department's own `target_department` scores and through the same serializers.
+`interested` may name any department member (direct or through a lab);
+`recommended_for` is empty, since member fit is not computed for a department.
+Readable by every department member; `403` otherwise.
 
 ### `GET /api/labs/<slug>/recommendations/` · `GET /api/projects/<id>/recommendations/`
 

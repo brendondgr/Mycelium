@@ -648,14 +648,10 @@ def set_preferences(user, **changes) -> AgentPreference:
 
 
 def _can_manage(user, kind: str, org) -> bool:
-    from apps.accounts.permissions import (
-        user_can_manage_department,
-        user_can_manage_lab,
-    )
+    """Whether ``user`` sets Mylo's policy for this org: ``org.mylo.policy``."""
+    from apps.accounts import capabilities as caps
 
-    if kind == "lab":
-        return user_can_manage_lab(user, org)
-    return user_can_manage_department(user, org)
+    return caps.has_capability(user, org, caps.MYLO_POLICY)
 
 
 def get_org_policy(user, kind: str, org) -> AgentOrgPolicy | None:

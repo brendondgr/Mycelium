@@ -13,6 +13,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts import capabilities as caps
 from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
     user_can_edit_lab_profile,
@@ -242,6 +243,8 @@ def org_billing_payload(
 class LabBillingView(APIView):
     """``GET /api/labs/<slug>/billing/`` — a lab's plan state (any member reads)."""
 
+    capabilities = {"GET": caps.MEMBERSHIP}
+
     def get(self, request: Request, slug: str) -> Response:
         lab = get_object_or_404(Lab, slug=slug)
         if not user_has_lab_access(request.user, lab):
@@ -298,6 +301,8 @@ class LabBillingActivateView(APIView):
     an operator activates from the admin dashboard.
     """
 
+    capabilities = {"POST": caps.BILLING_MANAGE}
+
     def post(self, request: Request, slug: str) -> Response:
         lab = get_object_or_404(Lab, slug=slug)
         if not user_can_edit_lab_profile(request.user, lab):
@@ -321,6 +326,8 @@ class LabBillingActivateView(APIView):
 class DeptBillingView(APIView):
     """``GET /api/departments/<id>/billing/`` — a department's plan state."""
 
+    capabilities = {"GET": caps.MEMBERSHIP}
+
     def get(self, request: Request, pk) -> Response:
         department = get_object_or_404(Department, id=pk)
         if not user_has_department_access(request.user, department):
@@ -338,6 +345,8 @@ class DeptBillingView(APIView):
 
 class DeptBillingActivateView(APIView):
     """``POST /api/departments/<id>/billing/activate/`` — head activates."""
+
+    capabilities = {"POST": caps.BILLING_MANAGE}
 
     def post(self, request: Request, pk) -> Response:
         department = get_object_or_404(Department, id=pk)

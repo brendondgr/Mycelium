@@ -108,9 +108,9 @@ export function sameScope(a: WorkspaceScope, b: WorkspaceScope): boolean {
 }
 
 /**
- * The lab slug a request should be scoped to, or `undefined`. Personal *and*
- * department scopes both yield `undefined`: there is no department scoring
- * target, so there is no department-scoped feed to ask for.
+ * The lab slug a request should be scoped to, or `undefined`. Personal and
+ * department scopes both yield `undefined`: a department's feeds are asked for
+ * by its id (`useOrgRecommendations`), never under `?lab=`.
  */
 export function labSlugForScope(scope: WorkspaceScope): string | undefined {
   return scope.kind === "lab" ? scope.slug : undefined;

@@ -90,13 +90,14 @@ def _weekly_body(user_or_lab, *, is_lab: bool):
     second renderer would drift from the first within a release.
     """
     from tools.delivery.models import DailyBriefing
+    from tools.delivery.org_scope import org
 
     data = (
         compile_report_for_lab(user_or_lab)
         if is_lab
         else compile_report_for_user(user_or_lab)
     )
-    owner = {"lab": user_or_lab} if is_lab else {"user": user_or_lab}
+    owner = org(user_or_lab).owner if is_lab else {"user": user_or_lab}
     weekly = DailyBriefing.latest_for(DailyBriefing.Kind.WEEKLY, **owner)
     if weekly is not None:
         data.briefing_markdown = weekly.body
@@ -159,8 +160,12 @@ def send_weekly_discord_reports(
 
 
 def send_lab_weeklies(labs, *, on: date | None = None) -> WeeklySendSummary:
-    """Queue every eligible lab's weekly to its channel. Never raises."""
+    """Queue every eligible lab's — or department's — weekly to its channel.
+
+    ``labs`` may hold labs and departments alike. Never raises.
+    """
     from tools.delivery.lab_digest import eligible_labs
+    from tools.delivery.org_scope import org
 
     summary = WeeklySendSummary()
     eligible = eligible_labs(labs, on=on, kind=delivery.WEEKLY)
@@ -170,56 +175,59 @@ def send_lab_weeklies(labs, *, on: date | None = None) -> WeeklySendSummary:
 
     workdir = _report_dir()
     workdir.mkdir(parents=True, exist_ok=True)
-    for lab in eligible:
+    for target in eligible:
+        scope = org(target)
         try:
-            local_date = on or delivery.local_today(lab)
+            local_date = on or delivery.local_today(scope.obj)
             monday = _monday(local_date)
-            channel_id = resolve.get_updates_channel_for_lab(lab)
+            channel_id = scope.updates_channel()
             if not channel_id:
                 summary.unreachable += 1
                 continue
-            data, weekly = _weekly_body(lab, is_lab=True)
+            data, weekly = _weekly_body(scope.obj, is_lab=True)
             if weekly is None:
                 summary.unreachable += 1
                 continue
+            kind = "lab_weekly" if scope.is_lab else "dept_weekly"
+            alerts = _alerts(scope.alert_filter) if scope.alert_filter else []
             outbox.enqueue_channel(
-                dedupe_key=delivery.lab_weekly_key(lab, monday),
-                kind="lab_weekly",
+                dedupe_key=delivery.lab_weekly_key(scope, monday),
+                kind=kind,
                 channel_id=channel_id,
-                lab=lab,
+                lab=scope.outbox_lab,
                 embed=discord_embeds.lab_post_embed(
-                    data, data.stats, "weekly", alerts=_alerts({"target_lab": lab})
+                    data, data.stats, "weekly", alerts=alerts
                 ),
-                subject_type="lab_weekly",
-                subject_id=str(lab.id),
-                not_before=delivery.send_time(lab, local_date),
+                subject_type=kind,
+                subject_id=str(scope.id),
+                not_before=delivery.send_time(scope.obj, local_date),
             )
-            filename = f"mylo-weekly-{lab.slug}-{monday:%Y-%m-%d}.pdf"
+            filename = f"mylo-weekly-{scope.file_key}-{monday:%Y-%m-%d}.pdf"
             path = workdir / filename
             _write(path, render_report_pdf(data))
             outbox.enqueue_channel(
                 # A distinct key from the post above, or the attachment would
                 # dedupe against it and never be queued at all.
-                dedupe_key=f"{delivery.lab_weekly_key(lab, monday)}:pdf",
-                kind="lab_weekly",
+                dedupe_key=f"{delivery.lab_weekly_key(scope, monday)}:pdf",
+                kind=kind,
                 channel_id=channel_id,
-                lab=lab,
+                lab=scope.outbox_lab,
                 content=LAB_WEEKLY_MESSAGE,
                 attachment_path=str(path),
                 attachment_filename=path.name,
-                subject_type="lab_weekly",
-                subject_id=str(lab.id),
+                subject_type=kind,
+                subject_id=str(scope.id),
                 # One second later, so the outbox — which claims by
                 # (next_attempt_at, id) — posts the file under the post it
                 # belongs to once both are held for the same local hour.
-                not_before=delivery.send_time(lab, local_date)
+                not_before=delivery.send_time(scope.obj, local_date)
                 + timedelta(seconds=1),
             )
             summary.sent += 1
         except Exception as exc:  # noqa: BLE001
             summary.errors += 1
-            summary.error_detail.append(f"{lab.slug}: {exc}")
-            logger.warning("lab weekly send failed for %s", lab, exc_info=True)
+            summary.error_detail.append(f"{scope.key}: {exc}")
+            logger.warning("org weekly send failed for %s", scope.obj, exc_info=True)
     return summary
 
 

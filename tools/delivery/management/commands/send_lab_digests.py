@@ -1,4 +1,5 @@
-"""Queue each entitled lab's daily digest to its bound Discord updates channel.
+"""Queue each entitled lab's (and department's) daily digest to its Discord
+updates channel.
 
 Two messages per lab, in order: the counts-by-theme summary, then the lab's report
 as an attached PDF — the same document its members already get by DM.
@@ -47,15 +48,18 @@ class Command(BaseCommand):
             queue_lab_report,
             report_filename,
         )
-        from tools.recommendation.tasks import select_targets
+        from tools.delivery.org_scope import org
+        from tools.recommendation.tasks import select_departments, select_targets
 
         slugs = options.get("slugs")
         if slugs:
             labs = list(Lab.objects.filter(slug__in=slugs))
         else:
             # The same subscription-active set the rest of the daily run uses, then
-            # narrowed by the add-on / link / bound-channel checks.
+            # narrowed by the add-on / link / bound-channel checks. A department
+            # posts to its own server exactly as a lab does.
             labs, _projects = select_targets(None)
+            labs = [*labs, *select_departments(None)]
 
         today = timezone.localdate()
         eligible = eligible_labs(labs)
@@ -69,6 +73,7 @@ class Command(BaseCommand):
         }
 
         for lab in eligible:
+            scope = org(lab)
             try:
                 # Compiled once and handed to both producers: compiling twice
                 # doubles the work and, if a score lands between the two calls,
@@ -81,7 +86,7 @@ class Command(BaseCommand):
                 if options["dry_run"]:
                     stats = data.stats
                     self.stdout.write(
-                        f"{lab.slug}: {stats.entered} entrant(s), "
+                        f"{scope.key}: {stats.entered} entrant(s), "
                         f"{stats.matched} matched, {stats.alerts} alert(s) across "
                         f"{len(stats.by_theme)} theme(s); "
                         f"report {report_filename(lab, today)}"
@@ -94,7 +99,7 @@ class Command(BaseCommand):
                 summary["reports"] += int(queue_lab_report(lab, on=today, data=data))
             except Exception as exc:  # noqa: BLE001 — one lab never sinks the run
                 summary["errors"] += 1
-                self.stderr.write(self.style.WARNING(f"{lab.slug}: {exc}"))
+                self.stderr.write(self.style.WARNING(f"{scope.key}: {exc}"))
 
         self.stdout.write(json.dumps(summary, indent=2))
         if summary["queued"]:

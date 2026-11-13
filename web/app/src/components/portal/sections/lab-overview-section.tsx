@@ -31,10 +31,8 @@ import {
   useLabRecommendations,
 } from "@/lib/portal/hooks";
 import type { MyLab } from "@/lib/portal/types";
+import { CAPABILITY, can } from "@/lib/portal/capabilities";
 
-function canManage(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
-}
 
 /**
  * The lab's front page — the landing view when a lab is the active workspace. It
@@ -54,7 +52,7 @@ export function LabOverviewSection({ lab }: { lab: MyLab }) {
   const [editing, setEditing] = React.useState(false);
 
   const profile = profileQuery.data;
-  const manage = canManage(lab);
+  const manage = can(lab, CAPABILITY.PROFILE_EDIT);
 
   const profileEmpty =
     !profileQuery.isLoading &&

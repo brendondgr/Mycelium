@@ -250,17 +250,17 @@ def build_weekly_packet(
     start = week_start(today)
     numbering = iter(range(1, 500))
 
-    saves_filter = (
-        {"target_lab": reader}
-        if "target_lab" in target_filter
-        else {"user": reader, "target_lab": None}
+    saves_filter = _saves_filter(target_filter, reader)
+    saved = (
+        {
+            str(row.content_id): row.created_at.date().isoformat()
+            for row in SavedOpportunity.objects.filter(**saves_filter).exclude(
+                content__isnull=True
+            )
+        }
+        if saves_filter
+        else {}
     )
-    saved = {
-        str(row.content_id): row.created_at.date().isoformat()
-        for row in SavedOpportunity.objects.filter(**saves_filter).exclude(
-            content__isnull=True
-        )
-    }
     seen = {
         str(row.content_id)
         for row in ProjectItemSeen.objects.filter(project__in=projects)
@@ -317,11 +317,24 @@ def build_weekly_packet(
         reader=reader,
         today=today,
     )
-    is_lab = "target_lab" in target_filter
+    from tools.delivery.org_scope import org_from_filter
+
+    scope = org_from_filter(target_filter)
     packet.context_version = context_version(
-        {"lab": reader} if is_lab else {"user": reader}, projects
+        scope.owner if scope is not None else {"user": reader}, projects
     )
     return packet
+
+
+def _saves_filter(target_filter: dict, reader) -> dict:
+    """What this weekly's reader saved: a person's own saves, a lab's saves, and
+    nothing for a department (it keeps none, and a member's save is not its)."""
+    from tools.delivery.org_scope import org_from_filter
+
+    scope = org_from_filter(target_filter)
+    if scope is not None:
+        return scope.saves_filter
+    return {"user": reader, "target_lab": None}
 
 
 def _personal_items(
@@ -392,10 +405,10 @@ def _reflect(packet, target_filter, projects, reader, today):
         return ""
     reflection.expire_stale(today)
 
-    is_lab = "target_lab" in target_filter
-    saves_filter = (
-        {"target_lab": reader} if is_lab else {"user": reader, "target_lab": None}
-    )
+    from tools.delivery.org_scope import is_org_filter
+
+    is_lab = is_org_filter(target_filter)
+    saves_filter = _saves_filter(target_filter, reader)
     # The snapshot is the fallback rather than an afterthought: a save outlives
     # the item's prune by design, and a reader's pattern of saves is exactly the
     # history that spans a prune.
@@ -405,8 +418,12 @@ def _reflect(packet, target_filter, projects, reader, today):
             (row.content.metadata or {}).get("title")
             if row.content_id
             else (row.snapshot or {}).get("title")
-            for row in SavedOpportunity.objects.filter(**saves_filter).select_related(
-                "content"
+            for row in (
+                SavedOpportunity.objects.filter(**saves_filter).select_related(
+                    "content"
+                )
+                if saves_filter
+                else ()
             )
         )
         if title

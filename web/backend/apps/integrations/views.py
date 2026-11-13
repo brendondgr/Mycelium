@@ -31,6 +31,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts import capabilities as caps
+
 from .serializers import DiscordGuildStatusSerializer, DiscordStatusSerializer
 from .services import audit, discord_api, oauth, resolve, state
 from .services.state import StateBackendError
@@ -288,6 +290,8 @@ class DiscordLabActivationCodeView(APIView):
     ``/activate-lab code:`` to bind that server to this lab.
     """
 
+    capabilities = {"POST": caps.SERVERS_MANAGE}
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -336,6 +340,8 @@ class DiscordDepartmentActivationCodeView(APIView):
     """Issue a department activation code (the website half of
     `/activate-department`). Manager-only; binds the department, never its labs."""
 
+    capabilities = {"POST": caps.SERVERS_MANAGE}
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -353,6 +359,8 @@ class DiscordDepartmentActivationCodeView(APIView):
 class DiscordBindingRemoveView(APIView):
     """Switch one server binding off. Manager of *that binding's* target only; every
     other binding — in this server and in the target's other servers — carries on."""
+
+    capabilities = {"POST": caps.SERVERS_MANAGE}
 
     permission_classes = [IsAuthenticated]
 

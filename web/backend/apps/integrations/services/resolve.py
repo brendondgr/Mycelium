@@ -23,8 +23,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
+from apps.accounts import capabilities as caps
 from apps.accounts.models import Department, Lab, LabMembership
-from apps.accounts.permissions import user_can_manage_department, user_can_manage_lab
 
 from ..models import (
     DiscordActivationCode,
@@ -322,19 +322,18 @@ def get_user_by_id(user_id):
 
 
 def web_user_can_manage_lab(user, lab) -> bool:
-    """Manager check for a logged-in web user (Path C install initiation)."""
-    return user_can_manage_lab(user, lab)
+    """Servers check for a logged-in web user (Path C install initiation)."""
+    return caps.has_capability(user, lab, caps.SERVERS_MANAGE)
 
 
 def web_user_can_manage_department(user, department) -> bool:
-    return user_can_manage_department(user, department)
+    return caps.has_capability(user, department, caps.SERVERS_MANAGE)
 
 
 def web_user_can_manage_binding(user, binding) -> bool:
     """A binding is managed by its own target's managers — never the other kind."""
-    if binding.lab_id:
-        return user_can_manage_lab(user, binding.lab)
-    return user_can_manage_department(user, binding.department)
+    org = binding.lab if binding.lab_id else binding.department
+    return caps.has_capability(user, org, caps.SERVERS_MANAGE)
 
 
 def get_guild_link(guild_id: str) -> DiscordGuildLink | None:
@@ -544,14 +543,23 @@ def primary_server_for_lab(lab, purpose: str | None = None) -> LabServer | None:
     return _server_for(_primary_binding(lab, purpose))
 
 
-def primary_server_for_department(department) -> LabServer | None:
-    """The department's own server — what its settings card reports."""
-    rows = list(
+def _department_rows(department) -> list[DiscordTargetBinding]:
+    """Every non-removed binding of ``department`` (live or not)."""
+    return list(
         DiscordTargetBinding.objects.filter(department=department)
         .exclude(state=DiscordTargetBinding.State.REMOVED)
         .select_related("guild")
     )
-    return _server_for(_primary_binding(None, rows=rows))
+
+
+def primary_server_for_department(
+    department, purpose: str | None = None
+) -> LabServer | None:
+    """The department's own server — what its settings card reports, and with
+    ``purpose`` the one whose route of that purpose it posts through."""
+    return _server_for(
+        _primary_binding(None, purpose, rows=_department_rows(department))
+    )
 
 
 def _server_for(binding) -> LabServer | None:
@@ -708,6 +716,13 @@ def get_announcement_channel_for_lab(lab) -> str:
 def get_updates_channel_for_lab(lab) -> str:
     """The lab's verified daily/weekly-updates channel id, or '' if none bound."""
     binding = _primary_binding(lab, "updates")
+    return route_channel(binding, "updates") if binding else ""
+
+
+def get_updates_channel_for_department(department) -> str:
+    """The department's daily/weekly-updates channel id, or '' if none bound —
+    the department twin of :func:`get_updates_channel_for_lab`."""
+    binding = _primary_binding(None, "updates", rows=_department_rows(department))
     return route_channel(binding, "updates") if binding else ""
 
 
@@ -875,7 +890,7 @@ def can_manage_lab_via_discord(discord_user_id: str, lab) -> bool:
     user = resolve_user(discord_user_id)
     if user is None:
         return False
-    return user_can_manage_lab(user, lab)
+    return caps.has_capability(user, lab, caps.SERVERS_MANAGE)
 
 
 # --------------------------------------------------------------------------- #

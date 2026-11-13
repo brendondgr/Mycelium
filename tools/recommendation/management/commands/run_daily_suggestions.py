@@ -25,6 +25,7 @@ from tools.recommendation.pipeline import DEFAULT_SUGGESTIONS, run_daily_batch
 from tools.recommendation.runlog import new_run_log
 from tools.recommendation.tasks import (
     run_daily_suggestions,
+    select_departments,
     select_targets,
     select_users,
 )
@@ -110,7 +111,9 @@ class Command(BaseCommand):
         # lab that is briefed every night is also *scored* every night. A targeted
         # --user run stays user-scoped (select_targets returns nothing for it).
         labs, projects = select_targets(usernames or None)
-        if not users and not labs and not projects:
+        # A department ranks papers against its own profile, as a lab does.
+        departments = select_departments(usernames or None)
+        if not users and not labs and not projects and not departments:
             self.stdout.write(
                 self.style.WARNING("No matching users, labs, or projects.")
             )
@@ -127,7 +130,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Run log: {runlog.path}"))
         runlog.line(
             f"daily run start: {len(users)} user(s), {len(labs)} lab(s), "
-            f"{len(projects)} project(s)"
+            f"{len(departments)} department(s), {len(projects)} project(s)"
         )
         try:
             # One global ingest (search + embed shared topics once), then a
@@ -135,6 +138,7 @@ class Command(BaseCommand):
             batch = run_daily_batch(
                 users,
                 labs=labs,
+                departments=departments,
                 projects=projects,
                 complete=complete,
                 persist=persist,

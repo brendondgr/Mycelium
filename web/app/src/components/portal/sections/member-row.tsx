@@ -6,7 +6,7 @@ import { Avatar } from "@/components/portal/primitives/avatar";
 import { Pill } from "@/components/portal/primitives/pill";
 import { Modal, ModalHeader } from "@/components/portal/primitives/modal";
 import { useLabMemberMutations } from "@/lib/portal/hooks";
-import { grantableLabRoles, outranksLabMember } from "@/lib/portal/nav";
+import { CAPABILITY, can } from "@/lib/portal/capabilities";
 import type { LabMember, LabRole, MyLab } from "@/lib/portal/types";
 
 /** Capitalise the first letter of a role string for display. */
@@ -17,7 +17,7 @@ function capitalize(s: string): string {
 type Props = {
   member: LabMember;
   /** The lab in scope — absent when the roster is read-only. */
-  lab?: Pick<MyLab, "slug" | "name" | "role" | "is_lead">;
+  lab?: Pick<MyLab, "slug" | "name" | "capabilities" | "grantable_roles">;
   /** The signed-in user's username, so the row never offers to act on itself. */
   viewer?: string;
 };
@@ -25,14 +25,15 @@ type Props = {
 export function MemberRow({ member, lab, viewer }: Props) {
   const roleDisplay = member.is_lead ? "PI" : capitalize(member.role);
 
-  // Authority runs strictly downward and the server is the authority; this only
-  // decides whether to *draw* a control. A row the caller cannot act on renders
-  // exactly as it always did, rather than showing a button that will 403.
+  // Authority runs strictly downward and the server decides it: each roster row
+  // says whether the caller may act on it (`can_act`), and the lab row lists the
+  // roles they may grant. A row the caller cannot act on renders exactly as it
+  // always did, rather than showing a button that will 403.
   const isSelf = viewer !== undefined && viewer === member.username;
-  const canAct = Boolean(lab) && !isSelf && outranksLabMember(lab!, member);
-  const roles = lab ? grantableLabRoles(lab) : [];
+  const canAct = Boolean(lab) && !isSelf && Boolean(member.can_act);
+  const roles = lab?.grantable_roles ?? [];
   // Ownership moves by transfer alone, and only the owner may start it.
-  const canTransfer = Boolean(lab) && !isSelf && lab!.role === "owner";
+  const canTransfer = !isSelf && can(lab, CAPABILITY.TRANSFER);
 
   if (!canAct && !canTransfer) {
     return <Row member={member} roleDisplay={roleDisplay} />;
@@ -100,7 +101,7 @@ function MemberControls({
   canTransfer,
 }: {
   member: LabMember;
-  lab: Pick<MyLab, "slug" | "name" | "role" | "is_lead">;
+  lab: Pick<MyLab, "slug" | "name" | "capabilities" | "grantable_roles">;
   roles: LabRole[];
   canAct: boolean;
   canTransfer: boolean;
@@ -223,7 +224,7 @@ function MemberControls({
   );
 }
 
-function ConfirmModal({
+export function ConfirmModal({
   title,
   body,
   confirmLabel,

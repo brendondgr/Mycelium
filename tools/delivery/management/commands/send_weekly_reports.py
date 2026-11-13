@@ -38,14 +38,16 @@ class Command(BaseCommand):
             send_lab_weeklies,
             send_weekly_discord_reports,
         )
-        from tools.recommendation.tasks import select_targets
+        from tools.recommendation.tasks import select_departments, select_targets
 
         usernames = [u for u in (options.get("usernames") or []) if u and u.strip()]
         slugs = [s for s in (options.get("slugs") or []) if s and s.strip()]
         if slugs:
             labs = list(Lab.objects.filter(slug__in=slugs))
+            departments = []
         else:
             labs, _projects = select_targets(usernames or None)
+            departments = select_departments(usernames or None)
 
         if options["dry_run"]:
             recipients = eligible_weekly_recipients(usernames or None)
@@ -54,6 +56,7 @@ class Command(BaseCommand):
                     {
                         "would_dm": [u.get_username() for u in recipients],
                         "labs_considered": [lab.slug for lab in labs],
+                        "departments_considered": [str(d.pk) for d in departments],
                         "today": timezone.localdate().isoformat(),
                     },
                     indent=2,
@@ -62,7 +65,8 @@ class Command(BaseCommand):
             return
 
         people = send_weekly_discord_reports(usernames or None)
-        lab_posts = send_lab_weeklies(labs)
+        # A department's channel weekly goes through the lab's sender.
+        lab_posts = send_lab_weeklies([*labs, *departments])
 
         for detail in (*people.error_detail, *lab_posts.error_detail):
             self.stderr.write(self.style.WARNING(f"  {detail}"))
@@ -71,7 +75,8 @@ class Command(BaseCommand):
         )
         self.stdout.write(
             self.style.SUCCESS(
-                f"Weekly: {people.sent} DM(s) and {lab_posts.sent} lab post(s) "
+                f"Weekly: {people.sent} DM(s) and {lab_posts.sent} lab/department "
+                "post(s) "
                 "queued; the outbox delivers."
             )
         )

@@ -771,28 +771,42 @@ _KIND_NOUN = {
 
 def announcements_live(lab) -> bool:
     """Announcements are on, switched on deployment-wide, covered by the plan, and
-    routed somewhere: only then does the report hand opportunities to Discord."""
+    routed somewhere: only then does the report hand opportunities to Discord.
+
+    ``lab`` is a lab or a department (:mod:`tools.delivery.org_scope`)."""
     from apps.integrations.services import resolve
 
-    row = AnnouncementSettings.objects.filter(target_lab=lab, enabled=True).first()
-    if row is None or not enabled() or not target_entitled(Target("lab", lab, row)):
+    from tools.delivery.org_scope import org
+
+    scope = org(lab)
+    row = AnnouncementSettings.objects.filter(
+        **scope.target_filter, enabled=True
+    ).first()
+    if row is None or not enabled():
+        return False
+    if not target_entitled(Target(scope.kind, scope.obj, row)):
         return False
     return any(
         resolve.get_route(b, purpose)
-        for b in resolve.bindings_for_lab(lab)
+        for b in scope.bindings()
         for purpose in ("grants", "fellowships", "conferences")
     )
 
 
 def report_line(lab, on: date) -> str:
     """``## Opportunities`` with one line per kind posted ``on``, linking to the
-    forum it went to (Markdown; the web shows Discord links with Discord's logo)."""
+    forum it went to (Markdown; the web shows Discord links with Discord's logo).
+
+    ``lab`` is a lab or a department."""
     from apps.integrations.services import resolve
 
+    from tools.delivery.org_scope import org
+
+    scope = org(lab)
     posted = Announcement.objects.filter(
-        target_lab=lab, state=Announcement.State.POSTED, created_at__date=on
+        **scope.target_filter, state=Announcement.State.POSTED, created_at__date=on
     )
-    bindings = resolve.bindings_for_lab(lab)
+    bindings = scope.bindings()
     parts = []
     for kind, (one, many) in _KIND_NOUN.items():
         count = posted.filter(category=kind).count()
@@ -812,7 +826,8 @@ def report_line(lab, on: date) -> str:
 
     updated = (
         AnnouncementPost.objects.filter(
-            announcement__target_lab=lab, update_log__contains=[{"on": on.isoformat()}]
+            **{f"announcement__{k}": v for k, v in scope.target_filter.items()},
+            update_log__contains=[{"on": on.isoformat()}],
         )
         .values("announcement")
         .distinct()

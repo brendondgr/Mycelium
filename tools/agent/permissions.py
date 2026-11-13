@@ -103,8 +103,17 @@ def entitled(user, feature: str) -> bool:
 def lab_role(user, lab) -> str | None:
     from apps.accounts.models import LabMembership
 
-    row = LabMembership.objects.filter(user=user, lab=lab).only("role").first()
-    return row.role if row else None
+    row = (
+        LabMembership.objects.filter(user=user, lab=lab)
+        .only("role", "is_lead")
+        .first()
+    )
+    if row is None:
+        return None
+    # A lead PI holds every right an admin does (settings plan, decision 13).
+    if row.is_lead and row.role not in ("owner", "admin"):
+        return "admin"
+    return row.role
 
 
 def department_role(user, department) -> str | None:

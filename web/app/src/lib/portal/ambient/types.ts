@@ -115,3 +115,34 @@ export type AmbientSettings = {
   statement: string;
   observations: number;
 };
+
+/** One shared server that could hear you: the head's switch, yours, the lock. */
+export type RecordingServer = {
+  id: number;
+  label: string;
+  platform: string;
+  orgs: string[];
+  server_listening: boolean;
+  excluded: boolean;
+  /** Both halves on: what your switch shows. */
+  recording: boolean;
+  /** The head switched listening off here; you cannot turn it back on. */
+  locked: boolean;
+  locked_reason: string;
+};
+
+export type RecordingProject = { id: string; name: string; excluded: boolean };
+
+export type RecordingState = {
+  servers: RecordingServer[];
+  projects: RecordingProject[];
+};
+
+/** One of an org's Discord servers and whether Mylo listens there. */
+export type OrgServer = {
+  guild_id: string;
+  name: string;
+  listening: boolean;
+  available: boolean;
+  shared_with: string[];
+};

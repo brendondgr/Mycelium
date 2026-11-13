@@ -3,6 +3,8 @@
 import type { TeamFit } from "@/lib/portal/collab/types";
 import type { ClusterGroup, ResearchInterests, WatchCadence } from "@/lib/auth-types";
 
+import type { Capability } from "@/lib/portal/capabilities";
+
 export type LabRole = "owner" | "admin" | "member" | "viewer";
 
 /**
@@ -31,6 +33,10 @@ export type MyLab = {
   has_logo: boolean;
   /** Cache-busting token for the logo URL, or null when there's no logo. */
   logo_version: number | null;
+  /** What the caller may do in this lab — ask `can(lab, …)`, never the role. */
+  capabilities: Capability[];
+  /** The roles the caller may hand out here, highest first (never owner). */
+  grantable_roles: LabRole[];
 };
 
 /** A lab member row (also used for project members). */
@@ -41,6 +47,8 @@ export type LabMember = {
   email: string;
   role: LabRole;
   is_lead: boolean;
+  /** Whether the caller may re-role or remove this member (lab roster only). */
+  can_act?: boolean;
 };
 
 export type ProjectMember = {
@@ -1496,9 +1504,13 @@ export type DeptMemberRow = {
   initials: string;
   email: string;
   role: LabRole;
+  /** The department head (``Department.owner``). */
+  is_head: boolean;
   source: "direct" | "lab";
   lab: string | null;
   seat_status: string | null;
+  /** Whether the caller may re-role or remove this person (direct rows only). */
+  can_act: boolean;
 };
 
 /** A lab under a department (department labs card). */
@@ -1680,6 +1692,10 @@ export type MyDepartment = {
   role: string;
   is_owner: boolean;
   can_manage: boolean;
+  /** What the caller may do in this department — ask `can(dept, …)`. */
+  capabilities: Capability[];
+  /** The roles the caller may hand out here, highest first (never owner). */
+  grantable_roles: LabRole[];
 };
 
 /**

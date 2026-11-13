@@ -66,6 +66,11 @@ export type OrgInvitePanelProps = {
   canInvite: boolean;
   /** Creating an invitation needs an activated account; the panel says so. */
   isVerified: boolean;
+  /**
+   * The roles the caller may hand out here (the org row's `grantable_roles`),
+   * so the picker never offers a role the server refuses. Omitted → all three.
+   */
+  roles?: readonly string[];
 };
 
 export function OrgInvitePanel({
@@ -73,7 +78,9 @@ export function OrgInvitePanel({
   id,
   canInvite,
   isVerified,
+  roles: allowed,
 }: OrgInvitePanelProps) {
+  const roleOptions = allowed ? ROLES.filter((r) => allowed.includes(r)) : [...ROLES];
   const appHref = useAppHref();
   const { list, create, createMany, revoke, regenerate } = useOrgInvites(kind, id);
   // Share-link URLs exist only in the response that minted them (the server
@@ -270,7 +277,7 @@ export function OrgInvitePanel({
           the code is on your{" "}
           <a
             className="font-medium text-primary underline underline-offset-2"
-            href={appHref("/app/account")}
+            href={appHref("/app/settings/you/account")}
           >
             Account page
           </a>
@@ -443,7 +450,7 @@ export function OrgInvitePanel({
                   disabled={busy}
                   onChange={(event) => setRole(event.target.value)}
                 >
-                  {ROLES.map((value) => (
+                  {roleOptions.map((value) => (
                     <option key={value} value={value}>
                       {value}
                     </option>

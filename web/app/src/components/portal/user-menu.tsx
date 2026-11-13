@@ -3,22 +3,23 @@
 import { useAppRouter, useDemo } from "@/components/demo/demo-context";
 import { useState } from "react";
 
-import { LogOut, Moon, Palette } from "lucide-react";
+import { LogOut, Moon, Palette, UserRound } from "lucide-react";
 
 import { ChevronDownIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
-import { useSettingsEntries, type SettingsEntry } from "@/components/portal/settings-shell";
 import { Avatar } from "@/components/portal/primitives/avatar";
+import { WorkspaceMark } from "@/components/portal/workspace-mark";
+import { settingsPath, type SettingsContext } from "@/lib/portal/settings";
 import { logout } from "@/lib/auth-client";
 import { useDismissable } from "@/lib/portal/use-dismissable";
 
 /**
- * The avatar's menu — the one obvious door to every settings page, from any
- * page, at any width: who you are, your own settings, this workspace's
- * settings, the theme, and sign-out.
+ * The avatar's menu — the one obvious door into Settings, from any page, at any
+ * width: who you are, then every context you can open settings for (you, each
+ * lab, each department, with your role in it), the theme, and sign-out.
  */
 export function UserMenu() {
-  const { user, scope, goToSection, theme, toggleTheme } = usePortal();
+  const { user, workspaces, theme, toggleTheme } = usePortal();
   const router = useAppRouter();
   const demo = useDemo();
   const { open, setOpen, ref } = useDismissable<HTMLDivElement>();
@@ -40,28 +41,29 @@ export function UserMenu() {
     }
   }
 
-  const settings = useSettingsEntries();
-  const you = settings.filter((e) => e.group === "You");
-  const workspace = settings.filter((e) => e.group !== "You");
+  const go = (href: string) => {
+    setOpen(false);
+    router.push(href);
+  };
 
-  const entry = (e: SettingsEntry) => {
-    const Icon = e.icon;
+  // You first, then labs, then departments — the order the Settings picker uses.
+  const labs = workspaces.filter((w) => w.kind === "lab");
+  const departments = workspaces.filter((w) => w.kind === "department");
+  const orgRow = (w: (typeof workspaces)[number]) => {
+    const context: SettingsContext =
+      w.kind === "lab" ? { kind: "lab", slug: w.key } : { kind: "department", id: w.key };
     return (
-    <button
-      key={e.key + e.label}
-      type="button"
-      role="menuitem"
-      onClick={() => {
-        setOpen(false);
-        goToSection(e.key);
-      }}
-      className="flex w-full items-center gap-2.5 rounded-[9px] px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className="text-[var(--text-muted)]">
-        <Icon size={15} aria-hidden />
-      </span>
-      {e.label}
-    </button>
+      <button
+        key={`${w.kind}-${w.key}`}
+        type="button"
+        role="menuitem"
+        onClick={() => go(settingsPath(context))}
+        className={ROW}
+      >
+        <WorkspaceMark workspace={w} size={18} />
+        <span className="min-w-0 flex-1 truncate">{w.name}</span>
+        <span className="shrink-0 text-xs text-[var(--text-muted)]">{w.role}</span>
+      </button>
     );
   };
 
@@ -82,7 +84,7 @@ export function UserMenu() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-12 z-40 min-w-[250px] rounded-2xl border border-border bg-surface p-1.5 shadow-[var(--shadow)]"
+          className="absolute right-0 top-12 z-40 w-[290px] max-w-[calc(100vw-32px)] rounded-2xl border border-border bg-surface p-1.5 shadow-[var(--shadow)]"
         >
           <div className="px-3 pb-2 pt-2">
             <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
@@ -93,26 +95,27 @@ export function UserMenu() {
             </p>
           </div>
           <div className="my-1 h-px bg-[var(--divider)]" />
-          <p className="px-3 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-            You
-          </p>
-          {you.map(entry)}
-          {workspace.length ? (
-            <>
-              <p className="px-3 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-                {scope.kind === "department" ? "Department" : "Lab"}
-              </p>
-              {workspace.map(entry)}
-            </>
-          ) : null}
+          <p className={GROUP}>Settings</p>
+          <div className="max-h-[50vh] overflow-y-auto">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => go(settingsPath({ kind: "you" }))}
+              className={ROW}
+            >
+              <UserRound size={15} aria-hidden className="text-[var(--text-muted)]" />
+              <span className="min-w-0 flex-1 truncate">You</span>
+            </button>
+            {labs.length ? <p className={GROUP}>Labs</p> : null}
+            {labs.map(orgRow)}
+            {departments.length ? <p className={GROUP}>Departments</p> : null}
+            {departments.map(orgRow)}
+          </div>
           <div className="my-1 h-px bg-[var(--divider)]" />
           <button
             type="button"
             role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              router.push("/app/account#appearance");
-            }}
+            onClick={() => go(settingsPath({ kind: "you" }, "appearance"))}
             className="flex w-full items-center gap-2.5 rounded-[9px] px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Palette size={15} aria-hidden className="text-[var(--text-muted)]" />
@@ -152,3 +155,8 @@ export function UserMenu() {
     </div>
   );
 }
+
+const ROW =
+  "flex w-full items-center gap-2.5 rounded-[9px] px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const GROUP =
+  "px-3 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]";

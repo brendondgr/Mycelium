@@ -23,6 +23,7 @@ import {
   routeWithScope,
   sectionFromPathname,
 } from "@/lib/portal/routes";
+import { settingsHomeFor } from "@/lib/portal/settings";
 import { useTheme, type Theme } from "@/lib/portal/theme";
 import {
   buildWorkspaces,
@@ -235,9 +236,16 @@ export function PortalProvider({
 
   const goToSection = useCallback(
     (next: SectionKey) => {
+      // Settings opens the active workspace's own context. Its pages carry the
+      // org in the path and never read `?ws=`; the parameter rides along only
+      // so the header still shows the workspace the reader came from.
+      if (next === "settings") {
+        router.push(routeWithScope(settingsHomeFor(scope), activeScopeKey));
+        return;
+      }
       router.push(routeWithScope(SECTION_ROUTES[next], activeScopeKey));
     },
-    [router, activeScopeKey],
+    [router, activeScopeKey, scope],
   );
 
   const openProjectsList = useCallback(() => {

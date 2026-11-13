@@ -123,16 +123,13 @@ def askable(user, *, now=None) -> tuple[bool, str]:
 def lab_managers(lab) -> list:
     """Who answers for a lab project: its PI and its owners and admins."""
     from django.contrib.auth import get_user_model
-    from django.db.models import Q
 
     from apps.accounts.models import LabMembership
+    from apps.accounts.permissions import lab_manager_q
 
     ids = (
         LabMembership.objects.filter(lab=lab)
-        .filter(
-            Q(is_lead=True)
-            | Q(role__in=[LabMembership.Role.OWNER, LabMembership.Role.ADMIN])
-        )
+        .filter(lab_manager_q())
         .values_list("user_id", flat=True)
     )
     return list(get_user_model().objects.filter(pk__in=list(ids)))

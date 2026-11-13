@@ -1,5 +1,7 @@
 "use client";
 
+import { settingsPath } from "@/lib/portal/settings";
+
 import { useAppHref } from "@/components/demo/demo-context";
 import Link from "next/link";
 
@@ -69,7 +71,7 @@ function PlanRow({ plan }: { plan: PlanSummary }) {
         </Pill>
         {plan.scope_type === "department" && plan.scope_slug ? (
           <Link
-            href={appHref(`/app/department/${plan.scope_slug}`)}
+            href={appHref(settingsPath({ kind: "department", id: plan.scope_slug }, "plan"))}
             className="text-xs font-medium text-primary underline-offset-2 hover:underline"
           >
             Manage

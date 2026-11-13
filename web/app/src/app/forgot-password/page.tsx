@@ -12,7 +12,7 @@ export const metadata = {
 export default async function ForgotPasswordPage() {
   const user = await getCurrentUser();
   if (user) {
-    redirect("/app/account");
+    redirect("/app/settings/you/account");
   }
 
   return (

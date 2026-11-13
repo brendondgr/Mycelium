@@ -838,6 +838,136 @@ def respond_to_lab_attach(request, *, actor: User, accept: bool) -> Lab:
     return lab
 
 
+def set_dept_member_role(
+    department: Department, user: User, role: str, *, actor: User
+) -> DeptMembership:
+    """Change a direct department member's role, strictly downward.
+
+    The department twin of :func:`set_lab_member_role` (see
+    ``permissions.DEPT_ROLE_RANK``): an actor re-roles only someone below them,
+    and grants only a role below their own. Ownership is never set here — it
+    moves with the department head, by :func:`transfer_department_ownership`.
+    """
+    from .permissions import user_can_grant_dept_role, user_outranks_dept_member
+
+    if role not in dict(DeptMembership.Role.choices):
+        raise ValidationError({"role": ["Unknown role."]})
+    membership = DeptMembership.objects.filter(
+        department=department, user=user
+    ).first()
+    if membership is None:
+        raise ValidationError(
+            {"detail": ["That user is not a direct member of this department."]}
+        )
+
+    refused = None
+    if not user_outranks_dept_member(actor, department, user):
+        refused = "You cannot change the role of someone at or above your own."
+    elif not user_can_grant_dept_role(actor, department, role):
+        refused = (
+            "Only the department head can grant that role."
+            if role == DeptMembership.Role.ADMIN
+            else "The department is handed over by transfer, not by a role change."
+        )
+    if refused is not None:
+        record_audit_event(
+            actor=actor,
+            action="dept.member.role.refused",
+            target_type="department",
+            target_id=str(department.id),
+            metadata={"user_id": user.id, "role": role},
+        )
+        raise PermissionDenied(refused)
+
+    membership.role = role
+    membership.save(update_fields=["role"])
+    record_audit_event(
+        actor=actor,
+        action="dept.member.role",
+        target_type="department",
+        target_id=str(department.id),
+        metadata={"user_id": user.id, "role": role},
+    )
+    return membership
+
+
+@transaction.atomic
+def transfer_department_ownership(
+    department: Department, new_head: User, *, actor: User
+) -> DeptMembership:
+    """Hand ``department`` to ``new_head``; ``actor`` steps down to admin.
+
+    The department head is ``Department.owner``, a foreign key, and also an
+    OWNER ``DeptMembership`` row kept in step with it. Both move here together,
+    with the outgoing head's row set to admin — handing a department over is not
+    leaving it, the same answer the lab transfer gives. Any other OWNER row is
+    lowered to admin so the department keeps exactly one.
+
+    Irreversible from the outgoing side: an admin cannot grant ownership.
+
+    Raises ``PermissionDenied`` unless the actor is the head, and
+    ``ValidationError`` unless the target is a direct, verified member.
+    """
+    from .permissions import DEPT_ROLE_RANK, user_email_verified
+
+    department = Department.objects.select_for_update().get(pk=department.pk)
+    if department.owner_id != actor.id:
+        raise PermissionDenied("Only the department head can transfer it.")
+    if new_head == actor:
+        raise ValidationError({"username": ["They already run this department."]})
+
+    incoming = DeptMembership.objects.filter(
+        department=department, user=new_head
+    ).first()
+    if incoming is None:
+        raise ValidationError(
+            {
+                "username": [
+                    "Add them to the department directly before handing it over."
+                ]
+            }
+        )
+    if not user_email_verified(new_head):
+        raise ValidationError(
+            {
+                "username": [
+                    "They need to verify their email before they can run a "
+                    "department."
+                ]
+            }
+        )
+
+    DeptMembership.objects.filter(
+        department=department, role=DeptMembership.Role.OWNER
+    ).exclude(pk=incoming.pk).update(role=DeptMembership.Role.ADMIN)
+    outgoing, created = DeptMembership.objects.get_or_create(
+        department=department,
+        user=actor,
+        defaults={"role": DeptMembership.Role.ADMIN},
+    )
+    if not created and outgoing.role != DeptMembership.Role.ADMIN:
+        outgoing.role = DeptMembership.Role.ADMIN
+        outgoing.save(update_fields=["role"])
+    incoming.role = DeptMembership.Role.OWNER
+    incoming.save(update_fields=["role"])
+    department.owner = new_head
+    department.save(update_fields=["owner", "updated_at"])
+
+    record_audit_event(
+        actor=actor,
+        action="department.ownership.transfer",
+        target_type="department",
+        target_id=str(department.id),
+        metadata={
+            "from_user_id": actor.id,
+            "to_user_id": new_head.id,
+            "from_role_now": DeptMembership.Role.ADMIN,
+            "rank_granted": DEPT_ROLE_RANK[DeptMembership.Role.OWNER],
+        },
+    )
+    return incoming
+
+
 def attach_existing_lab_to_department(
     department: Department, lab: Lab, *, actor: User | None = None
 ) -> Lab:
@@ -962,16 +1092,22 @@ def cancel_invitation(
     return invitation
 
 
-def department_members_payload(department: Department) -> list[dict]:
+def department_members_payload(
+    department: Department, viewer: User | None = None
+) -> list[dict]:
     """The department's effective-membership roster with role, source, and seat state.
 
     Direct department members are listed first, then members who belong only through a
     lab under the department. ``seat_status`` reflects each person's seat on the active
-    department plan (``None`` while the plan is inactive).
+    department plan (``None`` while the plan is inactive). ``can_act`` says whether
+    ``viewer`` may re-role or remove that person — only direct members they outrank,
+    never themselves; it is ``false`` throughout without a viewer.
     """
     from apps.billing.models import Seat
     from apps.billing.seats import _active_subscription_for_department
     from apps.core.people import display_name, initials
+
+    from .permissions import dept_role_rank
 
     sub = _active_subscription_for_department(department)
     seat_status: dict[int, str] = {}
@@ -979,6 +1115,19 @@ def department_members_payload(department: Department) -> list[dict]:
         seat_status = dict(
             Seat.objects.filter(subscription=sub).values_list("member_id", "status")
         )
+
+    from .capabilities import PEOPLE_MANAGE, has_capability
+
+    # Rank says whom; org.people.manage says whether at all — a direct member
+    # outranks a viewer but manages nobody.
+    mine = (
+        dept_role_rank(viewer, department)
+        if viewer is not None and has_capability(viewer, department, PEOPLE_MANAGE)
+        else -1
+    )
+
+    def can_act(user_id: int, rank: int) -> bool:
+        return viewer is not None and viewer.pk != user_id and mine > rank
 
     rows: dict[int, dict] = {}
     for membership in DeptMembership.objects.filter(
@@ -990,9 +1139,14 @@ def department_members_payload(department: Department) -> list[dict]:
             "initials": initials(membership.user),
             "email": membership.user.email,
             "role": membership.role,
+            "is_head": membership.user_id == department.owner_id,
             "source": "direct",
             "lab": None,
             "seat_status": seat_status.get(membership.user_id),
+            "can_act": can_act(
+                membership.user_id,
+                _direct_dept_rank(department, membership),
+            ),
         }
     for lm in LabMembership.objects.filter(
         lab__department=department
@@ -1005,13 +1159,26 @@ def department_members_payload(department: Department) -> list[dict]:
             "initials": initials(lm.user),
             "email": lm.user.email,
             "role": lm.role,
+            "is_head": lm.user_id == department.owner_id,
             "source": "lab",
             "lab": lm.lab.name,
             "seat_status": seat_status.get(lm.user_id),
+            # Folded in through a lab: no department role to change or remove.
+            "can_act": False,
         }
     return sorted(
         rows.values(), key=lambda r: (r["source"] != "direct", r["name"].lower())
     )
+
+
+def _direct_dept_rank(department: Department, membership: DeptMembership) -> int:
+    """A direct row's rank, read the way ``dept_role_rank`` reads it."""
+    from .permissions import DEPT_ROLE_RANK
+
+    if membership.user_id == department.owner_id:
+        return DEPT_ROLE_RANK[DeptMembership.Role.OWNER]
+    rank = DEPT_ROLE_RANK.get(membership.role, 0)
+    return min(rank, DEPT_ROLE_RANK[DeptMembership.Role.ADMIN])
 
 
 def department_labs_payload(department: Department) -> list[dict]:

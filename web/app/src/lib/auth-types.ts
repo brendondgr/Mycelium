@@ -1,3 +1,5 @@
+import type { Capability } from "@/lib/portal/capabilities";
+
 export type AuthUser = {
   id: number;
   username: string;
@@ -23,6 +25,15 @@ export type AuthUser = {
   institution_from_email?: string;
   /** Present only in the public demo (`/api/demo/auth/me/`). */
   demo?: DemoInfo;
+  /**
+   * The caller's capabilities in each org they act in, keyed by lab slug and
+   * department id (`apps/accounts/capabilities.py`). The same lists ride on
+   * every `MyLab` and `MyDepartment` row.
+   */
+  capabilities?: {
+    labs: Record<string, Capability[]>;
+    departments: Record<string, Capability[]>;
+  };
 };
 
 /** Why a demo visitor may not ask Mylo now. */

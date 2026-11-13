@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from apps.accounts import capabilities as caps
 from apps.accounts.models import Lab, LabMembership
 from apps.accounts.permissions import (
     user_can_edit_lab_profile,
@@ -316,6 +317,10 @@ def _resolve_mentions(raw, lab) -> list[dict]:
 class ReminderListCreateView(APIView):
     """GET the user's reminders; POST a new personal or lab reminder."""
 
+    #: When a lab is named: reading lists only labs the caller belongs to, and a
+    #: lab reminder takes org.profile.edit (enforced in ``create_subscription``).
+    capabilities = {"GET": caps.MEMBERSHIP, "POST": caps.PROFILE_EDIT}
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -542,6 +547,9 @@ class ReminderAccessView(APIView):
     told about the lab's plan.
     """
 
+    #: With ``?lab=``: may this caller set a lab reminder there.
+    capabilities = {"GET": caps.PROFILE_EDIT}
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -579,6 +587,8 @@ class LabMentionTargetsView(APIView):
     and Discord's failure mode is a message that arrives without the ping, which
     is a far better outcome than refusing to offer the option.
     """
+
+    capabilities = {"GET": caps.PROFILE_EDIT}
 
     permission_classes = [IsAuthenticated]
 
@@ -639,6 +649,8 @@ class LabReminderChannelsView(APIView):
     hiccup all return HTTP 200 with an empty ``channels`` list, so the composer can
     still submit a "lab default" reminder without a live channel roster.
     """
+
+    capabilities = {"GET": caps.PROFILE_EDIT}
 
     permission_classes = [IsAuthenticated]
 

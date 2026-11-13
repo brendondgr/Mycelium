@@ -17,7 +17,8 @@ duplicated:
 - ``embedding_text`` — canonical text for the single-vector fallback (surfaces
   with no declared ``areas``).
 
-Builders resolve a ``User`` / ``Lab`` / ``Project`` into a target. Fellowships stay
+Builders resolve a ``User`` / ``Lab`` / ``Department`` / ``Project`` into a
+target. Fellowships stay
 user-only (they gate on individual eligibility), so no fellowship target is built
 here. Pure apart from reading already-loaded relations, so it is unit-testable
 without a scan or an embedder.
@@ -114,8 +115,11 @@ def target_for_lab(lab) -> MatchTarget:
 def target_for_department(department) -> MatchTarget:
     """A department: its own interest profile, scored under ``target_department``.
 
-    Opportunities only: a department's slates feed its announcement channel, which
-    carries calls only a department can take on (``tools.delivery.dept_level``).
+    A department works like a lab: papers and every opportunity kind rank against
+    this profile, and its feeds, daily report and Discord post read the result.
+    Its announcement channel separately narrows its slates to the calls only a
+    department can take on (``tools.delivery.dept_level``). It declares no watch
+    topics of its own, so it ranks the corpus its people's searches gathered.
     """
     interests = _lab_interests(getattr(department, "profile", None))
     return MatchTarget(

@@ -352,11 +352,13 @@ def _manageable_queryset(user):
     the whole lab, so silencing one is a management act, exactly as creating one is.
     """
     from apps.accounts.models import LabMembership
+    from apps.accounts.permissions import lab_manager_q
 
-    managed_lab_ids = LabMembership.objects.filter(
-        user=user,
-        role__in=[LabMembership.Role.OWNER, LabMembership.Role.ADMIN],
-    ).values_list("lab_id", flat=True)
+    managed_lab_ids = (
+        LabMembership.objects.filter(user=user)
+        .filter(lab_manager_q())
+        .values_list("lab_id", flat=True)
+    )
     return ReminderSubscription.objects.filter(
         target_user=user
     ) | ReminderSubscription.objects.filter(target_lab_id__in=list(managed_lab_ids))

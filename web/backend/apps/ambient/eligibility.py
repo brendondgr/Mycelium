@@ -2,9 +2,16 @@
 
 Three promises meet in one function. A person is only ever observed when
 
-1. the **surface** consented (a lab manager turned listening on for that guild),
-2. the **person** opted in on that platform, default off, and
+1. the **surface** consented (a lab or department head turned listening on for
+   that server — and while they have it off, nothing a member does turns it on),
+2. the **person** opted in on that platform, default off, and did not keep this
+   server out (:class:`~.models.RecordingExclusion`), and
 3. their **effective tier is paid** and their platform identity is linked.
+
+A person can also keep one **project** out: a message in a channel tied to that
+project is not recorded (:func:`project_excluded_here`, checked on arrival
+beside :func:`observable`), and the project is never an attribution candidate
+for them (:func:`excluded_project_ids`).
 
 One platform is different by the owner's decision (Mylo agent plan, D-3):
 **Mylo chat** (``agent_chat``), conversations a person has with Mylo in the
@@ -34,7 +41,7 @@ from django.contrib.auth.models import User
 
 from apps.billing.entitlements import effective_tier
 
-from .models import ListeningConsent, Source
+from .models import ListeningConsent, RecordingExclusion, Source
 
 
 @dataclass(frozen=True)
@@ -86,6 +93,39 @@ def person_opted_in(user: User, platform: str) -> bool:
     return row.enabled
 
 
+def excluded_from_source(user: User, source: Source) -> bool:
+    """Whether ``user`` kept this one server (or workspace, or team) out."""
+    return RecordingExclusion.objects.filter(user=user, source=source).exists()
+
+
+def excluded_project_ids(user: User) -> set:
+    """The projects ``user`` asked Mylo not to record them about."""
+    return set(
+        RecordingExclusion.objects.filter(
+            user=user, project__isnull=False
+        ).values_list("project_id", flat=True)
+    )
+
+
+def project_excluded_here(user: User | None, source: Source, place_id: str) -> bool:
+    """Whether ``place_id`` is a channel tied to a project ``user`` excluded.
+
+    A channel hint (:class:`~.models.ChannelHint`) says a channel, or a meeting,
+    is about one project; a person who keeps that project out is not recorded
+    there at all, rather than recorded and left unattributed.
+    """
+    if user is None or not place_id:
+        return False
+    from .models import ChannelHint
+
+    hinted = ChannelHint.objects.filter(
+        source=source, place_id=str(place_id)
+    ).values_list("project_id", flat=True)
+    return RecordingExclusion.objects.filter(
+        user=user, project_id__in=list(hinted)
+    ).exists()
+
+
 def agent_chat_enabled() -> bool:
     """The master switch for learning from Mylo chats: the agent tool's
     ``tools.agent.learning``, published as ``AGENT_LEARNING`` only while the
@@ -125,6 +165,8 @@ def observable(user: User | None, source: Source) -> Verdict:
         return Verdict(False, "source_not_consented")
     if not person_opted_in(user, source.platform):
         return Verdict(False, "person_not_opted_in")
+    if excluded_from_source(user, source):
+        return Verdict(False, "person_excluded_server")
     if not tier_is_paid(user):
         return Verdict(False, "tier_free")
     return ALLOWED

@@ -81,7 +81,7 @@ def _day(iso: str) -> str:
 def mylo_and_you_url() -> str:
     """The Mylo & you page, or "" when the instance has no public origin."""
     base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
-    return f"{base}/app/mylo-and-you" if base else ""
+    return f"{base}/app/settings/you/mylo" if base else ""
 
 
 def _linked(text: str, url: str) -> str:
@@ -110,7 +110,10 @@ def collect(packet, *, target_filter: dict, projects: list, reader, today: date)
 def _collect(packet, *, target_filter, projects, reader, today):
     from apps.ambient.read import answers_between, changes_between
 
-    is_lab = "target_lab" in target_filter
+    from tools.delivery.org_scope import is_org_filter
+
+    # A department's weekly is a shared surface exactly as a lab's is.
+    is_lab = is_org_filter(target_filter)
     since, until = _bounds(packet.week_start, today)
     rows = changes_between(
         since=since,

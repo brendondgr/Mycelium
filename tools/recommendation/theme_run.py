@@ -104,6 +104,11 @@ def target_is_entitled(persist_kwargs: Mapping, feature: str | None = None) -> b
     scope_lab = lab if lab is not None else getattr(project, "scope_lab", None)
     if scope_lab is not None:
         return _lab_entitled(scope_lab)
+    department = persist_kwargs.get("target_department")
+    if department is None:
+        department = getattr(project, "scope_department", None)
+    if department is not None:
+        return department_entitled(department)
     owner = getattr(project, "scope_user", None)
     if owner is not None:
         return has_feature(owner, feature)
@@ -124,6 +129,19 @@ def _lab_entitled(lab) -> bool:
             status=Subscription.Status.ACTIVE, scope_department_id=lab.department_id
         ).exists()
     )
+
+
+def department_entitled(department) -> bool:
+    """A department is entitled on the lab's terms: an active plan of its own.
+
+    The twin of :func:`_lab_entitled`, and what decides whether a department is
+    scored at all (:func:`tools.recommendation.tasks.select_departments`).
+    """
+    from apps.billing.models import Subscription
+
+    return Subscription.objects.filter(
+        status=Subscription.Status.ACTIVE, scope_department=department
+    ).exists()
 
 
 def build_evidence(

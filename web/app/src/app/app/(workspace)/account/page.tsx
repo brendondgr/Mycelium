@@ -1,12 +1,7 @@
-import { SettingsShell } from "@/components/portal/settings-shell";
-import { AccountSection } from "@/components/portal/sections/account-section";
+import { appRedirect } from "@/lib/auth-server";
+import { legacySettingsPath } from "@/lib/portal/settings";
 
-export const metadata = { title: "Account · Mycelium" };
-
-export default function AccountPage() {
-  return (
-    <SettingsShell current="account">
-      <AccountSection />
-    </SettingsShell>
-  );
+/** Account moved into Settings → You → Account. The old link still lands there. */
+export default async function AccountPage() {
+  await appRedirect(legacySettingsPath("account"));
 }

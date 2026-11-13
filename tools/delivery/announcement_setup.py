@@ -281,10 +281,12 @@ def manager_discord_ids(binding) -> list[str]:
 
     User = get_user_model()
     if binding.lab_id:
-        roles = (LabMembership.Role.OWNER, LabMembership.Role.ADMIN)
-        users = User.objects.filter(
-            lab_memberships__lab=binding.lab, lab_memberships__role__in=roles
+        from apps.accounts.permissions import lab_manager_q
+
+        managers = LabMembership.objects.filter(lab=binding.lab).filter(
+            lab_manager_q()
         )
+        users = User.objects.filter(pk__in=managers.values("user_id"))
     else:
         roles = (DeptMembership.Role.OWNER, DeptMembership.Role.ADMIN)
         users = User.objects.filter(

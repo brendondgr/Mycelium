@@ -1,5 +1,6 @@
 "use client";
 
+import { settingsPath } from "@/lib/portal/settings";
 import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 
@@ -25,6 +26,7 @@ import type {
   ReminderOffset,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
+import { CAPABILITY, holding } from "@/lib/portal/capabilities";
 
 const KIND_LABELS: Record<string, string> = {
   application: "Application",
@@ -139,9 +141,7 @@ export function ReminderComposer({
   const labs = useMyLabs();
   // Only labs the caller manages (PI / owner / admin) can receive a lab reminder,
   // mirroring the backend rule — so a plain member is never offered the lab option.
-  const labOptions = (labs.data ?? []).filter(
-    (lab) => lab.is_lead || lab.role === "owner" || lab.role === "admin",
-  );
+  const labOptions = (labs.data ?? []).filter(holding(CAPABILITY.PROFILE_EDIT));
   const { create } = useReminderMutations();
 
   // Derive the effective lab (no state-syncing effect): the chosen slug, else the
@@ -388,7 +388,7 @@ function ReminderGate({
             <GateCondition ok={access.discord_ok} label="Discord connected" />
           </ul>
           <Link
-            href={appHref("/app/profile")}
+            href={appHref(settingsPath({ kind: "you" }, access.plan_ok ? "delivery" : "subscription"))}
             onClick={onClose}
             className="mt-3.5 inline-flex rounded-full border border-primary bg-primary/10 px-3.5 py-1.5 text-[12.5px] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >

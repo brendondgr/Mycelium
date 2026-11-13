@@ -275,6 +275,33 @@ export function addDeptMember(
   );
 }
 
+/** Change a direct department member's role (strictly below the caller's). */
+export function setDeptMemberRole(
+  id: string,
+  username: string,
+  role: string,
+): Promise<unknown> {
+  return sendJson(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "members", username),
+    { role },
+    "Could not change the member's role.",
+  );
+}
+
+/**
+ * Hand the department to a direct member. The caller steps down to admin and
+ * cannot take it back — only the new head can hand it over again.
+ */
+export function transferDeptOwnership(id: string, username: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "transfer-ownership"),
+    { username },
+    "Could not transfer the department.",
+  );
+}
+
 /** Remove a direct department member (their seat defers to period end). */
 export function removeDeptMember(id: string, username: string): Promise<unknown> {
   return sendJson(
@@ -835,6 +862,53 @@ export function dismissSuggestion(
     buildApiUrl(getPublicApiBase(), "suggestions", id, "dismiss"),
     undefined,
     "Could not dismiss this suggestion.",
+  );
+}
+
+/** The fields a lab or department profile save may send. */
+export type OrgProfilePatch = Partial<
+  Pick<
+    LabProfileData,
+    | "statement"
+    | "areas"
+    | "funding_needs"
+    | "strategic_needs"
+    | "interests"
+    | "institution_type"
+    | "country"
+  >
+>;
+
+/** Update a department's profile — the same fields a lab's has. */
+export function updateDeptProfile(
+  id: string,
+  payload: OrgProfilePatch,
+): Promise<LabProfileData> {
+  return sendJson<LabProfileData>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "profile"),
+    payload,
+    "Could not save the department's profile.",
+  );
+}
+
+/** Leave a lab yourself (any member; the only owner must hand it over first). */
+export function leaveLab(slug: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "leave"),
+    undefined,
+    "Could not leave the lab.",
+  );
+}
+
+/** Give up your direct place in a department (the head must hand it over first). */
+export function leaveDepartment(id: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "leave"),
+    undefined,
+    "Could not leave the department.",
   );
 }
 

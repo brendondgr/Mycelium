@@ -227,7 +227,9 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   (the reason and the quoted sentence) and names *Labs that could lead*
   (`lab_fit.py`), never people, and never tags anyone. A department fellowship
   shows counts only; each member who may be eligible gets one DM. A department is
-  scored only while its announcements are on.
+  scored on a lab's terms (an active plan), whether or not its announcements are
+  on, and its updates route gets the lab's daily post, PDF and Monday weekly
+  (`dept_digest`, `dept_report`, `dept_weekly` outbox kinds).
 * **Measurement** (`manage.py announcement_metrics`): Interested, Remind me and Not
   for us per post, web link clicks by surface (Discord reports no link-button
   clicks), route health, and the department reason mix and lab-fit scores. Record

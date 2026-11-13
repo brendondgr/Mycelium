@@ -60,8 +60,11 @@ import {
   fetchGrants,
   fetchIgnored,
   fetchLabMembers,
+  fetchDeptProfile,
   fetchLabProfile,
   fetchLabProjects,
+  fetchDepartmentDailyBriefing,
+  fetchDepartmentRecommendations,
   fetchLabRecommendations,
   fetchLabWatch,
   fetchMemberSuggestions,
@@ -131,6 +134,8 @@ import {
   issueDeptActivationCode,
   issueLabActivationCode,
   removeDeptMember,
+  setDeptMemberRole,
+  transferDeptOwnership,
   removeLabMember,
   regenerateDeptInvite,
   regenerateLabInvite,
@@ -158,7 +163,10 @@ import {
   updateAdminLab,
   updateAdminUser,
   updateCollection,
+  updateDeptProfile,
   updateLabProfile,
+  leaveDepartment,
+  leaveLab,
   updateLabWatch,
   updateProject,
   updateProjectCategories,
@@ -187,6 +195,8 @@ import type { OrgKind } from "@/lib/auth-types";
 import type {
   AnnouncementSettings,
   AnnouncementTarget,
+  MyDepartment,
+  MyLab,
 } from "@/lib/portal/types";
 
 export type SearchInput = {
@@ -353,6 +363,16 @@ export function useLabDailyBriefing(slug?: string) {
     queryKey: ["portal", "lab-daily-briefing", slug ?? "none"],
     queryFn: () => fetchLabDailyBriefing(slug as string),
     enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** A department's "Mylo Report" briefing (the department overview). */
+export function useDepartmentDailyBriefing(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "department-daily-briefing", id ?? "none"],
+    queryFn: () => fetchDepartmentDailyBriefing(id as string),
+    enabled: Boolean(id),
     staleTime: 60_000,
   });
 }
@@ -982,6 +1002,45 @@ export function useUpdateLabProfile(slug: string) {
   });
 }
 
+/** A department's profile (its General page in Settings). */
+export function useDeptProfile(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "dept-profile", id ?? "none"],
+    queryFn: () => fetchDeptProfile(id as string),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
+/** Save a department's profile, updating the cached copy in place. */
+export function useUpdateDeptProfile(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof updateDeptProfile>[1]) =>
+      updateDeptProfile(id, payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["portal", "dept-profile", id], data);
+    },
+  });
+}
+
+/**
+ * Leave a lab or a department yourself. On success the org drops out of the
+ * caller's lists, so both are refreshed.
+ */
+export function useLeaveOrg() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (org: { kind: "lab"; slug: string } | { kind: "department"; id: string }) =>
+      org.kind === "lab" ? leaveLab(org.slug) : leaveDepartment(org.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "departments"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "entitlements"] });
+    },
+  });
+}
+
 /** A lab's matched papers/grants/conferences. Disabled for the personal scope. */
 export function useLabRecommendations(slug?: string) {
   const enabled = Boolean(slug && slug !== PERSONAL_SLUG);
@@ -991,6 +1050,42 @@ export function useLabRecommendations(slug?: string) {
     enabled,
     staleTime: 60_000,
   });
+}
+
+/** A department's matched papers, grants, fellowships and conferences. */
+export function useDepartmentRecommendations(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "department-recommendations", id ?? "none"],
+    queryFn: () => fetchDepartmentRecommendations(id as string),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * The feed of whichever org the reader is working in: a lab's, or a
+ * department's (a department works like a lab, through the lab's feed).
+ * `org` is null in the personal scope, and both queries then stay idle.
+ */
+export function useOrgRecommendations(org: OrgRef | null) {
+  const lab = useLabRecommendations(org?.kind === "lab" ? org.key : undefined);
+  const dept = useDepartmentRecommendations(
+    org?.kind === "department" ? org.key : undefined,
+  );
+  return org?.kind === "department" ? dept : lab;
+}
+
+/** A lab (by slug) or a department (by id), with the name its feed shows. */
+export type OrgRef = { kind: "lab" | "department"; key: string; name: string };
+
+/** The org a workspace's feeds read, or null in the personal scope. */
+export function orgRefFor(
+  lab: Pick<MyLab, "slug" | "name"> | null,
+  department: Pick<MyDepartment, "id" | "name"> | null,
+): OrgRef | null {
+  if (lab) return { kind: "lab", key: lab.slug, name: lab.name };
+  if (department) return { kind: "department", key: department.id, name: department.name };
+  return null;
 }
 
 /** One project's matched papers/grants/conferences (its declared focus). */
@@ -1350,6 +1445,20 @@ export function useDeptManagement(id: string) {
     mutationFn: (username: string) => removeDeptMember(id, username),
     onSuccess: invalidate,
   });
+  const setMemberRole = useMutation({
+    mutationFn: (input: { username: string; role: string }) =>
+      setDeptMemberRole(id, input.username, input.role),
+    onSuccess: invalidate,
+  });
+  // Handing the department over changes the caller's own role, so the
+  // department list's copy is stale the moment it succeeds.
+  const transfer = useMutation({
+    mutationFn: (username: string) => transferDeptOwnership(id, username),
+    onSuccess: () => {
+      invalidate();
+      queryClient.invalidateQueries({ queryKey: ["portal", "departments"] });
+    },
+  });
   const attachLab = useMutation({
     mutationFn: (slug: string) => attachLabToDept(id, slug),
     onSuccess: invalidate,
@@ -1373,6 +1482,8 @@ export function useDeptManagement(id: string) {
   return {
     addMember,
     removeMember,
+    setMemberRole,
+    transfer,
     attachLab,
     createLab,
     detachLab,

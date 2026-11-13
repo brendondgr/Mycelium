@@ -22,7 +22,10 @@ from django.utils import timezone
 
 
 class Command(BaseCommand):
-    help = "Write the Monday weekly for every scheduled-eligible user and lab."
+    help = (
+        "Write the Monday weekly for every scheduled-eligible user, lab and "
+        "department."
+    )
 
     def add_arguments(self, parser) -> None:
         parser.add_argument("--user", "-u", action="append", dest="usernames")
@@ -40,7 +43,11 @@ class Command(BaseCommand):
             generate_weekly_for_lab,
             generate_weekly_for_user,
         )
-        from tools.recommendation.tasks import select_targets, select_users
+        from tools.recommendation.tasks import (
+            select_departments,
+            select_targets,
+            select_users,
+        )
 
         today = timezone.localdate()
         if today.weekday() != 0 and not options.get("force"):
@@ -57,13 +64,27 @@ class Command(BaseCommand):
         users = select_users(usernames or None)
         if slugs:
             labs = list(Lab.objects.filter(slug__in=slugs))
+            departments = []
         else:
             labs, _projects = select_targets(usernames or None)
+            # A department's weekly is the lab's, through the same function.
+            departments = select_departments(usernames or None)
 
-        summary = {"users": 0, "labs": 0, "llm": 0, "fallback": 0, "errors": 0}
+        summary = {
+            "users": 0,
+            "labs": 0,
+            "departments": 0,
+            "llm": 0,
+            "fallback": 0,
+            "errors": 0,
+        }
         for target, generate, label, key in [
             *[(u, generate_weekly_for_user, u.get_username(), "users") for u in users],
             *[(lab, generate_weekly_for_lab, lab.slug, "labs") for lab in labs],
+            *[
+                (d, generate_weekly_for_lab, str(d.pk), "departments")
+                for d in departments
+            ],
         ]:
             try:
                 briefing = generate(target, today=today)
@@ -77,7 +98,8 @@ class Command(BaseCommand):
         self.stdout.write(json.dumps(summary, indent=2))
         self.stdout.write(
             self.style.SUCCESS(
-                f"Weeklies written for {summary['users']} user(s) and "
-                f"{summary['labs']} lab(s); {summary['errors']} error(s)."
+                f"Weeklies written for {summary['users']} user(s), "
+                f"{summary['labs']} lab(s) and {summary['departments']} "
+                f"department(s); {summary['errors']} error(s)."
             )
         )

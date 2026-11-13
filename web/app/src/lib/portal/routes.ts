@@ -26,13 +26,16 @@ export type SectionKey =
   | "reports"
   | "suggested"
   | "mylo"
+  | "settings"
   | "admin";
 
 /** Canonical route for each section. */
 export const SECTION_ROUTES: Record<SectionKey, string> = {
   overview: "/app/overview",
-  profile: "/app/profile",
-  account: "/app/account",
+  // Your own settings pages. They live in the Settings area now; the keys stay
+  // because links across the app ask for "your profile" or "your account".
+  profile: "/app/settings/you/profile",
+  account: "/app/settings/you/account",
   search: "/app/search",
   daily: "/app/daily",
   papers: "/app/research-papers",
@@ -47,13 +50,16 @@ export const SECTION_ROUTES: Record<SectionKey, string> = {
   members: "/app/members",
   reports: "/app/reports",
   suggested: "/app/suggested",
-  mylo: "/app/mylo-and-you",
+  mylo: "/app/settings/you/mylo",
+  // The Settings area. The sidebar's entry opens the active workspace's context
+  // (`settingsHomeFor` in lib/portal/settings.ts), not this bare path.
+  settings: "/app/settings",
   admin: "/app/admin",
 };
 
-/** Route for a department's page. */
+/** Route for a department's page: its General page in Settings. */
 export function departmentRoute(id: string): string {
-  return `/app/department/${encodeURIComponent(id)}`;
+  return `/app/settings/department/${encodeURIComponent(id)}/general`;
 }
 
 /** Route for a single project's detail view. */
@@ -110,6 +116,7 @@ export function sectionFromPathname(pathname: string): SectionKey {
     "reports",
     "suggested",
     "mylo",
+    "settings",
     "admin",
     "overview",
   ];

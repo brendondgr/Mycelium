@@ -29,6 +29,7 @@ from tools.recommendation.models import ProjectProfile, RelevanceEvent
 from tools.recommendation.team_profile import recompute_project_profile
 from tools.retrieval.models import ContentItem
 
+from apps.accounts import capabilities as caps
 from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
     user_can_edit_dept_profile,
@@ -134,6 +135,10 @@ class ProjectListView(ListCreateAPIView):
     ``POST`` creates a project scoped to a lab (``lab`` slug, requires manage
     rights on that lab) or, with no lab, a personal project scoped to the caller.
     """
+
+    #: When a lab or department is named: the list filter reads only what the
+    #: caller already sees, and creating there takes org.profile.edit.
+    capabilities = {"GET": caps.MEMBERSHIP, "POST": caps.PROFILE_EDIT}
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -260,6 +265,8 @@ class LabProjectsView(ListAPIView):
     member browse *all* of the lab's projects so they can decide to join one.
     Each row carries ``is_member`` so the UI can offer Join vs Leave.
     """
+
+    capabilities = {"GET": caps.MEMBERSHIP}
 
     serializer_class = ProjectSerializer
 

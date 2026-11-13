@@ -6,6 +6,7 @@ through ``service``; no view decides access itself.
 
 from __future__ import annotations
 
+from apps.accounts import capabilities as caps
 from django.http import StreamingHttpResponse
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.renderers import BaseRenderer, JSONRenderer
@@ -355,6 +356,8 @@ class PreferencesView(_Base):
 
 
 class PolicyView(_Base):
+    capabilities = {"GET": caps.MEMBERSHIP, "PATCH": caps.MYLO_POLICY}
+
     def _org(self, kind, ref):
         from apps.accounts.models import Department, Lab
 

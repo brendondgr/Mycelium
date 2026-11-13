@@ -111,7 +111,7 @@ class Command(BaseCommand):
                     "title": QUESTION_TITLES.get(
                         question.kind, "Mylo has a question"
                     ).format(topic=question.topic)[:500],
-                    "url": "/app/mylo-and-you",
+                    "url": "/app/settings/you/mylo",
                 },
             )
             delivered.append(question.id)
@@ -132,7 +132,7 @@ class Command(BaseCommand):
                     "title": title.format(
                         topic=suggestion.correction or suggestion.topic
                     )[:500],
-                    "url": "/app/mylo-and-you",
+                    "url": "/app/settings/you/mylo",
                 },
             )
             announced.append(suggestion.pk)
@@ -152,7 +152,7 @@ class Command(BaseCommand):
                         if change.project_id
                         else f"Noted: {change.topic} — you told Mylo."
                     )[:500],
-                    "url": "/app/mylo-and-you",
+                    "url": "/app/settings/you/mylo",
                 },
             )
             facts += made
@@ -172,7 +172,7 @@ class Command(BaseCommand):
                             "transcripts; only project decisions and blockers "
                             "are kept. The transcript itself is not kept."
                         ),
-                        "url": "/app/mylo-and-you",
+                        "url": "/app/settings/you/mylo",
                     },
                 )
             told.append(meeting_id)

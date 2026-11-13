@@ -8,6 +8,8 @@ import type {
   AnswerResult,
   Change,
   Development,
+  OrgServer,
+  RecordingState,
   Suggestion,
   Understanding,
 } from "./types";
@@ -137,4 +139,37 @@ export function fetchProjectDevelopments(projectId: string): Promise<{ developme
 
 export function fetchLabChanges(slug: string): Promise<{ changes: Change[] }> {
   return get(["ambient", "labs", slug, "changes"], "Could not load the lab's changes.");
+}
+
+export function fetchRecording(): Promise<RecordingState> {
+  return get(["ambient", "recording"], "Could not load what Mylo records.");
+}
+
+export function saveRecording(
+  body: { server: number; record: boolean } | { project: string; record: boolean },
+): Promise<RecordingState> {
+  return send("POST", ["ambient", "recording"], body, "Could not save that.");
+}
+
+export function fetchOrgServers(
+  kind: "lab" | "department",
+  ref: string,
+): Promise<{ servers: OrgServer[] }> {
+  return get(["ambient", "servers", kind, ref], "Could not load the servers.");
+}
+
+export async function saveOrgServer(
+  kind: "lab" | "department",
+  ref: string,
+  body: { guild_id: string; on: boolean },
+): Promise<{ servers: OrgServer[] }> {
+  const out = await send<{ servers?: OrgServer[]; detail?: string }>(
+    "POST",
+    ["ambient", "servers", kind, ref],
+    body,
+    "Could not change listening.",
+  );
+  // A 409 comes back as a body with only a detail (listening is off here).
+  if (!out?.servers) throw new Error(out?.detail ?? "Could not change listening.");
+  return { servers: out.servers };
 }

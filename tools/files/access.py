@@ -38,7 +38,12 @@ def _lab_role(user, lab):
     from apps.accounts.models import LabMembership
 
     row = LabMembership.objects.filter(user=user, lab=lab).first()
-    return row.role if row else None
+    if row is None:
+        return None
+    # A lead PI holds every right an admin does (settings plan, decision 13).
+    if row.is_lead and row.role not in ("owner", "admin"):
+        return "admin"
+    return row.role
 
 
 def _dept_role(user, dept):
