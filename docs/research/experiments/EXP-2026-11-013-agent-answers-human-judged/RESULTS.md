@@ -3,7 +3,7 @@
 Generated 2026-11-12/13. Numbers that need no people are read from
 `data/metrics.json` (arm a `main`, arm b, injected errors),
 `data/metrics_rep2.json` / `data/metrics_rep3.json` (validation repetitions of
-arm a) and `data/inject_main_summary.json`. **The human-judged half (C-033,
+arm a) and `data/inject_<run>_summary.json`. **The human-judged half (C-033,
 C-034 and C-035's precision) is not measured yet: the rating sheets are
 ready in `data/sheets/` and waiting for raters.**
 
@@ -18,7 +18,10 @@ citation number (108/108) and nearly every invented amount or figure
 (104/113), caught dates, authors and venues **only when written as a
 `Label: value` line** (53/58, 43/51, 30/49) and **never in running prose**
 (0/49 each), and caught **none** of 60 unsupported paraphrases — as predicted
-before the run. It raised no false alarm on the 49 originals.
+before the run. It raised no false alarm on the 49 originals. The same
+injection on the two validation repetitions (1,988 copies of 147 answers in
+all) gives the same pattern: 328/328 citation numbers, 0/180 paraphrases,
+0/147 per class for dates, authors and venues in prose, no false alarm.
 
 ## 2. Results table
 
