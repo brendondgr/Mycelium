@@ -94,10 +94,20 @@ def collection_status() -> dict:
 
 
 def profile_status(user) -> dict:
+    """Done once the admin has research interests of their own.
+
+    ``version`` is bookkeeping, and ``create_admin`` seeds the placeholder
+    ``ADMIN_INTERESTS`` so the account passes onboarding checks; neither is
+    the admin filling in a profile.
+    """
+    from apps.accounts.management.commands.create_admin import ADMIN_INTERESTS
+
     profile = getattr(user, "profile", None)
     interests = getattr(profile, "interests", None) or {}
     if isinstance(interests, dict):
-        filled = any(bool(value) for value in interests.values())
+        placeholder = {k: v for k, v in ADMIN_INTERESTS.items() if k != "version"}
+        content = {k: v for k, v in interests.items() if k != "version" and v}
+        filled = bool(content) and content != placeholder
     else:
         filled = bool(interests)
     return {"state": "done" if filled else "todo"}

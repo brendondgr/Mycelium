@@ -152,12 +152,16 @@ services:
     logging: *logging
     user: *as-user
     working_dir: /app/web
-    command: sh -c "npm run build:landing"
+    # Astro moves its build output with a rename, which cannot cross from the
+    # checkout's filesystem into a volume, so build into the (gitignored)
+    # web/landing/dist as the stack's own user, then copy into the volume
+    # nginx serves.
+    command: >-
+      sh -c "npm run build:landing &&
+      find /srv/landing-dist -mindepth 1 -delete &&
+      cp -R landing/dist/. /srv/landing-dist/"
     environment:
       <<: *node-env
-      # Outside the repository, so the build leaves no root-owned mount point
-      # in the checkout.
-      ASTRO_OUT_DIR: /srv/landing-dist
       # PUBLIC_APP_URL is deliberately unset: landing and app share the nginx
       # origin, so the site's app links stay relative.
       PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:-}

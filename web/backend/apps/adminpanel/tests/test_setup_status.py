@@ -50,6 +50,18 @@ def test_a_fresh_instance_lists_what_is_left():
 
 
 @override_settings(LLM_ENABLED=False)
+def test_the_admin_placeholder_interests_are_not_a_profile():
+    """``create_admin`` seeds placeholder interests; that is not the admin
+    filling in their profile, so the step stays to do."""
+    from apps.accounts.management.commands.create_admin import ADMIN_INTERESTS
+
+    client, user = _client(True)
+    user.profile.interests = dict(ADMIN_INTERESTS)
+    user.profile.save()
+    assert client.get(URL).json()["steps"]["profile"]["state"] == "todo"
+
+
+@override_settings(LLM_ENABLED=False)
 def test_each_step_turns_done_from_the_data():
     client, user = _client(True)
     item = apps.get_model("content", "ContentItem")

@@ -15,8 +15,9 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const publicHostname = process.env.PUBLIC_HOSTNAME?.trim();
 
 export default defineConfig({
-  // Production builds write straight into the volume nginx serves
-  // (compose.yaml sets ASTRO_OUT_DIR); a local `astro build` keeps ./dist.
+  // ./dist by default. compose.yaml copies it into the volume nginx serves:
+  // Astro moves its output with a rename, which cannot cross filesystems, so
+  // ASTRO_OUT_DIR must stay on the same filesystem as this project.
   outDir: process.env.ASTRO_OUT_DIR?.trim() || "./dist",
   integrations: [mdx(), react()],
   // The pricing page was removed when Mycelium moved to an open-source

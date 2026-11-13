@@ -404,7 +404,17 @@ def cmd_start(dev: bool, build: bool = False, *, clear_cache: bool = True,
     base = _compose(dev)
     _remember_mode(dev)
     if clear_cache:
-        _clear_web_caches()
+        # Never under a live stack: a running web container is building or
+        # serving from .next, and deleting it there breaks the app until the
+        # next restart (which stops the stack first and then clears).
+        running = [
+            r for r in _ps(_compose(dev=True))
+            if (r.get("State") or "").lower() == "running"
+        ]
+        if running:
+            print(dim("Frontend: stack already running; build caches left in place"))
+        else:
+            _clear_web_caches()
         print()
     code = _compose_start(base, build)
     return _finish_start(base, code, migrate, dev)
