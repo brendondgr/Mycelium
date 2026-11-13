@@ -1664,6 +1664,10 @@ class DeptMembersView(APIView):
             return Response(
                 {"role": ["Unknown role."]}, status=status.HTTP_400_BAD_REQUEST
             )
+        if role == DeptMembership.Role.OWNER:
+            raise PermissionDenied(
+                "A department is handed over by transfer, not by an invitation."
+            )
         try:
             invites.invite_dept_member_by_username(
                 department, username, actor=request.user, role=role
