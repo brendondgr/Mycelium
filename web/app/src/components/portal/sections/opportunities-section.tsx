@@ -21,13 +21,12 @@ import {
 import { DetailSection } from "@/components/portal/feed/parts";
 import { OpportunityFeed, type OpportunityFeedConfig } from "@/components/portal/feed/opportunity-feed";
 import { usePortal } from "@/components/portal/portal-context";
-import { useGrants, useLabRecommendations } from "@/lib/portal/hooks";
+import { orgRefFor, useGrants, useOrgRecommendations, type OrgRef } from "@/lib/portal/hooks";
 import { TeamFitLine } from "@/components/portal/collab/team-fit-line";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import { UsabilityStrip } from "@/components/portal/primitives/usability-strip";
 import type {
   GrantOpportunity,
-  MyLab,
   RecommendedMember,
 } from "@/lib/portal/types";
 
@@ -349,22 +348,24 @@ const GRANTS_CONFIG: OpportunityFeedConfig<GrantOpportunity> = {
 
 const LAB_GRANTS_CONFIG: OpportunityFeedConfig<GrantOpportunity> = {
   ...GRANTS_CONFIG,
-  emptyTitle: "No lab grant matches yet",
+  emptyTitle: "No grant matches yet",
   emptyDescription:
-    "Once Mylo has run for this lab, funding opportunities matched to its purpose will appear here.",
+    "Once Mylo has run here, funding opportunities matched to this workspace's purpose will appear.",
 };
 
 export function OpportunitiesSection() {
-  const { currentLab } = usePortal();
-  if (currentLab) {
-    return <LabGrantsFeed lab={currentLab} />;
+  const { currentLab, currentDepartment } = usePortal();
+  // A lab's feed, or a department's: the same feed over the org's own matches.
+  const org = orgRefFor(currentLab, currentDepartment);
+  if (org) {
+    return <OrgGrantsFeed org={org} />;
   }
   return <PersonalOpportunities />;
 }
 
 /** The lab-scoped Grants feed — the lab's matched funding, same UI as personal. */
-function LabGrantsFeed({ lab }: { lab: MyLab }) {
-  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+function OrgGrantsFeed({ org }: { org: OrgRef }) {
+  const { data, isLoading, isError } = useOrgRecommendations(org);
   const grants = React.useMemo(() => data?.grants ?? [], [data]);
   return (
     <OpportunityFeed
@@ -373,7 +374,7 @@ function LabGrantsFeed({ lab }: { lab: MyLab }) {
       isLoading={isLoading}
       isError={isError}
       recommendedFor={data?.recommended_for}
-      labName={lab.name}
+      labName={org.name}
     />
   );
 }

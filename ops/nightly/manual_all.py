@@ -39,11 +39,14 @@ position said when it arrived rather than how well it fits. Cost is contained by
 carry-forward rather than by narrowing the scan: a verdict Mylo has already
 written is reused, never re-billed, so what re-ranking nightly costs is retrieval.
 
-Both stages run untargeted, so each covers all three target kinds: every entitled
-user, every lab on an active subscription, and their in-cap active projects
-(``tools.recommendation.tasks.select_targets``). That has to match the briefing and digest
-stages below — a lab that is briefed nightly but not *ranked* nightly has a frozen
-feed, and its report reads "N papers, 0 new" every day.
+Both stages run untargeted, so each covers every target kind: every entitled
+user, every lab on an active subscription, every department on an active plan
+(``select_departments`` — papers and opportunities alike, whether or not its
+announcements are on), and their in-cap active projects
+(``tools.recommendation.tasks.select_targets``). That has to match the briefing,
+digest and weekly stages below, which take the same departments — a lab or
+department that is briefed nightly but not *ranked* nightly has a frozen feed,
+and its report reads "N papers, 0 new" every day.
 
 Between 3 and 4 sit the reminder tick and two sweeps — ``prune_opportunities``
 (expired listings) and ``prune_briefings`` (reports past
@@ -57,7 +60,8 @@ touches the rankings the stages above just wrote.
        run always; the three similarity-based ones wait on
        ``PROJECT_ALERTS_ENABLED``.
     4. Write daily briefings (backend)     — ``generate_daily_briefing``: the
-       "Mylo Report" for every user **and every entitled lab**, organised by
+       "Mylo Report" for every user **and every entitled lab and department**
+       (a department through the lab's own function), organised by
        research theme (LLM with a deterministic fallback), written over each
        theme's own slate. This is a per-*day* replace — a rerun re-describes today
        and leaves the earlier days' reports standing. When nothing entered any of

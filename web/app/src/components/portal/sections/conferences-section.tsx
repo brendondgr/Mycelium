@@ -20,13 +20,18 @@ import { DetailSection } from "@/components/portal/feed/parts";
 import { OpportunityFeed, type OpportunityFeedConfig } from "@/components/portal/feed/opportunity-feed";
 import type { Facet } from "@/components/portal/feed/toolbar";
 import { usePortal } from "@/components/portal/portal-context";
-import { useConferences, useLabRecommendations, useRankingReference } from "@/lib/portal/hooks";
+import {
+  orgRefFor,
+  useConferences,
+  useOrgRecommendations,
+  useRankingReference,
+  type OrgRef,
+} from "@/lib/portal/hooks";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import { UsabilityStrip } from "@/components/portal/primitives/usability-strip";
 import type {
   ConferenceOpportunity,
   ConferenceRanking,
-  MyLab,
   RankingReference,
   RecommendedMember,
   StructuredDeadline,
@@ -729,21 +734,23 @@ const CONFERENCES_CONFIG: OpportunityFeedConfig<ConferenceOpportunity> = {
 
 const LAB_CONFERENCES_CONFIG: OpportunityFeedConfig<ConferenceOpportunity> = {
   ...CONFERENCES_CONFIG,
-  emptyTitle: "No lab conference matches yet",
-  emptyDescription: "Once Mylo has run for this lab, venues matched to its research will appear here.",
+  emptyTitle: "No conference matches yet",
+  emptyDescription: "Once Mylo has run here, venues matched to this workspace's research will appear.",
 };
 
 export function ConferencesSection() {
-  const { currentLab } = usePortal();
-  if (currentLab) {
-    return <LabConferencesFeed lab={currentLab} />;
+  const { currentLab, currentDepartment } = usePortal();
+  // A lab's feed, or a department's: the same feed over the org's own matches.
+  const org = orgRefFor(currentLab, currentDepartment);
+  if (org) {
+    return <OrgConferencesFeed org={org} />;
   }
   return <PersonalConferences />;
 }
 
 /** The lab-scoped Conferences feed — the lab's matches, same UI as personal. */
-function LabConferencesFeed({ lab }: { lab: MyLab }) {
-  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+function OrgConferencesFeed({ org }: { org: OrgRef }) {
+  const { data, isLoading, isError } = useOrgRecommendations(org);
   const conferences = React.useMemo(() => data?.conferences ?? [], [data]);
   return (
     <OpportunityFeed
@@ -752,7 +759,7 @@ function LabConferencesFeed({ lab }: { lab: MyLab }) {
       isLoading={isLoading}
       isError={isError}
       recommendedFor={data?.recommended_for}
-      labName={lab.name}
+      labName={org.name}
     />
   );
 }

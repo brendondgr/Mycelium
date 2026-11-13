@@ -143,19 +143,24 @@ def known_literature(project=None, reader=None) -> KnownLiterature:
     if reader is None or not getattr(reader, "pk", None):
         return store
 
-    from apps.accounts.models import AuthorWork, Lab
+    from apps.accounts.models import AuthorWork, Department, Lab
 
     # A lab reads the *lab's* saves. One member's personal bookmark is not the
     # lab's knowledge, and treating it as such would suppress an item for
-    # everyone because one person filed it.
-    is_lab = isinstance(reader, Lab)
-    saves_filter = (
-        {"target_lab": reader} if is_lab else {"user": reader, "target_lab": None}
-    )
+    # everyone because one person filed it. A department keeps no saves.
+    is_lab = isinstance(reader, (Lab, Department))
+    if isinstance(reader, Department):
+        saves_filter: dict = {}
+    elif is_lab:
+        saves_filter = {"target_lab": reader}
+    else:
+        saves_filter = {"user": reader, "target_lab": None}
     for save in (
         SavedOpportunity.objects.filter(**saves_filter)
         .exclude(content__isnull=True)
         .select_related("content", "content__comprehension")
+        if saves_filter
+        else ()
     ):
         _register(store, save.content, "saved")
 

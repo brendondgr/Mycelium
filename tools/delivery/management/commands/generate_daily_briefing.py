@@ -15,7 +15,11 @@ from tools.delivery.briefing import (
     generate_briefing_for_lab,
     generate_briefing_for_user,
 )
-from tools.recommendation.tasks import select_targets, select_users
+from tools.recommendation.tasks import (
+    select_departments,
+    select_targets,
+    select_users,
+)
 
 
 class Command(BaseCommand):
@@ -37,8 +41,12 @@ class Command(BaseCommand):
         # A full run also briefs each entitled lab over its aggregate matches (a
         # targeted --user run stays user-scoped; select_targets returns no labs).
         labs, _ = select_targets(usernames or None)
-        if not users and not labs:
-            self.stdout.write(self.style.WARNING("No matching users or labs."))
+        # A department is briefed over its own matches through the lab's function.
+        departments = select_departments(usernames or None)
+        if not users and not labs and not departments:
+            self.stdout.write(
+                self.style.WARNING("No matching users, labs or departments.")
+            )
             return
 
         llm = 0
@@ -74,11 +82,25 @@ class Command(BaseCommand):
             else:
                 lab_fallback += 1
 
+        dept_written = 0
+        for department in departments:
+            try:
+                generate_briefing_for_lab(department)
+            except Exception as exc:  # noqa: BLE001 — one department never sinks it
+                errors += 1
+                self.stderr.write(
+                    self.style.ERROR(
+                        f"  {department.pk}: department briefing failed — {exc}"
+                    )
+                )
+                continue
+            dept_written += 1
+
         self.stdout.write(
             self.style.SUCCESS(
                 f"Briefings written for {len(users)} user(s): "
                 f"{llm} via LLM, {fallback} via fallback; "
                 f"{len(labs)} lab(s): {lab_llm} via LLM, {lab_fallback} via fallback; "
-                f"{errors} error(s)."
+                f"{dept_written} department(s); {errors} error(s)."
             )
         )

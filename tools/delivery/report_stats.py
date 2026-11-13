@@ -265,6 +265,9 @@ def open_alert_counts(target_filter: dict, day: date) -> dict[str, int]:
     """
     from tools.delivery.models import ProjectAlert
 
+    # Alerts are stored per person or per lab; a department has none.
+    if "target_department" in target_filter:
+        return {}
     rows = ProjectAlert.objects.filter(
         **target_filter, fired_on=day, status=ProjectAlert.Status.OPEN
     ).values_list("project_id", flat=True)
@@ -364,11 +367,12 @@ def record_run_stats(briefing, data=None):
 
     try:
         if data is None:
-            owner = briefing.user or briefing.lab
+            # A lab's or a department's briefing compiles through the one org
+            # compiler; a person's through their own.
             data = (
-                compile_report_for_user(owner)
+                compile_report_for_user(briefing.user)
                 if briefing.user_id
-                else compile_report_for_lab(owner)
+                else compile_report_for_lab(briefing.lab or briefing.department)
             )
         briefing.stats = data.stats.as_dict()
         briefing.save(update_fields=["stats", "generated_at"])

@@ -139,6 +139,44 @@ urlpatterns = [
         "labs/<slug:slug>/recommendations",
         views.LabRecommendationsView.as_view(),
     ),
+    # A department's feeds and briefing: the lab's, over the department's own
+    # target_department scores (a department works like a lab).
+    path(
+        "departments/<uuid:pk>/recommendations/",
+        views.DepartmentRecommendationsView.as_view(),
+        name="department-recommendations",
+    ),
+    path(
+        "departments/<uuid:pk>/recommendations",
+        views.DepartmentRecommendationsView.as_view(),
+    ),
+    path(
+        "departments/<uuid:pk>/daily-briefing/",
+        views.DepartmentDailyBriefingView.as_view(),
+        name="department-daily-briefing",
+    ),
+    path(
+        "departments/<uuid:pk>/daily-briefing",
+        views.DepartmentDailyBriefingView.as_view(),
+    ),
+    path(
+        "departments/<uuid:pk>/briefings/",
+        views.DepartmentBriefingHistoryView.as_view(),
+        name="department-briefings",
+    ),
+    path(
+        "departments/<uuid:pk>/briefings",
+        views.DepartmentBriefingHistoryView.as_view(),
+    ),
+    path(
+        "departments/<uuid:pk>/briefings/<isodate:on>/",
+        views.DepartmentBriefingDetailView.as_view(),
+        name="department-briefing-detail",
+    ),
+    path(
+        "departments/<uuid:pk>/briefings/<isodate:on>",
+        views.DepartmentBriefingDetailView.as_view(),
+    ),
     # A lab's written daily briefing (the lab overview's Mylo Report zone).
     path(
         "labs/<slug:slug>/daily-briefing/",

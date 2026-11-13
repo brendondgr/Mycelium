@@ -671,6 +671,7 @@ def run_daily_batch(
     users: Sequence[User],
     *,
     labs: Sequence = (),
+    departments: Sequence = (),
     projects: Sequence = (),
     days_back: int = DEFAULT_DAYS_BACK,
     days_forward: int = DEFAULT_DAYS_FORWARD,
@@ -700,12 +701,18 @@ def run_daily_batch(
 
     **Phase 2 (recommend):** retrieve + fuse + suggest against the now-populated
     store, with no scanning per target — first each user (the watch-gated personal
-    path), then each lab and project (their aggregate / declared focus). A failure
-    for one target is caught and logged so it never sinks the batch.
+    path), then each lab, department and project (their aggregate / declared
+    focus). A department ranks papers against its own profile exactly as a lab
+    does. A failure for one target is caught and logged so it never sinks the
+    batch.
     """
-    from tools.recommendation.targets import project_watch_categories
+    from tools.recommendation.targets import (
+        project_watch_categories,
+        target_for_department,
+    )
 
     lab_targets = [target_for_lab(lab) for lab in labs]
+    lab_targets += [target_for_department(d) for d in departments]
     # A project only gets daily paper recommendations if it opted into the papers
     # category (default on); an off-papers project is skipped so neither its scan
     # terms nor a paper feed are produced for it.

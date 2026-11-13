@@ -6,13 +6,11 @@
  * but they must never disagree about which sections a scope offers. So the
  * answer lives here once and both render it.
  *
- * The department case is the reason this is a model rather than a pair of JSX
- * branches. A department has **no research feeds in the app yet**. The server
- * does have a department scoring target (`targets.target_for_department`), but
- * no feed endpoint accepts a department — every feed route scopes on `?lab=` —
- * so Papers / Grants / Fellowships / Conferences are absent from a department's
- * navigation rather than present and permanently empty. What it has instead is
- * one **Opportunities** page: the calls only a department can take on
+ * A department works like a lab: it has the same four research feeds — Papers,
+ * Grants, Fellowships, Conferences — read from
+ * `/api/departments/<id>/recommendations/`, which is the lab's feed over the
+ * department's own profile. Beside them it keeps one page a lab does not have,
+ * **Opportunities**: the calls only a department can take on
  * (`tools/delivery/dept_level.py`).
  */
 
@@ -75,9 +73,9 @@ export function navGroupsFor(ctx: NavContext): NavGroup[] {
     { key: "reminders", label: "Reminders", icon: "reminders" },
   ];
 
-  // A lab is on its own paid plan, so its members always get the lab feeds; the
-  // personal feeds are gated on the personal plan.
-  const inLab = scope.kind === "lab";
+  // A lab or a department is on its own plan, so its members always get its
+  // feeds; the personal feeds are gated on the personal plan.
+  const inLab = scope.kind === "lab" || scope.kind === "department";
   const feeds: NavItem[] = [
     FEED_ITEMS.papers,
     ...(inLab || hasFeature(FEATURE.GRANT_ALERTS) ? [FEED_ITEMS.grants] : []),
@@ -111,8 +109,9 @@ export function navGroupsFor(ctx: NavContext): NavGroup[] {
         ...common,
       ],
     });
-    // Projects only. See the module docstring for why there are no feeds.
-    groups.push({ label: "Research", items: [projects] });
+    // The lab's four feeds over the department's own profile; Opportunities
+    // stays its own page in the Workspace group above.
+    groups.push({ label: "Research", items: [...feeds, projects] });
     groups.push(settings);
     return groups;
   }
@@ -177,10 +176,10 @@ const ALWAYS_ALLOWED: SectionKey[] = [
 ];
 
 /**
- * Whether a section may be shown in this scope. This is what stops a department
- * scope rendering *personal* feed results: every feed section falls back to the
- * personal feed when `currentLab` is null, so without a guard
- * `/app/grants?ws=<dept>` would quietly show the reader their own grants.
+ * Whether a section may be shown in this scope. This is what stops a scope
+ * rendering a section that would answer for the wrong owner: every feed section
+ * falls back to the *personal* feed when the workspace has no org, so a section
+ * reached by a stale link must be checked against what the scope offers.
  *
  * It is a navigation guard, not a permission boundary — the API enforces access.
  */

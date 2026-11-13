@@ -135,15 +135,20 @@ def zone_for(name: str | None) -> ZoneInfo:
 
 
 def _schedule_for(target) -> tuple[ZoneInfo, int]:
-    """``(zone, local send hour)`` for a user or a lab.
+    """``(zone, local send hour)`` for a user, a lab or a department.
 
     A lab keeps its hour and zone on :class:`~apps.accounts.models.Lab` itself,
     where the reminder scheduler already reads them; a person keeps theirs on their
-    watch row, which is where every other delivery preference of theirs lives.
+    watch row, which is where every other delivery preference of theirs lives. A
+    department has neither yet, so it posts at the lab default.
     """
-    from apps.accounts.models import Lab
+    from apps.accounts.models import Department, Lab
 
-    if isinstance(target, Lab):
+    from tools.delivery.org_scope import Org
+
+    if isinstance(target, Org):
+        target = target.obj
+    if isinstance(target, (Lab, Department)):
         hour = getattr(target, "send_hour_local", None)
         return (
             zone_for(getattr(target, "timezone", None)),
@@ -194,6 +199,12 @@ WEEKLY_REPORT_KEY = "weekly_report:{target}:{on}"
 LAB_DIGEST_KEY = "lab_digest:{target}:{on}"
 LAB_REPORT_KEY = "lab_report:{target}:{on}"
 LAB_WEEKLY_KEY = "lab_weekly:{target}:{on}"
+#: A department's posts. The lab keys are left exactly as they were (changing one
+#: would re-send today's post); a department gets its own prefix rather than
+#: sharing the lab's, so the two id spaces can never meet in one key.
+DEPT_DIGEST_KEY = "dept_digest:{target}:{on}"
+DEPT_REPORT_KEY = "dept_report:{target}:{on}"
+DEPT_WEEKLY_KEY = "dept_weekly:{target}:{on}"
 URGENT_ALERT_KEY = "urgent_alert:{target}:{subject}"
 
 
@@ -214,16 +225,25 @@ def weekly_report_key(user, on: date) -> str:
     return WEEKLY_REPORT_KEY.format(target=user.id, on=_on(on))
 
 
+def _org_key(lab_key: str, dept_key: str, target, on: date) -> str:
+    from tools.delivery.org_scope import org
+
+    scope = org(target)
+    template = lab_key if scope.is_lab else dept_key
+    return template.format(target=scope.id, on=_on(on))
+
+
 def lab_digest_key(lab, on: date) -> str:
-    return LAB_DIGEST_KEY.format(target=lab.id, on=_on(on))
+    """The daily post's key, for a lab or a department."""
+    return _org_key(LAB_DIGEST_KEY, DEPT_DIGEST_KEY, lab, on)
 
 
 def lab_report_key(lab, on: date) -> str:
-    return LAB_REPORT_KEY.format(target=lab.id, on=_on(on))
+    return _org_key(LAB_REPORT_KEY, DEPT_REPORT_KEY, lab, on)
 
 
 def lab_weekly_key(lab, on: date) -> str:
-    return LAB_WEEKLY_KEY.format(target=lab.id, on=_on(on))
+    return _org_key(LAB_WEEKLY_KEY, DEPT_WEEKLY_KEY, lab, on)
 
 
 def urgent_alert_key(user, subject: str) -> str:

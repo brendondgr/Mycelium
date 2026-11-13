@@ -479,6 +479,14 @@ api/items/<uuid:content_id>/	item-card	ItemCardView
 api/items/<uuid:content_id>	-	ItemCardView
 api/labs/<slug:slug>/recommendations/	lab-recommendations	LabRecommendationsView
 api/labs/<slug:slug>/recommendations	-	LabRecommendationsView
+api/departments/<uuid:pk>/recommendations/	department-recommendations	DepartmentRecommendationsView
+api/departments/<uuid:pk>/recommendations	-	DepartmentRecommendationsView
+api/departments/<uuid:pk>/daily-briefing/	department-daily-briefing	DepartmentDailyBriefingView
+api/departments/<uuid:pk>/daily-briefing	-	DepartmentDailyBriefingView
+api/departments/<uuid:pk>/briefings/	department-briefings	DepartmentBriefingHistoryView
+api/departments/<uuid:pk>/briefings	-	DepartmentBriefingHistoryView
+api/departments/<uuid:pk>/briefings/<isodate:on>/	department-briefing-detail	DepartmentBriefingDetailView
+api/departments/<uuid:pk>/briefings/<isodate:on>	-	DepartmentBriefingDetailView
 api/labs/<slug:slug>/daily-briefing/	lab-daily-briefing	LabDailyBriefingView
 api/labs/<slug:slug>/daily-briefing	-	LabDailyBriefingView
 api/labs/<slug:slug>/briefings/	lab-briefings	LabBriefingHistoryView

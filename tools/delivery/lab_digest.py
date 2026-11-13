@@ -56,7 +56,10 @@ REPORT_MESSAGE = "Today's full report is attached."
 # Eligibility
 # --------------------------------------------------------------------------- #
 def eligible_labs(labs, *, on: date | None = None, kind: str = delivery.DAILY) -> list:
-    """Labs that should receive a channel post today.
+    """Labs — and departments — that should receive a channel post today.
+
+    ``labs`` may hold both: a department works like a lab and passes the same
+    gates, reading its own plan and its own server's updates route.
 
     Every condition is checked here rather than trusted from setup time:
 
@@ -74,25 +77,29 @@ def eligible_labs(labs, *, on: date | None = None, kind: str = delivery.DAILY) -
     :data:`delivery.WEEKLY`. Passing it rather than assuming "daily" is what lets
     the Monday weekly reach a weekly-cadence lab through the same gate.
     """
-    from apps.billing.entitlements import Feature, lab_has_feature
+    from apps.billing.entitlements import Feature
+
+    from tools.delivery.org_scope import org
 
     out = []
     for lab in labs:
-        local_date = on or delivery.local_today(lab)
-        if kind not in delivery.push_kinds(delivery.lab_cadence(lab), local_date):
+        scope = org(lab)
+        local_date = on or delivery.local_today(scope.obj)
+        if kind not in delivery.push_kinds(delivery.lab_cadence(scope), local_date):
             continue
-        if not lab_has_feature(lab, Feature.BOT_SERVER):
+        if not scope.has_feature(Feature.BOT_SERVER):
             continue
         # Ambient Plan 11: a lab whose Slack workspace is its primary surface
-        # gets its posts there (``slack_reports``), not twice.
+        # gets its posts there (``slack_reports``), not twice. Slack binds labs
+        # only, so a department always posts in Discord.
         from tools.delivery.slack_reports import slack_is_primary
 
-        if slack_is_primary(lab):
+        if scope.is_lab and slack_is_primary(scope.obj):
             continue
-        link = resolve.primary_server_for_lab(lab, "updates")
+        link = scope.primary_server("updates")
         if link is None or link.state != resolve.GUILD_ACTIVE:
             continue
-        if not resolve.get_updates_channel_for_lab(lab):
+        if not scope.updates_channel():
             continue
         out.append(lab)
     return out
@@ -120,21 +127,27 @@ def queue_lab_digest(
     would double the work and, worse, could produce two different mornings if a
     score landed between them.
     """
+    from tools.delivery.org_scope import org
+
+    scope = org(lab)
     on = on or timezone.localdate()
-    data = data if data is not None else compile_report_for_lab(lab)
+    data = data if data is not None else compile_report_for_lab(scope.obj)
     if alerts is None:
         from tools.delivery.alert_report import block_for, discord_lines, open_alerts
 
-        alerts = discord_lines(
-            [block_for(alert) for alert in open_alerts({"target_lab": lab}, on)]
+        alerts = (
+            discord_lines(
+                [block_for(alert) for alert in open_alerts(scope.alert_filter, on)]
+            )
+            if scope.alert_filter
+            else []
         )
-    from tools.delivery.briefing import report_projects_for_lab
     from tools.delivery.weekly_changes import changed_today
 
     # Ambient Plan 09: a stated-state change accepted today is one line in the
     # day's post — never a post of its own, and never a development (OD-09a).
     changes = changed_today(
-        reader=lab, projects=report_projects_for_lab(lab), is_lab=True
+        reader=scope.obj, projects=scope.shared_projects(), is_lab=True
     )
     if is_quiet(data) and not changes:
         # Nothing new and nothing wrong. A daily "I found nothing" post trains
@@ -142,22 +155,27 @@ def queue_lab_digest(
         # (plan H7). The lab's web report still shows the day.
         return None, False
 
-    channel_id = resolve.get_updates_channel_for_lab(lab)
+    channel_id = scope.updates_channel()
     if not channel_id:
         return None, False
 
+    kind = "lab_digest" if scope.is_lab else "dept_digest"
     return outbox.enqueue_channel(
-        dedupe_key=delivery.lab_digest_key(lab, on),
-        kind="lab_digest",
+        dedupe_key=delivery.lab_digest_key(scope, on),
+        kind=kind,
         channel_id=channel_id,
-        lab=lab,
+        lab=scope.outbox_lab,
         embed=discord_embeds.lab_post_embed(
             data, data.stats, alerts=alerts, changes=changes
         ),
-        subject_type="lab_digest",
-        subject_id=str(lab.id),
-        not_before=delivery.send_time(lab, on),
+        subject_type=kind,
+        subject_id=str(scope.id),
+        not_before=delivery.send_time(scope.obj, on),
     )
+
+
+#: The same function under the name that says what it takes.
+queue_org_digest = queue_lab_digest
 
 
 def is_quiet(data: ReportData) -> bool:
@@ -180,7 +198,9 @@ def report_dir() -> Path:
 
 
 def report_filename(lab, on: date) -> str:
-    return f"mylo-report-{lab.slug}-{on:%Y-%m-%d}.pdf"
+    from tools.delivery.org_scope import org
+
+    return f"mylo-report-{org(lab).file_key}-{on:%Y-%m-%d}.pdf"
 
 
 def queue_lab_report(
@@ -207,12 +227,15 @@ def queue_lab_report(
     Returns ``True`` when a row was queued. A lab with nothing to report queues
     nothing — the summary still posts, and the day is not spent explaining absence.
     """
+    from tools.delivery.org_scope import org
+
+    scope = org(lab)
     on = on or timezone.localdate()
-    channel_id = resolve.get_updates_channel_for_lab(lab)
+    channel_id = scope.updates_channel()
     if not channel_id:
         return False
 
-    data = data if data is not None else compile_report_for_lab(lab)
+    data = data if data is not None else compile_report_for_lab(scope.obj)
     if not data.total_count and not data.briefing_markdown.strip():
         return False
 
@@ -227,27 +250,30 @@ def queue_lab_report(
     staged.write_bytes(render_report_pdf(data))
     os.replace(staged, path)
 
+    kind = "lab_report" if scope.is_lab else "dept_report"
     _row, created = outbox.enqueue_channel(
-        dedupe_key=delivery.lab_report_key(lab, on),
-        kind="lab_report",
+        dedupe_key=delivery.lab_report_key(scope, on),
+        kind=kind,
         channel_id=channel_id,
-        lab=lab,
+        lab=scope.outbox_lab,
         content=REPORT_MESSAGE,
         attachment_path=str(path),
         attachment_filename=path.name,
-        subject_type="lab_report",
-        subject_id=str(lab.id),
+        subject_type=kind,
+        subject_id=str(scope.id),
         # One second after the summary, so the outbox — which claims by
         # (next_attempt_at, id) — still posts the file under the counts it
         # belongs to once both rows are held for the same local hour.
-        not_before=delivery.send_time(lab, on) + timedelta(seconds=1),
+        not_before=delivery.send_time(scope.obj, on) + timedelta(seconds=1),
     )
     return bool(created)
 
 
 def written_briefing_body(lab) -> str:
     """The lab's written daily report, or an empty string when none exists yet."""
-    briefing = DailyBriefing.latest_for(lab=lab)
+    from tools.delivery.org_scope import org
+
+    briefing = DailyBriefing.latest_for(**org(lab).owner)
     return (briefing.body or "") if briefing is not None else ""
 
 

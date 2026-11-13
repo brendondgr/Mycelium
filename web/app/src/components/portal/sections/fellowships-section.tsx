@@ -21,8 +21,8 @@ import type { Facet } from "@/components/portal/feed/toolbar";
 import { usePortal } from "@/components/portal/portal-context";
 import { RecommendedFor } from "@/components/portal/primitives/recommended-for";
 import { UsabilityStrip } from "@/components/portal/primitives/usability-strip";
-import { useFellowships, useLabRecommendations } from "@/lib/portal/hooks";
-import type { FellowshipOpportunity, MyLab, RecommendedMember } from "@/lib/portal/types";
+import { orgRefFor, useFellowships, useOrgRecommendations, type OrgRef } from "@/lib/portal/hooks";
+import type { FellowshipOpportunity, RecommendedMember } from "@/lib/portal/types";
 
 // --------------------------------------------------------------------------- //
 // Deadline display helpers
@@ -549,22 +549,24 @@ const FELLOWSHIPS_CONFIG: OpportunityFeedConfig<FellowshipOpportunity> = {
 
 const LAB_FELLOWSHIPS_CONFIG: OpportunityFeedConfig<FellowshipOpportunity> = {
   ...FELLOWSHIPS_CONFIG,
-  emptyTitle: "No lab fellowship matches yet",
+  emptyTitle: "No fellowship matches yet",
   emptyDescription:
-    "Once Mylo has run for this lab, fellowships matched to its shared research profile will appear here — each naming the members it suits best.",
+    "Once Mylo has run here, fellowships matched to its shared research profile will appear here — each naming the members it suits best.",
 };
 
 export function FellowshipsSection() {
-  const { currentLab } = usePortal();
-  if (currentLab) {
-    return <LabFellowshipsFeed lab={currentLab} />;
+  const { currentLab, currentDepartment } = usePortal();
+  // A lab's feed, or a department's: the same feed over the org's own matches.
+  const org = orgRefFor(currentLab, currentDepartment);
+  if (org) {
+    return <OrgFellowshipsFeed org={org} />;
   }
   return <PersonalFellowships />;
 }
 
 /** The lab-scoped Fellowships feed — the lab's matches, same UI as personal. */
-function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
-  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+function OrgFellowshipsFeed({ org }: { org: OrgRef }) {
+  const { data, isLoading, isError } = useOrgRecommendations(org);
   const items = React.useMemo(() => data?.fellowships ?? [], [data]);
   return (
     <OpportunityFeed
@@ -573,7 +575,7 @@ function LabFellowshipsFeed({ lab }: { lab: MyLab }) {
       isLoading={isLoading}
       isError={isError}
       recommendedFor={data?.recommended_for}
-      labName={lab.name}
+      labName={org.name}
     />
   );
 }

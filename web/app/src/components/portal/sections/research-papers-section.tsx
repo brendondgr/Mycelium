@@ -15,9 +15,9 @@ import { ReaderLayout, groupByTheme, useReader } from "@/components/portal/feed/
 import { FeedToolbar, useFeedControls, type Facet, type SortOption } from "@/components/portal/feed/toolbar";
 import { IgnorableCard, IgnoreButton, SaveButton } from "@/components/portal/sections/opportunity-bits";
 import { AskMyloButton } from "@/components/portal/mylo/ask-button";
-import { useDailyReport, useLabRecommendations } from "@/lib/portal/hooks";
+import { orgRefFor, useDailyReport, useOrgRecommendations, type OrgRef } from "@/lib/portal/hooks";
 import { useInfiniteReveal } from "@/lib/portal/use-infinite-reveal";
-import type { MyLab, RecommendedMember, Suggestion } from "@/lib/portal/types";
+import type { RecommendedMember, Suggestion } from "@/lib/portal/types";
 
 /** How many papers each infinite-scroll slice reveals. */
 const PAPER_PAGE_SIZE = 12;
@@ -54,15 +54,17 @@ function venueLine(s: Suggestion): React.ReactNode {
  * it is for" from its `recommended_for`.
  */
 export function ResearchPapersSection() {
-  const { currentLab } = usePortal();
-  if (currentLab) {
-    return <LabPapersFeed lab={currentLab} />;
+  const { currentLab, currentDepartment } = usePortal();
+  // A lab's feed, or a department's: the same feed over the org's own matches.
+  const org = orgRefFor(currentLab, currentDepartment);
+  if (org) {
+    return <OrgPapersFeed org={org} />;
   }
   return <PersonalResearchPapers />;
 }
 
-function LabPapersFeed({ lab }: { lab: MyLab }) {
-  const { data, isLoading, isError } = useLabRecommendations(lab.slug);
+function OrgPapersFeed({ org }: { org: OrgRef }) {
+  const { data, isLoading, isError } = useOrgRecommendations(org);
   const suggestions = React.useMemo(() => data?.papers ?? [], [data]);
   return (
     <PapersFeed
@@ -71,7 +73,7 @@ function LabPapersFeed({ lab }: { lab: MyLab }) {
       isError={isError}
       generatedAt={data?.generated_at ?? null}
       recommendedFor={data?.recommended_for}
-      labName={lab.name}
+      labName={org.name}
     />
   );
 }
@@ -257,14 +259,14 @@ function PapersFeed({
           icon={<DocumentIcon size={28} />}
           title={
             labName
-              ? "No lab paper matches yet"
+              ? "No paper matches yet"
               : scanning
                 ? "Scanning new articles for you…"
                 : "Your first paper suggestions are on their way"
           }
           description={
             labName
-              ? "Once Mylo has run for this lab, papers matched to its shared research profile will appear here."
+              ? "Once Mylo has run here, papers matched to its shared research profile will appear here."
               : scanning
                 ? "Your watch topics didn't have enough fresh matches yet, so Mylo is searching new sources now."
                 : "Once Mylo's literature scan runs against your research profile, your matching papers — each with why it matters to you — will appear here."

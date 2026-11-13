@@ -2,9 +2,10 @@ from collections import Counter, defaultdict
 from datetime import date, timedelta
 
 from apps.accounts import capabilities as caps
-from apps.accounts.models import Lab, LabMembership
+from apps.accounts.models import Department, Lab, LabMembership
 from apps.accounts.permissions import (
     lab_manager_q,
+    user_has_department_access,
     user_has_lab_access,
 )
 from apps.core.people import display_name, initials
@@ -429,6 +430,65 @@ class LabDailyBriefingView(APIView):
         if not user_has_lab_access(request.user, lab):
             raise PermissionDenied("You do not have access to this lab.")
         briefing = DailyBriefing.latest_for(_requested_kind(request), lab=lab)
+        return Response(_daily_briefing_envelope(briefing))
+
+
+def _department_for(request, pk) -> Department:
+    """The department in the path, or 403 for anyone who is not one of its
+    people (the head, a direct member, or a member of one of its labs)."""
+    department = get_object_or_404(Department, pk=pk)
+    if not user_has_department_access(request.user, department):
+        raise PermissionDenied("You do not have access to this department.")
+    return department
+
+
+class DepartmentDailyBriefingView(APIView):
+    """A department's Mylo Report — the lab's view over a department's briefing.
+
+    The daily run briefs every scored department through the lab's function, so
+    the envelope is the lab's. Every department member may read it.
+    """
+
+    capabilities = {"GET": caps.MEMBERSHIP}
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        department = _department_for(request, pk)
+        briefing = DailyBriefing.latest_for(
+            _requested_kind(request), department=department
+        )
+        return Response(_daily_briefing_envelope(briefing))
+
+
+class DepartmentBriefingHistoryView(APIView):
+    """A department's retained briefings, newest first."""
+
+    capabilities = {"GET": caps.MEMBERSHIP}
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        department = _department_for(request, pk)
+        history = _briefing_history(_requested_kind(request), department=department)
+        return Response([_briefing_summary(b) for b in history])
+
+
+class DepartmentBriefingDetailView(APIView):
+    """One dated department briefing, in the same envelope as its current one."""
+
+    capabilities = {"GET": caps.MEMBERSHIP}
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk, on):
+        department = _department_for(request, pk)
+        briefing = get_object_or_404(
+            DailyBriefing,
+            department=department,
+            generated_on=on,
+            kind=_requested_kind(request),
+        )
         return Response(_daily_briefing_envelope(briefing))
 
 
@@ -1071,9 +1131,9 @@ def _target_cluster_labels(target_filter: dict) -> dict[str, str]:
     """
     from tools.recommendation.clustering import cluster_labels
 
-    lab = target_filter.get("target_lab")
-    if lab is not None:
-        profile = getattr(lab, "profile", None)
+    org = target_filter.get("target_lab") or target_filter.get("target_department")
+    if org is not None:
+        profile = getattr(org, "profile", None)
         return cluster_labels(getattr(profile, "interests", None))
     return {}
 
@@ -1195,9 +1255,14 @@ def _recommendations_payload(
         lab_target = target_filter.get("target_lab") or getattr(
             target_filter.get("target_project"), "scope_lab", None
         )
-        opp_context["announcements"] = (
-            for_target({"target_lab": lab_target}, content_ids) if lab_target else {}
-        )
+        dept_target = target_filter.get("target_department")
+        if lab_target is not None:
+            announced = for_target({"target_lab": lab_target}, content_ids)
+        elif dept_target is not None:
+            announced = for_target({"target_department": dept_target}, content_ids)
+        else:
+            announced = {}
+        opp_context["announcements"] = announced
         opp_context["usability_fellowship_counts"] = usability.fellowship_counts(
             list(member_ids),
             [score.content for score in fellowships],
@@ -1252,6 +1317,34 @@ class LabRecommendationsView(APIView):
                 user=request.user,
                 member_ids=member_ids,
                 reader=usability.reader_for_lab(lab),
+            )
+        )
+
+
+class DepartmentRecommendationsView(APIView):
+    """A department's matched papers, grants, fellowships and conferences.
+
+    The lab's feed over the department's own ``target_department`` scores,
+    through the lab's serializers (:func:`_recommendations_payload`): a
+    department works like a lab. Every department member may read it — the head,
+    a direct member, or a member of one of its labs — and ``interested`` names
+    any of those people whose own match for an item is strong.
+    """
+
+    capabilities = {"GET": caps.MEMBERSHIP}
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        from tools.delivery.org_scope import Org
+
+        department = _department_for(request, pk)
+        return Response(
+            _recommendations_payload(
+                {"target_department": department},
+                user=request.user,
+                member_ids=Org("department", department).member_ids(),
+                reader=usability.reader_for_department(department),
             )
         )
 

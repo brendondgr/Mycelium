@@ -63,6 +63,7 @@ import {
   fetchDeptProfile,
   fetchLabProfile,
   fetchLabProjects,
+  fetchDepartmentRecommendations,
   fetchLabRecommendations,
   fetchLabWatch,
   fetchMemberSuggestions,
@@ -191,6 +192,8 @@ import type { OrgKind } from "@/lib/auth-types";
 import type {
   AnnouncementSettings,
   AnnouncementTarget,
+  MyDepartment,
+  MyLab,
 } from "@/lib/portal/types";
 
 export type SearchInput = {
@@ -1034,6 +1037,42 @@ export function useLabRecommendations(slug?: string) {
     enabled,
     staleTime: 60_000,
   });
+}
+
+/** A department's matched papers, grants, fellowships and conferences. */
+export function useDepartmentRecommendations(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "department-recommendations", id ?? "none"],
+    queryFn: () => fetchDepartmentRecommendations(id as string),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * The feed of whichever org the reader is working in: a lab's, or a
+ * department's (a department works like a lab, through the lab's feed).
+ * `org` is null in the personal scope, and both queries then stay idle.
+ */
+export function useOrgRecommendations(org: OrgRef | null) {
+  const lab = useLabRecommendations(org?.kind === "lab" ? org.key : undefined);
+  const dept = useDepartmentRecommendations(
+    org?.kind === "department" ? org.key : undefined,
+  );
+  return org?.kind === "department" ? dept : lab;
+}
+
+/** A lab (by slug) or a department (by id), with the name its feed shows. */
+export type OrgRef = { kind: "lab" | "department"; key: string; name: string };
+
+/** The org a workspace's feeds read, or null in the personal scope. */
+export function orgRefFor(
+  lab: Pick<MyLab, "slug" | "name"> | null,
+  department: Pick<MyDepartment, "id" | "name"> | null,
+): OrgRef | null {
+  if (lab) return { kind: "lab", key: lab.slug, name: lab.name };
+  if (department) return { kind: "department", key: department.id, name: department.name };
+  return null;
 }
 
 /** One project's matched papers/grants/conferences (its declared focus). */

@@ -104,7 +104,10 @@ def collect(packet, *, target_filter: dict, projects: list, reader, today: date)
 def _collect(packet, *, target_filter, projects, reader, today):
     from apps.ambient.read import answers_between, changes_between
 
-    is_lab = "target_lab" in target_filter
+    from tools.delivery.org_scope import is_org_filter
+
+    # A department's weekly is a shared surface exactly as a lab's is.
+    is_lab = is_org_filter(target_filter)
     since, until = _bounds(packet.week_start, today)
     rows = changes_between(
         since=since,

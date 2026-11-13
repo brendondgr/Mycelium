@@ -370,21 +370,23 @@ def generate_weekly_for_user(user, *, complete=None, today: date | None = None):
 
 
 def generate_weekly_for_lab(lab, *, complete=None, today: date | None = None):
-    """The same for a lab — **shared projects only** (plan 0.2 / H4)."""
-    from tools.delivery.briefing import hidden_lab_projects, report_projects_for_lab
+    """The same for a lab or a department — **shared projects only** (plan 0.2 /
+    H4)."""
+    from tools.delivery.org_scope import org
     from tools.delivery.weekly_build import SURFACE_CHANNEL, build_weekly_packet
 
+    scope = org(lab)
     today = today or timezone.localdate()
     packet = build_weekly_packet(
-        target_filter={"target_lab": lab},
-        projects=report_projects_for_lab(lab),
-        reader=lab,
+        target_filter=scope.target_filter,
+        projects=scope.shared_projects(),
+        reader=scope.obj,
         surface=SURFACE_CHANNEL,
-        label=lab.slug,
+        label=scope.key,
         today=today,
-        hidden_projects=hidden_lab_projects(lab),
+        hidden_projects=scope.hidden_projects(),
     )
-    return _persist(packet, {"lab": lab}, complete=complete, today=today)
+    return _persist(packet, scope.owner, complete=complete, today=today)
 
 
 def _persist(packet, owner: dict, *, complete, today: date):

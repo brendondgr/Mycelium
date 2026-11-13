@@ -543,14 +543,23 @@ def primary_server_for_lab(lab, purpose: str | None = None) -> LabServer | None:
     return _server_for(_primary_binding(lab, purpose))
 
 
-def primary_server_for_department(department) -> LabServer | None:
-    """The department's own server — what its settings card reports."""
-    rows = list(
+def _department_rows(department) -> list[DiscordTargetBinding]:
+    """Every non-removed binding of ``department`` (live or not)."""
+    return list(
         DiscordTargetBinding.objects.filter(department=department)
         .exclude(state=DiscordTargetBinding.State.REMOVED)
         .select_related("guild")
     )
-    return _server_for(_primary_binding(None, rows=rows))
+
+
+def primary_server_for_department(
+    department, purpose: str | None = None
+) -> LabServer | None:
+    """The department's own server — what its settings card reports, and with
+    ``purpose`` the one whose route of that purpose it posts through."""
+    return _server_for(
+        _primary_binding(None, purpose, rows=_department_rows(department))
+    )
 
 
 def _server_for(binding) -> LabServer | None:
@@ -707,6 +716,13 @@ def get_announcement_channel_for_lab(lab) -> str:
 def get_updates_channel_for_lab(lab) -> str:
     """The lab's verified daily/weekly-updates channel id, or '' if none bound."""
     binding = _primary_binding(lab, "updates")
+    return route_channel(binding, "updates") if binding else ""
+
+
+def get_updates_channel_for_department(department) -> str:
+    """The department's daily/weekly-updates channel id, or '' if none bound —
+    the department twin of :func:`get_updates_channel_for_lab`."""
+    binding = _primary_binding(None, "updates", rows=_department_rows(department))
     return route_channel(binding, "updates") if binding else ""
 
 

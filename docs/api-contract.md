@@ -85,6 +85,9 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `briefings/<YYYY-MM-DD>/` | GET | One archived personal report |
 | `labs/<slug>/briefings/` | GET | A lab's retained report history |
 | `labs/<slug>/briefings/<YYYY-MM-DD>/` | GET | One archived lab report |
+| `departments/<uuid>/daily-briefing/` | GET | A department's written report — the lab's envelope |
+| `departments/<uuid>/briefings/` | GET | A department's retained report history |
+| `departments/<uuid>/briefings/<YYYY-MM-DD>/` | GET | One archived department report |
 | `announcements/?lab=<slug>\|department=<id>` | GET | Opportunity announcements: `settings`, `can_manage`, `feature_on`, `announced` (each with `checks`, `write_up`, `interested`, `updated_on`, `dept_reasons` and a `discord` list of links), `held` (with `reason`), `closing_soon` (next 14 days, with links), and `servers` (one per binding, with `announcement_routes`). Members read (403 otherwise; 400 without a target) |
 | `announcements/settings/?lab=\|department=` | GET, PUT | Announcement settings (`enabled`, the three kinds, `daily_cap` with `-1` for no limit, `default_nudge` `none\|2d\|1w\|2w\|3w\|1m\|2m`, `closing_soon_list`, `strong_match_tagging`, `save_on_interest`, `activation_seed`, `min_award`). Managers write; 400 with per-field messages. The first switch-on returns `activating: true` and queues the activation seed |
 | `announcements/test/?lab=\|department=` | POST | A labelled test thread in each forum (once per forum: a department's kinds share one); `{"results": [{"guild_name", "purpose", "channel_name", "ok"}]}`. Managers only |
@@ -96,6 +99,7 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `opportunities/ranking-reference/` | GET | Static hover copy for conference rank badges |
 | `opportunities/fellowships/` | GET | Eligibility-gated, ranked fellowships |
 | `labs/<slug>/recommendations/` | GET | A lab's four feeds + counts + window counts |
+| `departments/<uuid>/recommendations/` | GET | A department's four feeds, in the lab's envelope |
 | `projects/<id>/recommendations/[?digest=1]` | GET | A project's four feeds, or its short list |
 | `reflections/` | GET | Mylo's pending proposals about the caller's project state |
 | `reflections/<id>/action/` | POST | Accept (applies it) or reject one |
@@ -1214,6 +1218,21 @@ attachment and ages out with the outbox's own sweep, not with this window.
 ### `GET /api/labs/<slug>/briefings/` · `GET /api/labs/<slug>/briefings/<YYYY-MM-DD>/`
 
 The same pair for a lab, readable by any member. `403` for a non-member.
+
+### `GET /api/departments/<uuid>/daily-briefing/` · `…/briefings/` · `…/briefings/<YYYY-MM-DD>/`
+
+The lab's three briefing routes for a department: the same envelopes, over the
+`DailyBriefing` rows keyed on the department (`?kind=weekly` as for a lab).
+Readable by every department member — the head, a direct member, or a member of
+one of its labs; `403` otherwise. No-slash forms are the same routes.
+
+### `GET /api/departments/<uuid>/recommendations/`
+
+A department works like a lab: this is the lab payload below, over the
+department's own `target_department` scores and through the same serializers.
+`interested` may name any department member (direct or through a lab);
+`recommended_for` is empty, since member fit is not computed for a department.
+Readable by every department member; `403` otherwise.
 
 ### `GET /api/labs/<slug>/recommendations/` · `GET /api/projects/<id>/recommendations/`
 

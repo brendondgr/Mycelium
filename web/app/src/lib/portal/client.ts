@@ -474,6 +474,17 @@ export async function fetchLabRecommendations(
   );
 }
 
+/** A department's matched papers, grants, fellowships and conferences — the
+ * lab's feed over the department's own profile. */
+export async function fetchDepartmentRecommendations(
+  id: string,
+): Promise<TargetRecommendations> {
+  return getJson<TargetRecommendations>(
+    buildApiUrl(getPublicApiBase(), "departments", id, "recommendations"),
+    "Could not load the department's recommendations.",
+  );
+}
+
 /** One project's matched papers, grants, fellowships, and conferences (its
  * declared focus) — the full, uncapped lists. */
 export async function fetchProjectRecommendations(

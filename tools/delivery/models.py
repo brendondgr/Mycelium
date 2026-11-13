@@ -458,8 +458,9 @@ class DailyBriefing(models.Model):
         WEEKLY = "weekly", "Weekly"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    # A briefing belongs to exactly one target: a person or a lab (the exactly_one
-    # constraint below). A lab briefing synthesizes the lab's aggregate matches.
+    # A briefing belongs to exactly one target: a person, a lab or a department
+    # (the exactly_one constraint below). A lab or department briefing
+    # synthesizes that org's aggregate matches.
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -469,6 +470,13 @@ class DailyBriefing(models.Model):
     )
     lab = models.ForeignKey(
         "accounts.Lab",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="daily_briefings",
+    )
+    department = models.ForeignKey(
+        "accounts.Department",
         null=True,
         blank=True,
         on_delete=models.CASCADE,
@@ -589,7 +597,7 @@ class DailyBriefing(models.Model):
         constraints = [
             models.CheckConstraint(
                 name="content_dailybriefing_exactly_one_target",
-                condition=exactly_one("user", "lab"),
+                condition=exactly_one("user", "lab", "department"),
             ),
             # One briefing per target per day. Split in two and conditioned on the
             # populated side: a plain unique_together over a nullable column lets
@@ -605,11 +613,17 @@ class DailyBriefing(models.Model):
                 condition=Q(lab__isnull=False),
                 name="content_dailybriefing_lab_day_kind_unique",
             ),
+            models.UniqueConstraint(
+                fields=["department", "generated_on", "kind"],
+                condition=Q(department__isnull=False),
+                name="content_dailybriefing_dept_day_kind_unique",
+            ),
         ]
 
     @classmethod
     def latest_for(cls, kind: str = Kind.DAILY, **target) -> "DailyBriefing | None":
-        """The newest briefing of one kind for one target (``user=``/``lab=``).
+        """The newest briefing of one kind for one target (``user=``/``lab=``/
+        ``department=``).
 
         Every "current briefing" surface goes through here. Ordering is stated
         rather than inherited from ``Meta``: now that the table keeps history, a
@@ -629,10 +643,10 @@ class DailyBriefing(models.Model):
         )
 
     def clean(self) -> None:
-        validate_exactly_one(self, "user", "lab")
+        validate_exactly_one(self, "user", "lab", "department")
 
     def __str__(self) -> str:
-        owner = self.user or self.lab
+        owner = self.user or self.lab or self.department
         return f"DailyBriefing<{owner}> {self.generated_on} {self.kind} ({self.origin})"
 
 

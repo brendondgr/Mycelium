@@ -53,7 +53,6 @@ from tools.delivery.theme_report import (
 from tools.recommendation.fellowship_bands import OPEN as OPEN_BAND
 from tools.recommendation.models import RelevanceScore
 from tools.recommendation.slates import standing_render_depth
-from tools.recommendation.targets import target_for_lab
 
 #: Per-category caps. The reader's own part gets the deeper list; a project is a
 #: narrower surface and a short list is the point of having one per project.
@@ -668,31 +667,43 @@ def compile_report_for_user(user) -> ReportData:
 
 
 def compile_report_for_lab(lab) -> ReportData:
-    """Gather one lab's day into a :class:`ReportData` (read-only).
+    """Gather one lab's — or one department's — day into a :class:`ReportData`.
 
-    Narrowed to ``LAB_BRIEFING_CATEGORIES`` — the categories a lab is actually
+    Read-only. ``lab`` is a ``Lab`` or a ``Department``: a department's report is
+    the lab's document over the department's own matches and shared projects.
+
+    Narrowed to ``LAB_BRIEFING_CATEGORIES`` — the categories an org is actually
     scored for — so its report never advertises a section it cannot fill, and broken
-    out over the lab's own projects.
+    out over the org's own projects.
 
-    The aggregate part carries the **lab's name**, not "Personal": a document whose
+    The aggregate part carries the **org's name**, not "Personal": a document whose
     contents page offers a reader "Personal" and then lists the lab's matches has
     mislabelled its own largest section.
     """
+    from tools.delivery.org_scope import org
+
+    scope = org(lab)
     return _compile(
-        key=lab.slug,
-        display_name=lab.name,
-        watch=getattr(lab, "watch", None),
-        target_filter={"target_lab": lab},
-        briefing_filter={"lab": lab},
-        projects=briefing.report_projects_for_lab(lab),
-        hidden_projects=briefing.hidden_lab_projects(lab),
+        key=scope.file_key,
+        display_name=scope.name,
+        watch=scope.watch,
+        target_filter=scope.target_filter,
+        briefing_filter=scope.owner,
+        projects=scope.shared_projects(),
+        hidden_projects=scope.hidden_projects(),
         allow=briefing.LAB_BRIEFING_CATEGORIES,
-        personal_label=lab.name,
-        interests=target_for_lab(lab).interests,
-        window_days=_lab_window(lab),
-        alerts=_alert_blocks({"target_lab": lab}),
+        personal_label=scope.name,
+        interests=scope.match_target().interests,
+        window_days=(
+            _lab_window(scope.obj) if scope.is_lab else DEFAULT_DEADLINE_WINDOW_DAYS
+        ),
+        alerts=_alert_blocks(scope.alert_filter) if scope.alert_filter else [],
         # A lab's deadline horizon covers what the *lab* saved. One member's
         # bookmark is not the lab's intention, and a lab post naming it would
-        # publish a personal save to a channel.
-        saves_filter={"target_lab": lab},
+        # publish a personal save to a channel. A department saves nothing.
+        saves_filter=scope.saves_filter,
     )
+
+
+#: The same function under the name that says what it takes.
+compile_report_for_org = compile_report_for_lab

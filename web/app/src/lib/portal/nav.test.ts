@@ -102,6 +102,25 @@ describe("the workspace navigation holds no settings pages", () => {
     expect(k).not.toContain("labs");
   });
 
+  it("a department has the four feeds beside Opportunities", () => {
+    const groups = navGroupsFor({
+      ...base,
+      hasFeature: () => false,
+      scope: { kind: "department", id: "d1" },
+      currentDepartment: dept({}),
+    } as Parameters<typeof navGroupsFor>[0]);
+    const research = groups.find((g) => g.label === "Research");
+    expect(research?.items.map((item) => item.key)).toEqual([
+      "papers",
+      "opportunities",
+      "fellowships",
+      "conferences",
+      "projects",
+    ]);
+    // The department-level calls stay their own page in the Workspace group.
+    expect(keys(groups)).toContain("deptOpportunities");
+  });
+
   it("Settings sits in its own group at the foot", () => {
     const groups = navGroupsFor({
       ...base,
