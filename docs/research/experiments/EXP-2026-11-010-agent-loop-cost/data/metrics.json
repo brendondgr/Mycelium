@@ -335,6 +335,186 @@
    "peak_prompt_tokens_any_call": 19055,
    "turns_with_15_plus_model_calls": 1,
    "peak_prompt_tokens_in_15_plus_turns": 19055
+  },
+  "a3c4": {
+   "turns": 36,
+   "errors": 0,
+   "single": {
+    "n": 12,
+    "wall_s_median": 9.4,
+    "wall_s_max": 12.79,
+    "wall_s_mean": 9.13,
+    "first_activity_s_median": 5.38,
+    "first_activity_s_max": 6.44,
+    "model_calls_median": 2.0,
+    "model_calls_max": 3,
+    "function_calls_median": 1.0,
+    "function_calls_max": 2,
+    "tokens_median": 5791.5,
+    "tokens_max": 7617,
+    "tokens_mean": 5679,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "few": {
+    "n": 12,
+    "wall_s_median": 27.16,
+    "wall_s_max": 38.01,
+    "wall_s_mean": 27.08,
+    "first_activity_s_median": 3.61,
+    "first_activity_s_max": 7.36,
+    "model_calls_median": 6.0,
+    "model_calls_max": 8,
+    "function_calls_median": 7.0,
+    "function_calls_max": 10,
+    "tokens_median": 21911.5,
+    "tokens_max": 41863,
+    "tokens_mean": 25648,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "compound": {
+    "n": 12,
+    "wall_s_median": 64.51,
+    "wall_s_max": 79.68,
+    "wall_s_mean": 62.2,
+    "first_activity_s_median": 2.44,
+    "first_activity_s_max": 3.71,
+    "model_calls_median": 10.0,
+    "model_calls_max": 16,
+    "function_calls_median": 19.0,
+    "function_calls_max": 55,
+    "tokens_median": 64339.0,
+    "tokens_max": 139668,
+    "tokens_mean": 76921,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 2
+   },
+   "turns_with_4_to_6_model_calls": {
+    "n": 9,
+    "wall_s_max": 39.52,
+    "over_60s": 0,
+    "tokens_max": 31769
+   },
+   "turns_with_up_to_5_function_calls": {
+    "n": 15,
+    "wall_s_max": 25.94,
+    "over_60s": 0,
+    "tokens_max": 25580,
+    "over_30k_tokens": 0
+   },
+   "model_call_latency_s": {
+    "n": 225,
+    "median": 1.57,
+    "p90": 5.96,
+    "max": 22.69
+   },
+   "in_flight": 4,
+   "batch_wall_s": {
+    "n": 3,
+    "median": 109.6,
+    "max": 113.8
+   },
+   "over_60s_any": 8,
+   "peak_prompt_tokens_any_call": 20545,
+   "turns_with_15_plus_model_calls": 2,
+   "peak_prompt_tokens_in_15_plus_turns": 14634
+  },
+  "a3c8": {
+   "turns": 36,
+   "errors": 0,
+   "single": {
+    "n": 12,
+    "wall_s_median": 16.07,
+    "wall_s_max": 22.25,
+    "wall_s_mean": 16.72,
+    "first_activity_s_median": 7.4,
+    "first_activity_s_max": 9.94,
+    "model_calls_median": 2.0,
+    "model_calls_max": 3,
+    "function_calls_median": 1.0,
+    "function_calls_max": 2,
+    "tokens_median": 5790.5,
+    "tokens_max": 7611,
+    "tokens_mean": 6146,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "few": {
+    "n": 12,
+    "wall_s_median": 47.68,
+    "wall_s_max": 92.51,
+    "wall_s_mean": 53.84,
+    "first_activity_s_median": 7.52,
+    "first_activity_s_max": 10.29,
+    "model_calls_median": 6.0,
+    "model_calls_max": 9,
+    "function_calls_median": 7.0,
+    "function_calls_max": 11,
+    "tokens_median": 22912.0,
+    "tokens_max": 50757,
+    "tokens_mean": 25203,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "compound": {
+    "n": 12,
+    "wall_s_median": 73.63,
+    "wall_s_max": 104.87,
+    "wall_s_mean": 76.12,
+    "first_activity_s_median": 5.63,
+    "first_activity_s_max": 8.08,
+    "model_calls_median": 9.5,
+    "model_calls_max": 13,
+    "function_calls_median": 18.0,
+    "function_calls_max": 40,
+    "tokens_median": 62765.5,
+    "tokens_max": 103054,
+    "tokens_mean": 61460,
+    "hit_max_steps": 0,
+    "thrash_stop": 1,
+    "timed_out": 0,
+    "repair": 1
+   },
+   "turns_with_4_to_6_model_calls": {
+    "n": 11,
+    "wall_s_max": 75.83,
+    "over_60s": 2,
+    "tokens_max": 36292
+   },
+   "turns_with_up_to_5_function_calls": {
+    "n": 15,
+    "wall_s_max": 59.46,
+    "over_60s": 0,
+    "tokens_max": 25436,
+    "over_30k_tokens": 0
+   },
+   "model_call_latency_s": {
+    "n": 211,
+    "median": 1.89,
+    "p90": 8.95,
+    "max": 23.91
+   },
+   "in_flight": 8,
+   "batch_wall_s": {
+    "n": 3,
+    "median": 96.7,
+    "max": 120.6
+   },
+   "over_60s_any": 13,
+   "peak_prompt_tokens_any_call": 16817,
+   "turns_with_15_plus_model_calls": 0,
+   "peak_prompt_tokens_in_15_plus_turns": null
   }
  }
 }

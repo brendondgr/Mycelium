@@ -96,3 +96,13 @@ questions take end to end). Reported per group and level beside A2's idle
 run (1 in flight). The operator states the model server takes up to 128
 concurrent requests; 8 turns put at most 8 model calls in flight. No
 hypothesis beyond "slower per turn, faster per batch"; descriptive.
+
+Addendum to Amendment 2 (2026-11-13 02:44, after runs `a3c4` and `a3c8`,
+before the runs it describes): `a3c4`/`a3c8` ran their turns as threads in one
+Python process, while the web chat runs each turn in a Celery prefork worker,
+a separate process. To separate the model server's behaviour from the
+harness's, A3 is repeated with **separate processes**: 4 (run `a3p4`) and then
+8 (run `a3p8`) one-off backend containers started together, each asking all
+twelve questions once, one at a time, starting at a different point in the
+list (`--rotate k`), so 4 or 8 turns are in flight throughout. Same measures.
+`a3c4`/`a3c8` are kept and reported as the thread-based variant.

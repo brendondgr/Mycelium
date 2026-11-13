@@ -76,6 +76,8 @@ def main() -> int:
     p.add_argument("--tag", default="a2")
     p.add_argument("--only", default="")
     p.add_argument("--stop-at", default="", help="local HH:MM; no new turn starts after it")
+    p.add_argument("--rotate", type=int, default=0,
+                   help="start the question list at this offset (A3 process arm: each process a different order)")
     p.add_argument("--conc", type=int, default=1,
                    help="Amendment 2 (A3): turns in flight at once (all questions of a repetition together)")
     args = p.parse_args()
@@ -84,6 +86,9 @@ def main() -> int:
     qs = json.loads((HERE / "code" / "questions_a2.json").read_text())["questions"]
     if args.only:
         qs = [q for q in qs if q["id"] in args.only.split(",")]
+    if args.rotate:
+        k = args.rotate % len(qs)
+        qs = qs[k:] + qs[:k]
     out = HERE / "data" / f"a2_{args.tag}.jsonl"
     out.parent.mkdir(exist_ok=True)
     health = {"before": relay_health(), "started": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
