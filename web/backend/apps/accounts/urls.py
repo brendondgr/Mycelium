@@ -98,6 +98,13 @@ urlpatterns = [
         views.LabTransferOwnershipView.as_view(),
         name="lab-transfer-ownership-no-slash",
     ),
+    # Any member leaves a lab themselves (Settings → Your membership).
+    path("labs/<slug:slug>/leave/", views.LabLeaveView.as_view(), name="lab-leave"),
+    path(
+        "labs/<slug:slug>/leave",
+        views.LabLeaveView.as_view(),
+        name="lab-leave-no-slash",
+    ),
     # Both slash and no-slash variants: the browser reaches these through the
     # Next `/api` proxy, which strips the trailing slash — and Django's
     # APPEND_SLASH cannot redirect a POST/PATCH, so a slash-only route 500s.
@@ -190,6 +197,9 @@ urlpatterns = [
         views.DeptProfileView.as_view(),
         name="dept-profile",
     ),
+    # No-slash twin: the department General page saves through the Next proxy,
+    # which strips the slash, and APPEND_SLASH cannot redirect a PATCH.
+    path("departments/<uuid:pk>/profile", views.DeptProfileView.as_view()),
     # Department members (effective roster) + direct-member management.
     path(
         "departments/<uuid:pk>/members/",
@@ -222,6 +232,17 @@ urlpatterns = [
         "departments/<uuid:pk>/transfer-ownership",
         views.DeptTransferOwnershipView.as_view(),
         name="dept-transfer-ownership-no-slash",
+    ),
+    # A direct member gives up their place (Settings → Your membership).
+    path(
+        "departments/<uuid:pk>/leave/",
+        views.DeptLeaveView.as_view(),
+        name="dept-leave",
+    ),
+    path(
+        "departments/<uuid:pk>/leave",
+        views.DeptLeaveView.as_view(),
+        name="dept-leave-no-slash",
     ),
     # Labs under a department: list, attach an existing lab / create one, detach.
     path(

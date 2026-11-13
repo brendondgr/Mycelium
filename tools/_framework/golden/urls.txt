@@ -339,6 +339,8 @@ api/auth/labs/<slug:slug>/members/<str:username>/	lab-member-detail	LabMemberDet
 api/auth/labs/<slug:slug>/members/<str:username>	lab-member-detail-no-slash	LabMemberDetailView
 api/auth/labs/<slug:slug>/transfer-ownership/	lab-transfer-ownership	LabTransferOwnershipView
 api/auth/labs/<slug:slug>/transfer-ownership	lab-transfer-ownership-no-slash	LabTransferOwnershipView
+api/auth/labs/<slug:slug>/leave/	lab-leave	LabLeaveView
+api/auth/labs/<slug:slug>/leave	lab-leave-no-slash	LabLeaveView
 api/auth/labs/<slug:slug>/profile/	lab-profile	LabProfileView
 api/auth/labs/<slug:slug>/profile	lab-profile-no-slash	LabProfileView
 api/auth/labs/<slug:slug>/logo/	lab-logo	LabLogoView
@@ -358,12 +360,15 @@ api/auth/invitations/<uuid:pk>/respond	invitation-respond-no-slash	InvitationRes
 api/auth/departments/	my-departments	MyDepartmentsView
 api/auth/departments	-	MyDepartmentsView
 api/auth/departments/<uuid:pk>/profile/	dept-profile	DeptProfileView
+api/auth/departments/<uuid:pk>/profile	-	DeptProfileView
 api/auth/departments/<uuid:pk>/members/	dept-members	DeptMembersView
 api/auth/departments/<uuid:pk>/members	dept-members-no-slash	DeptMembersView
 api/auth/departments/<uuid:pk>/members/<str:username>/	dept-member-detail	DeptMemberDetailView
 api/auth/departments/<uuid:pk>/members/<str:username>	dept-member-detail-no-slash	DeptMemberDetailView
 api/auth/departments/<uuid:pk>/transfer-ownership/	dept-transfer-ownership	DeptTransferOwnershipView
 api/auth/departments/<uuid:pk>/transfer-ownership	dept-transfer-ownership-no-slash	DeptTransferOwnershipView
+api/auth/departments/<uuid:pk>/leave/	dept-leave	DeptLeaveView
+api/auth/departments/<uuid:pk>/leave	dept-leave-no-slash	DeptLeaveView
 api/auth/departments/<uuid:pk>/labs/	dept-labs	DeptLabsView
 api/auth/departments/<uuid:pk>/labs	dept-labs-no-slash	DeptLabsView
 api/auth/departments/<uuid:pk>/labs/<slug:slug>/	dept-lab-detail	DeptLabDetailView

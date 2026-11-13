@@ -1203,6 +1203,41 @@ class LabTransferOwnershipView(APIView):
         )
 
 
+class LabLeaveView(APIView):
+    """The caller leaves a lab they belong to — any member, no management right.
+
+    Settings → Your membership is where a member who manages nothing finds their
+    role and this button. The lab's only owner cannot leave: a lab with no owner
+    is one nobody can hand over or close, so they transfer it first.
+    """
+
+    capabilities = {"POST": caps.MEMBERSHIP}
+
+    def post(self, request: Request, slug: str) -> Response:
+        lab = get_object_or_404(Lab, slug=slug)
+        membership = LabMembership.objects.filter(lab=lab, user=request.user).first()
+        if membership is None:
+            raise PermissionDenied("You are not a member of this lab.")
+        owners = LabMembership.objects.filter(lab=lab, role=LabMembership.Role.OWNER)
+        if membership.role == LabMembership.Role.OWNER and owners.count() == 1:
+            return Response(
+                {
+                    "detail": "You own this lab. Hand it to another member "
+                    "before you leave."
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        remove_lab_member(lab, request.user, actor=request.user)
+        record_audit_event(
+            actor=request.user,
+            action="lab.member.leave",
+            target_type="lab",
+            target_id=str(lab.id),
+            metadata={"user_id": request.user.id},
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 # -- Lab invitations -----------------------------------------------------------
 
 
@@ -1460,6 +1495,49 @@ class DeptTransferOwnershipView(APIView):
         transfer_department_ownership(department, target, actor=request.user)
         department.refresh_from_db()
         return Response(department_members_payload(department, request.user))
+
+
+class DeptLeaveView(APIView):
+    """The caller gives up their direct place in a department.
+
+    Any direct member may; the head may not (a department always has one), so
+    they hand it over first. Someone who also belongs through one of the
+    department's labs keeps that — leaving the lab is what ends it.
+    """
+
+    capabilities = {"POST": caps.MEMBERSHIP}
+
+    def post(self, request: Request, pk) -> Response:
+        department = get_object_or_404(Department, id=pk)
+        if department.owner_id == request.user.id:
+            return Response(
+                {
+                    "detail": "You run this department. Hand it to another "
+                    "member before you leave."
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        if not DeptMembership.objects.filter(
+            department=department, user=request.user
+        ).exists():
+            if user_has_department_access(request.user, department):
+                return Response(
+                    {
+                        "detail": "You belong to this department through a lab. "
+                        "Leave that lab to leave the department."
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+            raise PermissionDenied("You are not a member of this department.")
+        remove_dept_member(department, request.user, actor=request.user)
+        record_audit_event(
+            actor=request.user,
+            action="dept.member.leave",
+            target_type="department",
+            target_id=str(department.id),
+            metadata={"user_id": request.user.id},
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class DeptLabsView(APIView):
