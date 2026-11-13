@@ -1,81 +1,310 @@
-# The machine-readable half of the record. `make new-experiment` fills the id,
-# slug, dates, and git block; you fill the rest. Validated against
-# `ops/research/manifest.schema.json` by `make validate-research`.
-#
-# Do not invent a value you do not have. A back-filled experiment with three
-# honest fields is worth more than one with ten plausible ones — write `unknown`
-# and say what could not be recovered in ISSUES.md.
+# EXP-2026-11-013 — machine-readable record. metrics.values are copied from
+# data/metrics*.json and data/inject_*_summary.json by a script; nothing is typed.
 
 id: EXP-2026-11-013
 slug: agent-answers-human-judged
 title: "Mylo answers: human-judged correctness, single-call baseline, and the answer verifier"
-status: planned # planned | running | complete | failed | superseded
+status: running # answers, sheets and the people-free measurements are done; the human ratings are pending
 date_started: 2026-11-12
 date_completed: null
-authors: [<your name>]
+authors: [Claude (agent), Brendon (owner)]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  When Mylo answers a PI's question about the lab's field and opportunities,
+  do people judge the answer correct and its citations supported; is it better
+  than one retrieve-then-answer call at the same token budget; and does the
+  code-level answer verifier remove the right things? Tests C-033, C-034 and
+  C-035. The people-free half (costs, repair counterfactual, injected-error
+  recall) is complete; the ratings are pending.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  C-033: majority-correct on at least 70% of questions and at least 85% of
+  citations judged supporting. C-034: Mylo beats the single call (paired
+  bootstrap interval excluding zero). C-035: removal precision at least 0.9
+  and recall at least 0.5. From the code, written before generation: the
+  verifier misses details in running prose and unsupported paraphrases.
 
-# --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 5685ac8c
+  commit: 81c88e27 # pre-registration; arm a main, arm b and the main injection ran at 81c88e27, rep2 at 60ad905f, rep3 at 30845988; agent code identical across them
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "docker compose run --rm --no-deps -T backend uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-013-agent-answers-human-judged/code/generate.py --arm a|b …; … code/inject.py; … code/analyse.py; python3 code/make_sheets.py; python3 code/score.py (after ratings)"
+  dirty: true # the operator's uncommitted landing-page edits; no agent code
 config:
-  path: <path to the config file, or null>
+  path: "tools/agent/tool.py (defaults)"
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
-  qrels: null
+  name: "50 fixed questions in the public demo world (code/questions.json), asked as its fictional PI; real corpus items"
+  version: "demo world fixture_version 1, built 2026-11-10; corpus as of 2026-11-12"
+  split: test
+  n_examples: 50
+  qrels: "pending: human ratings (data/sheets/, 3 raters planned); injected errors labelled by construction"
   hash: null
-  card: null # docs/research/datasets/cards/<name>.md
-seeds: []
-n_runs: 1
+  card: null
+seeds: [20261112]
+n_runs: 3 # arm a three times (main is rated), arm b once
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "one-off backend containers (ghcr.io/astral-sh/uv:python3.13-bookworm @ sha256:47965cdc…)"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "Intel Xeon Silver 4114 host (sc-zeus), 62 GB; model Qwen 3.8 27B on vLLM, one A100 80GB, remote via the instance relay"
+  wall_clock_hours: 1.0
+  estimated_cost_usd: 0
 
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+llm:
+  model: "local/Qwen 3.8 27B (relay name default-model)@2026-11-12"
+  temperature: 0.2
+  max_tokens: 0 # no output cap, both arms
+  prompt_files: ["tools/agent/prompt.py", "docs/research/experiments/EXP-2026-11-013-agent-answers-human-judged/code/generate.py", "docs/research/experiments/EXP-2026-11-013-agent-answers-human-judged/code/inject.py"]
+  prompt_hash: null
+  total_input_tokens: 0 # per-answer tokens are in data/arm_*.jsonl
+  total_output_tokens: 0
+  nondeterminism_note: >
+    Sampling at the instance temperature; arm a was run three times to show
+    the spread. Only the main run is rated.
 
-# --- Results block -----------------------------------------------------------
-# Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
-statistical_test: null
+  primary: inject.main.paraphrase.recall
+  values:
+    main.arm_a.answers: 50 # n=50
+    main.arm_a.errors: 0 # n=50
+    main.arm_a.tokens_mean: 27088 # n=50
+    main.arm_a.tokens_median: 21996.0 # n=50
+    main.arm_a.tokens_max: 113444 # n=50
+    main.arm_a.seconds_mean: 40.5 # n=50
+    main.arm_a.seconds_median: 36.66 # n=50
+    main.arm_a.seconds_max: 150.57 # n=50
+    main.arm_a.answers_with_citation: 45 # n=50
+    main.arm_a.model_calls_mean: 6.46 # n=50
+    main.arm_a.function_calls_mean: 8.28 # n=50
+    main.arm_a.hit_max_steps: 1 # n=50
+    main.arm_a.thrash_stop: 4 # n=50
+    main.arm_a.repair_runs: 1 # n=50
+    main.arm_a.final_stripped: 1 # n=50
+    main.arm_a.final_clean: 49 # n=50
+    main.arm_a.empty_answers: 0 # n=50
+    main.arm_b.answers: 50 # n=50
+    main.arm_b.errors: 0 # n=50
+    main.arm_b.tokens_mean: 9582 # n=50
+    main.arm_b.tokens_median: 9901.5 # n=50
+    main.arm_b.tokens_max: 14340 # n=50
+    main.arm_b.seconds_mean: 18.76 # n=50
+    main.arm_b.seconds_median: 17.88 # n=50
+    main.arm_b.seconds_max: 51.28 # n=50
+    main.arm_b.answers_with_citation: 40 # n=50
+    rep2.arm_a.answers: 50 # n=50
+    rep2.arm_a.errors: 0 # n=50
+    rep2.arm_a.tokens_mean: 27025 # n=50
+    rep2.arm_a.tokens_median: 21737.5 # n=50
+    rep2.arm_a.tokens_max: 115932 # n=50
+    rep2.arm_a.seconds_mean: 34.68 # n=50
+    rep2.arm_a.seconds_median: 31.73 # n=50
+    rep2.arm_a.seconds_max: 124.4 # n=50
+    rep2.arm_a.answers_with_citation: 43 # n=50
+    rep2.arm_a.model_calls_mean: 6.12 # n=50
+    rep2.arm_a.function_calls_mean: 8.26 # n=50
+    rep2.arm_a.hit_max_steps: 0 # n=50
+    rep2.arm_a.thrash_stop: 1 # n=50
+    rep2.arm_a.repair_runs: 1 # n=50
+    rep2.arm_a.final_stripped: 0 # n=50
+    rep2.arm_a.final_clean: 49 # n=50
+    rep2.arm_a.empty_answers: 1 # n=50
+    rep2.repair.repaired_turns: 1 # n=1
+    rep2.repair.repair_succeeded_final_clean: 1 # n=1
+    rep2.repair.turns_where_off_would_remove_text: 0 # n=1
+    rep2.repair.turns_with_flagged_details_kept_after_repair: 0 # n=1
+    rep2.repair.repair_tokens_mean: 19104 # n=1
+    rep2.repair.repair_seconds_mean: 10.64 # n=1
+    rep2.repair.repair_model_calls_mean: 2 # n=1
+    rep2.repair.repair_cost_known_turns: 1 # n=1
+    rep3.arm_a.answers: 50 # n=50
+    rep3.arm_a.errors: 0 # n=50
+    rep3.arm_a.tokens_mean: 26494 # n=50
+    rep3.arm_a.tokens_median: 20286.5 # n=50
+    rep3.arm_a.tokens_max: 87594 # n=50
+    rep3.arm_a.seconds_mean: 37.24 # n=50
+    rep3.arm_a.seconds_median: 30.25 # n=50
+    rep3.arm_a.seconds_max: 104.16 # n=50
+    rep3.arm_a.answers_with_citation: 49 # n=50
+    rep3.arm_a.model_calls_mean: 6.16 # n=50
+    rep3.arm_a.function_calls_mean: 8.08 # n=50
+    rep3.arm_a.hit_max_steps: 0 # n=50
+    rep3.arm_a.thrash_stop: 2 # n=50
+    rep3.arm_a.repair_runs: 1 # n=50
+    rep3.arm_a.final_stripped: 1 # n=50
+    rep3.arm_a.final_clean: 49 # n=50
+    rep3.arm_a.empty_answers: 0 # n=50
+    rep3.repair.repaired_turns: 1 # n=1
+    rep3.repair.repair_succeeded_final_clean: 0 # n=1
+    rep3.repair.turns_where_off_would_remove_text: 1 # n=1
+    rep3.repair.turns_with_flagged_details_kept_after_repair: 0 # n=1
+    rep3.repair.repair_tokens_mean: 20078 # n=1
+    rep3.repair.repair_seconds_mean: 16.19 # n=1
+    rep3.repair.repair_model_calls_mean: 2 # n=1
+    rep3.repair.repair_cost_known_turns: 1 # n=1
+    inject.main.base_answers: 49 # n=1
+    inject.main.originals_flagged: 0 # n=1
+    inject.main.bad_cite.n: 108 # n=1
+    inject.main.bad_cite.caught: 108 # n=1
+    inject.main.bad_cite.recall: 1.0 # n=108
+    inject.main.bad_cite.inplace.caught: 103 # n=1
+    inject.main.bad_cite.inplace.n: 103 # n=1
+    inject.main.bad_cite.prose.caught: 5 # n=1
+    inject.main.bad_cite.prose.n: 5 # n=1
+    inject.main.unread_cite.n: 0 # n=1
+    inject.main.unread_cite.caught: 0 # n=1
+    inject.main.date.n: 168 # n=1
+    inject.main.date.caught: 54 # n=1
+    inject.main.date.recall: 0.3214 # n=168
+    inject.main.date.inplace.caught: 1 # n=1
+    inject.main.date.inplace.n: 61 # n=1
+    inject.main.date.prose.caught: 0 # n=1
+    inject.main.date.prose.n: 49 # n=1
+    inject.main.date.factline.caught: 53 # n=1
+    inject.main.date.factline.n: 58 # n=1
+    inject.main.author.n: 109 # n=1
+    inject.main.author.caught: 43 # n=1
+    inject.main.author.recall: 0.3945 # n=109
+    inject.main.author.inplace.caught: 0 # n=1
+    inject.main.author.inplace.n: 9 # n=1
+    inject.main.author.prose.caught: 0 # n=1
+    inject.main.author.prose.n: 49 # n=1
+    inject.main.author.factline.caught: 43 # n=1
+    inject.main.author.factline.n: 51 # n=1
+    inject.main.venue.n: 102 # n=1
+    inject.main.venue.caught: 30 # n=1
+    inject.main.venue.recall: 0.2941 # n=102
+    inject.main.venue.inplace.caught: 0 # n=1
+    inject.main.venue.inplace.n: 4 # n=1
+    inject.main.venue.prose.caught: 0 # n=1
+    inject.main.venue.prose.n: 49 # n=1
+    inject.main.venue.factline.caught: 30 # n=1
+    inject.main.venue.factline.n: 49 # n=1
+    inject.main.amount.n: 113 # n=1
+    inject.main.amount.caught: 104 # n=1
+    inject.main.amount.recall: 0.9204 # n=113
+    inject.main.amount.inplace.caught: 6 # n=1
+    inject.main.amount.inplace.n: 15 # n=1
+    inject.main.amount.prose.caught: 49 # n=1
+    inject.main.amount.prose.n: 49 # n=1
+    inject.main.amount.factline.caught: 49 # n=1
+    inject.main.amount.factline.n: 49 # n=1
+    inject.main.paraphrase.n: 60 # n=1
+    inject.main.paraphrase.caught: 0 # n=1
+    inject.main.paraphrase.recall: 0.0 # n=60
+    inject.main.paraphrase.inplace.caught: 0 # n=1
+    inject.main.paraphrase.inplace.n: 60 # n=1
+    inject.rep2.base_answers: 49 # n=1
+    inject.rep2.originals_flagged: 0 # n=1
+    inject.rep2.bad_cite.n: 110 # n=1
+    inject.rep2.bad_cite.caught: 110 # n=1
+    inject.rep2.bad_cite.recall: 1.0 # n=110
+    inject.rep2.bad_cite.inplace.caught: 104 # n=1
+    inject.rep2.bad_cite.inplace.n: 104 # n=1
+    inject.rep2.bad_cite.prose.caught: 6 # n=1
+    inject.rep2.bad_cite.prose.n: 6 # n=1
+    inject.rep2.unread_cite.n: 0 # n=1
+    inject.rep2.unread_cite.caught: 0 # n=1
+    inject.rep2.date.n: 166 # n=1
+    inject.rep2.date.caught: 54 # n=1
+    inject.rep2.date.recall: 0.3253 # n=166
+    inject.rep2.date.inplace.caught: 1 # n=1
+    inject.rep2.date.inplace.n: 60 # n=1
+    inject.rep2.date.prose.caught: 0 # n=1
+    inject.rep2.date.prose.n: 49 # n=1
+    inject.rep2.date.factline.caught: 53 # n=1
+    inject.rep2.date.factline.n: 57 # n=1
+    inject.rep2.author.n: 111 # n=1
+    inject.rep2.author.caught: 40 # n=1
+    inject.rep2.author.recall: 0.3604 # n=111
+    inject.rep2.author.inplace.caught: 0 # n=1
+    inject.rep2.author.inplace.n: 12 # n=1
+    inject.rep2.author.prose.caught: 0 # n=1
+    inject.rep2.author.prose.n: 49 # n=1
+    inject.rep2.author.factline.caught: 40 # n=1
+    inject.rep2.author.factline.n: 50 # n=1
+    inject.rep2.venue.n: 102 # n=1
+    inject.rep2.venue.caught: 31 # n=1
+    inject.rep2.venue.recall: 0.3039 # n=102
+    inject.rep2.venue.inplace.caught: 0 # n=1
+    inject.rep2.venue.inplace.n: 4 # n=1
+    inject.rep2.venue.prose.caught: 0 # n=1
+    inject.rep2.venue.prose.n: 49 # n=1
+    inject.rep2.venue.factline.caught: 31 # n=1
+    inject.rep2.venue.factline.n: 49 # n=1
+    inject.rep2.amount.n: 117 # n=1
+    inject.rep2.amount.caught: 102 # n=1
+    inject.rep2.amount.recall: 0.8718 # n=117
+    inject.rep2.amount.inplace.caught: 4 # n=1
+    inject.rep2.amount.inplace.n: 19 # n=1
+    inject.rep2.amount.prose.caught: 49 # n=1
+    inject.rep2.amount.prose.n: 49 # n=1
+    inject.rep2.amount.factline.caught: 49 # n=1
+    inject.rep2.amount.factline.n: 49 # n=1
+    inject.rep2.paraphrase.n: 60 # n=1
+    inject.rep2.paraphrase.caught: 0 # n=1
+    inject.rep2.paraphrase.recall: 0.0 # n=60
+    inject.rep2.paraphrase.inplace.caught: 0 # n=1
+    inject.rep2.paraphrase.inplace.n: 60 # n=1
+    inject.rep3.base_answers: 49 # n=1
+    inject.rep3.originals_flagged: 0 # n=1
+    inject.rep3.bad_cite.n: 110 # n=1
+    inject.rep3.bad_cite.caught: 110 # n=1
+    inject.rep3.bad_cite.recall: 1.0 # n=110
+    inject.rep3.bad_cite.inplace.caught: 109 # n=1
+    inject.rep3.bad_cite.inplace.n: 109 # n=1
+    inject.rep3.bad_cite.prose.caught: 1 # n=1
+    inject.rep3.bad_cite.prose.n: 1 # n=1
+    inject.rep3.unread_cite.n: 0 # n=1
+    inject.rep3.unread_cite.caught: 0 # n=1
+    inject.rep3.date.n: 163 # n=1
+    inject.rep3.date.caught: 56 # n=1
+    inject.rep3.date.recall: 0.3436 # n=163
+    inject.rep3.date.inplace.caught: 1 # n=1
+    inject.rep3.date.inplace.n: 58 # n=1
+    inject.rep3.date.prose.caught: 0 # n=1
+    inject.rep3.date.prose.n: 49 # n=1
+    inject.rep3.date.factline.caught: 55 # n=1
+    inject.rep3.date.factline.n: 56 # n=1
+    inject.rep3.author.n: 109 # n=1
+    inject.rep3.author.caught: 42 # n=1
+    inject.rep3.author.recall: 0.3853 # n=109
+    inject.rep3.author.inplace.caught: 0 # n=1
+    inject.rep3.author.inplace.n: 10 # n=1
+    inject.rep3.author.prose.caught: 0 # n=1
+    inject.rep3.author.prose.n: 49 # n=1
+    inject.rep3.author.factline.caught: 42 # n=1
+    inject.rep3.author.factline.n: 50 # n=1
+    inject.rep3.venue.n: 103 # n=1
+    inject.rep3.venue.caught: 34 # n=1
+    inject.rep3.venue.recall: 0.3301 # n=103
+    inject.rep3.venue.inplace.caught: 0 # n=1
+    inject.rep3.venue.inplace.n: 5 # n=1
+    inject.rep3.venue.prose.caught: 0 # n=1
+    inject.rep3.venue.prose.n: 49 # n=1
+    inject.rep3.venue.factline.caught: 34 # n=1
+    inject.rep3.venue.factline.n: 49 # n=1
+    inject.rep3.amount.n: 117 # n=1
+    inject.rep3.amount.caught: 104 # n=1
+    inject.rep3.amount.recall: 0.8889 # n=117
+    inject.rep3.amount.inplace.caught: 4 # n=1
+    inject.rep3.amount.inplace.n: 17 # n=1
+    inject.rep3.amount.prose.caught: 49 # n=1
+    inject.rep3.amount.prose.n: 49 # n=1
+    inject.rep3.amount.factline.caught: 51 # n=1
+    inject.rep3.amount.factline.n: 51 # n=1
+    inject.rep3.paraphrase.n: 60 # n=1
+    inject.rep3.paraphrase.caught: 0 # n=1
+    inject.rep3.paraphrase.recall: 0.0 # n=60
+    inject.rep3.paraphrase.inplace.caught: 0 # n=1
+    inject.rep3.paraphrase.inplace.n: 60 # n=1
+baselines_compared: ["arm b: one corpus_search + one model call, same model, capped at arm a's mean tokens"]
+statistical_test: "paired bootstrap (10,000) for arm difference; Wilson 95% for recall; Cohen/Fleiss kappa (pending ratings)"
 
-# --- Linkage -----------------------------------------------------------------
-supports_claims: []
+supports_claims: [C-033, C-034, C-035]
 refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-11-010, EXP-2026-11-011, EXP-2026-09-002]
