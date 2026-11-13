@@ -82,3 +82,17 @@ five minutes; that is the reason for this arm, not a measurement).
   scheduled) and the relay's health is logged before and after.
 - Reported per group: median, worst case, and mean.
 - Decision rule unchanged. No default is changed by this experiment.
+
+## Amendment 2 — 2026-11-13 00:47, before arm A3
+
+**A3 — several people at once.** A1 and A2 measure one turn at a time. A3
+asks how a turn's time changes when several are in flight together, as when
+a few lab members use Mylo at the same moment. The same twelve A2 questions,
+all twelve of a repetition submitted together with 4 (run `a3c4`) and then 8
+(run `a3c8`) turns in flight, three repetitions each, after every other job of
+this session has finished and with no nightly running. Same per-turn
+measures as A2, plus the wall clock of each repetition (how long twelve
+questions take end to end). Reported per group and level beside A2's idle
+run (1 in flight). The operator states the model server takes up to 128
+concurrent requests; 8 turns put at most 8 model calls in flight. No
+hypothesis beyond "slower per turn, faster per batch"; descriptive.
