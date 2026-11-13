@@ -3,10 +3,6 @@
 import * as React from "react";
 
 import { Card } from "@/components/portal/primitives/card";
-import { AmbientSettingsCard } from "@/components/portal/ambient/ambient-settings-card";
-import { CollaborationSettingsCard } from "@/components/portal/collab/collaboration-settings-card";
-import { SectionHeader } from "@/components/portal/primitives/section-header";
-import { BillingSection } from "@/components/portal/sections/billing-section";
 import { Button } from "@/components/ui/button";
 import { InstitutionFromEmail } from "@/components/ui/institution-from-email";
 import {
@@ -35,12 +31,9 @@ const TITLES: { value: string; label: string }[] = [
 ];
 
 /**
- * The Account page: everything tied to the person, then everything tied to the
- * money.
- *
- * The two halves are one page because they answer the same question — "what is
- * true of my account?" — and were previously two places, one of which (Billing)
- * had no way in from the user menu at all.
+ * Settings → You → Account: who you are, how we reach you, and your password.
+ * Collaboration, Mylo's switches and your subscription each have their own page
+ * now; this one is identity only.
  */
 export function AccountSection() {
   const [account, setAccount] = React.useState<AccountDetails | null>(null);
@@ -58,43 +51,26 @@ export function AccountSection() {
   React.useEffect(load, [load]);
 
   return (
-    <div>
-      <SectionHeader
-        eyebrow="Workspace"
-        title="Account"
-        subtitle="Who you are on Mycelium, how we reach you, and what you can track."
-      />
-
+    <>
       {failed ? (
-        <Card className="mb-[22px] p-[22px]">
+        <Card className="p-[22px]">
           <p className="text-sm text-[var(--text-secondary)]">
             Couldn&apos;t load your account. Refresh the page to try again.
           </p>
         </Card>
       ) : null}
-
-      <div className="mb-9 grid grid-cols-1 gap-[22px] lg:grid-cols-2 lg:items-start">
-        {/* Keyed on whether the account has arrived, so the form mounts once
-            with real initial values instead of syncing them in through an
-            effect. A later save changes the values, not the key, so typing is
-            never interrupted by a remount. */}
-        <IdentityCard
-          key={account ? "loaded" : "loading"}
-          account={account}
-          onSaved={setAccount}
-        />
-        <div className="flex flex-col gap-[22px]">
-          <EmailCard account={account} onChanged={setAccount} />
-          <PasswordCard email={account?.email ?? ""} />
-        </div>
-      </div>
-
-      <CollaborationSettingsCard />
-
-      <AmbientSettingsCard />
-
-      <BillingSection />
-    </div>
+      {/* Keyed on whether the account has arrived, so the form mounts once
+          with real initial values instead of syncing them in through an
+          effect. A later save changes the values, not the key, so typing is
+          never interrupted by a remount. */}
+      <IdentityCard
+        key={account ? "loaded" : "loading"}
+        account={account}
+        onSaved={setAccount}
+      />
+      <EmailCard account={account} onChanged={setAccount} />
+      <PasswordCard email={account?.email ?? ""} />
+    </>
   );
 }
 

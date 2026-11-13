@@ -239,7 +239,7 @@ def test_the_interpretation_line_needs_the_ranking_to_move(world, settings):
     settings.AMBIENT_DRIFT_ENABLED = True
     body = generate_weekly_for_user(ada, complete=QUIET, today=TODAY).body
     assert "You confirmed an exploration of **conformal prediction**" in body
-    assert "Not right? [Tell me](" in body and "/app/mylo-and-you)" in body
+    assert "Not right? [Tell me](" in body and "/app/settings/you/mylo)" in body
 
 
 def test_no_interpretation_for_an_exploration_since_undone(world, settings):

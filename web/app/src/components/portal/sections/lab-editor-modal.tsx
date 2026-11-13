@@ -13,7 +13,9 @@ import {
   type EditorTab,
 } from "@/components/portal/primitives/editor-modal";
 import {
+  useDeptProfile,
   useLabProfile,
+  useUpdateDeptProfile,
   useLabWatch,
   useSynthesizeLabProfile,
   useUpdateLabProfile,
@@ -139,7 +141,101 @@ function LabEditorForm({
   const synthesize = useSynthesizeLabProfile(lab.slug);
   const saveProfile = useUpdateLabProfile(lab.slug);
   const saveWatch = useUpdateLabWatch(lab.slug);
+  return (
+    <OrgEditorForm
+      noun="lab"
+      name={lab.name}
+      initialTab={initialTab}
+      profile={profile}
+      watch={watch}
+      onClose={onClose}
+      synthesize={synthesize}
+      saveProfile={saveProfile.mutateAsync}
+      saveWatch={saveWatch.mutateAsync}
+    />
+  );
+}
 
+/**
+ * Edit a department's profile with the lab's editor (settings plan, decision
+ * 17): the same purpose and focus panels over the department's own profile.
+ * A department has no watch settings and no drafting endpoint, so those two
+ * tabs are left out rather than shown and refusing.
+ */
+export function DeptEditorModal({
+  deptId,
+  name,
+  initialTab = "purpose",
+  onClose,
+}: {
+  deptId: string;
+  name: string;
+  initialTab?: LabEditorTab;
+  onClose: () => void;
+}) {
+  const profileQuery = useDeptProfile(deptId);
+  const saveProfile = useUpdateDeptProfile(deptId);
+
+  if (profileQuery.isLoading) {
+    return (
+      <EditorModal
+        eyebrow="Department profile"
+        title={`Edit ${name}`}
+        tabs={[
+          {
+            id: "loading",
+            label: "Loading",
+            content: <div className="h-40 animate-pulse rounded-xl bg-surface-alt" />,
+          },
+        ]}
+        activeTab="loading"
+        onTabChange={() => {}}
+        onClose={onClose}
+        onSave={() => {}}
+        saveDisabledReason="Loading the department profile…"
+      />
+    );
+  }
+
+  return (
+    <OrgEditorForm
+      noun="department"
+      name={name}
+      initialTab={initialTab === "watch" || initialTab === "draft" ? "purpose" : initialTab}
+      profile={profileQuery.data}
+      onClose={onClose}
+      saveProfile={saveProfile.mutateAsync}
+    />
+  );
+}
+
+type ProfilePayload = Parameters<ReturnType<typeof useUpdateLabProfile>["mutateAsync"]>[0];
+type WatchPayload = Parameters<ReturnType<typeof useUpdateLabWatch>["mutateAsync"]>[0];
+
+/** The editor itself, for a lab or a department. */
+function OrgEditorForm({
+  noun,
+  name,
+  initialTab,
+  profile,
+  watch,
+  onClose,
+  synthesize,
+  saveProfile,
+  saveWatch,
+}: {
+  noun: "lab" | "department";
+  name: string;
+  initialTab: LabEditorTab;
+  profile: LabProfileData | undefined;
+  watch?: WatchData;
+  onClose: () => void;
+  /** Mylo's drafting endpoint. Labs only; without it there is no Draft tab. */
+  synthesize?: ReturnType<typeof useSynthesizeLabProfile>;
+  saveProfile: (payload: ProfilePayload) => Promise<unknown>;
+  /** What Mylo watches. Labs only; without it there is no watch tab. */
+  saveWatch?: (payload: WatchPayload) => Promise<unknown>;
+}) {
   const [tab, setTab] = React.useState<LabEditorTab>(initialTab);
 
   // Source material for Mylo's draft — never persisted, only used to draft.
@@ -184,6 +280,7 @@ function LabEditorForm({
   const [error, setError] = React.useState<string | null>(null);
 
   function runSynthesis() {
+    if (!synthesize) return;
     setSynthError(null);
     setSynthNote(null);
     const linkList = links
@@ -224,7 +321,7 @@ function LabEditorForm({
       ? watchTopics
       : dedupe([...cleanAreas, ...cleanKeywords]).slice(0, WATCH_SEED_LIMIT);
 
-    const payload: Parameters<typeof saveProfile.mutateAsync>[0] = {
+    const payload: ProfilePayload = {
       statement: statement.trim(),
       areas: cleanAreas,
       funding_needs: parseList(funding),
@@ -267,8 +364,8 @@ function LabEditorForm({
     }
 
     try {
-      await saveProfile.mutateAsync(payload);
-      await saveWatch.mutateAsync({
+      await saveProfile(payload);
+      await saveWatch?.({
         topics: dedupe(seedTopics),
         categories: watchCats,
         cadence,
@@ -281,7 +378,7 @@ function LabEditorForm({
       setError(
         caught instanceof Error
           ? caught.message
-          : "Could not save the lab profile. Try again.",
+          : `Could not save the ${noun} profile. Try again.`,
       );
     }
   }
@@ -329,6 +426,7 @@ function LabEditorForm({
           className="inline-flex items-center gap-[7px] rounded-full bg-primary px-4 py-[9px] text-[13px] font-semibold text-[#fffdf8] transition-colors hover:bg-[var(--brand-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           onClick={runSynthesis}
           disabled={
+            !synthesize ||
             synthesize.isPending ||
             (!description.trim() && !links.trim() && files.length === 0)
           }
@@ -342,7 +440,7 @@ function LabEditorForm({
             height={20}
             className="h-5 w-5 rounded-full object-cover"
           />
-          {synthesize.isPending ? "Mylo is drafting…" : "Draft with Mylo"}
+          {synthesize?.isPending ? "Mylo is drafting…" : "Draft with Mylo"}
         </button>
         {synthNote ? (
           <span className="text-[12.5px] text-primary">{synthNote}</span>
@@ -359,14 +457,14 @@ function LabEditorForm({
   const panelPurpose = (
     <EditorSection
       title="Purpose & goals"
-      description="The lab's collective direction — what Mylo grounds every lab recommendation in."
+      description={`The ${noun}'s collective direction — what Mylo grounds every ${noun} recommendation in.`}
     >
       <EditorField label="Statement of purpose">
         <textarea
           value={statement}
           onChange={(event) => setStatement(event.target.value)}
           rows={6}
-          placeholder="The lab's shared research purpose."
+          placeholder={`The ${noun}'s shared research purpose.`}
           className={cn(inputClass, "min-h-32 resize-y py-2.5 leading-relaxed")}
         />
       </EditorField>
@@ -383,7 +481,7 @@ function LabEditorForm({
       </EditorField>
       <EditorField
         label="Strategic needs"
-        hint="Comma-separated — what the lab is trying to build or hire toward."
+        hint={`Comma-separated — what the ${noun} is trying to build or hire toward.`}
       >
         <input
           value={strategic}
@@ -409,7 +507,7 @@ function LabEditorForm({
         />
         {areas.length < 1 ? (
           <p className="text-xs text-clay">
-            Add at least one focus area — Mylo can&apos;t match the lab without one.
+            Add at least one focus area — Mylo can&apos;t match the {noun} without one.
           </p>
         ) : null}
         <TokenField
@@ -422,7 +520,7 @@ function LabEditorForm({
 
       <EditorSection
         title="Interest clusters"
-        description="Group related areas into themes so Mylo can report on each thread of the lab's work separately."
+        description={`Group related areas into themes so Mylo can report on each thread of the ${noun}'s work separately.`}
       >
         <ClusterOrganizer
           areas={areas}
@@ -533,15 +631,23 @@ function LabEditorForm({
   const tabs: EditorTab[] = [
     { id: "purpose", label: "Purpose & goals", hint: "Statement, funding, needs", content: panelPurpose },
     { id: "focus", label: "Focus areas", hint: "Areas, keywords, clusters", content: panelFocus },
-    { id: "watch", label: "What Mylo watches", hint: "Topics, signals, cadence, timeline", content: panelWatch },
-    { id: "draft", label: "Draft with Mylo", hint: "Rewrite from source material", content: panelDraft },
+    ...(saveWatch
+      ? [{ id: "watch", label: "What Mylo watches", hint: "Topics, signals, cadence, timeline", content: panelWatch }]
+      : []),
+    ...(synthesize
+      ? [{ id: "draft", label: "Draft with Mylo", hint: "Rewrite from source material", content: panelDraft }]
+      : []),
   ];
 
   return (
     <EditorModal
-      eyebrow="Lab profile"
-      title={`Edit ${lab.name}`}
-      subtitle="The lab's purpose, focus, and what Mylo watches — all in one place."
+      eyebrow={noun === "lab" ? "Lab profile" : "Department profile"}
+      title={`Edit ${name}`}
+      subtitle={
+        saveWatch
+          ? `The ${noun}'s purpose, focus, and what Mylo watches — all in one place.`
+          : `The ${noun}'s purpose and focus — what Mylo ranks against for it.`
+      }
       tabs={tabs}
       activeTab={tab}
       onTabChange={(id) => setTab(id as LabEditorTab)}

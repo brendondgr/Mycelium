@@ -4,8 +4,6 @@ import * as React from "react";
 import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { usePortal } from "@/components/portal/portal-context";
-import { LabSettingsSection } from "@/components/portal/sections/lab-settings-section";
 import { SlackPersonCard, TeamsPersonCard } from "@/components/portal/ambient/slack-cards";
 import {
   ProfileEditorModal,
@@ -15,7 +13,6 @@ import { Card } from "@/components/portal/primitives/card";
 import { clusterAccentVar } from "@/components/portal/primitives/cluster-badge";
 import { Pill } from "@/components/portal/primitives/pill";
 import { ProgressBar } from "@/components/portal/primitives/progress-bar";
-import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { CheckIcon } from "@/components/portal/icons";
 import {
   useConnectDiscord,
@@ -855,48 +852,22 @@ function DiscordCard() {
 // ---------------------------------------------------------------------------
 
 export function ProfileSection() {
-  const { currentLab } = usePortal();
   // `null` = closed. Opening carries which tab to land on, so a card's own
   // affordance ("Organize", "Adjust") drops the user straight into that surface
   // instead of the editor's default tab.
   const [editorTab, setEditorTab] = React.useState<ProfileEditorTab | null>(null);
 
-  // In a lab workspace, the Profile slot is the lab's configuration (managers
-  // only — the section itself guards non-managers who deep-link here).
-  if (currentLab) {
-    return <LabSettingsSection lab={currentLab} />;
-  }
-
   return (
-    <div>
-      <SectionHeader
-        eyebrow="Workspace"
-        title="Profile"
-        subtitle="Your research focus and goals — what Mylo uses to find matches."
-        action={
-          <Button className="rounded-full" onClick={() => setEditorTab("focus")}>
-            Edit profile
-          </Button>
-        }
-      />
-
-      <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">
-        {/* LEFT — research focus + connected services + fellowship eligibility */}
-        <div className="flex flex-col gap-[22px]">
-          <ResearchFocusCard onOrganize={() => setEditorTab("interests")} />
-          <DiscordCard />
-          <SlackPersonCard />
-          <TeamsPersonCard />
-          <EligibilityCard onEdit={() => setEditorTab("eligibility")} />
-        </div>
-
-        {/* RIGHT — what Mylo watches + completeness. Plans and anything else
-            monetary live on the Account page, not in the open here. */}
-        <div className="flex flex-col gap-[22px]">
-          <WatchCard onEdit={() => setEditorTab("watch")} />
-          <ProfileCompletenessCard />
-        </div>
+    <>
+      <div>
+        <Button className="rounded-full" onClick={() => setEditorTab("focus")}>
+          Edit profile
+        </Button>
       </div>
+      <ResearchFocusCard onOrganize={() => setEditorTab("interests")} />
+      <WatchCard onEdit={() => setEditorTab("watch")} />
+      <EligibilityCard onEdit={() => setEditorTab("eligibility")} />
+      <ProfileCompletenessCard />
 
       {editorTab ? (
         <ProfileEditorModal
@@ -905,6 +876,21 @@ export function ProfileSection() {
           onClose={() => setEditorTab(null)}
         />
       ) : null}
-    </div>
+    </>
+  );
+}
+
+/**
+ * Settings → You → Delivery: where Mylo reaches you. Your Discord link (with its
+ * daily DM switch), Slack and Teams. How often is set with what Mylo watches,
+ * on the Profile page.
+ */
+export function DeliveryCards() {
+  return (
+    <>
+      <DiscordCard />
+      <SlackPersonCard />
+      <TeamsPersonCard />
+    </>
   );
 }

@@ -1,12 +1,7 @@
-import { SettingsShell } from "@/components/portal/settings-shell";
-import { MyloAndYouSection } from "@/components/portal/ambient/mylo-and-you-section";
+import { appRedirect } from "@/lib/auth-server";
+import { legacySettingsPath } from "@/lib/portal/settings";
 
-export const metadata = { title: "Mylo & you · Mycelium" };
-
-export default function MyloAndYouPage() {
-  return (
-    <SettingsShell current="mylo">
-      <MyloAndYouSection />
-    </SettingsShell>
-  );
+/** Mylo & you moved into Settings → You. */
+export default async function MyloAndYouPage() {
+  await appRedirect(legacySettingsPath("mylo"));
 }

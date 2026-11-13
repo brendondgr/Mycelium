@@ -105,10 +105,10 @@ export function PortalSidebar() {
     hasFeature: has,
   });
 
-  // "Account" is pinned to the foot of the sidebar, away from the day-to-day
+  // "Settings" is pinned to the foot of the sidebar, away from the day-to-day
   // entries; the rest render in order.
-  const accountGroup = groups.find((group) => group.label === "Account");
-  const mainGroups = groups.filter((group) => group.label !== "Account");
+  const footGroup = groups.find((group) => group.label === "Settings");
+  const mainGroups = groups.filter((group) => group.label !== "Settings");
 
   return (
     <aside
@@ -156,11 +156,11 @@ export function PortalSidebar() {
         </p>
       ) : null}
 
-      {accountGroup ? (
-        <nav className="mt-auto flex flex-col gap-0.5 pt-[18px]">
-          {accountGroup.items.map((item) => (
+      {footGroup ? (
+        <nav aria-label="Settings" className="mt-auto flex flex-col gap-0.5 pt-[18px]">
+          {footGroup.items.map((item) => (
             <SidebarNavItem
-              key={`account-${item.key}`}
+              key={`foot-${item.key}`}
               icon={<NavIconFor icon={item.icon} />}
               label={item.label}
               active={section === item.key}

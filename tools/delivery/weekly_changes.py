@@ -80,7 +80,7 @@ def _day(iso: str) -> str:
 
 def mylo_and_you_url() -> str:
     base = str(getattr(settings, "DISCORD_APP_BASE_URL", "") or "").rstrip("/")
-    return f"{base}/app/mylo-and-you"
+    return f"{base}/app/settings/you/mylo"
 
 
 def collect(packet, *, target_filter: dict, projects: list, reader, today: date):

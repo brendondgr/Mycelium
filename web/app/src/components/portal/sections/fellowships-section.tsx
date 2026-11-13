@@ -402,7 +402,7 @@ function StageNotice() {
         filtered out.
       </span>
       <a
-        href={appHref("/app/profile")}
+        href={appHref("/app/settings/you/profile")}
         className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
       >
         Set your career stage

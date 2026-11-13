@@ -1,9 +1,8 @@
-import { DepartmentSection } from "@/components/portal/sections/department-section";
+import { appRedirect } from "@/lib/auth-server";
+import { legacySettingsPath } from "@/lib/portal/settings";
 
-export const metadata = { title: "Department · Mycelium" };
-
-// The department id is read from the `[id]` segment inside the section (client),
-// mirroring how the project detail page drives itself from the URL.
-export default function DepartmentPage() {
-  return <DepartmentSection />;
+/** A department is managed in Settings now; the old page sends you to its General page. */
+export default async function DepartmentPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  await appRedirect(legacySettingsPath("department", { id }));
 }

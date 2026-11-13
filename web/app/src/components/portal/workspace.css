@@ -2713,108 +2713,182 @@ html[data-motion="none"] *::after {
   color: var(--text-secondary);
 }
 
-.ws-settings-shell {
+/* -- The Settings area ---------------------------------------------------
+   One column at one width: a top bar (context picker, then the context's pages
+   as tabs) over stacked cards. No side rail and no two-column cards — a card is
+   never wider than the column or beside another. */
+
+.ws-settings-area {
   display: grid;
-  /* An explicit minmax(0, 1fr) track: an implicit `auto` track grows to its
-     widest content (a scrolling tab strip, a long pill row), which pushed every
-     settings page past the edge of a phone. */
   grid-template-columns: minmax(0, 1fr);
   gap: var(--d-section);
-  max-width: var(--ws-maxw);
+  width: 100%;
+  max-width: 760px;
   margin: 0 auto;
 }
 
-.ws-settings-shell .ws-settings-nav {
+.ws-settings-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.ws-settings-picker-button {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
+  gap: 12px;
+  width: 100%;
+  max-width: 460px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  transition: background-color 0.15s, border-color 0.15s;
 }
 
-.ws-settings-shell .ws-settings-nav > .ws-kicker {
-  flex-basis: 100%;
-  margin: 0;
+.ws-settings-picker-button:hover {
+  background: var(--surface-alt);
 }
 
-.ws-settings-group {
-  display: contents;
+.ws-settings-picker-button:focus-visible,
+.ws-settings-picker-row:focus-visible,
+.ws-settings-tab:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
-.ws-settings-group-label {
-  display: none;
+.ws-settings-picker-panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  width: min(460px, calc(100vw - 32px));
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
-.ws-settings-link {
-  display: inline-flex;
+.ws-settings-picker-search {
+  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  border: 1px solid var(--border-soft);
+  min-height: 44px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.ws-settings-picker-group {
+  margin: 0;
+  padding: 10px 10px 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ws-settings-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.ws-settings-picker-row:hover,
+.ws-settings-picker-row[aria-current="true"] {
+  background: var(--surface-alt);
+}
+
+.ws-settings-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0 0 6px;
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ws-settings-tabs > li {
+  flex: none;
+}
+
+.ws-settings-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 12px;
   border-radius: 999px;
   color: var(--text-secondary);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
   text-decoration: none;
   transition: background-color 0.15s, color 0.15s;
 }
 
-.ws-settings-link:hover {
+.ws-settings-tab:hover {
   background: color-mix(in srgb, var(--raise) 70%, transparent);
   color: var(--text-primary);
 }
 
-.ws-settings-link[aria-current="page"] {
-  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+/* The current page is marked by weight, an underline and a tint — never by
+   colour alone. */
+.ws-settings-tab[aria-current="page"] {
   background: color-mix(in srgb, var(--primary) 14%, transparent);
   color: var(--text-primary);
   font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
 }
 
-.ws-settings-body {
+.ws-settings-page {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--d-section);
+  gap: 16px;
   min-width: 0;
 }
 
-/* Wide screens: the settings list becomes a column beside the page. */
-@media (min-width: 1100px) {
-  .ws-settings-shell {
-    grid-template-columns: 210px minmax(0, 1fr);
-    align-items: start;
-  }
+.ws-settings-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
 
-  .ws-settings-shell .ws-settings-nav {
-    position: sticky;
-    top: 0;
-    display: grid;
-    gap: 2px;
-  }
+.ws-settings-stack > * {
+  min-width: 0;
+}
 
-  .ws-settings-shell .ws-settings-nav > .ws-kicker {
-    margin: 0 0 6px;
-  }
+.ws-settings-readonly {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-alt) 70%, transparent);
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
 
-  .ws-settings-group {
-    display: grid;
-    gap: 2px;
-    margin-bottom: 14px;
-  }
-
-  .ws-settings-group-label {
-    display: block;
-    margin: 0 0 4px 12px;
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .ws-settings-link {
-    border-color: transparent;
-    border-radius: 10px;
+@media (prefers-reduced-motion: reduce) {
+  .ws-settings-picker-button,
+  .ws-settings-tab {
+    transition: none;
   }
 }
 

@@ -66,10 +66,17 @@ not slug-routed**. Routes are flat under `(workspace)` and the active scope
 /app/grants        /app/fellowships  /app/conferences
 /app/saves         /app/reminders    /app/search
 /app/projects      /app/projects/[projectId]
-/app/labs          /app/members      /app/profile
-/app/billing       /app/admin        /app/department/[id]
+/app/labs          /app/members      /app/admin
+/app/settings/you/<page>
+/app/settings/lab/<slug>/<page>
+/app/settings/department/<id>/<page>
 /app/onboarding    (first run only)
 ```
+
+Settings is the one exception to "scope lives in `?ws=`": what it configures is
+in its path, and nothing inside it reads `?ws=` (`lib/portal/settings.ts`). The
+old `/app/account`, `/app/profile`, `/app/mylo-and-you`, `/app/billing` and
+`/app/department/[id]` are redirects into it.
 
 Do not introduce `/app/[labSlug]/…` routes. A lab page is the personal page with
 `currentLab` set — that is what keeps the two from drifting apart.

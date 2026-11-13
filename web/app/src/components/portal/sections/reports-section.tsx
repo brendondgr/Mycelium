@@ -296,7 +296,7 @@ export function ReportsSection() {
                     Written against version {detail.data.context_version.slice(0, 7)} of
                     what Mylo understands about you ·{" "}
                     <a
-                      href={appHref("/app/mylo-and-you")}
+                      href={appHref("/app/settings/you/mylo")}
                       className="underline-offset-2 hover:underline"
                     >
                       see what Mylo understands now

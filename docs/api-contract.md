@@ -60,14 +60,16 @@ routes clients depend on most.
 | `labs/<slug>/logo/` | GET, POST, PUT, DELETE | Lab logo, served through the API |
 | `labs/<slug>/members/` | GET, POST | Roster; add a member (manager) |
 | `labs/<slug>/members/<username>/` | PATCH, DELETE | Change role / remove |
+| `labs/<slug>/leave/` | POST | Leave the lab yourself (any member) |
 | `labs/<slug>/invitations/` | GET, POST | Lab's invitations; invite someone |
 | `labs/<slug>/invitations/<id>/cancel/` | POST | Withdraw an invitation |
 | `invitations/` | GET | The caller's pending invitations |
 | `invitations/<id>/respond/` | POST | Accept / reject / ignore |
-| `departments/<id>/profile/` | GET, PATCH | Department interest profile |
+| `departments/<id>/profile/` | GET, PATCH | Department interest profile (same fields as a lab's); both slash forms |
 | `departments/<id>/labs/` `…/labs/<slug>/` | GET, POST / DELETE | Labs under a department |
 | `departments/<id>/members/` `…/members/<username>/` | GET, POST / PATCH, DELETE | Department roster; add, re-role, remove (downward only) |
 | `departments/<id>/transfer-ownership/` | POST | Hand the department to a direct member |
+| `departments/<id>/leave/` | POST | Give up your direct place in a department |
 
 ### Recommendations & content — `/api/`
 
@@ -637,6 +639,16 @@ moves, the new head's row becomes `owner`, the outgoing head's becomes `admin`
 as `department.ownership.transfer`. Returns the department roster. Irreversible
 from the caller's side; `400` for a non-member, unverified target or the caller
 themselves, `403` for anyone but the head. Both slash forms.
+
+### `POST /api/auth/labs/<slug>/leave/` · `POST /api/auth/departments/<id>/leave/`
+
+Leave an org yourself — Settings → Your membership. Open to any member
+(`org.membership`), so someone who manages nothing can still leave; no body.
+`204` on success, `403` for a stranger. A lab's only `owner` gets `409` (hand
+the lab over first); a department's head gets `409`, and so does someone who
+belongs only through one of its labs (leaving that lab is what ends it).
+Audited as `lab.member.leave` / `dept.member.leave` beside the removal's own
+`lab.member.remove` / `dept.member.remove`. Both slash forms.
 
 ### `GET` / `PATCH` `/api/auth/watch/me/`
 

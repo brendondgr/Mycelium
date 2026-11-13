@@ -1030,11 +1030,11 @@ DISCORD_CALLBACK_ORIGIN = env_str(
     "DISCORD_CALLBACK_ORIGIN", PUBLIC_BASE_URL if PUBLIC_HOSTNAME else ""
 ).rstrip("/")
 # Where the user lands back in the portal after a link attempt (success or error
-# is carried as a query param). The frontend profile page reads it. Kept absolute
+# is carried as a query param). Settings → You → Delivery reads it. Kept absolute
 # because the Mylo gateway quotes it in DMs; the callback views redirect to its
 # path alone, so the browser stays on the origin it arrived from.
 DISCORD_PORTAL_RETURN_URL = env_str(
-    "DISCORD_PORTAL_RETURN_URL", f"{DISCORD_APP_BASE_URL}/app/profile"
+    "DISCORD_PORTAL_RETURN_URL", f"{DISCORD_APP_BASE_URL}/app/settings/you/delivery"
 )
 # Guild permissions integer requested on the bot install (Path C). The floor for
 # *this* scope: View Channels (1<<10) + Send Messages (1<<11) + Embed Links

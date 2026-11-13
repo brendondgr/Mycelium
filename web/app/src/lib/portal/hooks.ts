@@ -60,6 +60,7 @@ import {
   fetchGrants,
   fetchIgnored,
   fetchLabMembers,
+  fetchDeptProfile,
   fetchLabProfile,
   fetchLabProjects,
   fetchLabRecommendations,
@@ -158,7 +159,10 @@ import {
   updateAdminLab,
   updateAdminUser,
   updateCollection,
+  updateDeptProfile,
   updateLabProfile,
+  leaveDepartment,
+  leaveLab,
   updateLabWatch,
   updateProject,
   updateProjectCategories,
@@ -978,6 +982,45 @@ export function useUpdateLabProfile(slug: string) {
     ) => updateLabProfile(slug, payload),
     onSuccess: (data) => {
       queryClient.setQueryData(["portal", "lab-profile", slug], data);
+    },
+  });
+}
+
+/** A department's profile (its General page in Settings). */
+export function useDeptProfile(id?: string) {
+  return useQuery({
+    queryKey: ["portal", "dept-profile", id ?? "none"],
+    queryFn: () => fetchDeptProfile(id as string),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
+/** Save a department's profile, updating the cached copy in place. */
+export function useUpdateDeptProfile(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof updateDeptProfile>[1]) =>
+      updateDeptProfile(id, payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["portal", "dept-profile", id], data);
+    },
+  });
+}
+
+/**
+ * Leave a lab or a department yourself. On success the org drops out of the
+ * caller's lists, so both are refreshed.
+ */
+export function useLeaveOrg() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (org: { kind: "lab"; slug: string } | { kind: "department"; id: string }) =>
+      org.kind === "lab" ? leaveLab(org.slug) : leaveDepartment(org.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "departments"] });
+      queryClient.invalidateQueries({ queryKey: ["portal", "entitlements"] });
     },
   });
 }

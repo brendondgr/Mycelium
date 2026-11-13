@@ -4,16 +4,15 @@ import { useAppHref } from "@/components/demo/demo-context";
 import * as React from "react";
 import Link from "next/link";
 
-import { BankIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
 import { Card } from "@/components/portal/primitives/card";
-import { EmptyState } from "@/components/portal/primitives/empty-state";
 import { Pill } from "@/components/portal/primitives/pill";
 import { LabPlanCard } from "@/components/portal/sections/org-plan-card";
+import { settingsPath } from "@/lib/portal/settings";
 import { PlansCard } from "@/components/portal/sections/plans-card";
 import { useEntitlements, useLabBilling } from "@/lib/portal/hooks";
 import type { Entitlements, MyLab } from "@/lib/portal/types";
-import { CAPABILITY, can, holding } from "@/lib/portal/capabilities";
+import { CAPABILITY, holding } from "@/lib/portal/capabilities";
 
 const TIER_LABEL: Record<Entitlements["tier"], string> = {
   free: "Free",
@@ -24,49 +23,28 @@ const TIER_LABEL: Record<Entitlements["tier"], string> = {
 
 
 /**
- * The Account page's money half, so it heads itself as a subsection rather than
- * a page: one `h1` per page, and the Account header above it already owns it.
+ * Your own subscription — Settings → You → Subscription. With billing off (the
+ * instance's mycelium.toml) there are no plans, prices or seats, only the
+ * limits the operator set. A lab's or a department's plan is on that org's own
+ * Plan page, never here: the context is in the Settings path, not the
+ * workspace the reader came from.
  */
-function SubsectionHeader({
-  title,
-  subtitle,
-}: {
-  title: React.ReactNode;
-  subtitle?: React.ReactNode;
-}) {
-  return (
-    <div className="mb-6 border-b border-[var(--divider)] pb-4">
-      <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-[-0.015em] text-[var(--text-primary)]">
-        {title}
-      </h2>
-      {subtitle ? (
-        <p className="mt-1.5 text-sm leading-6 text-[var(--text-secondary)]">
-          {subtitle}
-        </p>
-      ) : null}
-    </div>
-  );
+export function PersonalSubscription() {
+  const { data } = useEntitlements();
+  if (data?.billing_mode === "off") {
+    return <InstanceLimits entitlements={data} />;
+  }
+  return <PersonalBilling />;
 }
 
-/**
- * Subscription management — the one place plans, prices, and anything else
- * monetary live.
- *
- * Split out of the settings surfaces on purpose: "Your plans" used to sit in the
- * personal Profile and the lab plan in Lab settings, which put pricing in front of
- * anyone editing a research focus. Scope-aware like the rest of the workspace: the
- * personal scope shows the account's own plans, a lab scope shows that lab's plan
- * (managers only — a member has no business reading the lab's invoice).
- */
-export function BillingSection() {
-  const { currentLab } = usePortal();
-  const { data } = useEntitlements();
-  // With billing off (the instance's mycelium.toml) there are no plans, prices or
-  // seats to manage — only the limits the operator set, if any.
-  if (data?.billing_mode === "off") {
-    return currentLab ? null : <InstanceLimits entitlements={data} />;
-  }
-  return currentLab ? <LabBilling lab={currentLab} /> : <PersonalBilling />;
+/** A lab's plan and add-ons — Settings → Lab → Plan. */
+export function LabPlanCards({ lab }: { lab: MyLab }) {
+  return (
+    <>
+      <LabPlanCard slug={lab.slug} />
+      <LabAddOnsCard lab={lab} />
+    </>
+  );
 }
 
 /** One limit, read as people say it: "4 of 20", or "4 · no limit". */
@@ -77,42 +55,35 @@ function limitText(used: number | null, cap: number | null): string {
   return used === null ? String(cap) : `${used} of ${cap}`;
 }
 
-/**
- * The Account page's last section when the instance runs without billing: what
- * this person may track, set by whoever runs the instance — never a plan.
- */
+/** What this person may track when the instance runs without billing. */
 function InstanceLimits({ entitlements }: { entitlements: Entitlements }) {
   const unlimited =
     entitlements.topic_cap === null &&
     entitlements.cluster_cap === null &&
     entitlements.cluster_topic_cap === null;
   return (
-    <div>
-      <SubsectionHeader
-        title="Limits"
-        subtitle={
-          unlimited
-            ? "This instance sets no limits on what you track."
-            : "Set by whoever runs this instance, in its configuration."
-        }
-      />
-      <Card className="max-w-xl p-[22px]">
-        <dl className="grid grid-cols-2 gap-y-1.5 text-sm">
-          <dt className="text-[var(--text-secondary)]">Subjects watched</dt>
-          <dd className="text-right font-medium text-[var(--text-primary)]">
-            {limitText(entitlements.topics_used, entitlements.topic_cap)}
-          </dd>
-          <dt className="text-[var(--text-secondary)]">Research clusters</dt>
-          <dd className="text-right font-medium text-[var(--text-primary)]">
-            {limitText(null, entitlements.cluster_cap)}
-          </dd>
-          <dt className="text-[var(--text-secondary)]">Topics per cluster</dt>
-          <dd className="text-right font-medium text-[var(--text-primary)]">
-            {limitText(null, entitlements.cluster_topic_cap)}
-          </dd>
-        </dl>
-      </Card>
-    </div>
+    <Card className="p-[22px]">
+      <h2 className="mb-1 text-base font-semibold text-[var(--text-primary)]">Limits</h2>
+      <p className="mb-3 text-xs text-[var(--text-secondary)]">
+        {unlimited
+          ? "This instance sets no limits on what you track."
+          : "Set by whoever runs this instance, in its configuration."}
+      </p>
+      <dl className="grid grid-cols-2 gap-y-1.5 text-sm">
+        <dt className="text-[var(--text-secondary)]">Subjects watched</dt>
+        <dd className="text-right font-medium text-[var(--text-primary)]">
+          {limitText(entitlements.topics_used, entitlements.topic_cap)}
+        </dd>
+        <dt className="text-[var(--text-secondary)]">Research clusters</dt>
+        <dd className="text-right font-medium text-[var(--text-primary)]">
+          {limitText(null, entitlements.cluster_cap)}
+        </dd>
+        <dt className="text-[var(--text-secondary)]">Topics per cluster</dt>
+        <dd className="text-right font-medium text-[var(--text-primary)]">
+          {limitText(null, entitlements.cluster_topic_cap)}
+        </dd>
+      </dl>
+    </Card>
   );
 }
 
@@ -120,21 +91,11 @@ function InstanceLimits({ entitlements }: { entitlements: Entitlements }) {
 
 function PersonalBilling() {
   return (
-    <div>
-      <SubsectionHeader
-        title="Subscription management"
-        subtitle="The plans on your account, what each one unlocks, and who pays for it."
-      />
-      <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">
-        <div className="flex flex-col gap-[22px]">
-          <PlansCard />
-          <TeamPlanCard />
-        </div>
-        <div className="flex flex-col gap-[22px]">
-          <CurrentPlanCard />
-        </div>
-      </div>
-    </div>
+    <>
+      <CurrentPlanCard />
+      <PlansCard />
+      <TeamPlanCard />
+    </>
   );
 }
 
@@ -171,14 +132,14 @@ function TeamPlanCard() {
             <React.Fragment key={lab.slug}>
               {index > 0 ? ", " : ""}
               <Link
-                href={appHref(`/app/${lab.slug}/dashboard`)}
+                href={appHref(settingsPath({ kind: "lab", slug: lab.slug }, "plan"))}
                 className="font-medium text-primary underline-offset-2 hover:underline"
               >
                 {lab.name}
               </Link>
             </React.Fragment>
           ))}
-          . Switch to it in the workspace switcher, then open Account there.
+          . Its plan is on the lab&apos;s Plan page in Settings.
         </p>
       ) : (
         <p className="mt-3 text-sm text-[var(--text-secondary)]">
@@ -189,8 +150,8 @@ function TeamPlanCard() {
           >
             Create one
           </Link>{" "}
-          — the workspace itself is free — then activate its plan from the lab&apos;s own
-          Account page.
+          — the workspace itself is free — then activate its plan from the lab&apos;s Plan
+          page in Settings.
         </p>
       )}
     </Card>
@@ -255,39 +216,6 @@ function CurrentPlanCard() {
 
 // -- lab ----------------------------------------------------------------------
 
-function LabBilling({ lab }: { lab: MyLab }) {
-  if (!can(lab, CAPABILITY.BILLING_MANAGE)) {
-    return (
-      <div>
-        <SubsectionHeader title="Subscription management" />
-        <EmptyState
-          icon={<BankIcon size={28} />}
-          badge="Restricted"
-          title="Only lab managers can see the lab's billing"
-          description="A lab lead, owner, or admin manages the plan and what it costs. Your own plans are on your personal Account page."
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <SubsectionHeader
-        title={`${lab.name} subscription`}
-        subtitle="This lab's plan, what it covers, and what it costs per member."
-      />
-      <div className="grid grid-cols-1 gap-[22px] lg:grid-cols-[1.3fr_1fr] lg:items-start">
-        <div className="flex flex-col gap-[22px]">
-          <LabPlanCard slug={lab.slug} />
-        </div>
-        <div className="flex flex-col gap-[22px]">
-          <LabAddOnsCard lab={lab} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /**
  * Capabilities that sit beside the tier rather than inside it. Mylo on Discord is the
  * only one today, and it is the gate the lab's Discord setup card reads — so this card
@@ -332,10 +260,10 @@ function LabAddOnsCard({ lab }: { lab: MyLab }) {
             <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
               Connect a server from{" "}
               <Link
-                href={appHref("/app/profile")}
+                href={appHref(settingsPath({ kind: "lab", slug: lab.slug }, "servers"))}
                 className="font-medium text-primary underline-offset-2 hover:underline"
               >
-                Lab settings
+                Mylo &amp; servers
               </Link>
               .
             </p>

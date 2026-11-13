@@ -848,6 +848,53 @@ export function dismissSuggestion(
   );
 }
 
+/** The fields a lab or department profile save may send. */
+export type OrgProfilePatch = Partial<
+  Pick<
+    LabProfileData,
+    | "statement"
+    | "areas"
+    | "funding_needs"
+    | "strategic_needs"
+    | "interests"
+    | "institution_type"
+    | "country"
+  >
+>;
+
+/** Update a department's profile — the same fields a lab's has. */
+export function updateDeptProfile(
+  id: string,
+  payload: OrgProfilePatch,
+): Promise<LabProfileData> {
+  return sendJson<LabProfileData>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "profile"),
+    payload,
+    "Could not save the department's profile.",
+  );
+}
+
+/** Leave a lab yourself (any member; the only owner must hand it over first). */
+export function leaveLab(slug: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "leave"),
+    undefined,
+    "Could not leave the lab.",
+  );
+}
+
+/** Give up your direct place in a department (the head must hand it over first). */
+export function leaveDepartment(id: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "leave"),
+    undefined,
+    "Could not leave the department.",
+  );
+}
+
 /** Update a lab's collective purpose & goals. */
 export function updateLabProfile(
   slug: string,

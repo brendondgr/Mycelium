@@ -42,9 +42,11 @@ import {
 } from "@/lib/portal/hooks";
 import { InstitutionFromEmail } from "@/components/ui/institution-from-email";
 import { ApiError } from "@/lib/api-error";
-import { SECTION_ROUTES } from "@/lib/portal/routes";
+import { SECTION_ROUTES, departmentRoute } from "@/lib/portal/routes";
+import { settingsPath } from "@/lib/portal/settings";
 import type { ClusterGroup } from "@/lib/auth-types";
 import type {
+  LabProfileData,
   DiscordGuildStatus,
   LabMember,
   MyDepartment,
@@ -329,7 +331,7 @@ function DepartmentCard({ department }: { department: MyDepartment }) {
   const appHref = useAppHref();
   return (
     <Link
-      href={appHref(`/app/department/${department.id}`)}
+      href={appHref(departmentRoute(department.id))}
       className="block rounded-2xl border border-border bg-card p-4 transition-colors hover:border-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <p className="text-[15px] font-semibold text-[var(--text-primary)]">
@@ -449,7 +451,34 @@ export function LabPurposeCard({
   onEdit?: () => void;
 }) {
   const { data: profile, isLoading } = useLabProfile(lab.slug);
+  return (
+    <ProfilePurposeCard
+      noun="lab"
+      profile={profile}
+      isLoading={isLoading}
+      canManage={canManage}
+      onEdit={onEdit}
+    />
+  );
+}
 
+/**
+ * A lab's or a department's purpose & goals, read-only — the two profiles have
+ * one shape (`LabProfile` / `DeptProfile`), so they read the same way.
+ */
+export function ProfilePurposeCard({
+  noun,
+  profile,
+  isLoading,
+  canManage,
+  onEdit,
+}: {
+  noun: "lab" | "department";
+  profile: LabProfileData | undefined;
+  isLoading: boolean;
+  canManage: boolean;
+  onEdit?: () => void;
+}) {
   if (isLoading || !profile) {
     return (
       <DetailCard title="Purpose & goals">
@@ -477,8 +506,8 @@ export function LabPurposeCard({
       {empty ? (
         <p className="text-sm text-[var(--text-secondary)]">
           {canManage
-            ? "Describe this lab's collective research purpose and focus areas."
-            : "This lab hasn't described its purpose yet."}
+            ? `Describe this ${noun}'s collective research purpose and focus areas.`
+            : `This ${noun} hasn't described its purpose yet.`}
         </p>
       ) : (
         <div className="space-y-3">
@@ -596,6 +625,7 @@ export function DiscordSyncCard({ lab }: { lab: MyLab }) {
       connect={connect}
       onIssueCode={() => issueCode.mutate(lab.slug)}
       issueCode={issueCode}
+      planHref={settingsPath({ kind: "lab", slug: lab.slug }, "plan")}
     />
   );
 }
@@ -622,6 +652,8 @@ export function DeptDiscordCard({ deptId }: { deptId: string }) {
 
 type MyloServerCardProps = {
   kind: "lab" | "department";
+  /** Where the org's plan is changed, for the "activate" link. */
+  planHref?: string;
   status: { data?: DiscordGuildStatus; isLoading: boolean; isError: boolean };
   /** Treat "still loading" as included so the card never flashes a false lock. */
   myloIncluded: boolean;
@@ -645,6 +677,7 @@ function MyloServerCard({
   connect,
   onIssueCode,
   issueCode,
+  planHref,
 }: MyloServerCardProps) {
   const appHref = useAppHref();
   const { data: status, isLoading, isError } = statusQuery;
@@ -712,7 +745,7 @@ function MyloServerCard({
       <p className="mt-2 text-[12.5px] text-[var(--text-secondary)]">{detail}</p>
       {kind === "lab" && !synced && !isLoading && !billingLoading && !myloIncluded ? (
         <Link
-          href={appHref(SECTION_ROUTES.account)}
+          href={appHref(planHref ?? SECTION_ROUTES.account)}
           className="mt-3 inline-flex items-center gap-[7px] rounded-full border border-border bg-surface px-4 py-2 text-[12.5px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Activate Mylo on this plan
@@ -1090,7 +1123,7 @@ function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
       { name: value },
       {
         onSuccess: (department) => {
-          window.location.href = appHref(`/app/department/${department.id}`);
+          window.location.href = appHref(departmentRoute(department.id));
         },
         onError: (e2) => setError((e2 as Error).message),
       },

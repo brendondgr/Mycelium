@@ -445,6 +445,17 @@ export async function fetchLabProfile(slug: string): Promise<LabProfileData> {
   );
 }
 
+/**
+ * A department's profile. The same shape as a lab's (`DeptProfile` and
+ * `LabProfile` share one interest surface), so one type serves both.
+ */
+export async function fetchDeptProfile(id: string): Promise<LabProfileData> {
+  return getJson<LabProfileData>(
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "profile"),
+    "Could not load the department's profile.",
+  );
+}
+
 /** What Mylo watches for a lab (same shape as a user's watch settings). */
 export async function fetchLabWatch(slug: string): Promise<WatchData> {
   return getJson<WatchData>(

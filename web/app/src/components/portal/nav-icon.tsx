@@ -1,5 +1,7 @@
 "use client";
 
+import { Settings } from "lucide-react";
+
 import {
   BankIcon,
   BellIcon,
@@ -59,6 +61,8 @@ export function NavIconFor({
       return <ShieldIcon size={size} />;
     case "account":
       return <ReceiptIcon size={size} />;
+    case "settings":
+      return <Settings size={size} aria-hidden="true" />;
     default:
       return <GridIcon size={size} />;
   }

@@ -5,7 +5,6 @@ import * as React from "react";
 import { AmbientSettingsCard } from "@/components/portal/ambient/ambient-settings-card";
 import { ChatSettingsCard } from "@/components/portal/mylo/settings-cards";
 import { Card } from "@/components/portal/primitives/card";
-import { SectionHeader } from "@/components/portal/primitives/section-header";
 import { TabBar, type TabItem } from "@/components/portal/primitives/tab-bar";
 import {
   useAnswerSuggestion,
@@ -48,11 +47,6 @@ export function MyloAndYouSection() {
   ];
   return (
     <div data-ambient="mylo-and-you">
-      <SectionHeader
-        eyebrow="Workspace"
-        title="Mylo & you"
-        subtitle="What Mylo noticed in your conversations, what changed, and what it knows. Nothing changes a recommendation until you say yes."
-      />
       <TabBar
         items={items}
         active={tab}

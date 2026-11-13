@@ -147,7 +147,7 @@ class SlackOAuthCallbackView(APIView):
             )
         code = request.GET.get("code", "")
         if not code:
-            return HttpResponseRedirect("/app/profile?slack=cancelled")
+            return HttpResponseRedirect("/app/settings/you/delivery?slack=cancelled")
         try:
             body = slack_api.oauth_access(
                 code,
@@ -156,7 +156,7 @@ class SlackOAuthCallbackView(APIView):
                 redirect_uri=_redirect_uri(request),
             )
         except slack_api.SlackError:
-            return HttpResponseRedirect("/app/profile?slack=failed")
+            return HttpResponseRedirect("/app/settings/you/delivery?slack=failed")
         team = body.get("team") or {}
         slack_resolve.install_workspace(
             team_id=str(team.get("id") or ""),
@@ -165,7 +165,7 @@ class SlackOAuthCallbackView(APIView):
             bot_user_id=str(body.get("bot_user_id") or ""),
             installed_by=request.user,
         )
-        return HttpResponseRedirect("/app/profile?slack=installed")
+        return HttpResponseRedirect("/app/settings/you/delivery?slack=installed")
 
 
 class SlackLinkCodeView(APIView):

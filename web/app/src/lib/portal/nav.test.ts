@@ -68,44 +68,45 @@ describe("can() reads the server's list, never the role", () => {
   });
 });
 
-describe("navigation follows capabilities", () => {
-  const base = { isAdmin: false, hasFeature: () => true, currentDepartment: null };
+describe("the workspace navigation holds no settings pages", () => {
+  const base = { isAdmin: false, hasFeature: () => true, currentLab: null, currentDepartment: null };
 
-  it("a lead PI gets the lab settings entry an admin gets", () => {
+  it("every scope gets one Settings entry and none of the old settings entries", () => {
     const pi = lab({ is_lead: true, capabilities: MANAGER });
-    const groups = navGroupsFor({
-      ...base,
-      scope: { kind: "lab", slug: pi.slug },
-      currentLab: pi,
-    } as Parameters<typeof navGroupsFor>[0]);
-    expect(keys(groups)).toContain("profile");
+    for (const ctx of [
+      { ...base, scope: { kind: "personal" } },
+      { ...base, scope: { kind: "lab", slug: pi.slug }, currentLab: pi },
+      {
+        ...base,
+        scope: { kind: "department", id: "d1" },
+        currentDepartment: dept({ role: "admin", capabilities: MANAGER }),
+      },
+    ]) {
+      const k = keys(navGroupsFor(ctx as Parameters<typeof navGroupsFor>[0]));
+      expect(k.filter((key) => key === "settings")).toHaveLength(1);
+      expect(k).not.toContain("profile");
+      expect(k).not.toContain("account");
+      expect(k).not.toContain("mylo");
+    }
   });
 
-  it("a plain lab member does not", () => {
-    const member = lab({});
-    const groups = navGroupsFor({
-      ...base,
-      scope: { kind: "lab", slug: member.slug },
-      currentLab: member,
-    } as Parameters<typeof navGroupsFor>[0]);
-    expect(keys(groups)).not.toContain("profile");
+  it("a department's Members replaces its separate Labs entry", () => {
+    const k = keys(
+      navGroupsFor({
+        ...base,
+        scope: { kind: "department", id: "d1" },
+        currentDepartment: dept({}),
+      } as Parameters<typeof navGroupsFor>[0]),
+    );
+    expect(k).toContain("members");
+    expect(k).not.toContain("labs");
   });
 
-  it("a department admin gets department settings; a member does not", () => {
-    const scope = { kind: "department", id: "d1" };
-    const admin = navGroupsFor({
+  it("Settings sits in its own group at the foot", () => {
+    const groups = navGroupsFor({
       ...base,
-      scope,
-      currentLab: null,
-      currentDepartment: dept({ role: "admin", capabilities: MANAGER }),
+      scope: { kind: "personal" },
     } as Parameters<typeof navGroupsFor>[0]);
-    const member = navGroupsFor({
-      ...base,
-      scope,
-      currentLab: null,
-      currentDepartment: dept({}),
-    } as Parameters<typeof navGroupsFor>[0]);
-    expect(keys(admin)).toContain("profile");
-    expect(keys(member)).not.toContain("profile");
+    expect(groups[groups.length - 1].label).toBe("Settings");
   });
 });

@@ -18,6 +18,7 @@ import {
 } from "@/components/portal/portal-context";
 import { WorkspaceGround } from "@/components/portal/motion/workspace-ground";
 import { SectionStage } from "@/components/portal/section-stage";
+import { parseSettingsPath, SETTINGS_BASE } from "@/lib/portal/settings";
 
 import "./workspace.css";
 
@@ -34,6 +35,9 @@ export function WorkspaceShell({
   children: React.ReactNode;
 }) {
   const pathname = canonicalPath(usePathname());
+  // Inside Settings the workspace sidebar gives way to the area's own top bar
+  // (context picker + page tabs); the header stays.
+  const inSettings = parseSettingsPath(pathname) !== null || pathname === SETTINGS_BASE;
 
   return (
     <DemoProvider demo={user.demo}>
@@ -54,7 +58,7 @@ export function WorkspaceShell({
           chrome is one row instead of two.
         */}
         <div className="flex min-h-0 flex-1">
-          <PortalSidebar />
+          {inSettings ? null : <PortalSidebar />}
           {/*
             The ground sits in a wrapper that does not itself scroll, so it
             stays put behind the section instead of sliding up with the feed.
@@ -74,7 +78,9 @@ export function WorkspaceShell({
           <div className="relative flex min-h-0 min-w-0 flex-1">
             <WorkspaceGround />
             <main className="ws-main relative min-w-0 flex-1 overflow-y-auto px-4 py-7 sm:px-6 lg:px-9 lg:py-8">
-              <SectionStage stageKey={pathname}>{children}</SectionStage>
+              {/* Moving between settings tabs keeps the area's top bar in place
+                  rather than cross-fading the whole page. */}
+              <SectionStage stageKey={inSettings ? SETTINGS_BASE : pathname}>{children}</SectionStage>
             </main>
           </div>
         </div>
