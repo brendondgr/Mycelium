@@ -4,16 +4,20 @@ version = "0.1.0"
 description = "Django API and orchestration backend for Mycelium."
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "aiohttp>=3.10.0,<4.0.0",
+    # Floors on aiohttp, cryptography, django, djangorestframework and pypdf are
+    # the first releases without the advisories found in the 2026-11-12 audit.
+    "aiohttp>=3.14.4,<4.0.0",
     # The full-text tool (tools/fulltext/engine): HTML landing pages -> markdown.
     "beautifulsoup4>=4.12.0,<5.0.0",
     "celery>=5.5.0,<6.0.0",
     # Fernet encryption for OAuth tokens at rest (apps.integrations.fields).
-    "cryptography>=44,<47",
-    "django>=5.2.0,<6.0.0",
+    "cryptography>=46.0.7",
+    "django>=5.2.17,<6.0.0",
     "django-cors-headers>=4.7.0,<5.0.0",
     "django-environ>=0.12.0,<1.0.0",
-    "djangorestframework>=3.16.0,<4.0.0",
+    "djangorestframework>=3.18.2,<4.0.0",
+    # The production web server (compose.yaml's backend service).
+    "gunicorn>=23.0.0",
     # The full-text tool's HTML parser (BeautifulSoup's "lxml" backend).
     "lxml>=5.0.0,<7.0.0",
     "neo4j>=5.28.0,<6.0.0",
@@ -24,7 +28,7 @@ dependencies = [
     "typesafe-sdk>=0.6.0,<1.0.0",
     "pgvector>=0.3.0,<1.0.0",
     "psycopg[binary]>=3.2.0,<4.0.0",
-    "pypdf>=5.0.0,<7.0.0",
+    "pypdf>=6.21.4,<7.0.0",
     # Calendar-correct offset math for reminders (relativedelta clamps 31 Mar −
     # 1 month → 28/29 Feb). Already present transitively; pinned as a direct dep.
     "python-dateutil>=2.9.0,<3.0.0",
@@ -78,13 +82,10 @@ embeddings-gpu = [
     "onnxruntime-gpu>=1.20.0,<2.0.0",
     "numpy>=2.0.0",
 ]
-# Illinois Fellowship Finder scraping (apps.scraper.fellowships). Kept optional
-# and lazily imported because Playwright pulls a browser runtime (needs
+# Illinois Fellowship Finder scraping (tools/retrieval/fellowships). Kept
+# optional and lazily imported because Playwright pulls a browser runtime (needs
 # `playwright install chromium`) and only the scrape path uses it — matching
-# and API serving need neither. Formerly named "pivot" (this extra also carried
-# Pivot-RP's own grants/conferences scrape before that source was retired —
-# plan Phase 6 of docs/plans/open-opportunity-collector.md); renamed once
-# fellowships were the only consumer left. Install with:
+# and API serving need neither. Install with:
 # uv sync --extra fellowships && uv run playwright install chromium
 fellowships = [
     "playwright>=1.55.0,<2.0.0",
