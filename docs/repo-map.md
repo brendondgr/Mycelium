@@ -84,6 +84,7 @@ Paths are relative to the repository root.
 | Search UI | `web/app/src/components/portal/global-search.tsx`, `portal/sections/{search-section,search-result-card}.tsx` |
 | Projects UI | `web/app/src/components/portal/sections/{projects-list-section,project-detail-section}.tsx` |
 | Project page parts (identity, four-area tabs, editor, team) | `web/app/src/components/portal/projects/{project-identity,project-tabs,project-editor-modal,project-team-card,create-project-wizard}.tsx` |
+| Project scope picker and its plain-language consequences; the directory ("Projects in this lab"); *Who can create projects* card | `web/app/src/components/portal/projects/{visibility-picker,project-directory,project-creation-card}.tsx`; "My projects" vs directory in `sections/projects-list-section.tsx`; join requests on the team card and the bell |
 | What Mylo filed under a project from lab conversation (editors only): channel hints and "this was a different project" | `web/app/src/components/portal/projects/project-conversation-card.tsx`, mounted on the project page's Settings tab; a project's aliases are edited in `project-editor-modal.tsx` (Details) |
 | Labs / members / lab settings | `web/app/src/components/portal/sections/{labs-section,members-section,lab-settings-section}.tsx` |
 | Reports page (briefing history) | `web/app/src/components/portal/sections/reports-section.tsx` |
@@ -134,6 +135,7 @@ Paths are relative to the repository root.
 | Which buffer and window a project is judged against | `tools/delivery/timeline_settings.py` (`effective_timeline`): project override → the reader's own → the lab's → 14/60 |
 | Per-scope project caps | `web/backend/apps/research/limits.py` |
 | Who sees a project, whose it is, where it may be mentioned (`Project.visibility`, oversight, the lab's *What the department sees*, the names-only row) | `web/backend/apps/research/visibility.py` — the only reader of the scope; `test_visibility_guard.py` fails on a raw `scope_lab=` project query elsewhere. Edit and re-scope rights: `apps/research/permissions.py`. Lab setting: `Lab.department_sees`, `GET/PATCH /api/auth/labs/<slug>/department-sees/`, card in `lab-settings-section.tsx` |
+| Joining a project and finding one: `ProjectJoinRequest`, the directory (`visibility.directory`), outside collaborators (`visibility.scope_people_ids`), *Who can create projects* (`Lab.project_creation` / `Department.project_creation`, `ProjectCreation`) | `web/backend/apps/research/{models,views,urls}.py`; permissions in `apps/research/permissions.py` (`user_can_request_to_join`, `user_can_invite_outside`, `user_can_create_in_scope`) and `apps/accounts/permissions.py` (`user_can_create_lab_project`, `user_can_create_department_project`); settings API `apps/accounts/views.py` (`LabProjectCreationView`, `DepartmentProjectCreationView`) |
 
 ## Matching & delivery, by task (`tools/delivery`, `tools/recommendation`, `tools/retrieval`)
 

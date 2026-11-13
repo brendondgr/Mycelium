@@ -32,6 +32,10 @@ import type {
   OrgBilling,
   Project,
   ProjectCapErrorBody,
+  ProjectCreation,
+  ProjectJoinRequest,
+  ProjectRole,
+  ProjectVisibility,
   ProjectConversation,
   ProjectFocusInput,
   ProjectInvitation,
@@ -360,11 +364,14 @@ export function createProject(input: {
   labSlug?: string;
   departmentId?: string;
   focus?: ProjectFocusInput;
+  /** Who may see it; the backend defaults to `invite_only`. */
+  visibility?: ProjectVisibility;
 }): Promise<Project> {
   const body: Record<string, unknown> = { name: input.name };
   if (input.labSlug) body.lab = input.labSlug;
   if (input.departmentId) body.department = input.departmentId;
   if (input.focus) body.focus = input.focus;
+  if (input.visibility) body.visibility = input.visibility;
   return sendJson<Project>(
     "POST",
     buildApiUrl(getPublicApiBase(), "projects"),
@@ -602,6 +609,97 @@ export function inviteToProject(
     buildApiUrl(getPublicApiBase(), "projects", id, "invitations"),
     message ? { identifier, message } : { identifier },
     "Could not send the invitation.",
+  );
+}
+
+/** Ask to join a project the caller can see but is not on. */
+export function requestToJoinProject(
+  id: string,
+  note?: string,
+): Promise<ProjectJoinRequest> {
+  return sendJson<ProjectJoinRequest>(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", id, "join-requests"),
+    note ? { note } : {},
+    "Could not send the request.",
+  );
+}
+
+/** Approve or refuse a join request (the project's owner or an editor). */
+export function decideJoinRequest(
+  projectId: string,
+  requestId: string,
+  action: "approve" | "refuse",
+): Promise<ProjectJoinRequest> {
+  return sendJson<ProjectJoinRequest>(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(),
+      "projects",
+      projectId,
+      "join-requests",
+      requestId,
+      "decide",
+    ),
+    { action },
+    "Could not answer the request.",
+  );
+}
+
+/** Withdraw the caller's own open join request. */
+export function withdrawJoinRequest(
+  requestId: string,
+): Promise<ProjectJoinRequest> {
+  return sendJson<ProjectJoinRequest>(
+    "POST",
+    buildApiUrl(
+      getPublicApiBase(),
+      "project-join-requests",
+      requestId,
+      "withdraw",
+    ),
+    undefined,
+    "Could not withdraw the request.",
+  );
+}
+
+/** Make a project member an editor, or an editor a member (the owner only). */
+export function setProjectMemberRole(
+  id: string,
+  username: string,
+  role: Exclude<ProjectRole, "owner">,
+): Promise<Project> {
+  return sendJson<Project>(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "projects", id, "members", username),
+    { role },
+    "Could not change the role.",
+  );
+}
+
+/** Set who may start a project in a lab (the PI / owner / admin). */
+export function setLabProjectCreation(
+  slug: string,
+  value: ProjectCreation,
+): Promise<{ project_creation: ProjectCreation; can_create: boolean }> {
+  return sendJson(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "labs", slug, "project-creation"),
+    { project_creation: value },
+    "Could not change who can create projects.",
+  );
+}
+
+/** Set who may start a department project (its owner / admins). */
+export function setDepartmentProjectCreation(
+  id: string,
+  value: ProjectCreation,
+): Promise<{ project_creation: ProjectCreation; can_create: boolean }> {
+  return sendJson(
+    "PATCH",
+    buildApiUrl(getPublicApiBase(), "auth", "departments", id, "project-creation"),
+    { project_creation: value },
+    "Could not change who can create projects.",
   );
 }
 

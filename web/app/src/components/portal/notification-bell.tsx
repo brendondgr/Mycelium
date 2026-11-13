@@ -13,9 +13,11 @@ import { roleLabel, usePortal } from "@/components/portal/portal-context";
 import { IconButton } from "@/components/portal/primitives/icon-button";
 import {
   useDismissSuggestion,
+  useJoinRequests,
   useMemberSuggestions,
   useMyInvitations,
   useMyProjectInvitations,
+  useMyProjectJoinRequests,
   useNotificationAction,
   useNotifications,
   useRespondInvitation,
@@ -28,6 +30,7 @@ import type {
   MyInvitation,
   NotificationItem,
   ProjectInvitation,
+  ProjectJoinRequest,
 } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +47,8 @@ export function NotificationBell() {
   const projectInvitesQuery = useMyProjectInvitations();
   const notifications = useNotifications();
   const suggestionsQuery = useMemberSuggestions();
+  const joinRequestsQuery = useMyProjectJoinRequests();
+  const joinRequests = joinRequestsQuery.data?.to_decide ?? [];
   const invitations = data ?? [];
   const projectInvitations = projectInvitesQuery.data?.items ?? [];
   const alerts = notifications.data?.items ?? [];
@@ -52,6 +57,7 @@ export function NotificationBell() {
     invitations.length +
     projectInvitations.length +
     alerts.length +
+    joinRequests.length +
     suggestions.length;
   const loading =
     isLoading ||
@@ -122,6 +128,9 @@ export function NotificationBell() {
                   key={invitation.id}
                   invitation={invitation}
                 />
+              ))}
+              {joinRequests.map((request) => (
+                <JoinRequestRow key={request.id} request={request} />
               ))}
               {suggestions.map((suggestion) => (
                 <SuggestionRow
@@ -422,6 +431,58 @@ function SuggestionRow({
           <CloseIcon size={13} />
         </button>
       </div>
+    </li>
+  );
+}
+
+/**
+ * Someone asked to join a project the reader decides for (its owner or an
+ * editor). Declining tells only the person who asked.
+ */
+function JoinRequestRow({ request }: { request: ProjectJoinRequest }) {
+  const { decide } = useJoinRequests();
+  const [error, setError] = React.useState<string | null>(null);
+
+  const act = (action: "approve" | "refuse") => {
+    setError(null);
+    decide.mutate(
+      { projectId: request.project_id, requestId: request.id, action },
+      { onError: (e) => setError((e as Error).message) },
+    );
+  };
+
+  return (
+    <li className="px-4 py-3">
+      <p className="text-sm text-[var(--text-primary)]">
+        <span className="font-semibold">{request.user.name}</span> asked to
+        join <span className="font-semibold">{request.project_name}</span>.
+      </p>
+      {request.note ? (
+        <p className="mt-1 text-[12.5px] italic text-[var(--text-secondary)]">
+          &ldquo;{request.note}&rdquo;
+        </p>
+      ) : null}
+      <div className="mt-2.5 flex items-center gap-2">
+        <ResponseButton
+          tone="accept"
+          disabled={decide.isPending}
+          onClick={() => act("approve")}
+        >
+          Approve
+        </ResponseButton>
+        <ResponseButton
+          tone="reject"
+          disabled={decide.isPending}
+          onClick={() => act("refuse")}
+        >
+          Decline
+        </ResponseButton>
+      </div>
+      {error ? (
+        <p className="mt-2 text-[12px] text-clay" role="alert">
+          {error}
+        </p>
+      ) : null}
     </li>
   );
 }

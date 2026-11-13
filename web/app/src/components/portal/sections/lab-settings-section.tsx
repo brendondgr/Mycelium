@@ -20,6 +20,7 @@ import {
   ProjectsCard,
 } from "@/components/portal/sections/labs-section";
 import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
+import { ProjectCreationCard } from "@/components/portal/projects/project-creation-card";
 import { usePortal } from "@/components/portal/portal-context";
 import { labLogoUrl } from "@/lib/portal/client";
 import { SlackLabCard, TeamsLabCard } from "@/components/portal/ambient/slack-cards";
@@ -111,6 +112,11 @@ export function LabSettingsSection({ lab }: { lab: MyLab }) {
           <SlackLabCard slug={lab.slug} />
           <TeamsLabCard slug={lab.slug} />
           <DiscordHealthCard lab={lab} />
+          <ProjectCreationCard
+            kind="lab"
+            slug={lab.slug}
+            value={lab.project_creation}
+          />
           {lab.department ? <DepartmentSeesCard lab={lab} /> : null}
           <ProjectsCard lab={lab} canManage />
         </div>

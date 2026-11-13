@@ -78,6 +78,9 @@ import {
   fetchSaves,
   fetchProfile,
   fetchMyProjectInvitations,
+  fetchMyProjectJoinRequests,
+  fetchProjectDirectory,
+  fetchProjectJoinRequests,
   fetchProject,
   fetchProjectConversation,
   fetchProjectState,
@@ -108,6 +111,12 @@ import {
   addToCollection,
   archiveProject,
   cancelProjectInvitation,
+  decideJoinRequest,
+  requestToJoinProject,
+  setDepartmentProjectCreation,
+  setLabProjectCreation,
+  setProjectMemberRole,
+  withdrawJoinRequest,
   attachLabToDept,
   cancelInvitation,
   createCollection,
@@ -186,6 +195,7 @@ import type {
   AnnouncementSettings,
   AnnouncementTarget,
   DepartmentSees,
+  ProjectCreation,
 } from "@/lib/portal/types";
 
 export type SearchInput = {
@@ -833,6 +843,105 @@ export function useProjectInvitations(id?: string) {
   });
 }
 
+/** The project directory (reduced rows): a lab's, a department's, or the
+ * whole instance's projects the caller can see but is not on. */
+export function useProjectDirectory(
+  where: { labSlug?: string; departmentId?: string } = {},
+  enabled = true,
+) {
+  const labSlug = where.labSlug && where.labSlug !== PERSONAL_SLUG ? where.labSlug : undefined;
+  return useQuery({
+    queryKey: [
+      "portal",
+      "project-directory",
+      labSlug ?? "",
+      where.departmentId ?? "",
+    ],
+    queryFn: () =>
+      fetchProjectDirectory({ labSlug, departmentId: where.departmentId }),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** A project's open join requests (its owner and editors). */
+export function useProjectJoinRequests(id?: string, enabled = true) {
+  return useQuery({
+    queryKey: ["portal", "project-join-requests", id ?? "none"],
+    queryFn: () => fetchProjectJoinRequests(id as string),
+    enabled: Boolean(id) && enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Join requests for the bell: to decide, and the caller's own. */
+export function useMyProjectJoinRequests() {
+  return useQuery({
+    queryKey: ["portal", "my-project-join-requests"],
+    queryFn: fetchMyProjectJoinRequests,
+    staleTime: 60_000,
+  });
+}
+
+/** Ask to join, approve / refuse, or withdraw — refreshing every list a join
+ * request shows up in. */
+export function useJoinRequests() {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    for (const key of [
+      "project-directory",
+      "project-join-requests",
+      "my-project-join-requests",
+      "project",
+      "projects",
+      "lab-projects",
+    ]) {
+      queryClient.invalidateQueries({ queryKey: ["portal", key] });
+    }
+  };
+  const request = useMutation({
+    mutationFn: (input: { id: string; note?: string }) =>
+      requestToJoinProject(input.id, input.note),
+    onSuccess: invalidate,
+  });
+  const decide = useMutation({
+    mutationFn: (input: {
+      projectId: string;
+      requestId: string;
+      action: "approve" | "refuse";
+    }) => decideJoinRequest(input.projectId, input.requestId, input.action),
+    onSuccess: invalidate,
+  });
+  const withdraw = useMutation({
+    mutationFn: (requestId: string) => withdrawJoinRequest(requestId),
+    onSuccess: invalidate,
+  });
+  return { request, decide, withdraw };
+}
+
+/** Set who may start a project in a lab (the switcher carries it). */
+export function useSetLabProjectCreation(slug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: ProjectCreation) => setLabProjectCreation(slug, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "labs"] });
+    },
+  });
+}
+
+/** Set who may start a department project. */
+export function useSetDepartmentProjectCreation(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: ProjectCreation) =>
+      setDepartmentProjectCreation(id, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal", "departments"] });
+    },
+  });
+}
+
 /** The caller's own pending project invitations (notifications feed). */
 export function useMyProjectInvitations() {
   return useQuery({
@@ -973,7 +1082,15 @@ export function useProjectMembership() {
       removeProjectMember(input.id, input.username),
     onSuccess: invalidate,
   });
-  return { leave, addMember, removeMember };
+  const setRole = useMutation({
+    mutationFn: (input: {
+      id: string;
+      username: string;
+      role: "editor" | "member";
+    }) => setProjectMemberRole(input.id, input.username, input.role),
+    onSuccess: invalidate,
+  });
+  return { leave, addMember, removeMember, setRole };
 }
 
 /** Save a lab's purpose & goals, updating the cached copy in place. */

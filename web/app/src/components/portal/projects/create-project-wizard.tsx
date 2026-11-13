@@ -5,22 +5,46 @@ import * as React from "react";
 import { ClusterOrganizer } from "@/components/onboarding/cluster-organizer";
 import { CloseIcon } from "@/components/portal/icons";
 import { usePortal } from "@/components/portal/portal-context";
+import {
+  VisibilityPicker,
+  allowedVisibilities,
+  type ProjectHome,
+} from "@/components/portal/projects/visibility-picker";
 import { composeClusters } from "@/lib/auth-client";
 import type { ClusterGroup } from "@/lib/auth-types";
 import { useCreateProject } from "@/lib/portal/hooks";
 import { updateProjectState } from "@/lib/portal/mutations";
 import { ProjectCapReachedError } from "@/lib/portal/mutations";
-import type { MyLab } from "@/lib/portal/types";
+import type {
+  MyDepartment,
+  MyLab,
+  ProjectVisibility,
+} from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
-/** A member with owner/admin/PI rights may create/manage projects for that lab
- * (mirrors the backend's create-permission check and the Save-button scope
- * picker's `canManageLab`). */
-function canManageLab(lab: MyLab): boolean {
-  return lab.is_lead || lab.role === "owner" || lab.role === "admin";
+type Scope =
+  | { kind: "personal" }
+  | { kind: "lab"; slug: string; name: string; department: string | null }
+  | { kind: "department"; id: string; name: string };
+
+/** The scope picker's view of where the project lives. */
+function homeOf(scope: Scope): ProjectHome {
+  if (scope.kind === "lab") {
+    return { kind: "lab", labName: scope.name, departmentName: scope.department };
+  }
+  if (scope.kind === "department") {
+    return { kind: "department", departmentName: scope.name };
+  }
+  return { kind: "personal" };
 }
 
-type Scope = { kind: "personal" } | { kind: "lab"; slug: string; name: string };
+function labScope(lab: MyLab): Scope {
+  return { kind: "lab", slug: lab.slug, name: lab.name, department: lab.department };
+}
+
+function departmentScope(department: MyDepartment): Scope {
+  return { kind: "department", id: department.id, name: department.name };
+}
 
 /** Comma-separated free text into a clean list. The wizard's list fields. */
 function splitList(value: string): string[] {
@@ -31,10 +55,9 @@ function splitList(value: string): string[] {
 }
 
 function samesScope(a: Scope, b: Scope): boolean {
-  if (a.kind === "personal" || b.kind === "personal") {
-    return a.kind === b.kind;
-  }
-  return a.slug === b.slug;
+  if (a.kind === "lab" && b.kind === "lab") return a.slug === b.slug;
+  if (a.kind === "department" && b.kind === "department") return a.id === b.id;
+  return a.kind === b.kind;
 }
 
 /**
@@ -44,19 +67,41 @@ function samesScope(a: Scope, b: Scope): boolean {
  * generic error. On success, offers to jump straight to the new project.
  */
 export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
-  const { labs, currentLab, openProject } = usePortal();
-  const managedLabs = React.useMemo(() => labs.filter(canManageLab), [labs]);
+  const { labs, currentLab, departments, currentDepartment, openProject } =
+    usePortal();
+  // Where the caller may start a project: each lab's and department's own
+  // *Who can create projects* setting (any member by default) decides.
+  const creatableLabs = React.useMemo(
+    () => labs.filter((lab) => lab.can_create_projects),
+    [labs],
+  );
+  const creatableDepartments = React.useMemo(
+    () => departments.filter((d) => d.can_create_projects),
+    [departments],
+  );
 
   const defaultScope: Scope = React.useMemo(() => {
-    if (currentLab && canManageLab(currentLab)) {
-      return { kind: "lab", slug: currentLab.slug, name: currentLab.name };
+    if (currentLab && currentLab.can_create_projects) {
+      return labScope(currentLab);
+    }
+    if (currentDepartment && currentDepartment.can_create_projects) {
+      return departmentScope(currentDepartment);
     }
     return { kind: "personal" };
-  }, [currentLab]);
+  }, [currentLab, currentDepartment]);
 
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [name, setName] = React.useState("");
-  const [scope, setScope] = React.useState<Scope>(defaultScope);
+  const [scope, setScopeState] = React.useState<Scope>(defaultScope);
+  const [visibility, setVisibility] =
+    React.useState<ProjectVisibility>("invite_only");
+  // A scope the new home cannot take falls back to the narrowest.
+  const setScope = (next: Scope) => {
+    setScopeState(next);
+    if (!allowedVisibilities(homeOf(next)).includes(visibility)) {
+      setVisibility("invite_only");
+    }
+  };
 
   // Step 2 — the free-text description Mylo composes clusters from, and the
   // resulting (editable) focus. `hasFocus` toggles between the intro prompt
@@ -143,6 +188,8 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
       {
         name: name.trim(),
         labSlug: scope.kind === "lab" ? scope.slug : undefined,
+        departmentId: scope.kind === "department" ? scope.id : undefined,
+        visibility,
         focus:
           withFocus && focusAreas.length > 0
             ? {
@@ -260,7 +307,10 @@ export function CreateProjectWizard({ onClose }: { onClose: () => void }) {
               setName={setName}
               scope={scope}
               setScope={setScope}
-              managedLabs={managedLabs}
+              creatableLabs={creatableLabs}
+              creatableDepartments={creatableDepartments}
+              visibility={visibility}
+              setVisibility={setVisibility}
             />
           ) : step === 2 ? (
             <StepFocus
@@ -398,20 +448,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-/** Step 1: name the project and pick where it lives. */
+/** Step 1: name the project, pick where it lives and who can see it. */
 function StepName({
   name,
   setName,
   scope,
   setScope,
-  managedLabs,
+  creatableLabs,
+  creatableDepartments,
+  visibility,
+  setVisibility,
 }: {
   name: string;
   setName: (value: string) => void;
   scope: Scope;
   setScope: (scope: Scope) => void;
-  managedLabs: MyLab[];
+  creatableLabs: MyLab[];
+  creatableDepartments: MyDepartment[];
+  visibility: ProjectVisibility;
+  setVisibility: (value: ProjectVisibility) => void;
 }) {
+  const homes = creatableLabs.length + creatableDepartments.length;
   return (
     <div className="space-y-4">
       <Field label="Project name">
@@ -426,7 +483,7 @@ function StepName({
       </Field>
 
       <Field label="Where does this project live?">
-        {managedLabs.length === 0 ? (
+        {homes === 0 ? (
           <p className="text-[13px] text-[var(--text-secondary)]">
             Your personal workspace.
           </p>
@@ -438,17 +495,41 @@ function StepName({
             >
               Personal
             </ScopeChip>
-            {managedLabs.map((lab) => (
+            {creatableLabs.map((lab) => (
               <ScopeChip
                 key={lab.slug}
-                active={samesScope(scope, { kind: "lab", slug: lab.slug, name: lab.name })}
-                onClick={() => setScope({ kind: "lab", slug: lab.slug, name: lab.name })}
+                active={samesScope(scope, labScope(lab))}
+                onClick={() => setScope(labScope(lab))}
               >
                 {lab.name}
               </ScopeChip>
             ))}
+            {creatableDepartments.map((department) => (
+              <ScopeChip
+                key={department.id}
+                active={samesScope(scope, departmentScope(department))}
+                onClick={() => setScope(departmentScope(department))}
+              >
+                {department.name}
+              </ScopeChip>
+            ))}
           </div>
         )}
+        {scope.kind !== "personal" ? (
+          <p className="mt-2 text-[11.5px] text-[var(--text-secondary)]">
+            You will own it: you invite people, decide requests to join, and
+            choose who can see it. It counts against {scope.name}&apos;s
+            project limit.
+          </p>
+        ) : null}
+      </Field>
+
+      <Field label="Who can see it?">
+        <VisibilityPicker
+          value={visibility}
+          onChange={setVisibility}
+          home={homeOf(scope)}
+        />
       </Field>
     </div>
   );

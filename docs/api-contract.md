@@ -56,6 +56,7 @@ routes clients depend on most.
 | `labs/` | GET, POST | The caller's lab memberships; create a lab |
 | `labs/<slug>/profile/` | GET, PATCH | Lab interest profile, plus `institution_type` (`higher_ed` \| `nonprofit` \| `government` \| `company` \| `""`) and `country` (two-letter code, upper-cased; 400 otherwise). The department profile takes the same two fields |
 | `labs/<slug>/department-sees/` | GET, PATCH | What the department's heads see of the lab's projects: `{ "department_sees": "everything" \| "names_only", "department": "<name>" \| null }`. Any lab member reads; only the lab's PI / owner / admin set it (403 for anyone else, the department head included); 400 for another value. Also on each `labs/` row as `department_sees` |
+| `labs/<slug>/project-creation/` `departments/<id>/project-creation/` | GET, PATCH | *Who can create projects*: `{ "project_creation": "members" \| "managers", "can_create": bool }`. `members` (default) lets any lab member (not a viewer) — any effective department member — start one; `managers` only the PI / owner / admins. Any member reads; only the managers set it (403 otherwise; 400 for another value). Also on each `labs/` and `departments/` row as `project_creation` and `can_create_projects` |
 | `labs/<slug>/watch/` | GET, PATCH | Lab watch preference |
 | `labs/<slug>/intake/synthesize/` | POST | Lab profile synthesis |
 | `labs/<slug>/logo/` | GET, POST, PUT, DELETE | Lab logo, served through the API |
@@ -124,14 +125,19 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 |---|---|---|
 | `/` | GET, POST | Visible projects; create (plan-capped) |
 | `lab/<slug>/` | GET | The lab's projects the caller may see: their own, or every one for the lab's PI/owner/admin and a department head over it |
-| `<id>/` | GET, PATCH | Detail; edit name / description / status / progress / focus / watch categories / aliases |
+| `directory/` `lab/<slug>/directory/` `department/<id>/directory/` | GET | The directory: projects the caller can see exist but is not on, as reduced rows (see below). The lab and department forms need membership of it (403 otherwise) |
+| `<id>/join-requests/` | GET, POST | Ask to join (`{ "note"? }`); the owner and editors list the open requests |
+| `<id>/join-requests/<rid>/decide/` | POST | `{ "action": "approve" \| "refuse" }` — the owner or an editor |
+| `project-join-requests/` | GET | `{ "to_decide": [...], "mine": [...] }` — the bell's open requests |
+| `project-join-requests/<rid>/withdraw/` | POST | The requester withdraws their own open request |
+| `<id>/` | GET, PATCH | Detail; edit name / description / status / progress / focus / watch categories / aliases / visibility. Every `<id>/…` route answers 404 to someone who cannot see the project exists (an id guess confirms nothing) and 403 to someone who can see it but not open it |
 | `<id>/archive/` | POST, DELETE | Archive / unarchive (never deletes) |
 | `<id>/state/` | GET, PATCH | What the project claims, blocks on, and aims at |
 | `<id>/state/confirm/` | POST | "Still true" — the date only |
 | `<id>/state/extract/` | POST | Read a state **proposal** out of a document (saves nothing) |
 | `<id>/leave/` | POST | Leave (404 unless the caller can see the project; there is no self-join — a project is joined by invitation) |
 | `<id>/members/` | GET, POST | Roster; add a lab member directly |
-| `<id>/members/<username>/` | DELETE | Remove a member |
+| `<id>/members/<username>/` | PATCH, DELETE | Set `{ "role": "editor" \| "member" }` (the owner); remove a member (never the owner) |
 | `<id>/invitations/` | GET, POST | Pending invitations; invite by username or email |
 | `<id>/invitations/<iid>/cancel/` | POST | Withdraw a pending invitation |
 | `project-invitations/` | GET | The caller's own pending project invitations |
@@ -198,6 +204,37 @@ without department access.
                    "owner": { "username", "name", "initials" } | null,
                    "member_count": 3, "names_only": true }] }
 ```
+
+### `GET /api/projects/directory/` · `lab/<slug>/directory/` · `department/<id>/directory/`
+
+Projects the caller can see exist (`visibility.visible_q`: inside the project's
+scope, or an overseer) but is not on, archived ones left out. An `invite_only`
+project reaches only its overseers here, never an ordinary lab member.
+
+```json
+{ "count": 1,
+  "items": [{ "id": "uuid", "name": "…", "visibility": "lab", "scope": "lab",
+              "scope_name": "Reyes Lab", "scope_slug": "reyes-lab",
+              "focus": "One line on what it is about",
+              "owner": { "username", "name", "initials" } | null,
+              "member_count": 3, "can_open": false, "can_request": true,
+              "request_status": "pending" | null }] }
+```
+
+A directory row never carries goals, state, feed, files or the roster.
+`can_open` is true for an overseer (the lab's PI / owner / admins, a department
+head over a lab set to `everything`), who may open it without joining.
+
+### Join requests
+
+`POST /api/projects/<id>/join-requests/` asks to join. It needs the project to be
+other than `invite_only`, the caller to see it exist, and the caller not to be on
+it: 404 when they cannot see it (the same answer as an id naming nothing), 403
+for an `invite_only` or archived project, 400 when already a member or already
+asking (one open request per person per project). The owner and editors (and the
+scope's managers) list and decide; approval adds a `member`. The requester is
+told on their bell (`project_join` notification); a refusal is told to them
+alone, never to the lab. A decided request answers `409` to a second decision.
 
 `projects` holds what the caller may open (member, or an overseer). `names_only` is
 filled only for the department's owner / admins, and only with projects of labs
@@ -783,9 +820,12 @@ Seeing is not belonging: only membership puts a project in someone's own reports
    "description": "…", "status": "Active", "progress": 40,
    "focus": { "clusters": [] },
    "watch_categories": ["papers"], "is_archived": false, "is_over_cap": false,
-   "visibility": "invite_only", "my_role": "owner",
+   "visibility": "invite_only", "my_role": "owner", "is_participant": true,
    "can_edit": true, "can_manage_members": true,
-   "member_count": 3, "members": [{ "username", "name", "initials" }],
+   "can_change_visibility": true, "can_invite_outside": true, "can_request": false,
+   "allowed_visibilities": ["invite_only", "lab", "department", "public"],
+   "member_count": 3,
+   "members": [{ "username", "name", "initials", "role": "owner", "outside": false }],
    "updated_at": "…" }]
 ```
 
@@ -797,7 +837,14 @@ back to the composed focus statement — and are `null` when unset. `can_edit` /
 lab owner/admin/PI, a department owner/admin for a department project, or a
 member whose `my_role` is `owner` or `editor`) so a client never has to infer them
 from the active workspace. `my_role` is `owner | editor | member`, or `null` when
-the caller is not a member. `is_over_cap` marks a project sitting above the plan's allowance after
+the caller is not a member. `is_participant` is true for a member or a personal
+project's own user, never for an overseer — the app keeps overseen projects out of
+"My projects". `can_change_visibility` is the owner's right, `can_invite_outside`
+whether the caller may invite someone from outside the lab, `can_request` whether
+they may ask to join (and have no open request). Each `members` row carries the
+person's `role` and `outside` (true for an outside collaborator: on a lab project
+but not in the lab, or on a department project but not in the department).
+`is_over_cap` marks a project sitting above the plan's allowance after
 a downgrade.
 
 ### `PATCH /api/projects/<id>/`
@@ -906,8 +953,11 @@ On success `{ "taken": true, "message": <what Mylo says back>, "suggestion": …
 ### Project members and invitations
 
 `POST <id>/members/` adds one of the owning **lab's** own members directly — no
-invitation, because that person can already see the lab's work. Everyone else is
-invited: `POST <id>/invitations/` takes `{ "identifier", "message"? }` where the
+invitation, because that person can already see the lab's work; the owner and
+editors may do it. Everyone else is invited. Only the owner (or the scope's
+managers) invites someone from **outside** the lab or department — 403 for an
+editor; such an outside collaborator sees that one project and gets no lab feed,
+roster, directory or server role: `POST <id>/invitations/` takes `{ "identifier", "message"? }` where the
 identifier is an existing account's username or email (project invitations do not
 create accounts — that stays the lab invite path). Accepting creates a
 `ProjectMember` row and nothing else, so an invited outside collaborator gains
@@ -917,9 +967,12 @@ audit-logged.
 
 ### `POST /api/projects/`
 
-`{ "name", "labSlug"?, "departmentId"?, "focus"? }`. Scope resolves to personal,
-lab, or department; lab/department creation needs both the org's plan and PI or
-admin rights. The per-scope **project cap** is enforced atomically (row-locked
+`{ "name", "lab"?, "department"?, "focus"?, "visibility"? }`. Scope resolves to
+personal, lab, or department; lab/department creation needs the org's plan and is
+allowed by its *Who can create projects* setting (any member by default, viewers
+excepted; or managers only) — 403 otherwise. The creator of a lab or department
+project becomes its `owner` member. `visibility` defaults to `invite_only`; one
+the scope cannot take is a 400. The per-scope **project cap** is enforced atomically (row-locked
 count-then-create) and a breach returns `403`. `focus` accepts a Mylo-composed
 cluster payload. On create the project is seeded over the existing corpus in the
 background.

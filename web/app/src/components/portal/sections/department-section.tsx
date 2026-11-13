@@ -13,6 +13,7 @@ import { AgentPolicyCard } from "@/components/portal/mylo/settings-cards";
 import { DeptDiscordCard } from "@/components/portal/sections/labs-section";
 import { DeptPlanCard } from "@/components/portal/sections/org-plan-card";
 import { OrgInviteCard } from "@/components/portal/sections/org-invite-card";
+import { ProjectCreationCard } from "@/components/portal/projects/project-creation-card";
 import { usePortal } from "@/components/portal/portal-context";
 import {
   useDeptBilling,
@@ -35,7 +36,8 @@ export function DepartmentSection() {
   const params = useParams();
   const deptId = String((params?.id as string) ?? "");
 
-  const { user } = usePortal();
+  const { user, departments } = usePortal();
+  const department = departments.find((d) => d.id === deptId) ?? null;
   const billing = useDeptBilling(deptId);
   const canManage = Boolean(billing.data?.can_manage);
   const deptName = billing.data?.scope_name ?? "Department";
@@ -69,6 +71,13 @@ export function DepartmentSection() {
         </div>
         <div className="space-y-4">
           {canManage && deptId ? <DeptDiscordCard deptId={deptId} /> : null}
+          {canManage && department ? (
+            <ProjectCreationCard
+              kind="department"
+              id={deptId}
+              value={department.project_creation}
+            />
+          ) : null}
           {billingOn ? <DeptPlanCard deptId={deptId} /> : null}
           {deptId ? <AgentPolicyCard kind="department" orgRef={deptId} name={deptName} /> : null}
         </div>

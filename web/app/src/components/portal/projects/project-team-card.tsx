@@ -9,8 +9,10 @@ import { CloseIcon, PlusIcon } from "@/components/portal/icons";
 import {
   useCancelProjectInvitation,
   useInviteToProject,
+  useJoinRequests,
   useLabMembers,
   useProjectInvitations,
+  useProjectJoinRequests,
   useProjectMembership,
 } from "@/lib/portal/hooks";
 import type { LabMember, Project, ProjectMember } from "@/lib/portal/types";
@@ -32,7 +34,13 @@ const PRIMARY =
  * be ceremony. Anyone else (an outside collaborator, or anyone on a personal
  * project) is **invited** by username or email and joins when they accept.
  * Accepting grants that one project and never lab membership, which the panel
- * says out loud so nobody invites an outsider expecting less — or more.
+ * says out loud so nobody invites an outsider expecting less — or more. Only
+ * the owner invites from outside the lab; such a person is marked "outside the
+ * lab" on the roster.
+ *
+ * The third way in is a **request**: someone inside the project's scope asks,
+ * and the owner or an editor approves or refuses here. A refusal is told to
+ * the requester alone.
  */
 export function ProjectTeamCard({ project }: { project: Project }) {
   const canManage = project.can_manage_members;
@@ -61,9 +69,8 @@ export function ProjectTeamCard({ project }: { project: Project }) {
             <MemberRow
               key={member.username}
               member={member}
-              projectId={project.id}
+              project={project}
               canManage={canManage}
-              isOwner={project.scope === "user"}
             />
           ))}
         </ul>
@@ -106,27 +113,33 @@ export function ProjectTeamCard({ project }: { project: Project }) {
             <InviteForm project={project} onDone={() => setMode(null)} />
           ) : null}
 
+          <JoinRequests project={project} />
           <PendingInvitations project={project} />
         </div>
       ) : null}
+
+      {project.can_request ? <AskToJoin project={project} /> : null}
     </Card>
   );
 }
 
 function MemberRow({
   member,
-  projectId,
+  project,
   canManage,
-  isOwner,
 }: {
   member: ProjectMember;
-  projectId: string;
+  project: Project;
   canManage: boolean;
-  /** A personal project's own owner sits on its roster and cannot be removed. */
-  isOwner: boolean;
 }) {
-  const { removeMember } = useProjectMembership();
+  const projectId = project.id;
+  const { removeMember, setRole } = useProjectMembership();
   const [error, setError] = React.useState<string | null>(null);
+  // The owner stays: a personal project's own user, or the owner-role member.
+  const isOwner = project.scope === "user" || member.role === "owner";
+  const canSetRole =
+    project.can_change_visibility &&
+    (member.role === "editor" || member.role === "member");
 
   return (
     <li className="flex items-center gap-[11px]">
@@ -135,8 +148,15 @@ function MemberRow({
         <p className="m-0 truncate text-[13px] font-medium text-[var(--text-primary)]">
           {member.name}
         </p>
-        <p className="m-0 truncate text-[11.5px] text-[var(--text-secondary)]">
+        <p className="m-0 flex flex-wrap items-center gap-1.5 truncate text-[11.5px] text-[var(--text-secondary)]">
           @{member.username}
+          {member.role === "owner" ? <Pill tone="primary">Owner</Pill> : null}
+          {member.role === "editor" ? <Pill tone="dashed">Editor</Pill> : null}
+          {member.outside ? (
+            <Pill tone="clay">
+              Outside the {project.scope === "department" ? "department" : "lab"}
+            </Pill>
+          ) : null}
         </p>
         {error ? (
           <p className="m-0 text-[11px] text-clay" role="alert">
@@ -144,6 +164,31 @@ function MemberRow({
           </p>
         ) : null}
       </div>
+      {canSetRole ? (
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            setRole.mutate(
+              {
+                id: projectId,
+                username: member.username,
+                role: member.role === "editor" ? "member" : "editor",
+              },
+              { onError: (e) => setError((e as Error).message) },
+            );
+          }}
+          disabled={setRole.isPending}
+          className={GHOST}
+          title={
+            member.role === "editor"
+              ? "Editors invite, remove, edit and archive."
+              : "Let them invite, remove, edit and archive."
+          }
+        >
+          {member.role === "editor" ? "Make member" : "Make editor"}
+        </button>
+      ) : null}
       {canManage && !isOwner ? (
         <button
           type="button"
@@ -282,9 +327,11 @@ function InviteForm({
       className="mt-3 rounded-xl border border-border bg-surface-alt p-3"
     >
       <p className="mb-2 text-[11.5px] text-[var(--text-secondary)]">
-        {project.scope === "lab"
-          ? "They join this project only — an invitation never grants access to the rest of the lab."
-          : "They join this project only. Invitations go to people who already have a Mycelium account."}
+        {project.scope === "user"
+          ? "They join this project only. Invitations go to people who already have a Mycelium account."
+          : project.can_invite_outside
+            ? `They join this project only. Someone outside the ${project.scope} is shown as "outside the ${project.scope}" and gets no other part of it — no feeds, roster, directory or server role.`
+            : `You can invite people already in the ${project.scope}. Only the project's owner invites someone from outside it.`}
       </p>
       <input
         value={identifier}
@@ -373,6 +420,123 @@ function PendingInvitations({ project }: { project: Project }) {
           </li>
         ))}
       </ul>
+      {error ? (
+        <p className="mt-2 text-[11.5px] text-clay" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Requests to join, for the owner and editors to approve or refuse. A refusal
+ * is told to the requester alone — never announced to the lab.
+ */
+function JoinRequests({ project }: { project: Project }) {
+  const { data } = useProjectJoinRequests(project.id, project.can_manage_members);
+  const { decide } = useJoinRequests();
+  const [error, setError] = React.useState<string | null>(null);
+  const pending = data?.items ?? [];
+
+  if (pending.length === 0) {
+    return null;
+  }
+
+  const answer = (requestId: string, action: "approve" | "refuse") => {
+    setError(null);
+    decide.mutate(
+      { projectId: project.id, requestId, action },
+      { onError: (e) => setError((e as Error).message) },
+    );
+  };
+
+  return (
+    <div className="mt-4">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
+        Asking to join
+      </p>
+      <ul className="flex flex-col gap-2.5">
+        {pending.map((request) => (
+          <li key={request.id} className="flex flex-wrap items-center gap-2.5">
+            <Avatar
+              initials={request.user.initials}
+              seed={request.user.username}
+              size={24}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="m-0 truncate text-[12.5px] text-[var(--text-primary)]">
+                {request.user.name}
+              </p>
+              {request.note ? (
+                <p className="m-0 text-[11.5px] text-[var(--text-secondary)]">
+                  &ldquo;{request.note}&rdquo;
+                </p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => answer(request.id, "approve")}
+              disabled={decide.isPending}
+              className={PRIMARY}
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              onClick={() => answer(request.id, "refuse")}
+              disabled={decide.isPending}
+              className={GHOST}
+            >
+              Decline
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11px] text-[var(--text-secondary)]">
+        Declining tells only the person who asked.
+      </p>
+      {error ? (
+        <p className="mt-2 text-[11.5px] text-clay" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** For someone who can open the project without being on it (the lab's PI,
+ * a department head): ask to join. */
+function AskToJoin({ project }: { project: Project }) {
+  const { request } = useJoinRequests();
+  const [error, setError] = React.useState<string | null>(null);
+  const [sent, setSent] = React.useState(false);
+
+  return (
+    <div className="mt-4 border-t border-[var(--divider)] pt-4">
+      {sent ? (
+        <p className="text-[12px] text-primary">
+          Asked. The owner or an editor will decide.
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            request.mutate(
+              { id: project.id },
+              {
+                onSuccess: () => setSent(true),
+                onError: (e) => setError((e as Error).message),
+              },
+            );
+          }}
+          disabled={request.isPending}
+          className={GHOST}
+        >
+          {request.isPending ? "Asking…" : "Ask to join"}
+        </button>
+      )}
       {error ? (
         <p className="mt-2 text-[11.5px] text-clay" role="alert">
           {error}
