@@ -1,4 +1,4 @@
-# R435F77C3 — first draft (before the checker's repair)
+# R435F77C3 — the draft the checker judged (before its repair)
 
 Here's the picture for Plastic pathways (#2).
 

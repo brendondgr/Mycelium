@@ -2,6 +2,9 @@
  {
   "id": "co09",
   "category": "compound",
+  "flagged_items": [
+   "1.5"
+  ],
   "flagged_unmatched": 0,
   "flagged_unread": 0,
   "flagged_unsupported": 1,

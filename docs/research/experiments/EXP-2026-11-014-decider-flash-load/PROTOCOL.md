@@ -87,3 +87,12 @@ Throughput still rising past 32 in flight, or any error at or below 64, would
 contradict the operator's expectation; joint-vs-single disagreement on the
 most likely answer for more than 5% of questions would mean batching
 questions changes decisions and the production client should not batch.
+
+## Amendment 1 — 2026-11-13 00:58, during run r1, before run r2
+
+Run r1 is the full sweep as written. Its first five levels showed timed
+passes agreeing within about 1% of each other, and each level of the real
+shapes takes about three minutes, so a full second sweep would add little and
+cost about ninety minutes. Run r2 is therefore a shorter repeat for
+run-to-run variation only: shapes `joint` and `synthetic`, levels 1, 4, 16,
+32 and 64, two timed passes per level. Nothing about r1 changes.

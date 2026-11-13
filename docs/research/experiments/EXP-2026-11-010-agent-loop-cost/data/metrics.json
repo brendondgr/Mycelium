@@ -145,6 +145,12 @@
     "p90": 5.74,
     "max": 21.32
    },
+   "in_flight": 1,
+   "batch_wall_s": {
+    "n": 3,
+    "median": 220.4,
+    "max": 227.7
+   },
    "over_60s_any": 1,
    "peak_prompt_tokens_any_call": 12895,
    "turns_with_15_plus_model_calls": 3,
@@ -228,6 +234,12 @@
     "median": 0.87,
     "p90": 3.77,
     "max": 15.67
+   },
+   "in_flight": 1,
+   "batch_wall_s": {
+    "n": 3,
+    "median": 169.2,
+    "max": 193.6
    },
    "over_60s_any": 1,
    "peak_prompt_tokens_any_call": 18943,

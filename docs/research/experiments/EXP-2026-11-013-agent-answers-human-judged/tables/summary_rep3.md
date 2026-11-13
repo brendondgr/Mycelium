@@ -14,3 +14,13 @@
 | tagged_opportunity | b | 0 | None | None | None | None | None |
 | tagged_paper | b | 0 | None | None | None | None | None |
 | who_fits | b | 0 | None | None | None | None | None |
+
+| Injected class | Copies | Caught | Recall | 95% CI | in place | prose | fact line |
+|---|---:|---:|---:|---|---|---|---|
+| bad_cite | 110 | 110 | 1.0 | [0.9663, 1.0] | 109/109 | 1/1 | — |
+| unread_cite | 0 | 0 | None | [None, None] | — | — | — |
+| date | 163 | 56 | 0.3436 | [0.275, 0.4193] | 1/58 | 0/49 | 55/56 |
+| author | 109 | 42 | 0.3853 | [0.2993, 0.4791] | 0/10 | 0/49 | 42/50 |
+| venue | 103 | 34 | 0.3301 | [0.2468, 0.4256] | 0/5 | 0/49 | 34/49 |
+| amount | 117 | 104 | 0.8889 | [0.8191, 0.9339] | 4/17 | 49/49 | 51/51 |
+| paraphrase | 60 | 0 | 0.0 | [-0.0, 0.0602] | 0/60 | — | — |

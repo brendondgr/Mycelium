@@ -40,6 +40,10 @@ Arm (a) across repetitions (validation; only `main` is rated):
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | main | 50 | 27,088 | 40.5 | 150.6 | 6.46 | 1 | 4 | 1 | 1 |
 | rep2 | 50 | 27,025 | 34.7 | 124.4 | 6.12 | 0 | 1 | 1 | 0 |
+| rep3 | 50 | 26,494 | 37.2 | 104.2 | 6.16 | 0 | 2 | 1 | 1 |
+
+In rep2 one answer (`to03`) was a clarifying question back to the asker
+(thread left waiting), not an answer.
 
 Injected errors (one per copy, Wilson 95% intervals):
 
@@ -53,12 +57,21 @@ Injected errors (one per copy, Wilson 95% intervals):
 | amount / figure | 113 | 104 | 0.92 | 0.86–0.96 | 6/15 | 49/49 | 49/49 |
 | unsupported paraphrase | 60 | 0 | 0.00 | 0.00–0.06 | 0/60 | — | — |
 
-Repair (`repair_off_<tag>.json`): `main` — the one repaired answer failed its
-repair and was stripped (cost unknown: per-call counter bug, ISSUES.md);
-`rep2` — the one repaired answer passed after the repair, costing 19,104
-tokens, 10.6 s and 2 extra model calls. With repair off, `main`'s answer would
-have lost the same flagged figure; `rep2`'s flagged figure was already gone
-from the text the strip would act on.
+Repair (`data/repair_off_<tag>.json`; one repaired answer per run):
+
+| Run | Flagged in the judged draft | Repair outcome | Repair cost | With repair off |
+|---|---|---|---|---|
+| main | `1.5` in "€1.5–15M" | failed; the figure was stripped | unknown (counter bug) | the same figure stripped |
+| rep2 | `2.5` in "about 2.5 months out" | passed; the model dropped the figure | 19,104 tokens, 10.6 s, 2 calls | the sentence's figure stripped |
+| rep3 | `1.5` in "€1.5–15M" | failed; the figure was stripped | 20,078 tokens, 16.2 s, 2 calls | the same figure stripped |
+
+On the implementing agent's reading (not a rater's), two of the three flags
+are false: the evidence says "€1,500,000–€15,000,000", and the verifier's
+literal match does not accept "€1.5–15M" for it, so a correct amount was
+removed after a repair the model could not satisfy. The third flags a figure
+the model computed itself ("about 2.5 months" to a deadline 84 days away),
+which the evidence does not state. The raters' removed-item sheet will judge
+the `main` item.
 
 Human-judged (C-033, C-034, C-035 precision and recall against raters): **not
 yet measured** — `code/score.py` is written and committed; it runs when the
@@ -79,9 +92,12 @@ None.
   invisible. So C-035's recall bar (≥ 0.5 of what raters find) depends on what
   kind of unsupported detail the model actually produces — which is exactly
   what the raters' lists will show.
-- **The repair rarely runs** (1 in 50, twice), so its cost per answer is small
-  on average; when it runs it adds roughly a fifth of an answer's tokens
-  (19k of the 27k mean) and ~10 s.
+- **The repair rarely runs** (1 in 50 in each of three runs), so its cost per
+  answer is small on average; when it runs it adds 19–20k tokens (about 70%
+  of a mean answer's 27k) and 11–16 s. Two of its three
+  triggers were a reformatted amount ("€1.5–15M" for "€1,500,000–€15,000,000"),
+  so its precision may be limited less by judgement than by number
+  formatting.
 - **Arm (b) is cheaper and faster but structurally blind** to the lab's own
   state: project-status and who-fits questions are answered from the corpus
   alone. Whether people judge it worse is C-034, pending.

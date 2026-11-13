@@ -139,7 +139,9 @@ def main() -> int:
                 for v in row["verdicts"]:
                     if v.get("ok"):
                         continue
-                    draft = drafts[0] if drafts else text
+                    marks = list(v.get("unsupported") or []) + [f"#{n}" for n in (v.get("unmatched") or [])]
+                    draft = next((d for d in drafts if marks and all(m in d for m in marks)),
+                                 drafts[-1] if drafts else text)
                     for snippet in v.get("unsupported") or []:
                         removed.append({"aid": aid, "qid": qid, "kind": "detail", "flag": "unsupported",
                                         "action": v.get("action"), "item": snippet,
@@ -151,7 +153,7 @@ def main() -> int:
                                             "sentence": sentence_of(draft, f"#{n}")})
                     if v.get("action") == "repair" and drafts:
                         (ev_dir / f"{aid}-draft.md").write_text(
-                            f"# {aid} — first draft (before the checker's repair)\n\n{drafts[0]}\n")
+                            f"# {aid} — the draft the checker judged (before its repair)\n\n{draft}\n")
     seen, unique = set(), []
     for r in removed:  # a repair verdict and the strip after it name the same item
         if (r["aid"], r["item"], r["flag"]) not in seen:

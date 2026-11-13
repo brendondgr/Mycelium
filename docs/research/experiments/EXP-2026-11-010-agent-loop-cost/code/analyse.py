@@ -88,6 +88,23 @@ def a2_summary(path):
     if lat:
         out["model_call_latency_s"] = {"n": len(lat), "median": round(st.median(lat), 2),
                                        "p90": round(lat[int(len(lat) * 0.9)], 2), "max": round(lat[-1], 2)}
+    if any("conc" in r for r in ok):
+        from datetime import datetime, timedelta
+
+        batches = []
+        for rep in sorted({r["rep"] for r in ok}):
+            rs = [r for r in ok if r["rep"] == rep]
+            ends = [datetime.strptime(r["at"], "%Y-%m-%dT%H:%M:%S%z") for r in rs]
+            starts = [e - timedelta(seconds=r["wall_s"]) for e, r in zip(ends, rs)]
+            batches.append((max(ends) - min(starts)).total_seconds())
+        out["in_flight"] = ok[0].get("conc")
+        out["batch_wall_s"] = {"n": len(batches), "median": round(st.median(batches), 1),
+                               "max": round(max(batches), 1)}
+    else:  # one at a time: twelve questions take the sum of their turns
+        batches = [sum(r["wall_s"] for r in ok if r["rep"] == rep) for rep in sorted({r["rep"] for r in ok})]
+        out["in_flight"] = 1
+        out["batch_wall_s"] = {"n": len(batches), "median": round(st.median(batches), 1),
+                               "max": round(max(batches), 1)}
     out["over_60s_any"] = sum(r["wall_s"] > 60 for r in ok)
     peaks = [max((c["prompt_tokens"] or 0) for c in r["calls"]) for r in ok if r.get("calls")]
     out["peak_prompt_tokens_any_call"] = max(peaks) if peaks else None

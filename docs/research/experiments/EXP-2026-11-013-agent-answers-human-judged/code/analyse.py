@@ -65,7 +65,11 @@ def repair_off(rows):
         if "error" in r or not r.get("repair"):
             continue
         first = next(v for v in r["verdicts"] if v.get("action") == "repair")
-        draft = (r.get("drafts") or [""])[0]
+        # The judged draft is the one holding what the verdict flagged; earlier
+        # non-final assistant text (a note before a function call) is not it.
+        drafts = r.get("drafts") or [""]
+        marks = list(first.get("unsupported") or []) + [f"#{n}" for n in first.get("unmatched") or []]
+        draft = next((d for d in drafts if marks and all(m in d for m in marks)), drafts[-1])
         off = draft
         if first.get("unmatched"):
             off = verify.strip(off, first["unmatched"])
@@ -81,6 +85,7 @@ def repair_off(rows):
         kept = [s for s in first.get("unsupported") or [] if s in (r.get("final_text") or "")]
         out.append({
             "id": r["id"], "category": r["category"],
+            "flagged_items": list(first.get("unsupported") or []) + [f"#{n}" for n in first.get("unmatched") or []],
             "flagged_unmatched": len(first.get("unmatched") or []),
             "flagged_unread": len(first.get("unread") or []),
             "flagged_unsupported": len(first.get("unsupported") or []),
