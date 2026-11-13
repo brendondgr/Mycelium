@@ -77,6 +77,12 @@ def a2_summary(path):
         "tokens_max": max((r["prompt_tokens"] + r["completion_tokens"] for r in five), default=0),
     }
     out["over_60s_any"] = sum(r["wall_s"] > 60 for r in ok)
+    peaks = [max((c["prompt_tokens"] or 0) for c in r["calls"]) for r in ok if r.get("calls")]
+    out["peak_prompt_tokens_any_call"] = max(peaks) if peaks else None
+    long_turns = [r for r in ok if r["model_calls"] >= 15]
+    out["turns_with_15_plus_model_calls"] = len(long_turns)
+    out["peak_prompt_tokens_in_15_plus_turns"] = max(
+        (max((c["prompt_tokens"] or 0) for c in r["calls"]) for r in long_turns), default=None)
     return out
 
 

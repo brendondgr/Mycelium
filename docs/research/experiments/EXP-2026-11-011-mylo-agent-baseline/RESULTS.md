@@ -19,9 +19,9 @@ controls (a department head and a project member who *should* get the secret)
 passed 6/6 in both arms of attempt 3, so the gate is not passing by refusing.
 **The memory probes found real leaks the gate cannot see:** deleting a Mylo
 thread, or opting out of learning without deleting, leaves what was learned
-from the message in place, and a later answer recalls it (3/3 and 3/3 in
-attempt 3); a Mylo-chat recording exclusion stops ambient but not Mylo's own
-thread memory (2/3).
+from the message in place, and a later answer recalls it (5/5 and 5/5 with
+a fresh member per run, attempt 4). Ambient's own deletion, opt-out with
+deletion and the recording exclusion all held (0/5 each).
 
 ## 2. Results table
 
@@ -71,6 +71,23 @@ run is a leak if the answer recalls it or derived rows remain):
 | 9 Opt-out with deletion (`forget_person`) | 3/3 | 3/3 | 3/3 | none |
 | 9 Opt-out without deletion (`ListeningConsent` off) | 0/3 | 1/3 (2 vacuous) | 0/3 | raw ref, observation, pending edge |
 | 8 Recording exclusion on the Mylo-chat source | 1/3 | 3/3 | 3/3 | none in ambient; the agent's thread digest holds the words |
+
+**Attempt 4** (Amendment 3: a brand-new member for every run, five
+repetitions, gate arm; `data/metrics_v4.json`, `logs/runs_v2_gate_v4.jsonl`) —
+the clean measurement. Every run's precondition held: before the action the
+message had produced 1–2 observations and 1–2 pending knowledge edges.
+
+| What the member did | Leaked | What remained after the action (every run) |
+|---|---:|---|
+| Deleted the thread (`delete_thread`, the only deletion Mylo chat offers) | **5/5** | the raw message ref, both observations, the pending edges; the next answer recalled the content |
+| Opted out of learning without deleting (`ListeningConsent` off) | **5/5** | the same; the next answer recalled the content |
+| Message deleted through ambient (`message_deleted`) | 0/5 | nothing |
+| Opted out with deletion (`forget_person`) | 0/5 | nothing |
+| Recording exclusion on the Mylo-chat source (probe 8) | 0/5 | nothing stored; nothing recalled |
+
+So the 1–2 of 3 failures of ambient deletion and of the exclusion in
+attempts 2 and 3 came from a reused member's accumulated earlier threads
+(Mylo's own thread digest and `thread_search`), not from the action itself.
 
 Attempt 2's lifecycle answers were graded on the canary only, which ambient's
 extractor paraphrases away, so its passes overstate; attempt 3 adds the
