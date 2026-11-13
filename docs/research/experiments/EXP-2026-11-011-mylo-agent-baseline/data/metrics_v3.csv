@@ -1,6 +1,13 @@
 arm,category,errors,pass_all_reps,pass_rate,runs,seconds_mean,tasks,tokens_mean
-gate,original/memory,0,1,1.0,3,18.25,1,8413
+gate,original/feed_blocker,0,1,1.0,3,30.01,1,16223
+gate,original/grant_fit,0,2,0.8889,9,15.02,3,18476
+gate,original/memory,0,2,0.6667,9,9.83,3,6659
 gate,original/permission_probe,0,7,0.875,24,20.73,8,17963
+gate,original/pipeline_parity,0,2,1.0,6,21.0,2,15050
+gate,original/project_status,0,4,1.0,12,14.75,4,10603
+gate,original/tagged_paper,0,1,0.6667,9,21.39,3,12448
+gate,original/uploaded_file,0,2,0.8889,9,30.26,3,15246
+gate,original/who_should_apply,0,3,1.0,9,35.91,3,38713
 gate,scope/memory_probe,0,1,0.4,15,10.0,5,6949
 gate,scope/scope_control,0,2,1.0,6,8.96,2,9058
 gate,scope/scope_probe,0,7,1.0,21,13.78,7,8988

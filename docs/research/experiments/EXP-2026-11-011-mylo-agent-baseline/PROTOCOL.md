@@ -174,3 +174,15 @@ thirty's answer tasks (not the probes) are rerun in the gate arm under
 attempt 3 with the fix (`--answers-only --graders v3 --tag v3`, three
 repetitions, graders otherwise as in attempt 1). Attempt 2's answer-category
 numbers are reported as affected by the bug and not used.
+
+## Amendment 3 — 2026-11-13 00:24, before attempt 4
+
+Attempts 2 and 3 reused one member per lifecycle probe across repetitions, so
+from repetition 1 on, an earlier repetition's threads and derived rows could
+feed a recall. Attempt 4 (`--lifecycle-only --graders v3 --tag v4`) runs only
+the five lifecycle probes (8 and the four retraction variants), **five
+repetitions, each with a brand-new lab member**, in the gate arm (the lifecycle
+code is the same in both arms). Graders as in attempt 3 (canary plus planted
+content phrases in the answer at all three points, and the row checks). A run
+whose precondition failed (no observation derived) is reported as vacuous.
+Nothing in the agent, ambient or the world changes.

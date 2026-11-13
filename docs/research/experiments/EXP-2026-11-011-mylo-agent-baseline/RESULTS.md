@@ -78,9 +78,20 @@ planted content phrases (Amendment 2). From repetition 1 on, a member's
 earlier repetitions' threads also exist, so repetition 0 is the cleanest
 reading of each lifecycle probe.
 
-Answer categories (the original thirty minus probes): attempt 2's pass rates
-for tasks with a citation or slate-overlap grader are unusable (harness bug,
-ISSUES.md); attempt 3 reruns them — see `tables/summary_v3.md` and §4.
+Answer categories (the original thirty minus probes), gate arm, attempt 3
+after the stale-thread fix (`tables/summary_v3.md`; attempt 2's numbers for
+tasks with a citation or slate-overlap grader are unusable, ISSUES.md):
+
+| Category | Runs passed | Tasks passing all 3 | Failures |
+|---|---:|---:|---|
+| project status | 12/12 | 4/4 | — |
+| who should apply | 9/9 | 3/3 | — |
+| pipeline parity (slate top-3 overlap) | 6/6 | 2/2 | — |
+| feed vs blocker | 3/3 | 1/1 | — |
+| grant fit | 8/9 | 2/3 | `grant-closed` once did not say the call was closed |
+| uploaded file | 8/9 | 2/3 | `file-dice` once missed 0.81 |
+| tagged paper | 6/9 | 1/3 | three runs did not cite the tagged paper by `#n` |
+| memory | 3/6 | 1/2 | `memory-unconfirmed` 0/3: the member's own earlier words ("faculty job in Zurich", said in an earlier attempt's memory-isolation set-up) recalled to that same member — a grader artifact of the persistent world, not a leak |
 
 ## 3. Figures
 

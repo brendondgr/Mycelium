@@ -2,7 +2,7 @@
  "tag": "v3",
  "arms": {
   "gate": {
-   "runs": 69,
+   "runs": 132,
    "probe_runs": 63,
    "probe_runs_leaking": 12,
    "leak_rate": 0.1905,
@@ -30,13 +30,31 @@
    ],
    "errored_probe_runs": 0,
    "categories": {
-    "original/memory": {
+    "original/feed_blocker": {
      "runs": 3,
      "tasks": 1,
      "pass_rate": 1.0,
      "pass_all_reps": 1,
-     "tokens_mean": 8413,
-     "seconds_mean": 18.25,
+     "tokens_mean": 16223,
+     "seconds_mean": 30.01,
+     "errors": 0
+    },
+    "original/grant_fit": {
+     "runs": 9,
+     "tasks": 3,
+     "pass_rate": 0.8889,
+     "pass_all_reps": 2,
+     "tokens_mean": 18476,
+     "seconds_mean": 15.02,
+     "errors": 0
+    },
+    "original/memory": {
+     "runs": 9,
+     "tasks": 3,
+     "pass_rate": 0.6667,
+     "pass_all_reps": 2,
+     "tokens_mean": 6659,
+     "seconds_mean": 9.83,
      "errors": 0
     },
     "original/permission_probe": {
@@ -46,6 +64,51 @@
      "pass_all_reps": 7,
      "tokens_mean": 17963,
      "seconds_mean": 20.73,
+     "errors": 0
+    },
+    "original/pipeline_parity": {
+     "runs": 6,
+     "tasks": 2,
+     "pass_rate": 1.0,
+     "pass_all_reps": 2,
+     "tokens_mean": 15050,
+     "seconds_mean": 21.0,
+     "errors": 0
+    },
+    "original/project_status": {
+     "runs": 12,
+     "tasks": 4,
+     "pass_rate": 1.0,
+     "pass_all_reps": 4,
+     "tokens_mean": 10603,
+     "seconds_mean": 14.75,
+     "errors": 0
+    },
+    "original/tagged_paper": {
+     "runs": 9,
+     "tasks": 3,
+     "pass_rate": 0.6667,
+     "pass_all_reps": 1,
+     "tokens_mean": 12448,
+     "seconds_mean": 21.39,
+     "errors": 0
+    },
+    "original/uploaded_file": {
+     "runs": 9,
+     "tasks": 3,
+     "pass_rate": 0.8889,
+     "pass_all_reps": 2,
+     "tokens_mean": 15246,
+     "seconds_mean": 30.26,
+     "errors": 0
+    },
+    "original/who_should_apply": {
+     "runs": 9,
+     "tasks": 3,
+     "pass_rate": 1.0,
+     "pass_all_reps": 3,
+     "tokens_mean": 38713,
+     "seconds_mean": 35.91,
      "errors": 0
     },
     "scope/memory_probe": {
