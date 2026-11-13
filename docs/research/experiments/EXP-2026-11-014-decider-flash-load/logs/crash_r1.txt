@@ -1,0 +1,40 @@
+Nov 13 01:03:26 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:26.167960142 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1170210816 bytes (free: 112328704, total: 16700604416).
+Nov 13 01:03:26 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:26.458653528 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 260046848 bytes (free: 294780928, total: 16700604416).
+Nov 13 01:03:26 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:26.711826013 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1170210816 bytes (free: 278003712, total: 16700604416).
+Nov 13 01:03:27 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:27.993519900 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 260046848 bytes (free: 150077440, total: 16700604416).
+Nov 13 01:03:32 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:32.289491034 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1170210816 bytes (free: 133300224, total: 16700604416).
+Nov 13 01:03:32 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:32.405997656 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 585105408 bytes (free: 133300224, total: 16700604416).
+Nov 13 01:03:41 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:41.973195322 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1203765248 bytes (free: 66191360, total: 16700604416).
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:42.263197304 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 268435456 bytes (free: 51511296, total: 16700604416).
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:42.523765675 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1203765248 bytes (free: 43122688, total: 16700604416).
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:42.674686900 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 268435456 bytes (free: 278003712, total: 16700604416).
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: [rank0]:[W1113 01:03:42.674977000 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 268435456 bytes (free: 278003712, total: 16700604416).
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512] EngineCore encountered a fatal error.
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512] Traceback (most recent call last):
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/home/bdg20b/Projects/vLLM-Decision/.venv/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1496, in run_engine_core
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     engine_core.run_busy_loop()
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/home/bdg20b/Projects/vLLM-Decision/.venv/lib/python3.12/site-packages/vllm/v1/fault_tolerance/engine_core_sentinel.py", line 178, in run_with_fault_tolerance
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     busy_loop_func(self)
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/home/bdg20b/Projects/vLLM-Decision/.venv/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1555, in run_busy_loop
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     self._process_engine_step()
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/home/bdg20b/Projects/vLLM-Decision/.venv/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1606, in _process_engine_step
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     outputs, model_executed = self.step_fn()
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]                               ^^^^^^^^^^^^^^
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/home/bdg20b/Projects/vLLM-Decision/.venv/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 668, in step
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     future = self.model_executor.execute_model(scheduler_output, non_block=True)
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/home/bdg20b/Projects/vLLM-Decision/.venv/lib/python3.12/site-packages/vllm/v1/executor/uniproc_executor.py", line 131, in execute_model
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     output.result()
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/usr/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     return self.__get_result()
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]            ^^^^^^^^^^^^^^^^^^^
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     raise self._exception
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/home/bdg20b/Projects/vLLM-Decision/.venv/lib/python3.12/site-packages/vllm/v1/executor/uniproc_executor.py", line 109, in collective_rpc
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     result = run_method(self.driver_worker, method, args, kwargs)
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/home/bdg20b/Projects/vLLM-Decision/.venv/lib/python3.12/site-packages/vllm/v1/serial_utils.py", line 508, in run_method
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     return func(*args, **kwargs)
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]            ^^^^^^^^^^^^^^^^^^^^^
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]   File "/home/bdg20b/Projects/vLLM-Decision/.venv/lib/python3.12/site-packages/vllm/v1/worker/worker_base.py", line 370, in execute_model
+Nov 13 01:03:42 sc-zeus serve.sh[646240]: (EngineCore pid=646240) ERROR 11-13 01:03:42 [core.py:1512]     return self.worker.execute_model(scheduler_output)

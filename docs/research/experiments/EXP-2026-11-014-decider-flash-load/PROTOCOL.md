@@ -96,3 +96,27 @@ shapes takes about three minutes, so a full second sweep would add little and
 cost about ninety minutes. Run r2 is therefore a shorter repeat for
 run-to-run variation only: shapes `joint` and `synthetic`, levels 1, 4, 16,
 32 and 64, two timed passes per level. Nothing about r1 changes.
+
+## Amendment 2 — 2026-11-13 01:12, after run r1 stopped, before any further request
+
+**What happened.** Run r1's `joint` shape completed levels 1–24 without an
+error. At 32 requests in flight, 80 of 113 requests failed: the engine ran
+out of GPU memory (CUDA OOM trying to allocate ~1.2 GB with < 300 MB free on
+the 16 GB card), hit a fatal error, and was restarted by its service manager
+(healthy again at 01:05). The safety rule stopped r1 there, so `single`,
+`choice` and `synthetic` were never run. The crash is the result for that
+level; it is recorded, not retried at the same settings.
+
+**What runs instead of the planned r2** (Amendment 1's r2 included 32 and 64
+on real states, which would crash the server again):
+
+- `r1b`: shapes `single` and `choice` on the real states at 1, 2, 4, 8, 12,
+  16 and 24 in flight (below the level that failed), three timed passes each.
+- `r1s`: shape `synthetic` (one short ~400-character state) at 1, 4, 16, 32,
+  48 and 64 in flight, three passes — whether the failure is about state
+  length or about concurrency alone. The operator's limit (64) and the stop
+  rule still apply; a second crash ends the experiment.
+- `r2`: a repeat of `joint` at 1, 4, 16 and 24, two passes, for run-to-run
+  variation.
+
+Same health checks and stop rule. Nothing else changes.
