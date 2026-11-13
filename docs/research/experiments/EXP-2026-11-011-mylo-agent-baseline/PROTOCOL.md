@@ -195,3 +195,10 @@ every respect, to tighten the interval on the gate's access-probe leak rate
 (pooled with attempt 3 in RESULTS, and also reported on its own). The
 lifecycle probes in this pass reuse members as in attempt 3; attempt 4 remains
 the clean lifecycle measurement.
+
+## Amendment 5 — 2026-11-13 03:32, before attempt 3b's prompt-only pass
+
+The prompt-only arm of attempt 3, repeated unchanged
+(`--arm prompt_only --graders v3 --probes-only --reps 3 --tag v3b`), so the
+gate-vs-prompt difference can be pooled over two passes like the gate's own
+replication.
