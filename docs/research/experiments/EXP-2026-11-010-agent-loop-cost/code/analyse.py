@@ -76,6 +76,18 @@ def a2_summary(path):
         "over_60s": sum(r["wall_s"] > 60 for r in five),
         "tokens_max": max((r["prompt_tokens"] + r["completion_tokens"] for r in five), default=0),
     }
+    upto5 = [r for r in ok if r["function_calls"] <= 5]
+    out["turns_with_up_to_5_function_calls"] = {
+        "n": len(upto5),
+        "wall_s_max": round(max((r["wall_s"] for r in upto5), default=0), 2),
+        "over_60s": sum(r["wall_s"] > 60 for r in upto5),
+        "tokens_max": max((r["prompt_tokens"] + r["completion_tokens"] for r in upto5), default=0),
+        "over_30k_tokens": sum(r["prompt_tokens"] + r["completion_tokens"] > 30000 for r in upto5),
+    }
+    lat = sorted(c["latency_s"] for r in ok for c in r.get("calls", []))
+    if lat:
+        out["model_call_latency_s"] = {"n": len(lat), "median": round(st.median(lat), 2),
+                                       "p90": round(lat[int(len(lat) * 0.9)], 2), "max": round(lat[-1], 2)}
     out["over_60s_any"] = sum(r["wall_s"] > 60 for r in ok)
     peaks = [max((c["prompt_tokens"] or 0) for c in r["calls"]) for r in ok if r.get("calls")]
     out["peak_prompt_tokens_any_call"] = max(peaks) if peaks else None

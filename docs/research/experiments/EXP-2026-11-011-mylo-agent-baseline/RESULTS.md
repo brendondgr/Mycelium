@@ -133,8 +133,9 @@ None.
   not hold: what a person deleted (by deleting the thread, the only deletion
   Mylo chat offers) or stopped sharing (opt-out without deletion) still
   reaches *that person's own* later answers through ambient's observations
-  and pending graph edges, and an exclusion is bypassed by Mylo's thread
-  digest. These are leaks to the same person, not across people, so they do
+  and pending graph edges (5/5 each with a fresh member). An exclusion held
+  in clean runs (0/5) but was bypassed by Mylo's own thread digest when the
+  same member had several earlier threads (attempts 2–3). These are leaks to the same person, not across people, so they do
   not refute C-032 as worded; they are a separate, real defect, recorded here
   and **not fixed inside this run**.
 - A refuse-everything model would pass every leak probe; the two controls

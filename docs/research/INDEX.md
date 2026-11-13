@@ -59,7 +59,7 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-007` | 2026-11-09 | Can a 0.85B decision model served on this host answer the TypeSafe rerank questions? | complete | discrimination_auc_worth 0.6899 | — | [folder](experiments/EXP-2026-11-007-d3-lite-local-decision-smoke/RESULTS.md) |
 | `EXP-2026-11-008` | 2026-11-09 | How many decisions per second does the local decide port sustain through Mycelium's client? | complete | throughput_c1 7.1320 | — | [folder](experiments/EXP-2026-11-008-decision-port-throughput/RESULTS.md) |
 | `EXP-2026-11-009` | 2026-11-09 | Does a stock 4B instruct model on llama.cpp make usable rerank decisions through the port path? | complete | worth_auc 0.4889 | — | [folder](experiments/EXP-2026-11-009-qwen3-4b-llamacpp-decisions/RESULTS.md) |
-| `EXP-2026-11-010` | 2026-11-09 | Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop | failed | — | — | [folder](experiments/EXP-2026-11-010-agent-loop-cost/RESULTS.md) |
+| `EXP-2026-11-010` | 2026-11-13 | Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop, and of real questions | complete | a2.a2idle.turns_with_up_to_5_function_calls.wall_s_max 9.5900 | C-030 | [folder](experiments/EXP-2026-11-010-agent-loop-cost/RESULTS.md) |
 | `EXP-2026-11-011` | 2026-11-09 | Mylo agent baseline: tasks, permission probes, memory, equal-budget comparison | failed | — | — | [folder](experiments/EXP-2026-11-011-mylo-agent-baseline/RESULTS.md) |
 | `EXP-2026-11-012` | 2026-11-09 | d3-lite throughput when pairs share a forward pass | complete | d3_over_qwen_best_real 1.3890 | — | [folder](experiments/EXP-2026-11-012-d3-lite-batched-throughput/RESULTS.md) |
 | `EXP-2026-11-013` | 2026-11-12 | Mylo answers: human-judged correctness, single-call baseline, and the answer verifier | planned | — | — | [folder](experiments/EXP-2026-11-013-agent-answers-human-judged/RESULTS.md) |
@@ -70,7 +70,7 @@ deleted dead end is a dead end you walk into twice.
 
 | Status | Count |
 |---|---:|
-| complete | 49 |
-| failed | 2 |
+| complete | 50 |
+| failed | 1 |
 | planned | 5 |
 | **total** | **56** |

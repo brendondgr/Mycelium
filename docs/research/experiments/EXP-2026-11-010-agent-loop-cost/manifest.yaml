@@ -1,17 +1,12 @@
-# The machine-readable half of the record. `make new-experiment` fills the id,
-# slug, dates, and git block; you fill the rest. Validated against
-# `ops/research/manifest.schema.json` by `make validate-research`.
-#
-# Do not invent a value you do not have. A back-filled experiment with three
-# honest fields is worth more than one with ten plausible ones — write `unknown`
-# and say what could not be recovered in ISSUES.md.
+# EXP-2026-11-010 — machine-readable record. metrics.values are copied from
+# data/metrics.json by a script; nothing is typed.
 
 id: EXP-2026-11-010
 slug: agent-loop-cost
-title: "Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop"
-status: failed # attempt 1 (2026-11-09): the model endpoint's upstream was down; rerun when it is up
+title: "Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop, and of real questions"
+status: complete # attempt 1 (2026-11-09) failed on a dead endpoint; attempt 2 (2026-11-12/13) complete
 date_started: 2026-11-09
-date_completed: null
+date_completed: 2026-11-13
 authors: [Claude (agent), Brendon (owner)]
 
 purpose: >
@@ -25,61 +20,243 @@ hypothesis: >
   instance model; a 15-step turn stays under the default 32k context window
   without compaction. Stated before any run.
 
-# --- Reproducibility block ---------------------------------------------------
 code:
-  commit: e0ab02d
-  branch: mylo-agent
-  entrypoint: "UV_PROJECT_ENVIRONMENT=~/.cache/mycelium-backend-venv uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/run.py"
-  dirty: true  # the Mylo agent change was uncommitted when scaffolded; see ISSUES.md
+  commit: 5685ac8c # A2 pre-registration. A1 r1 ran at 5ff4274b, A2 a2 at 5685ac8c, A1 r2idle and A2 a2idle at 11154a1b–dbd45e82; agent code identical across them (only research files changed)
+  branch: main
+  entrypoint: "docker compose run --rm --no-deps -T backend uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/run.py (A1); … code/run_a2.py --reps 3 --tag <run> (A2); python3 … code/analyse.py"
+  dirty: true # the operator's uncommitted landing-page edits; no agent code
 config:
-  path: "tools/agent/tool.py (defaults)"
+  path: "tools/agent/tool.py (defaults: max_steps 25, result_cap_tokens 4000, context window 32768)"
   hash: null
 data:
-  name: none (scripted function results; real model calls)
-  version: n/a
+  name: "A1: scripted function results; A2: 12 fixed questions in the public demo world (code/questions_a2.json)"
+  version: "demo world fixture_version 1, built 2026-11-10"
   split: n/a
-  n_examples: 0
+  n_examples: 12
   qrels: null
   hash: null
-  card: null # docs/research/datasets/cards/<name>.md
+  card: null
 seeds: []
 n_runs: 3
 
 environment:
   python: "3.13"
-  lockfile: uv.lock
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "one-off backend containers (ghcr.io/astral-sh/uv:python3.13-bookworm @ sha256:47965cdc…)"
 compute:
-  hardware: "the Mycelium host (CPU only); model served through the local relay at localhost:4000"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "Intel Xeon Silver 4114 host (sc-zeus), 62 GB; model Qwen 3.8 27B on vLLM, one A100 80GB, remote via the instance relay"
+  wall_clock_hours: 0.6
+  estimated_cost_usd: 0
 
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+llm:
+  model: "local/Qwen 3.8 27B (relay name default-model)@2026-11-12"
+  temperature: 0.2
+  max_tokens: 0 # the agent sends no output cap
+  prompt_files: ["tools/agent/prompt.py", "docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/run.py"]
+  prompt_hash: null
+  total_input_tokens: 0 # per-turn totals are in metrics; not summed here
+  total_output_tokens: 0
+  nondeterminism_note: >
+    Sampling at the instance temperature; three repetitions per question and
+    two A2 runs show the spread (idle vs under the nightly's load).
 
-# --- Results block -----------------------------------------------------------
-# Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: turn_latency_s_mean@5
-  values: {}
+  primary: a2.a2idle.turns_with_up_to_5_function_calls.wall_s_max
+  values:
+    a1.r1.1.turn_latency_s_mean: 2.65 # n=3
+    a1.r1.1.turn_latency_s_max: 6.13 # n=3
+    a1.r1.1.turn_tokens_mean: 3716 # n=3
+    a1.r1.1.peak_prompt_tokens_max: 2032 # n=3
+    a1.r1.1.function_calls_made_mean: 1 # n=3
+    a1.r1.1.step_latency_s_mean: 1.326 # n=3
+    a1.r1.1.first_delta_s_median: 0.251 # n=3
+    a1.r1.1.reps: 3 # n=3
+    a1.r1.5.turn_latency_s_mean: 3.35 # n=3
+    a1.r1.5.turn_latency_s_max: 3.55 # n=3
+    a1.r1.5.turn_tokens_mean: 16326 # n=3
+    a1.r1.5.peak_prompt_tokens_max: 3797 # n=3
+    a1.r1.5.function_calls_made_mean: 5 # n=3
+    a1.r1.5.step_latency_s_mean: 0.559 # n=3
+    a1.r1.5.first_delta_s_median: 0.399 # n=3
+    a1.r1.5.reps: 3 # n=3
+    a1.r1.15.turn_latency_s_mean: 11.9 # n=3
+    a1.r1.15.turn_latency_s_max: 17.96 # n=3
+    a1.r1.15.turn_tokens_mean: 76503 # n=3
+    a1.r1.15.peak_prompt_tokens_max: 7888 # n=3
+    a1.r1.15.function_calls_made_mean: 15 # n=3
+    a1.r1.15.step_latency_s_mean: 0.744 # n=3
+    a1.r1.15.first_delta_s_median: 0.255 # n=3
+    a1.r1.15.reps: 3 # n=3
+    a1.r2idle.1.turn_latency_s_mean: 1.61 # n=3
+    a1.r2idle.1.turn_latency_s_max: 2.95 # n=3
+    a1.r2idle.1.turn_tokens_mean: 3733 # n=3
+    a1.r2idle.1.peak_prompt_tokens_max: 2058 # n=3
+    a1.r2idle.1.function_calls_made_mean: 1 # n=3
+    a1.r2idle.1.step_latency_s_mean: 0.804 # n=3
+    a1.r2idle.1.first_delta_s_median: 0.32 # n=3
+    a1.r2idle.1.reps: 3 # n=3
+    a1.r2idle.5.turn_latency_s_mean: 4.98 # n=3
+    a1.r2idle.5.turn_latency_s_max: 6.36 # n=3
+    a1.r2idle.5.turn_tokens_mean: 16281 # n=3
+    a1.r2idle.5.peak_prompt_tokens_max: 3754 # n=3
+    a1.r2idle.5.function_calls_made_mean: 5 # n=3
+    a1.r2idle.5.step_latency_s_mean: 0.83 # n=3
+    a1.r2idle.5.first_delta_s_median: 0.395 # n=3
+    a1.r2idle.5.reps: 3 # n=3
+    a1.r2idle.15.turn_latency_s_mean: 9.02 # n=3
+    a1.r2idle.15.turn_latency_s_max: 9.68 # n=3
+    a1.r2idle.15.turn_tokens_mean: 76637 # n=3
+    a1.r2idle.15.peak_prompt_tokens_max: 7946 # n=3
+    a1.r2idle.15.function_calls_made_mean: 15 # n=3
+    a1.r2idle.15.step_latency_s_mean: 0.564 # n=3
+    a1.r2idle.15.first_delta_s_median: 0.38 # n=3
+    a1.r2idle.15.reps: 3 # n=3
+    a2.a2.turns: 36 # n=36
+    a2.a2.errors: 0 # n=36
+    a2.a2.single.n: 12 # n=12
+    a2.a2.single.wall_s_median: 2.38 # n=12
+    a2.a2.single.wall_s_max: 7.54 # n=12
+    a2.a2.single.wall_s_mean: 2.61 # n=12
+    a2.a2.single.first_activity_s_median: 0.95 # n=12
+    a2.a2.single.first_activity_s_max: 7.28 # n=12
+    a2.a2.single.model_calls_median: 2.0 # n=12
+    a2.a2.single.model_calls_max: 3 # n=12
+    a2.a2.single.function_calls_median: 1.0 # n=12
+    a2.a2.single.function_calls_max: 2 # n=12
+    a2.a2.single.tokens_median: 5779.0 # n=12
+    a2.a2.single.tokens_max: 7612 # n=12
+    a2.a2.single.tokens_mean: 6136 # n=12
+    a2.a2.single.hit_max_steps: 0 # n=12
+    a2.a2.single.thrash_stop: 0 # n=12
+    a2.a2.single.timed_out: 0 # n=12
+    a2.a2.single.repair: 0 # n=12
+    a2.a2.few.n: 12 # n=12
+    a2.a2.few.wall_s_median: 13.21 # n=12
+    a2.a2.few.wall_s_max: 38.7 # n=12
+    a2.a2.few.wall_s_mean: 16.98 # n=12
+    a2.a2.few.first_activity_s_median: 1.01 # n=12
+    a2.a2.few.first_activity_s_max: 9.56 # n=12
+    a2.a2.few.model_calls_median: 6.0 # n=12
+    a2.a2.few.model_calls_max: 9 # n=12
+    a2.a2.few.function_calls_median: 7.0 # n=12
+    a2.a2.few.function_calls_max: 17 # n=12
+    a2.a2.few.tokens_median: 22883.0 # n=12
+    a2.a2.few.tokens_max: 49657 # n=12
+    a2.a2.few.tokens_mean: 26199 # n=12
+    a2.a2.few.hit_max_steps: 0 # n=12
+    a2.a2.few.thrash_stop: 0 # n=12
+    a2.a2.few.timed_out: 0 # n=12
+    a2.a2.few.repair: 0 # n=12
+    a2.a2.compound.n: 12 # n=12
+    a2.a2.compound.wall_s_median: 29.22 # n=12
+    a2.a2.compound.wall_s_max: 70.51 # n=12
+    a2.a2.compound.wall_s_mean: 34.57 # n=12
+    a2.a2.compound.first_activity_s_median: 1.04 # n=12
+    a2.a2.compound.first_activity_s_max: 5.04 # n=12
+    a2.a2.compound.model_calls_median: 9.5 # n=12
+    a2.a2.compound.model_calls_max: 23 # n=12
+    a2.a2.compound.function_calls_median: 17.0 # n=12
+    a2.a2.compound.function_calls_max: 32 # n=12
+    a2.a2.compound.tokens_median: 55104.5 # n=12
+    a2.a2.compound.tokens_max: 211566 # n=12
+    a2.a2.compound.tokens_mean: 73090 # n=12
+    a2.a2.compound.hit_max_steps: 0 # n=12
+    a2.a2.compound.thrash_stop: 1 # n=12
+    a2.a2.compound.timed_out: 0 # n=12
+    a2.a2.compound.repair: 1 # n=12
+    a2.a2.turns_with_4_to_6_model_calls.n: 10 # n=36
+    a2.a2.turns_with_4_to_6_model_calls.wall_s_max: 29.23 # n=36
+    a2.a2.turns_with_4_to_6_model_calls.over_60s: 0 # n=36
+    a2.a2.turns_with_4_to_6_model_calls.tokens_max: 28303 # n=36
+    a2.a2.turns_with_up_to_5_function_calls.n: 14 # n=36
+    a2.a2.turns_with_up_to_5_function_calls.wall_s_max: 10.64 # n=36
+    a2.a2.turns_with_up_to_5_function_calls.over_60s: 0 # n=36
+    a2.a2.turns_with_up_to_5_function_calls.tokens_max: 19757 # n=36
+    a2.a2.turns_with_up_to_5_function_calls.over_30k_tokens: 0 # n=36
+    a2.a2.model_call_latency_s.n: 238 # n=36
+    a2.a2.model_call_latency_s.median: 0.82 # n=36
+    a2.a2.model_call_latency_s.p90: 5.74 # n=36
+    a2.a2.model_call_latency_s.max: 21.32 # n=36
+    a2.a2.over_60s_any: 1 # n=36
+    a2.a2.peak_prompt_tokens_any_call: 12895 # n=36
+    a2.a2.turns_with_15_plus_model_calls: 3 # n=36
+    a2.a2.peak_prompt_tokens_in_15_plus_turns: 12895 # n=36
+    a2.a2idle.turns: 36 # n=36
+    a2.a2idle.errors: 0 # n=36
+    a2.a2idle.single.n: 12 # n=12
+    a2.a2idle.single.wall_s_median: 2.35 # n=12
+    a2.a2idle.single.wall_s_max: 4.61 # n=12
+    a2.a2idle.single.wall_s_mean: 2.54 # n=12
+    a2.a2idle.single.first_activity_s_median: 0.78 # n=12
+    a2.a2idle.single.first_activity_s_max: 3.63 # n=12
+    a2.a2idle.single.model_calls_median: 2.0 # n=12
+    a2.a2idle.single.model_calls_max: 3 # n=12
+    a2.a2idle.single.function_calls_median: 1.0 # n=12
+    a2.a2idle.single.function_calls_max: 2 # n=12
+    a2.a2idle.single.tokens_median: 5788.0 # n=12
+    a2.a2idle.single.tokens_max: 7620 # n=12
+    a2.a2idle.single.tokens_mean: 6134 # n=12
+    a2.a2idle.single.hit_max_steps: 0 # n=12
+    a2.a2idle.single.thrash_stop: 0 # n=12
+    a2.a2idle.single.timed_out: 0 # n=12
+    a2.a2idle.single.repair: 0 # n=12
+    a2.a2idle.few.n: 12 # n=12
+    a2.a2idle.few.wall_s_median: 9.67 # n=12
+    a2.a2idle.few.wall_s_max: 17.89 # n=12
+    a2.a2idle.few.wall_s_mean: 10.16 # n=12
+    a2.a2idle.few.first_activity_s_median: 0.78 # n=12
+    a2.a2idle.few.first_activity_s_max: 1.66 # n=12
+    a2.a2idle.few.model_calls_median: 6.0 # n=12
+    a2.a2idle.few.model_calls_max: 10 # n=12
+    a2.a2idle.few.function_calls_median: 6.5 # n=12
+    a2.a2idle.few.function_calls_max: 12 # n=12
+    a2.a2idle.few.tokens_median: 21917.0 # n=12
+    a2.a2idle.few.tokens_max: 55458 # n=12
+    a2.a2idle.few.tokens_mean: 24284 # n=12
+    a2.a2idle.few.hit_max_steps: 0 # n=12
+    a2.a2idle.few.thrash_stop: 1 # n=12
+    a2.a2idle.few.timed_out: 0 # n=12
+    a2.a2idle.few.repair: 0 # n=12
+    a2.a2idle.compound.n: 12 # n=12
+    a2.a2idle.compound.wall_s_median: 22.01 # n=12
+    a2.a2idle.compound.wall_s_max: 83.84 # n=12
+    a2.a2idle.compound.wall_s_mean: 30.72 # n=12
+    a2.a2idle.compound.first_activity_s_median: 0.7 # n=12
+    a2.a2idle.compound.first_activity_s_max: 1.0 # n=12
+    a2.a2idle.compound.model_calls_median: 10.5 # n=12
+    a2.a2idle.compound.model_calls_max: 27 # n=12
+    a2.a2idle.compound.function_calls_median: 20.0 # n=12
+    a2.a2idle.compound.function_calls_max: 61 # n=12
+    a2.a2idle.compound.tokens_median: 56570.5 # n=12
+    a2.a2idle.compound.tokens_max: 346692 # n=12
+    a2.a2idle.compound.tokens_mean: 89377 # n=12
+    a2.a2idle.compound.hit_max_steps: 1 # n=12
+    a2.a2idle.compound.thrash_stop: 0 # n=12
+    a2.a2idle.compound.timed_out: 0 # n=12
+    a2.a2idle.compound.repair: 2 # n=12
+    a2.a2idle.turns_with_4_to_6_model_calls.n: 12 # n=36
+    a2.a2idle.turns_with_4_to_6_model_calls.wall_s_max: 15.8 # n=36
+    a2.a2idle.turns_with_4_to_6_model_calls.over_60s: 0 # n=36
+    a2.a2idle.turns_with_4_to_6_model_calls.tokens_max: 35329 # n=36
+    a2.a2idle.turns_with_up_to_5_function_calls.n: 16 # n=36
+    a2.a2idle.turns_with_up_to_5_function_calls.wall_s_max: 9.59 # n=36
+    a2.a2idle.turns_with_up_to_5_function_calls.over_60s: 0 # n=36
+    a2.a2idle.turns_with_up_to_5_function_calls.tokens_max: 22660 # n=36
+    a2.a2idle.turns_with_up_to_5_function_calls.over_30k_tokens: 0 # n=36
+    a2.a2idle.model_call_latency_s.n: 236 # n=36
+    a2.a2idle.model_call_latency_s.median: 0.87 # n=36
+    a2.a2idle.model_call_latency_s.p90: 3.77 # n=36
+    a2.a2idle.model_call_latency_s.max: 15.67 # n=36
+    a2.a2idle.over_60s_any: 1 # n=36
+    a2.a2idle.peak_prompt_tokens_any_call: 18943 # n=36
+    a2.a2idle.turns_with_15_plus_model_calls: 2 # n=36
+    a2.a2idle.peak_prompt_tokens_in_15_plus_turns: 18943 # n=36
 baselines_compared: []
 statistical_test: null
 
-# --- Linkage -----------------------------------------------------------------
-supports_claims: []
-# tests: C-030
+supports_claims: [C-030]
 refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: [EXP-2026-11-011]
+related: [EXP-2026-11-011, EXP-2026-11-013]

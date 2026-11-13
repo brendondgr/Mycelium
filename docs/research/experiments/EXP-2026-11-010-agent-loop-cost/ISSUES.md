@@ -26,3 +26,12 @@
   after the nightly finishes (run `r2idle`).
 - The relay does not expose vLLM's queue metrics, so idleness can only be
   asserted from what this host runs, not observed on the A100.
+- 2026-11-13 00:32–00:42: A1 `r2idle` and A2 `a2idle` ran after the nightly
+  had finished (00:31) and with no other experiment of this session using the
+  model. A second idle A2 run (`a2idle2`) follows the decision-server load
+  test, which uses a different GPU.
+- 2026-11-12, harness bug fixed before the idle runs: the per-call
+  `function_calls` field read `reply.calls` (the raw reply calls them
+  `tool_calls`), so it is 0 in run `a2`'s `calls[]`. Turn-level function counts
+  come from the event log and are correct in every run; no reported number
+  uses the per-call field.
