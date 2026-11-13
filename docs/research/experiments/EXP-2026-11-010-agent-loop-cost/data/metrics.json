@@ -884,6 +884,97 @@
    "peak_prompt_tokens_any_call": 18560,
    "turns_with_15_plus_model_calls": 6,
    "peak_prompt_tokens_in_15_plus_turns": 18398
+  },
+  "a4s10": {
+   "turns": 36,
+   "errors": 0,
+   "single": {
+    "n": 12,
+    "wall_s_median": 1.84,
+    "wall_s_max": 4.26,
+    "wall_s_mean": 2.15,
+    "first_activity_s_median": 0.78,
+    "first_activity_s_max": 3.33,
+    "model_calls_median": 2.0,
+    "model_calls_max": 3,
+    "function_calls_median": 1.0,
+    "function_calls_max": 2,
+    "tokens_median": 5812.0,
+    "tokens_max": 7621,
+    "tokens_mean": 6156,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "few": {
+    "n": 12,
+    "wall_s_median": 8.88,
+    "wall_s_max": 18.93,
+    "wall_s_mean": 9.46,
+    "first_activity_s_median": 0.77,
+    "first_activity_s_max": 0.97,
+    "model_calls_median": 5.5,
+    "model_calls_max": 7,
+    "function_calls_median": 6.0,
+    "function_calls_max": 11,
+    "tokens_median": 22255.5,
+    "tokens_max": 37671,
+    "tokens_mean": 22530,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "compound": {
+    "n": 12,
+    "wall_s_median": 20.14,
+    "wall_s_max": 33.51,
+    "wall_s_mean": 22.08,
+    "first_activity_s_median": 0.9,
+    "first_activity_s_max": 3.13,
+    "model_calls_median": 10.5,
+    "model_calls_max": 11,
+    "function_calls_median": 18.5,
+    "function_calls_max": 27,
+    "tokens_median": 57405.5,
+    "tokens_max": 100950,
+    "tokens_mean": 57662,
+    "hit_max_steps": 6,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 1
+   },
+   "turns_with_4_to_6_model_calls": {
+    "n": 12,
+    "wall_s_max": 14.17,
+    "over_60s": 0,
+    "tokens_max": 33292
+   },
+   "turns_with_up_to_5_function_calls": {
+    "n": 18,
+    "wall_s_max": 11.32,
+    "over_60s": 0,
+    "tokens_max": 23394,
+    "over_30k_tokens": 0
+   },
+   "model_call_latency_s": {
+    "n": 205,
+    "median": 0.66,
+    "p90": 3.63,
+    "max": 11.26
+   },
+   "in_flight": 1,
+   "batch_wall_s": {
+    "n": 3,
+    "median": 133.0,
+    "max": 141.5
+   },
+   "seconds_per_question_overall": 11.08,
+   "over_60s_any": 0,
+   "peak_prompt_tokens_any_call": 17197,
+   "turns_with_15_plus_model_calls": 0,
+   "peak_prompt_tokens_in_15_plus_turns": null
   }
  }
 }

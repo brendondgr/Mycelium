@@ -21,7 +21,7 @@ hypothesis: >
   without compaction. Stated before any run.
 
 code:
-  commit: 5685ac8c # A2 pre-registration. A1 r1 at 5ff4274b, A2 a2 at 5685ac8c, A1 r2idle and a2idle at 11154a1b–dbd45e82, a2idle2 at 62e52ec3, a3c4 at d5b9b51f, a3c8 at 5431382d, a3p4/a3p8 and their repeats at b53d87a5–c9fbb4fc; agent code identical across them (only research files changed)
+  commit: 5685ac8c # A2 pre-registration. A1 r1 at 5ff4274b, A2 a2 at 5685ac8c, A1 r2idle and a2idle at 11154a1b–dbd45e82, a2idle2 at 62e52ec3, a3c4 at d5b9b51f, a3c8 at 5431382d, a3p4/a3p8 and their repeats at b53d87a5–c9fbb4fc, a4s10 at ad46274a; agent code identical across them (only research files changed)
   branch: main
   entrypoint: "docker compose run --rm --no-deps -T backend uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/run.py (A1); … code/run_a2.py --reps 3 --tag <run> (A2); python3 … code/analyse.py"
   dirty: true # the operator's uncommitted landing-page edits; no agent code
@@ -32,7 +32,7 @@ data:
   name: "A1: scripted function results; A2: 12 fixed questions in the public demo world (code/questions_a2.json)"
   version: "demo world fixture_version 1, built 2026-11-10"
   split: n/a
-  n_examples: 12 # questions; 468 A2/A3 turns in all
+  n_examples: 12 # questions; 504 A2–A4 turns in all
   qrels: null
   hash: null
   card: null
@@ -785,6 +785,80 @@ metrics:
     a2.a3p8b.peak_prompt_tokens_any_call: 18560 # n=96
     a2.a3p8b.turns_with_15_plus_model_calls: 6 # n=96
     a2.a3p8b.peak_prompt_tokens_in_15_plus_turns: 18398 # n=96
+    a2.a4s10.turns: 36 # n=36
+    a2.a4s10.errors: 0 # n=36
+    a2.a4s10.single.n: 12 # n=12
+    a2.a4s10.single.wall_s_median: 1.84 # n=12
+    a2.a4s10.single.wall_s_max: 4.26 # n=12
+    a2.a4s10.single.wall_s_mean: 2.15 # n=12
+    a2.a4s10.single.first_activity_s_median: 0.78 # n=12
+    a2.a4s10.single.first_activity_s_max: 3.33 # n=12
+    a2.a4s10.single.model_calls_median: 2.0 # n=12
+    a2.a4s10.single.model_calls_max: 3 # n=12
+    a2.a4s10.single.function_calls_median: 1.0 # n=12
+    a2.a4s10.single.function_calls_max: 2 # n=12
+    a2.a4s10.single.tokens_median: 5812.0 # n=12
+    a2.a4s10.single.tokens_max: 7621 # n=12
+    a2.a4s10.single.tokens_mean: 6156 # n=12
+    a2.a4s10.single.hit_max_steps: 0 # n=12
+    a2.a4s10.single.thrash_stop: 0 # n=12
+    a2.a4s10.single.timed_out: 0 # n=12
+    a2.a4s10.single.repair: 0 # n=12
+    a2.a4s10.few.n: 12 # n=12
+    a2.a4s10.few.wall_s_median: 8.88 # n=12
+    a2.a4s10.few.wall_s_max: 18.93 # n=12
+    a2.a4s10.few.wall_s_mean: 9.46 # n=12
+    a2.a4s10.few.first_activity_s_median: 0.77 # n=12
+    a2.a4s10.few.first_activity_s_max: 0.97 # n=12
+    a2.a4s10.few.model_calls_median: 5.5 # n=12
+    a2.a4s10.few.model_calls_max: 7 # n=12
+    a2.a4s10.few.function_calls_median: 6.0 # n=12
+    a2.a4s10.few.function_calls_max: 11 # n=12
+    a2.a4s10.few.tokens_median: 22255.5 # n=12
+    a2.a4s10.few.tokens_max: 37671 # n=12
+    a2.a4s10.few.tokens_mean: 22530 # n=12
+    a2.a4s10.few.hit_max_steps: 0 # n=12
+    a2.a4s10.few.thrash_stop: 0 # n=12
+    a2.a4s10.few.timed_out: 0 # n=12
+    a2.a4s10.few.repair: 0 # n=12
+    a2.a4s10.compound.n: 12 # n=12
+    a2.a4s10.compound.wall_s_median: 20.14 # n=12
+    a2.a4s10.compound.wall_s_max: 33.51 # n=12
+    a2.a4s10.compound.wall_s_mean: 22.08 # n=12
+    a2.a4s10.compound.first_activity_s_median: 0.9 # n=12
+    a2.a4s10.compound.first_activity_s_max: 3.13 # n=12
+    a2.a4s10.compound.model_calls_median: 10.5 # n=12
+    a2.a4s10.compound.model_calls_max: 11 # n=12
+    a2.a4s10.compound.function_calls_median: 18.5 # n=12
+    a2.a4s10.compound.function_calls_max: 27 # n=12
+    a2.a4s10.compound.tokens_median: 57405.5 # n=12
+    a2.a4s10.compound.tokens_max: 100950 # n=12
+    a2.a4s10.compound.tokens_mean: 57662 # n=12
+    a2.a4s10.compound.hit_max_steps: 6 # n=12
+    a2.a4s10.compound.thrash_stop: 0 # n=12
+    a2.a4s10.compound.timed_out: 0 # n=12
+    a2.a4s10.compound.repair: 1 # n=12
+    a2.a4s10.turns_with_4_to_6_model_calls.n: 12 # n=36
+    a2.a4s10.turns_with_4_to_6_model_calls.wall_s_max: 14.17 # n=36
+    a2.a4s10.turns_with_4_to_6_model_calls.over_60s: 0 # n=36
+    a2.a4s10.turns_with_4_to_6_model_calls.tokens_max: 33292 # n=36
+    a2.a4s10.turns_with_up_to_5_function_calls.n: 18 # n=36
+    a2.a4s10.turns_with_up_to_5_function_calls.wall_s_max: 11.32 # n=36
+    a2.a4s10.turns_with_up_to_5_function_calls.over_60s: 0 # n=36
+    a2.a4s10.turns_with_up_to_5_function_calls.tokens_max: 23394 # n=36
+    a2.a4s10.turns_with_up_to_5_function_calls.over_30k_tokens: 0 # n=36
+    a2.a4s10.model_call_latency_s.n: 205 # n=36
+    a2.a4s10.model_call_latency_s.median: 0.66 # n=36
+    a2.a4s10.model_call_latency_s.p90: 3.63 # n=36
+    a2.a4s10.model_call_latency_s.max: 11.26 # n=36
+    a2.a4s10.in_flight: 1 # n=36
+    a2.a4s10.batch_wall_s.n: 3 # n=36
+    a2.a4s10.batch_wall_s.median: 133.0 # n=36
+    a2.a4s10.batch_wall_s.max: 141.5 # n=36
+    a2.a4s10.seconds_per_question_overall: 11.08 # n=36
+    a2.a4s10.over_60s_any: 0 # n=36
+    a2.a4s10.peak_prompt_tokens_any_call: 17197 # n=36
+    a2.a4s10.turns_with_15_plus_model_calls: 0 # n=36
 baselines_compared: []
 statistical_test: null
 

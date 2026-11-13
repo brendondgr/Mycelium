@@ -107,7 +107,7 @@ twelve questions once, one at a time, starting at a different point in the
 list (`--rotate k`), so 4 or 8 turns are in flight throughout. Same measures.
 `a3c4`/`a3c8` are kept and reported as the thread-based variant.
 
-## Amendment 3 — 2026-11-13 03:38, before arm A4
+## Amendment 3 — 2026-11-13 03:31, before arm A4
 
 **A4 — the `max_steps` lever.** The results name `tools.agent.max_steps` (25)
 as the lever for slow compound turns. A4 measures what a cap of 10 does to

@@ -71,6 +71,14 @@ finished within 28.4 s and 33.9 s (25 and 44 turns; none over 30k tokens);
 in the repeats, within 27.1 s and 28.6 s.
 No turn errored or hit the 15-minute cap.
 
+A4, `max_steps` capped at 10 (Amendment 3; idle, one at a time, run `a4s10`):
+
+| Group | Median s | Worst s | Median tokens | Worst tokens | Most model calls | Turns that hit the cap |
+|---|---:|---:|---:|---:|---:|---:|
+| one lookup | 1.84 | 4.26 | 5,812 | 7,621 | 3 | 0 of 12 |
+| a few lookups | 8.88 | 18.93 | 22,256 | 37,671 | 7 | 0 of 12 |
+| compound | 20.14 | 33.51 | 57,406 | 100,950 | 11 | **6 of 12** |
+
 A1 (scripted results; three repetitions; the model made exactly the calls
 asked in every repetition):
 
@@ -118,6 +126,12 @@ None.
   people will use Mylo at once, a faster model on the agent route, or a lower
   `max_steps` for compound questions, is the lever; the five-call bar of
   C-030 still holds (≤ 34 s).
+- **What `max_steps` 10 buys and costs (A4).** It leaves typical turns as they
+  are (compound median 20.1 s against 20.3–22.0 s at 25) and cuts the tail
+  (worst compound 33.5 s and 101k tokens, against 44.9–83.8 s and
+  190k–347k), but half the compound questions then end on the cap and answer
+  with what they have. Whether those answers are worse needs the raters'
+  kind of judgement; the cap is a cost control, not a free speed-up.
 
 ## 5. Threats to validity
 
@@ -145,4 +159,5 @@ can show it).
 
 Amendment 1 (PROTOCOL.md, before the run): container runtime and the A2 arm.
 Amendment 2 and its addendum (before their runs): the A3 concurrency arm, in
-threads and then in separate processes.
+threads and then in separate processes. Amendment 3 (before its run): A4,
+`max_steps` 10.
