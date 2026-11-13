@@ -1,81 +1,90 @@
-# The machine-readable half of the record. `make new-experiment` fills the id,
-# slug, dates, and git block; you fill the rest. Validated against
-# `ops/research/manifest.schema.json` by `make validate-research`.
-#
-# Do not invent a value you do not have. A back-filled experiment with three
-# honest fields is worth more than one with ten plausible ones — write `unknown`
-# and say what could not be recovered in ISSUES.md.
+# EXP-2026-11-015 — machine-readable record. Numbers are copied from
+# data/metrics.json by a script, never typed.
 
 id: EXP-2026-11-015
 slug: deployment-usage-snapshot
 title: Deployment usage snapshot
-status: planned # planned | running | complete | failed | superseded
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-11-12
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-11-12
+authors: [Claude (agent), Brendon (owner)]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  A descriptive, counts-only snapshot of how much the live Mycelium instance
+  is used — accounts, labs, active people, Mylo threads and turns by surface,
+  public-demo use, nightly runs and corpus size — so the system paper can
+  state its deployment honestly. Supports no claim in CLAIMS.md.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  Exploratory — no prior hypothesis. Usage was expected to be small (one lab's
+  early deployment); the point is to state it.
 
-# --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 5685ac8c
+  commit: 0ddfd1e2
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "docker compose run --rm --no-deps -T backend uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-015-deployment-usage-snapshot/code/snapshot.py"
+  dirty: true # the operator's uncommitted landing-page edits and this session's uncommitted research files; neither touches the counted tables
 config:
-  path: <path to the config file, or null>
+  path: "none (counts only; no configuration)"
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: live Mycelium instance database (counts only)
+  version: "as of 2026-11-13T04:55:33+00:00"
+  split: n/a
+  n_examples: 11
   qrels: null
   hash: null
-  card: null # docs/research/datasets/cards/<name>.md
+  card: null
 seeds: []
 n_runs: 1
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "one-off backend container (ghcr.io/astral-sh/uv:python3.13-bookworm)"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "the Mycelium host (CPU); no model called"
+  wall_clock_hours: 0.01
+  estimated_cost_usd: 0
 
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
-
-# --- Results block -----------------------------------------------------------
-# Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
+  primary: people_active_30d
+  values:
+    accounts_real: 11 # n=1
+    accounts_real_active: 11 # n=1
+    accounts_real_email_verified: 6 # n=1
+    accounts_staff: 1 # n=1
+    accounts_demo_fictional: 6 # n=1
+    labs: 2 # n=1
+    departments: 2 # n=1
+    labs_with_real_members: 1 # n=1
+    people_active_7d: 2 # n=1
+    people_logged_in_7d: 1 # n=1
+    people_active_30d: 2 # n=1
+    people_logged_in_30d: 1 # n=1
+    mylo_threads_30d_by_surface.demo: 3 # n=1
+    mylo_threads_30d_by_surface.discord: 2 # n=1
+    mylo_threads_30d_by_surface.web: 1 # n=1
+    mylo_turns_30d_by_surface.demo: 13 # n=1
+    mylo_turns_30d_by_surface.discord: 23 # n=1
+    mylo_turns_30d_by_surface.web: 1 # n=1
+    demo_questions_total: 19 # n=1
+    demo_visitors_total: 6 # n=1
+    demo_ip_hashes_total: 3 # n=1
+    nightly_days_with_daily_briefings_30d: 28 # n=1
+    daily_briefings_30d: 235 # n=1
+    run_analytics_reports_30d: 27 # n=1
+    corpus_items_by_type.conference: 2664 # n=1
+    corpus_items_by_type.fellowship: 849 # n=1
+    corpus_items_by_type.grant: 1397 # n=1
+    corpus_items_by_type.paper: 179285 # n=1
+    corpus_items_total: 184195 # n=1
 baselines_compared: []
 statistical_test: null
 
-# --- Linkage -----------------------------------------------------------------
 supports_claims: []
 refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-11-010, EXP-2026-11-011, EXP-2026-11-013]

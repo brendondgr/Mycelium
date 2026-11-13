@@ -30,7 +30,7 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-08-019` | 2026-08-23 | Per-cluster admission: harness regression check | complete | — | — | [folder](experiments/EXP-2026-08-019-per-cluster-admission-regression/RESULTS.md) |
 | `EXP-2026-08-020` | 2026-08-23 | Theme-scoped interest context: production slate separation | complete | — | — | [folder](experiments/EXP-2026-08-020-theme-scoped-interest-context/RESULTS.md) |
 | `EXP-2026-09-001` | 2026-09-11 | Alert precision, and the thresholds it sets | planned | — | C-024 | [folder](experiments/EXP-2026-09-001-alert-precision-calibration/RESULTS.md) |
-| `EXP-2026-09-002` | 2026-09-11 | Does the citation verifier agree with a person? | planned | — | C-025 | [folder](experiments/EXP-2026-09-002-weekly-citation-verifier/RESULTS.md) |
+| `EXP-2026-09-002` | 2026-11-12 | Does the citation verifier agree with a person? | complete | inject_paraphrase_recall 0.0000 | C-025 | [folder](experiments/EXP-2026-09-002-weekly-citation-verifier/RESULTS.md) |
 | `EXP-2026-09-003` | 2026-09-17 | Does a calibrated decision model agree with the fused order and the LLM verdicts on one reader's grant and conference slates? | complete | — | C-026 | [folder](experiments/EXP-2026-09-003-typesafe-personal-opportunities/RESULTS.md) |
 | `EXP-2026-09-004` | 2026-09-17 | Does a calibrated pointwise probability rerank a scholarly feed better than BM25 alone? | complete | — | — (refutes C-027) | [folder](experiments/EXP-2026-09-004-typesafe-pointwise-rerank-longeval/RESULTS.md) |
 | `EXP-2026-09-005` | 2026-09-18 | Do people's papers become the right demonstrated concepts? A synthetic-world test of plan CN-02 | complete | — | — | [folder](experiments/EXP-2026-09-005-knowledge-demonstrated-sandbox/RESULTS.md) |
@@ -62,12 +62,15 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-010` | 2026-11-09 | Mylo agent: latency and tokens of a 1-, 5- and 15-step tool loop | failed | — | — | [folder](experiments/EXP-2026-11-010-agent-loop-cost/RESULTS.md) |
 | `EXP-2026-11-011` | 2026-11-09 | Mylo agent baseline: tasks, permission probes, memory, equal-budget comparison | failed | — | — | [folder](experiments/EXP-2026-11-011-mylo-agent-baseline/RESULTS.md) |
 | `EXP-2026-11-012` | 2026-11-09 | d3-lite throughput when pairs share a forward pass | complete | d3_over_qwen_best_real 1.3890 | — | [folder](experiments/EXP-2026-11-012-d3-lite-batched-throughput/RESULTS.md) |
+| `EXP-2026-11-013` | 2026-11-12 | Mylo answers: human-judged correctness, single-call baseline, and the answer verifier | planned | — | — | [folder](experiments/EXP-2026-11-013-agent-answers-human-judged/RESULTS.md) |
+| `EXP-2026-11-014` | 2026-11-12 | pplx-decider-flash load test on the local decision server | planned | — | — | [folder](experiments/EXP-2026-11-014-decider-flash-load/RESULTS.md) |
+| `EXP-2026-11-015` | 2026-11-12 | Deployment usage snapshot | complete | people_active_30d 2.0000 | — | [folder](experiments/EXP-2026-11-015-deployment-usage-snapshot/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 47 |
+| complete | 49 |
 | failed | 2 |
-| planned | 4 |
-| **total** | **53** |
+| planned | 5 |
+| **total** | **56** |

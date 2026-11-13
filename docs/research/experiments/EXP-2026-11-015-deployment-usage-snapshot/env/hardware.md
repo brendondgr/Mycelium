@@ -2,20 +2,19 @@
 
 | Field | Value |
 |---|---|
-| CPU | |
-| RAM | |
-| GPU | model and count, or "none" — say it explicitly rather than leaving it blank |
-| Python | |
-| Lockfile | path to the lockfile that pinned this run |
-| Container | image digest, or "none — run on the host" |
-| Total wall clock | |
+| CPU | Intel Xeon Silver 4114 @ 2.20 GHz, 20 logical CPUs (host `sc-zeus`) |
+| RAM | 62 GB |
+| GPU | none used (the host has one NVIDIA Quadro RTX 5000, 16 GB, serving the decision model; not touched here) |
+| Python | 3.13 in the backend image |
+| Lockfile | `web/backend/uv.lock` |
+| Container | one-off backend container, `ghcr.io/astral-sh/uv@sha256:47965cdc9d53a515f68f78241161c901e70051ce428f12e791bd7fe19f6a631a` (`python3.13-bookworm`) |
+| Total wall clock | under a minute |
 
 ## Where the time went
 
-A per-stage breakdown when one stage dominates. Knowing that 90% of a run is one
-embedding pass is what tells the next person which knob is worth turning.
+Database counts only.
 
 ## Anything about the hardware that affects the claim
 
-CPU vs GPU, matched or unmatched compute against a baseline, memory limits that
-forced a smaller batch size.
+Nothing: no model was called and the counts do not depend on the host. The
+nightly run (`mylo-daily.service`) was in progress during the pass.

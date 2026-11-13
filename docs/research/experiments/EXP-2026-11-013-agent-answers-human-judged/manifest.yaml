@@ -8,7 +8,7 @@
 
 id: EXP-2026-11-013
 slug: agent-answers-human-judged
-title: Mylo answers: human-judged correctness, single-call baseline, and the answer verifier
+title: "Mylo answers: human-judged correctness, single-call baseline, and the answer verifier"
 status: planned # planned | running | complete | failed | superseded
 date_started: 2026-11-12
 date_completed: null

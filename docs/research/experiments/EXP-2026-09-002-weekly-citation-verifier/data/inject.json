@@ -1,0 +1,685 @@
+{
+ "classes": {
+  "unresolved_citation": {
+   "n": 38,
+   "caught": 38,
+   "recall": 1.0,
+   "ci95": [
+    0.9082,
+    1.0
+   ]
+  },
+  "number_inplace": {
+   "n": 2,
+   "caught": 1,
+   "recall": 0.5,
+   "ci95": [
+    0.0945,
+    0.9055
+   ]
+  },
+  "number_added": {
+   "n": 38,
+   "caught": 38,
+   "recall": 1.0,
+   "ci95": [
+    0.9082,
+    1.0
+   ]
+  },
+  "paraphrase": {
+   "n": 29,
+   "caught": 0,
+   "recall": 0.0,
+   "ci95": [
+    0.0,
+    0.117
+   ]
+  }
+ },
+ "weeklies": 7,
+ "rows": [
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_inplace",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "cfc953069d",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "c667813463",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "c667813463",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "c667813463",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "c667813463",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "c667813463",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "c667813463",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "c667813463",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "c667813463",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "c667813463",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "c667813463",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "c667813463",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "151c96eed8",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "number_inplace",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "8d750085dd",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "paraphrase",
+   "caught": false,
+   "check": ""
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "7be583cead",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  },
+  {
+   "weekly": "e57e35d4cd",
+   "class": "unresolved_citation",
+   "caught": true,
+   "check": "unresolved_citation"
+  },
+  {
+   "weekly": "e57e35d4cd",
+   "class": "number_added",
+   "caught": true,
+   "check": "numbers_in_packet"
+  }
+ ]
+}

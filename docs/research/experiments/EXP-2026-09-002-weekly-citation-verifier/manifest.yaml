@@ -9,10 +9,10 @@
 id: EXP-2026-09-002
 slug: weekly-citation-verifier
 title: Does the citation verifier agree with a person?
-status: planned # planned | running | complete | failed | superseded
+status: complete # amended scope (Amendment 1): census, rebuild test, injected-error recall; the human labelling could not be done — see RESULTS.md
 date_started: 2026-09-11
-date_completed: null
-authors: [brendondgr]
+date_completed: 2026-11-12
+authors: [brendondgr, Claude (agent)]
 
 purpose: >
   The weekly removes model-written sentences that fail three checks, and removal
@@ -29,21 +29,21 @@ hypothesis: >
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 8a8ad19
+  commit: 60ad905f # census and rebuild ran at 81c88e27, injection at 60ad905f; the runner was unchanged in between except for the reply-attribute fix
   branch: main
-  entrypoint: "not yet written — see PROTOCOL.md"
+  entrypoint: "docker compose run --rm --no-deps -T backend uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-09-002-weekly-citation-verifier/code/run.py census|rebuild|inject --use-rebuilt"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
   # No config file: the checks are code, and the only parameter is whether an
   # entailment function is supplied to verify_body().
-  path: web/backend/apps/content/weekly_verify.py
+  path: tools/delivery/weekly_verify.py
   hash: null
 data:
-  name: Hand-labelled weekly sentences against their evidence packets
-  version: unknown
-  split: test
-  n_examples: 0 # 50 planned; see PROTOCOL.md
-  qrels: "hand labels, one labeller, packet-only judgement"
+  name: "Live instance weeklies (DailyBriefing kind=weekly), 2026-09-14 to 2026-11-09; injected copies of kept cited sentences"
+  version: "as of 2026-11-12"
+  split: n/a
+  n_examples: 107 # injected copies scored (38 + 2 + 38 + 29); 71 weeklies in the census
+  qrels: "none: no human labels (the packets could not be rebuilt faithfully); injected errors are labelled by construction"
   hash: null
   card: null
 seeds: []
@@ -52,30 +52,63 @@ n_runs: 1
 environment:
   python: "3.13"
   lockfile: web/backend/uv.lock
-  container: null
+  container: "one-off backend container (ghcr.io/astral-sh/uv:python3.13-bookworm)"
 compute:
-  hardware: "unknown"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "Intel Xeon Silver 4114 host (sc-zeus), 62 GB; paraphrases from Qwen 3.8 27B on vLLM, one A100 80GB (remote, via the instance relay)"
+  wall_clock_hours: 0.2
+  estimated_cost_usd: 0
 
 # --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+llm:
+  model: "local/Qwen 3.8 27B (relay name default-model)@2026-11-12"
+  temperature: 0.2
+  max_tokens: 8096
+  prompt_files: ["docs/research/experiments/EXP-2026-09-002-weekly-citation-verifier/code/run.py"]
+  prompt_hash: null
+  total_input_tokens: 0 # not counted; only used to write the paraphrase copies
+  total_output_tokens: 0
+  nondeterminism_note: >
+    The model only wrote the paraphrase copies; the checks under test are
+    deterministic.
 
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: removal_precision
-  values: {}
+  primary: inject_paraphrase_recall # removal precision could not be measured (0 removals; packets not stored)
+  values:
+    weeklies: 71 # n=1
+    weeklies_fallback: 64 # n=1
+    weeklies_llm: 7 # n=1
+    llm_project_sections: 31 # n=1
+    claims_checked_total: 2295 # n=1
+    sentences_removed_total: 0 # n=1
+    llm_claims_checked: 1137 # n=1
+    rebuilt: 7 # n=1
+    rebuilt_faithful: 0 # n=1
+    rebuilt_references_identical: 0 # n=1
+    reverify_removed_min: 0 # n=1
+    reverify_removed_max: 17 # n=1
+    reverify_claims_equal_stored: 7 # n=1
+    inject_unresolved_citation_n: 38 # n=1
+    inject_unresolved_citation_caught: 38 # n=1
+    inject_unresolved_citation_recall: 1.0 # n=1
+    inject_unresolved_citation_recall_ci_low: 0.9082 # n=1
+    inject_unresolved_citation_recall_ci_high: 1.0 # n=1
+    inject_number_inplace_n: 2 # n=1
+    inject_number_inplace_caught: 1 # n=1
+    inject_number_inplace_recall: 0.5 # n=1
+    inject_number_inplace_recall_ci_low: 0.0945 # n=1
+    inject_number_inplace_recall_ci_high: 0.9055 # n=1
+    inject_number_added_n: 38 # n=1
+    inject_number_added_caught: 38 # n=1
+    inject_number_added_recall: 1.0 # n=1
+    inject_number_added_recall_ci_low: 0.9082 # n=1
+    inject_number_added_recall_ci_high: 1.0 # n=1
+    inject_paraphrase_n: 29 # n=1
+    inject_paraphrase_caught: 0 # n=1
+    inject_paraphrase_recall: 0.0 # n=1
+    inject_paraphrase_recall_ci_low: 0.0 # n=1
+    inject_paraphrase_recall_ci_high: 0.117 # n=1
 baselines_compared: []
 statistical_test: null
 
@@ -85,4 +118,4 @@ refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-11-013]

@@ -1,5 +1,5 @@
 {
- "as_of": "2026-11-13T04:39:24+00:00",
+ "as_of": "2026-11-13T04:55:33+00:00",
  "accounts_real": 11,
  "accounts_real_active": 11,
  "accounts_real_email_verified": 6,
@@ -7,7 +7,7 @@
  "accounts_demo_fictional": 6,
  "labs": 2,
  "departments": 2,
- "labs_with_real_members": null,
+ "labs_with_real_members": 1,
  "people_active_7d": 2,
  "people_logged_in_7d": 1,
  "people_active_30d": 2,
@@ -35,6 +35,5 @@
   "grant": 1397,
   "paper": 179285
  },
- "corpus_items_total": 184195,
- "demo_lab_ids_excluded": 1
+ "corpus_items_total": 184195
 }
