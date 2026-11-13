@@ -1,81 +1,312 @@
-# The machine-readable half of the record. `make new-experiment` fills the id,
-# slug, dates, and git block; you fill the rest. Validated against
-# `ops/research/manifest.schema.json` by `make validate-research`.
-#
-# Do not invent a value you do not have. A back-filled experiment with three
-# honest fields is worth more than one with ten plausible ones — write `unknown`
-# and say what could not be recovered in ISSUES.md.
+# EXP-2026-11-014 — machine-readable record. metrics.values are copied from
+# data/metrics.json by a script; nothing is typed.
 
 id: EXP-2026-11-014
 slug: decider-flash-load
-title: pplx-decider-flash load test on the local decision server
-status: planned # planned | running | complete | failed | superseded
+title: "pplx-decider-flash load test on the local decision server"
+status: complete
 date_started: 2026-11-12
-date_completed: null
-authors: [<your name>]
+date_completed: 2026-11-13
+authors: [Claude (agent), Brendon (owner)]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  How much load the local decision server (pplx-decider-flash-v1.2-fp8 behind
+  the protocol-v3 adapter, one Quadro RTX 5000) takes — throughput, latency
+  and errors from 1 to 64 requests in flight on the real rerank states — and
+  whether its answers are stable under batching and under load. Descriptive;
+  supports no claim.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  From the operator: throughput stops rising after about 16 in flight and the
+  server may crash above 64. Expected: a plateau between 8 and 16, no errors up
+  to 64, joint and single answers within 0.05 on most questions. Falsifier
+  stated in advance: joint-vs-single disagreement on the most likely answer
+  for more than 5% of questions.
 
-# --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 5685ac8c
+  commit: bfc75065 # r1 ran at dbd45e82 (00:42; bench.py unchanged since 60ad905f); r1b, r1s and r2 at bfc75065
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  entrypoint: "python3 docs/research/experiments/EXP-2026-11-014-decider-flash-load/code/bench.py --states <scratch>/states.json --tag <run> [--levels …] [--runs …] [--shapes …]; python3 code/analyse.py"
+  dirty: true # the operator's uncommitted landing-page edits; nothing the benchmark touches
 config:
-  path: <path to the config file, or null>
+  path: "/home/bdg20b/Projects/vLLM-Decision/config.env and profiles/pplx-decider-flash-v1.2-fp8 (operator's; MAX_MODEL_LEN 32768, MAX_NUM_SEQS 64, GPU memory 0.90)"
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: "113 production rerank states for one reader (EXP-2026-11-007 extract.py, rebuilt 2026-11-12; kept in scratch, profile text) + production questions (data/questions.json)"
+  version: "states sha256 62cfea43456c9138d358db94989b41778018d24c1928c35eb5aebcb1fd4fd44c; questions 2026-09-17.1"
+  split: n/a
+  n_examples: 113
   qrels: null
-  hash: null
-  card: null # docs/research/datasets/cards/<name>.md
+  hash: "sha256:62cfea43456c9138d358db94989b41778018d24c1928c35eb5aebcb1fd4fd44c"
+  card: null
 seeds: []
-n_runs: 1
+n_runs: 3
 
 environment:
-  python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  python: "3 (host system python, standard library only)"
+  lockfile: "none (standard library); server: vLLM 0.32.0, torch 2.13.0+cu130"
+  container: "none — run on the host"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  hardware: "Intel Xeon Silver 4114 host (sc-zeus), 62 GB; one NVIDIA Quadro RTX 5000 16 GB"
+  wall_clock_hours: 1.8
+  estimated_cost_usd: 0
 
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+llm:
+  model: "local/kimrinking/pplx-decider-flash-v1.2-fp8@2026-11-12"
+  temperature: 1.554 # the adapter's calibration temperature, from /health
+  max_tokens: 0 # pooling readout; no generation
+  prompt_files: ["tools/recommendation/typesafe_rerank.py"]
+  prompt_hash: null
+  total_input_tokens: 0 # per-level input tokens/s are in metrics
+  total_output_tokens: 0
+  nondeterminism_note: >
+    Answers under load agree with 1-in-flight answers to within 0.009; the
+    batching difference is systematic, not noise.
 
-# --- Results block -----------------------------------------------------------
-# Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
+  primary: r1.joint.c24.decisions_per_s
+  values:
+    r1.joint.c1.decisions_per_s: 4.627 # n=3
+    r1.joint.c1.req_per_s: 1.797 # n=3
+    r1.joint.c1.input_tok_per_s: 1984.3 # n=3
+    r1.joint.c1.lat_p50: 0.5234 # n=3
+    r1.joint.c1.lat_p95: 0.6959 # n=3
+    r1.joint.c1.error_rate: 0.0 # n=3
+    r1.joint.c1.input_tokens_per_request: 1104.2 # n=3
+    r1.joint.c2.decisions_per_s: 4.938 # n=3
+    r1.joint.c2.req_per_s: 1.918 # n=3
+    r1.joint.c2.input_tok_per_s: 2117.8 # n=3
+    r1.joint.c2.lat_p50: 0.9766 # n=3
+    r1.joint.c2.lat_p95: 1.3152 # n=3
+    r1.joint.c2.error_rate: 0.0 # n=3
+    r1.joint.c2.input_tokens_per_request: 1104.2 # n=3
+    r1.joint.c4.decisions_per_s: 5.148 # n=3
+    r1.joint.c4.req_per_s: 1.999 # n=3
+    r1.joint.c4.input_tok_per_s: 2207.9 # n=3
+    r1.joint.c4.lat_p50: 1.8733 # n=3
+    r1.joint.c4.lat_p95: 2.4881 # n=3
+    r1.joint.c4.error_rate: 0.0 # n=3
+    r1.joint.c4.input_tokens_per_request: 1104.5 # n=3
+    r1.joint.c8.decisions_per_s: 5.209 # n=3
+    r1.joint.c8.req_per_s: 2.023 # n=3
+    r1.joint.c8.input_tok_per_s: 2234.0 # n=3
+    r1.joint.c8.lat_p50: 3.6824 # n=3
+    r1.joint.c8.lat_p95: 4.8433 # n=3
+    r1.joint.c8.error_rate: 0.0 # n=3
+    r1.joint.c8.input_tokens_per_request: 1104.3 # n=3
+    r1.joint.c12.decisions_per_s: 5.237 # n=3
+    r1.joint.c12.req_per_s: 2.034 # n=3
+    r1.joint.c12.input_tok_per_s: 2246.0 # n=3
+    r1.joint.c12.lat_p50: 5.5035 # n=3
+    r1.joint.c12.lat_p95: 7.1661 # n=3
+    r1.joint.c12.error_rate: 0.0 # n=3
+    r1.joint.c12.input_tokens_per_request: 1104.2 # n=3
+    r1.joint.c16.decisions_per_s: 5.25 # n=3
+    r1.joint.c16.req_per_s: 2.039 # n=3
+    r1.joint.c16.input_tok_per_s: 2251.5 # n=3
+    r1.joint.c16.lat_p50: 7.4041 # n=3
+    r1.joint.c16.lat_p95: 9.4289 # n=3
+    r1.joint.c16.error_rate: 0.0 # n=3
+    r1.joint.c16.input_tokens_per_request: 1104.2 # n=3
+    r1.joint.c24.decisions_per_s: 5.254 # n=3
+    r1.joint.c24.req_per_s: 2.04 # n=3
+    r1.joint.c24.input_tok_per_s: 2253.0 # n=3
+    r1.joint.c24.lat_p50: 10.8381 # n=3
+    r1.joint.c24.lat_p95: 14.243 # n=3
+    r1.joint.c24.error_rate: 0.0 # n=3
+    r1.joint.c24.input_tokens_per_request: 1104.4 # n=3
+    r1.joint.c32.decisions_per_s: 3.647 # n=1
+    r1.joint.c32.req_per_s: 1.605 # n=1
+    r1.joint.c32.input_tok_per_s: 1776.7 # n=1
+    r1.joint.c32.lat_p50: 14.7891 # n=1
+    r1.joint.c32.lat_p95: 16.0476 # n=1
+    r1.joint.c32.error_rate: 0.708 # n=1
+    r1.joint.c32.input_tokens_per_request: 1107.0 # n=1
+    r1b.single.c1.decisions_per_s: 2.205 # n=3
+    r1b.single.c1.req_per_s: 2.205 # n=3
+    r1b.single.c1.input_tok_per_s: 2048.5 # n=3
+    r1b.single.c1.lat_p50: 0.4488 # n=3
+    r1b.single.c1.lat_p95: 0.5677 # n=3
+    r1b.single.c1.error_rate: 0.0 # n=3
+    r1b.single.c1.input_tokens_per_request: 929.0 # n=3
+    r1b.single.c2.decisions_per_s: 2.353 # n=3
+    r1b.single.c2.req_per_s: 2.353 # n=3
+    r1b.single.c2.input_tok_per_s: 2186.8 # n=3
+    r1b.single.c2.lat_p50: 0.851 # n=3
+    r1b.single.c2.lat_p95: 1.0417 # n=3
+    r1b.single.c2.error_rate: 0.0 # n=3
+    r1b.single.c2.input_tokens_per_request: 929.4 # n=3
+    r1b.single.c4.decisions_per_s: 2.481 # n=3
+    r1b.single.c4.req_per_s: 2.481 # n=3
+    r1b.single.c4.input_tok_per_s: 2304.9 # n=3
+    r1b.single.c4.lat_p50: 1.6198 # n=3
+    r1b.single.c4.lat_p95: 1.9883 # n=3
+    r1b.single.c4.error_rate: 0.0 # n=3
+    r1b.single.c4.input_tokens_per_request: 929.0 # n=3
+    r1b.single.c8.decisions_per_s: 2.513 # n=3
+    r1b.single.c8.req_per_s: 2.513 # n=3
+    r1b.single.c8.input_tok_per_s: 2335.1 # n=3
+    r1b.single.c8.lat_p50: 3.1951 # n=3
+    r1b.single.c8.lat_p95: 3.8893 # n=3
+    r1b.single.c8.error_rate: 0.0 # n=3
+    r1b.single.c8.input_tokens_per_request: 929.2 # n=3
+    r1b.single.c12.decisions_per_s: 2.528 # n=3
+    r1b.single.c12.req_per_s: 2.528 # n=3
+    r1b.single.c12.input_tok_per_s: 2349.0 # n=3
+    r1b.single.c12.lat_p50: 4.7385 # n=3
+    r1b.single.c12.lat_p95: 5.7819 # n=3
+    r1b.single.c12.error_rate: 0.0 # n=3
+    r1b.single.c12.input_tokens_per_request: 929.2 # n=3
+    r1b.single.c16.decisions_per_s: 2.534 # n=3
+    r1b.single.c16.req_per_s: 2.534 # n=3
+    r1b.single.c16.input_tok_per_s: 2354.3 # n=3
+    r1b.single.c16.lat_p50: 6.3261 # n=3
+    r1b.single.c16.lat_p95: 7.5686 # n=3
+    r1b.single.c16.error_rate: 0.0 # n=3
+    r1b.single.c16.input_tokens_per_request: 929.1 # n=3
+    r1b.single.c24.decisions_per_s: 2.544 # n=3
+    r1b.single.c24.req_per_s: 2.544 # n=3
+    r1b.single.c24.input_tok_per_s: 2363.9 # n=3
+    r1b.single.c24.lat_p50: 9.4233 # n=3
+    r1b.single.c24.lat_p95: 11.2697 # n=3
+    r1b.single.c24.error_rate: 0.0 # n=3
+    r1b.single.c24.input_tokens_per_request: 929.2 # n=3
+    r1b.choice.c1.decisions_per_s: 4.548 # n=3
+    r1b.choice.c1.req_per_s: 1.766 # n=3
+    r1b.choice.c1.input_tok_per_s: 1982.6 # n=3
+    r1b.choice.c1.lat_p50: 0.5323 # n=3
+    r1b.choice.c1.lat_p95: 0.7084 # n=3
+    r1b.choice.c1.error_rate: 0.0 # n=3
+    r1b.choice.c1.input_tokens_per_request: 1122.7 # n=3
+    r1b.choice.c2.decisions_per_s: 4.808 # n=3
+    r1b.choice.c2.req_per_s: 1.867 # n=3
+    r1b.choice.c2.input_tok_per_s: 2096.0 # n=3
+    r1b.choice.c2.lat_p50: 0.9985 # n=3
+    r1b.choice.c2.lat_p95: 1.3484 # n=3
+    r1b.choice.c2.error_rate: 0.0 # n=3
+    r1b.choice.c2.input_tokens_per_request: 1122.7 # n=3
+    r1b.choice.c4.decisions_per_s: 5.009 # n=3
+    r1b.choice.c4.req_per_s: 1.945 # n=3
+    r1b.choice.c4.input_tok_per_s: 2183.6 # n=3
+    r1b.choice.c4.lat_p50: 1.93 # n=3
+    r1b.choice.c4.lat_p95: 2.5556 # n=3
+    r1b.choice.c4.error_rate: 0.0 # n=3
+    r1b.choice.c4.input_tokens_per_request: 1122.7 # n=3
+    r1b.choice.c8.decisions_per_s: 5.079 # n=3
+    r1b.choice.c8.req_per_s: 1.972 # n=3
+    r1b.choice.c8.input_tok_per_s: 2214.0 # n=3
+    r1b.choice.c8.lat_p50: 3.77 # n=3
+    r1b.choice.c8.lat_p95: 4.9395 # n=3
+    r1b.choice.c8.error_rate: 0.0 # n=3
+    r1b.choice.c8.input_tokens_per_request: 1122.7 # n=3
+    r1b.choice.c12.decisions_per_s: 5.11 # n=3
+    r1b.choice.c12.req_per_s: 1.984 # n=3
+    r1b.choice.c12.input_tok_per_s: 2227.5 # n=3
+    r1b.choice.c12.lat_p50: 5.6298 # n=3
+    r1b.choice.c12.lat_p95: 7.3227 # n=3
+    r1b.choice.c12.error_rate: 0.0 # n=3
+    r1b.choice.c12.input_tokens_per_request: 1122.7 # n=3
+    r1b.choice.c16.decisions_per_s: 5.13 # n=3
+    r1b.choice.c16.req_per_s: 1.992 # n=3
+    r1b.choice.c16.input_tok_per_s: 2236.4 # n=3
+    r1b.choice.c16.lat_p50: 7.5454 # n=3
+    r1b.choice.c16.lat_p95: 9.6395 # n=3
+    r1b.choice.c16.error_rate: 0.0 # n=3
+    r1b.choice.c16.input_tokens_per_request: 1122.7 # n=3
+    r1b.choice.c24.decisions_per_s: 5.13 # n=3
+    r1b.choice.c24.req_per_s: 1.992 # n=3
+    r1b.choice.c24.input_tok_per_s: 2236.3 # n=3
+    r1b.choice.c24.lat_p50: 11.1169 # n=3
+    r1b.choice.c24.lat_p95: 14.5285 # n=3
+    r1b.choice.c24.error_rate: 0.0 # n=3
+    r1b.choice.c24.input_tokens_per_request: 1122.6 # n=3
+    r1s.synthetic.c1.decisions_per_s: 11.123 # n=3
+    r1s.synthetic.c1.req_per_s: 5.561 # n=3
+    r1s.synthetic.c1.input_tok_per_s: 2096.7 # n=3
+    r1s.synthetic.c1.lat_p50: 0.1792 # n=3
+    r1s.synthetic.c1.lat_p95: 0.1838 # n=3
+    r1s.synthetic.c1.error_rate: 0.0 # n=3
+    r1s.synthetic.c1.input_tokens_per_request: 377.0 # n=3
+    r1s.synthetic.c4.decisions_per_s: 14.083 # n=3
+    r1s.synthetic.c4.req_per_s: 7.041 # n=3
+    r1s.synthetic.c4.input_tok_per_s: 2654.6 # n=3
+    r1s.synthetic.c4.lat_p50: 0.5652 # n=3
+    r1s.synthetic.c4.lat_p95: 0.5718 # n=3
+    r1s.synthetic.c4.error_rate: 0.0 # n=3
+    r1s.synthetic.c4.input_tokens_per_request: 377.0 # n=3
+    r1s.synthetic.c16.decisions_per_s: 14.826 # n=3
+    r1s.synthetic.c16.req_per_s: 7.413 # n=3
+    r1s.synthetic.c16.input_tok_per_s: 2794.7 # n=3
+    r1s.synthetic.c16.lat_p50: 2.1358 # n=3
+    r1s.synthetic.c16.lat_p95: 2.3149 # n=3
+    r1s.synthetic.c16.error_rate: 0.0 # n=3
+    r1s.synthetic.c16.input_tokens_per_request: 377.0 # n=3
+    r1s.synthetic.c32.decisions_per_s: 14.928 # n=3
+    r1s.synthetic.c32.req_per_s: 7.464 # n=3
+    r1s.synthetic.c32.input_tok_per_s: 2814.0 # n=3
+    r1s.synthetic.c32.lat_p50: 4.2338 # n=3
+    r1s.synthetic.c32.lat_p95: 4.5396 # n=3
+    r1s.synthetic.c32.error_rate: 0.0 # n=3
+    r1s.synthetic.c32.input_tokens_per_request: 377.0 # n=3
+    r1s.synthetic.c48.decisions_per_s: 15.004 # n=3
+    r1s.synthetic.c48.req_per_s: 7.502 # n=3
+    r1s.synthetic.c48.input_tok_per_s: 2828.2 # n=3
+    r1s.synthetic.c48.lat_p50: 6.2972 # n=3
+    r1s.synthetic.c48.lat_p95: 6.6927 # n=3
+    r1s.synthetic.c48.error_rate: 0.0 # n=3
+    r1s.synthetic.c48.input_tokens_per_request: 377.0 # n=3
+    r1s.synthetic.c64.decisions_per_s: 14.921 # n=3
+    r1s.synthetic.c64.req_per_s: 7.46 # n=3
+    r1s.synthetic.c64.input_tok_per_s: 2812.6 # n=3
+    r1s.synthetic.c64.lat_p50: 8.4075 # n=3
+    r1s.synthetic.c64.lat_p95: 8.8566 # n=3
+    r1s.synthetic.c64.error_rate: 0.0 # n=3
+    r1s.synthetic.c64.input_tokens_per_request: 377.0 # n=3
+    r2.joint.c1.decisions_per_s: 4.6325 # n=2
+    r2.joint.c1.req_per_s: 1.7985 # n=2
+    r2.joint.c1.input_tok_per_s: 1986.55 # n=2
+    r2.joint.c1.lat_p50: 0.5224 # n=2
+    r2.joint.c1.lat_p95: 0.6957 # n=2
+    r2.joint.c1.error_rate: 0.0 # n=2
+    r2.joint.c1.input_tokens_per_request: 1104.6 # n=2
+    r2.joint.c4.decisions_per_s: 5.113 # n=2
+    r2.joint.c4.req_per_s: 1.986 # n=2
+    r2.joint.c4.input_tok_per_s: 2192.8 # n=2
+    r2.joint.c4.lat_p50: 1.8851 # n=2
+    r2.joint.c4.lat_p95: 2.503 # n=2
+    r2.joint.c4.error_rate: 0.0 # n=2
+    r2.joint.c4.input_tokens_per_request: 1104.1 # n=2
+    r2.joint.c16.decisions_per_s: 5.2245 # n=2
+    r2.joint.c16.req_per_s: 2.0285 # n=2
+    r2.joint.c16.input_tok_per_s: 2240.6 # n=2
+    r2.joint.c16.lat_p50: 7.45 # n=2
+    r2.joint.c16.lat_p95: 9.4793 # n=2
+    r2.joint.c16.error_rate: 0.0 # n=2
+    r2.joint.c16.input_tokens_per_request: 1104.6 # n=2
+    r2.joint.c24.decisions_per_s: 5.2405 # n=2
+    r2.joint.c24.req_per_s: 2.035 # n=2
+    r2.joint.c24.input_tok_per_s: 2247.45 # n=2
+    r2.joint.c24.lat_p50: 10.9134 # n=2
+    r2.joint.c24.lat_p95: 14.2824 # n=2
+    r2.joint.c24.error_rate: 0.0 # n=2
+    r2.joint.c24.input_tokens_per_request: 1104.4 # n=2
+    consistency.joint_vs_single@1.questions: 291 # n=291
+    consistency.joint_vs_single@1.max_abs_diff: 0.317885 # n=291
+    consistency.joint_vs_single@1.mean_abs_diff: 0.062961 # n=291
+    consistency.joint_vs_single@1.share_over_0.05: 0.457 # n=291
+    consistency.joint_vs_single@1.argmax_agreement: 0.7938 # n=291
+    consistency.joint@1_vs_joint@24.questions: 291 # n=291
+    consistency.joint@1_vs_joint@24.max_abs_diff: 0.008753 # n=291
+    consistency.joint@1_vs_joint@24.mean_abs_diff: 0.001654 # n=291
+    consistency.joint@1_vs_joint@24.share_over_0.05: 0.0 # n=291
+    consistency.joint@1_vs_joint@24.argmax_agreement: 0.9966 # n=291
+    crash_level_real_states: 32 # n=1
+baselines_compared: ["EXP-2026-11-012 (different host and models; context only)"]
 statistical_test: null
 
-# --- Linkage -----------------------------------------------------------------
 supports_claims: []
 refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-11-007, EXP-2026-11-008, EXP-2026-11-012]

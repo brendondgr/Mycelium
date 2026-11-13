@@ -66,6 +66,9 @@ def compare(rows_a, rows_b, split_b=False):
             "argmax_agreement": round(agree / n, 4)}
 
 
+KEPT = {}
+
+
 def main() -> int:
     out, flat = {}, []
     for path in sorted((HERE / "data").glob("bench_*.json")):
@@ -84,6 +87,8 @@ def main() -> int:
                     if vals:
                         row[f] = round(st.median(vals), 4)
                         row[f + "_min"], row[f + "_max"] = round(min(vals), 4), round(max(vals), 4)
+                if row.get("req_per_s") and row.get("input_tok_per_s"):
+                    row["input_tokens_per_request"] = round(row["input_tok_per_s"] / row["req_per_s"], 1)
                 row["foreign_requests"] = sum(max(0, s["health_requests_delta"] - s["requests"]) for s in sums)
                 row["server_errors_delta"] = sum(s["health_errors_delta"] for s in sums)
                 levels[lvl] = row
@@ -93,19 +98,24 @@ def main() -> int:
             if best:
                 entry["shapes"][shape]["peak"] = {"level": int(best[0]), "req_per_s": best[1]["req_per_s"],
                                                   "decisions_per_s": best[1].get("decisions_per_s")}
-        kept = {}
         for shape, sd in d["shapes"].items():
             for lvl, runs in sd["levels"].items():
                 for r in runs:
-                    if "rows" in r:
-                        kept[(shape, int(lvl))] = r["rows"]
-        levels_joint = sorted(lvl for (s, lvl) in kept if s == "joint")
-        if ("joint", 1) in kept and ("single", 1) in kept:
-            entry["consistency"]["joint_vs_single@1"] = compare(kept[("joint", 1)], kept[("single", 1)], split_b=True)
-        if len(levels_joint) >= 2:
-            hi = levels_joint[-1]
-            entry["consistency"][f"joint@1_vs_joint@{hi}"] = compare(kept[("joint", 1)], kept[("joint", hi)])
+                    if "rows" in r and all(x["status"] == 200 for x in r["rows"]):
+                        KEPT.setdefault((shape, int(lvl)), (tag, r["rows"]))
         out[tag] = entry
+    # Consistency across runs (answers are kept for the first clean pass at a
+    # run's lowest and highest level): same bodies, different batching or load.
+    cons = {}
+    if ("joint", 1) in KEPT and ("single", 1) in KEPT:
+        cons["joint_vs_single@1"] = compare(KEPT[("joint", 1)][1], KEPT[("single", 1)][1], split_b=True)
+        cons["joint_vs_single@1"]["runs"] = [KEPT[("joint", 1)][0], KEPT[("single", 1)][0]]
+    joint_levels = sorted(l for (s, l) in KEPT if s == "joint" and l > 1)
+    if ("joint", 1) in KEPT and joint_levels:
+        hi = joint_levels[-1]
+        cons[f"joint@1_vs_joint@{hi}"] = compare(KEPT[("joint", 1)][1], KEPT[("joint", hi)][1])
+        cons[f"joint@1_vs_joint@{hi}"]["runs"] = [KEPT[("joint", 1)][0], KEPT[("joint", hi)][0]]
+    out["_consistency"] = cons
     (HERE / "data" / "metrics.json").write_text(json.dumps(out, indent=1))
     keys = sorted({k for r in flat for k in r})
     with (HERE / "data" / "metrics.csv").open("w", newline="") as fh:
@@ -117,12 +127,12 @@ def main() -> int:
     for r in flat:
         lines.append(f"| {r['tag']} | {r['shape']} | {r['level']} | {r.get('req_per_s')} | {r.get('decisions_per_s')} | "
                      f"{r.get('input_tok_per_s')} | {r.get('lat_p50')} | {r.get('lat_p95')} | {r.get('lat_p99')} | {r.get('error_rate')} |")
-    for tag, e in out.items():
-        lines.append(f"\n{tag} consistency: {json.dumps(e['consistency'])}")
+    lines.append(f"\nConsistency: {json.dumps(out['_consistency'])}")
     (HERE / "tables").mkdir(exist_ok=True)
     (HERE / "tables" / "summary.md").write_text("\n".join(lines) + "\n")
     print(json.dumps({t: {"peaks": {s: v.get("peak") for s, v in e["shapes"].items()},
-                          "consistency": e["consistency"], "stopped": e["stopped"]} for t, e in out.items()}, indent=1))
+                          "stopped": e["stopped"]} for t, e in out.items() if t != "_consistency"}, indent=1))
+    print(json.dumps(out["_consistency"], indent=1))
     return 0
 
 

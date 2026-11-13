@@ -63,14 +63,14 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-011` | 2026-11-13 | Mylo agent baseline: grounded answers, permission and scope probes, prompt-only comparison, memory lifecycle | complete | attempt3.diff_access_answer_leak_rate 0.5000 | C-031, C-032 (refutes C-036) | [folder](experiments/EXP-2026-11-011-mylo-agent-baseline/RESULTS.md) |
 | `EXP-2026-11-012` | 2026-11-09 | d3-lite throughput when pairs share a forward pass | complete | d3_over_qwen_best_real 1.3890 | — | [folder](experiments/EXP-2026-11-012-d3-lite-batched-throughput/RESULTS.md) |
 | `EXP-2026-11-013` | 2026-11-12 | Mylo answers: human-judged correctness, single-call baseline, and the answer verifier | running | inject.main.paraphrase.recall 0.0000 | C-033, C-034, C-035 | [folder](experiments/EXP-2026-11-013-agent-answers-human-judged/RESULTS.md) |
-| `EXP-2026-11-014` | 2026-11-12 | pplx-decider-flash load test on the local decision server | planned | — | — | [folder](experiments/EXP-2026-11-014-decider-flash-load/RESULTS.md) |
+| `EXP-2026-11-014` | 2026-11-13 | pplx-decider-flash load test on the local decision server | complete | r1.joint.c24.decisions_per_s 5.2540 | — | [folder](experiments/EXP-2026-11-014-decider-flash-load/RESULTS.md) |
 | `EXP-2026-11-015` | 2026-11-12 | Deployment usage snapshot | complete | people_active_30d 2.0000 | — | [folder](experiments/EXP-2026-11-015-deployment-usage-snapshot/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 51 |
-| planned | 4 |
+| complete | 52 |
+| planned | 3 |
 | running | 1 |
 | **total** | **56** |
