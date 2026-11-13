@@ -1,0 +1,17 @@
+{
+ "note": "EXP-2026-11-010 A2. Fixed before the run, 2026-11-12. Asked as the demo PI in the demo lab's scope. Mentions are corpus items (item:<ContentItem id>) chosen from the demo lab's top relevance scores on 2026-11-12. No question names a real person.",
+ "questions": [
+  {"id": "s1", "group": "single", "text": "When is the deadline for the fellowship I tagged?", "mentions": ["item:1f62c961-e6ab-4a2c-b166-1c8f2040b7a8"]},
+  {"id": "s2", "group": "single", "text": "When was the paper I tagged published, and what is it about in one sentence?", "mentions": ["item:b7ccb1b7-d1d5-4bd9-bb95-bcb2bd7a6e68"]},
+  {"id": "s3", "group": "single", "text": "Who is working on the Marine heatwave early warning project?", "mentions": []},
+  {"id": "s4", "group": "single", "text": "When does the funding call I tagged close?", "mentions": ["item:c4ffc4a1-77b2-4060-ada9-51f292bdd497"]},
+  {"id": "f1", "group": "few", "text": "Which paper in our feed matters most for the Marine heatwave early warning project, and why?", "mentions": []},
+  {"id": "f2", "group": "few", "text": "Which paper in our feed matters most for the Plastic pathways project, and why?", "mentions": []},
+  {"id": "f3", "group": "few", "text": "Which fellowship in our feed best fits a PhD student working on ocean instrumentation, and when is it due?", "mentions": []},
+  {"id": "f4", "group": "few", "text": "Compare the two grants I tagged: which one fits the Marine heatwave early warning project better?", "mentions": ["item:c4ffc4a1-77b2-4060-ada9-51f292bdd497", "item:bc7438f7-2c6b-422c-9b84-49fd50840d35"]},
+  {"id": "c1", "group": "compound", "text": "Which open grant fits the Marine heatwave early warning project best, who in the lab should lead the application, and who outside the lab could we partner with?", "mentions": []},
+  {"id": "c2", "group": "compound", "text": "Which open grant fits the Plastic pathways project best, who in the lab should lead the application, and who outside the lab could we partner with?", "mentions": []},
+  {"id": "c3", "group": "compound", "text": "Summarise where the Plastic pathways project stands, name the three most relevant new papers for it, and suggest one funding opportunity it could apply to.", "mentions": []},
+  {"id": "c4", "group": "compound", "text": "Across both of our projects, what are the two most urgent upcoming deadlines, who in the lab fits each, and which recent paper would strengthen each application?", "mentions": []}
+ ]
+}

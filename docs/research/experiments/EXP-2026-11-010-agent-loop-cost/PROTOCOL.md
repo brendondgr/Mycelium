@@ -45,3 +45,40 @@ None: this is a feasibility gate, not a comparison.
    `tools.agent.max_steps` or choose a faster `tools.agent.model` before the
    agent is offered to people; if 15 steps overflow the window, lower
    `result_cap_tokens`.
+
+## Amendment 1 — 2026-11-12, before attempt 2
+
+Written before attempt 2; nothing was measured in attempt 1.
+
+**Runtime location.** The instance model is now reached through the
+`llm-tunnel` container (`http://llm-tunnel:9090/v1`, model `default-model`,
+upstream Qwen 3.8 27B on vLLM, one A100 80GB), which has no port on the host.
+Every run therefore executes in a one-off container of the backend image with
+the repository mounted (`docker compose run --rm --no-deps -T backend uv run
+--no-sync --project web/backend python …`), not with the host `uv run` of the
+original entrypoint. Same code, same settings module, same model route.
+
+**A2 — a real-question arm.** Scripted results understate a real turn (an
+informal look on 2026-11-12 saw one compound demo question still running after
+five minutes; that is the reason for this arm, not a measurement).
+
+- Twelve fixed questions (`code/questions_a2.yaml`, committed before the run),
+  asked in the public demo world as its PI, in the lab scope, `surface="web"`:
+  four single-lookup, four few-lookup, four compound. No question names a real
+  person.
+- Path: `tools.agent.service.create_thread` and then `tools.agent.loop.run_turn`
+  called synchronously — the function the Celery task calls — with an
+  instrumented port that timestamps every model call and its first streamed
+  delta. Threads are tagged `demo_visitor="EXP-2026-11-010"` so the demo's own
+  24-hour cleanup removes them; demo threads never feed the learning pass.
+- Per turn: wall clock to the final answer, time to the first activity line
+  (first delta or first function call), model calls, function calls, prompt and
+  completion tokens, whether it ended on `max_steps` or the thrash stop,
+  whether the verifier's repair ran. A hard cap of 15 minutes per turn; a turn
+  that hits it is recorded as a timeout, not dropped.
+- Three repetitions, strictly one turn at a time, with nothing else of this
+  session's using the model while A2 runs. The relay does not expose vLLM's
+  load metrics, so idleness is asserted by the operator (no other job was
+  scheduled) and the relay's health is logged before and after.
+- Reported per group: median, worst case, and mean.
+- Decision rule unchanged. No default is changed by this experiment.
