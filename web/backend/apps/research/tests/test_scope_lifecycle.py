@@ -210,3 +210,35 @@ def test_an_open_offer_lapses_when_the_lab_leaves(org):
     _client(org.own).post(f"/api/projects/{org.project.pk}/transfer/")
     detach_lab_from_department(org.dept, org.lab, actor=org.head)
     assert ProjectTransfer.objects.get().state == "lapsed"
+
+
+def test_the_ownership_state_says_who_may_do_what(org):
+    url = f"/api/projects/{org.project.pk}/transfer/"
+
+    owner = _client(org.own).get(url).json()
+    assert owner["can_hand_over"] is True
+    assert owner["can_offer"] is True
+    assert owner["can_take"] is False
+    assert owner["department"] == "Biology"
+    assert owner["transfer"] is None
+
+    # The lab's PI is not the owner but may take the project.
+    pi = _client(org.pi).get(url).json()
+    assert pi["can_take"] is True
+    assert pi["can_hand_over"] is True  # a manager holds the owner's authority
+
+    # An ordinary member can do none of it.
+    member = _client(org.mem).get(url).json()
+    assert member["can_hand_over"] is False
+    assert member["can_take"] is False
+    assert member["can_offer"] is False
+
+    assert _client(org.own).post(url).status_code == 201
+    owner = _client(org.own).get(url).json()
+    assert owner["can_offer"] is False
+    assert owner["transfer"] == {
+        "department": "Biology",
+        "can_accept": False,
+        "can_withdraw": True,
+    }
+    assert _client(org.head).get(url).json()["transfer"]["can_accept"] is True

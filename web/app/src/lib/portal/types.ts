@@ -2174,3 +2174,18 @@ export type AnnouncementsResponse = {
 };
 
 export type AnnouncementTarget = { lab: string } | { department: string };
+
+/** What the caller may do about a project's ownership, and the open offer to
+ * move it to the lab's department, if any. */
+export type ProjectOwnershipState = {
+  can_hand_over: boolean;
+  can_take: boolean;
+  can_offer: boolean;
+  /** The lab's department, or null when the lab is in none. */
+  department: string | null;
+  transfer: {
+    department: string;
+    can_accept: boolean;
+    can_withdraw: boolean;
+  } | null;
+};

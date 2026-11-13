@@ -62,6 +62,7 @@ import type {
   PersonalWindowCounts,
   TargetRecommendations,
   WatchData,
+  ProjectOwnershipState,
 } from "@/lib/portal/types";
 
 /* Re-exported shape: a lab's watch settings share the user's WatchData shape. */
@@ -196,6 +197,16 @@ export async function fetchMyProjectJoinRequests(): Promise<MyProjectJoinRequest
 }
 
 /** Who may start a project in a lab, and whether the caller may. */
+/** What the caller may do about a project's ownership (its Settings tab). */
+export async function fetchProjectOwnership(
+  projectId: string,
+): Promise<ProjectOwnershipState> {
+  return getJson(
+    buildApiUrl(getPublicApiBase(), "projects", projectId, "transfer"),
+    "Could not load who owns this project.",
+  );
+}
+
 export async function fetchLabProjectCreation(
   slug: string,
 ): Promise<{ project_creation: ProjectCreation; can_create: boolean }> {

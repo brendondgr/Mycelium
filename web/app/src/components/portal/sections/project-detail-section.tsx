@@ -42,6 +42,7 @@ import {
   type ProjectTabKey,
 } from "@/components/portal/projects/project-tabs";
 import { ProjectConversationCard } from "@/components/portal/projects/project-conversation-card";
+import { ProjectOwnershipCard } from "@/components/portal/projects/project-ownership-card";
 import { ProjectStateCard } from "@/components/portal/projects/project-state-card";
 import { ReflectionCard } from "@/components/portal/projects/reflection-card";
 import { ProjectTeamCard } from "@/components/portal/projects/project-team-card";
@@ -607,6 +608,10 @@ function ProjectSettingsCard({
 
       {/* Editors only — the card renders nothing for anyone else, and the
           endpoint behind it refuses them too. */}
+      {/* Renders nothing for a personal project, or for someone who can
+          neither hand it over, take it, nor move it. */}
+      <ProjectOwnershipCard project={project} />
+
       <ProjectConversationCard project={project} />
     </div>
   );

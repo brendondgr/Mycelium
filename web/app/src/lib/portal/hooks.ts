@@ -103,6 +103,7 @@ import {
   fetchDeptBilling,
   fetchDeptMembers,
   fetchDeptLabs,
+  fetchProjectOwnership,
 } from "@/lib/portal/client";
 import {
   actOnNotification,
@@ -185,6 +186,10 @@ import {
   createAnnouncementChannels,
   saveAnnouncementSettings,
   sendAnnouncementTest,
+  acceptProjectTransfer,
+  offerProjectTransfer,
+  setProjectOwner,
+  withdrawProjectTransfer,
 } from "@/lib/portal/mutations";
 import {
   PERSONAL_SLUG,
@@ -2056,4 +2061,41 @@ export function useSaveAgentPolicy(kind: "lab" | "department", ref: string) {
       queryClient.setQueryData(["agent", "policy", kind, ref], policy);
     },
   });
+}
+
+/** A project's ownership state: who may hand it over, take it, or move it to
+ * the lab's department, and the open offer if there is one. */
+export function useProjectOwnership(projectId: string) {
+  return useQuery({
+    queryKey: ["portal", "projects", "ownership", projectId],
+    queryFn: () => fetchProjectOwnership(projectId),
+    enabled: Boolean(projectId),
+  });
+}
+
+/** Hand over, take, offer, withdraw and accept — each refreshes the project. */
+export function useProjectOwnershipActions(projectId: string) {
+  const queryClient = useQueryClient();
+  const onSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ["portal", "projects"] });
+    queryClient.invalidateQueries({ queryKey: ["portal", "project"] });
+  };
+  return {
+    setOwner: useMutation({
+      mutationFn: (username: string) => setProjectOwner(projectId, username),
+      onSuccess,
+    }),
+    offer: useMutation({
+      mutationFn: () => offerProjectTransfer(projectId),
+      onSuccess,
+    }),
+    withdraw: useMutation({
+      mutationFn: () => withdrawProjectTransfer(projectId),
+      onSuccess,
+    }),
+    accept: useMutation({
+      mutationFn: () => acceptProjectTransfer(projectId),
+      onSuccess,
+    }),
+  };
 }

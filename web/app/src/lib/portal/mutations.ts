@@ -1644,3 +1644,43 @@ export function createAnnouncementChannels(
     "Could not create the forums.",
   );
 }
+
+/** Hand a project to a member, or (a lab or department manager) take it. */
+export function setProjectOwner(projectId: string, username: string): Promise<Project> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", projectId, "ownership"),
+    { username },
+    "Could not change the project's owner.",
+  );
+}
+
+/** Offer a lab project to the lab's department. */
+export function offerProjectTransfer(projectId: string): Promise<unknown> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", projectId, "transfer"),
+    {},
+    "Could not offer the project to the department.",
+  );
+}
+
+/** Withdraw the open offer. */
+export function withdrawProjectTransfer(projectId: string): Promise<unknown> {
+  return sendJson(
+    "DELETE",
+    buildApiUrl(getPublicApiBase(), "projects", projectId, "transfer"),
+    undefined,
+    "Could not withdraw the offer.",
+  );
+}
+
+/** A department head accepts the open offer. */
+export function acceptProjectTransfer(projectId: string): Promise<Project> {
+  return sendJson(
+    "POST",
+    buildApiUrl(getPublicApiBase(), "projects", projectId, "transfer", "accept"),
+    {},
+    "Could not accept the project.",
+  );
+}

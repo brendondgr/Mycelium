@@ -150,7 +150,7 @@ exactly where the old `apps.content` include was, so every path is unchanged.
 | `<id>/state/extract/` | POST | Read a state **proposal** out of a document (saves nothing) |
 | `<id>/leave/` | POST | Leave (404 unless the caller can see the project; there is no self-join — a project is joined by invitation) |
 | `<id>/ownership/` | POST | `{ "username" }` — the owner hands the project to someone already on it (the old owner becomes an editor); the scope's managers (lab PI / owner / admins, department heads) may take it themselves with their own username. Audited; members are told on the bell |
-| `<id>/transfer/` | POST, DELETE | The owner offers a lab project to the lab's department (201), or withdraws the open offer |
+| `<id>/transfer/` | GET, POST, DELETE | `GET`: what the caller may do about ownership (`can_hand_over`, `can_take`, `can_offer`, `department`, and the open `transfer` with `can_accept` / `can_withdraw`). `POST`: the owner offers a lab project to the lab's department (201). `DELETE`: withdraws the open offer |
 | `<id>/transfer/accept/` | POST | A head of the department accepts: the project becomes a department project, members kept, `lab` scope becoming `invite_only`. An open offer lapses if the lab leaves the department |
 | `<id>/members/` | GET, POST | Roster; add a lab member directly |
 | `<id>/members/<username>/` | PATCH, DELETE | Set `{ "role": "editor" \| "member" }` (the owner); remove a member (never the owner) |

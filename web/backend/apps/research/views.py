@@ -1805,6 +1805,49 @@ class ProjectTransferView(APIView):
     """``POST``: the owner offers a lab project to its lab's department.
     ``DELETE``: the owner withdraws the open offer."""
 
+    def get(self, request: Request, pk) -> Response:
+        """What the caller may do about this project's ownership, and the open
+        offer if there is one — what the project page's Ownership card shows."""
+        from apps.accounts.permissions import user_can_edit_dept_profile
+
+        from .models import ProjectTransfer
+        from .permissions import user_manages_project_scope
+
+        project = _visible_project(request, pk)
+        user = request.user
+        shared = project.scope_user_id is None
+        owner = shared and user_can_change_visibility(user, project)
+        is_owner_row = scope.member_role(user, project) == "owner"
+        department = project.scope_lab.department if project.scope_lab_id else None
+        pending = (
+            ProjectTransfer.objects.filter(
+                project=project, state=ProjectTransfer.State.PENDING
+            )
+            .select_related("department")
+            .first()
+        )
+        return Response(
+            {
+                "can_hand_over": owner,
+                "can_take": shared
+                and not is_owner_row
+                and user_manages_project_scope(user, project),
+                "can_offer": owner and department is not None and pending is None,
+                "department": department.name if department is not None else None,
+                "transfer": (
+                    {
+                        "department": pending.department.name,
+                        "can_accept": user_can_edit_dept_profile(
+                            user, pending.department
+                        ),
+                        "can_withdraw": owner,
+                    }
+                    if pending is not None
+                    else None
+                ),
+            }
+        )
+
     def post(self, request: Request, pk) -> Response:
         from . import lifecycle
 
