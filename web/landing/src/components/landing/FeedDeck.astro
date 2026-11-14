@@ -1,17 +1,20 @@
 ---
 /**
- * Feeds prototype — Fanned deck (`feeds/deck`).
+ * Front page · the four feeds, as a fanned deck.
  *
  * One card from each of the four feeds, starting as a tilted deck in the
- * middle of the section and fanning out into a two-by-two spread as the reader
- * scrolls. In the deck the front card is sharp and the ones behind it are
- * dimmed and softened; hovering or focusing any card lifts it to the front.
- * The pointer tilts the whole spread a little.
+ * middle of the section and fanning out into a two-by-two spread as it
+ * arrives. It plays on its own once the section is on screen, one card after
+ * another, so the reader does not have to keep scrolling to deal it. In the
+ * deck the front card is sharp and the ones behind it are dimmed and
+ * softened; hovering or focusing any card lifts it to the front. The pointer
+ * tilts the whole spread a little.
  *
  * The cards are the front page's own (`FeedCard`, the app's skeleton), so a
- * card change reaches this version too. `--p` drives the fan; its fallback
- * (0.6) is the finished spread, which reduced motion and phones get (phones
- * as a single column).
+ * card change reaches this version too. `--fd-f` is the fan (0 deck, 1
+ * spread), a registered property so it can transition. It is 1 unless the
+ * script below arms the deck, so without JavaScript, under reduced motion
+ * and on phones (a single column) the spread is simply there.
  */
 import FeedCard from "@/components/landing/FeedCard.astro";
 import { feedTabs } from "@/data/feed-preview";
@@ -27,7 +30,7 @@ const deck = feedTabs.map((tab, i) => ({
 }));
 ---
 
-<section class="nf-section fd" aria-labelledby="fd-heading" data-proto="feeds-deck" data-progress data-pointer>
+<section class="nf-section fd" aria-labelledby="fd-heading" data-proto="feeds-deck" data-pointer>
   <div class="nf-wrap">
     <div class="nf-head-center reveal">
       <p class="nf-eyebrow">Four feeds, one profile</p>
@@ -62,10 +65,43 @@ const deck = feedTabs.map((tab, i) => ({
   </div>
 </section>
 
+<script is:inline>
+  /*
+    Deals the deck once it is on screen. Arms it (back into a deck) at load,
+    while it is still below the fold, and only where it can play it: motion
+    allowed, an IntersectionObserver, and a two-column spread to deal into.
+  */
+  (function () {
+    document.querySelectorAll('[data-proto="feeds-deck"]').forEach(function (root) {
+      try {
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        if (!matchMedia("(min-width: 761px)").matches) return;
+        if (typeof IntersectionObserver === "undefined") return;
+        var stage = root.querySelector(".fd-stage");
+        if (stage.getBoundingClientRect().top < innerHeight) return;
+        root.setAttribute("data-deck", "armed");
+        var io = new IntersectionObserver(function (entries) {
+          if (!entries[0].isIntersecting) return;
+          io.disconnect();
+          root.setAttribute("data-deck", "dealt");
+        }, { threshold: 0.3 });
+        io.observe(stage);
+      } catch (e) {
+        root.removeAttribute("data-deck");
+      }
+    });
+  })();
+</script>
+
 <style>
+  /* Registered so it transitions, and every value computed from it with it. */
+  @property --fd-f {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 1;
+  }
+
   .fd {
-    /* 0 = the deck, 1 = the spread. Fallback 0.6 = the spread. */
-    --f: clamp(0, calc((var(--p, 0.6) - 0.16) / 0.36), 1);
     --gap: 1.25rem;
     overflow: clip;
     background: linear-gradient(180deg, transparent, rgb(37 48 33 / 45%) 25%, rgb(37 48 33 / 45%) 75%, transparent);
@@ -83,8 +119,23 @@ const deck = feedTabs.map((tab, i) => ({
     gap: var(--gap);
     transform-style: preserve-3d;
     transform:
-      rotateX(calc(var(--my, 0) * -2.5deg + (1 - var(--f)) * 16deg))
+      rotateX(calc(var(--my, 0) * -2.5deg + (1 - var(--fd-f)) * 16deg))
       rotateY(calc(var(--mx, 0) * 3deg));
+  }
+
+  /* Armed: a deck. Dealt: each card fans out in turn, front card first. */
+  .fd[data-deck] .fd-tilt,
+  .fd[data-deck] .fd-cell {
+    --fd-f: 0;
+  }
+
+  .fd[data-deck="dealt"] .fd-tilt,
+  .fd[data-deck="dealt"] .fd-cell {
+    --fd-f: 1;
+  }
+
+  .fd[data-deck="dealt"] .fd-tilt {
+    transition: --fd-f 1.5s var(--nf-ease) 150ms;
   }
 
   /*
@@ -93,7 +144,7 @@ const deck = feedTabs.map((tab, i) => ({
    * back in depth by its place in the deck, and turned a little.
    */
   .fd-cell {
-    --unf: calc(1 - var(--f));
+    --unf: calc(1 - var(--fd-f));
     --dx: calc((0.5 - var(--col)) * (100% + var(--gap)));
     --dy: calc((0.5 - var(--row)) * (100% + var(--gap)));
     position: relative;
@@ -110,6 +161,13 @@ const deck = feedTabs.map((tab, i) => ({
       brightness(calc(1 - var(--i) * 0.14 * var(--unf)))
       blur(calc(var(--i) * 1.1px * var(--unf)));
     transition:
+      filter 300ms ease,
+      translate 380ms var(--nf-ease);
+  }
+
+  .fd[data-deck="dealt"] .fd-cell {
+    transition:
+      --fd-f 1.3s var(--nf-ease) calc(350ms + var(--i) * 140ms),
       filter 300ms ease,
       translate 380ms var(--nf-ease);
   }
@@ -139,7 +197,7 @@ const deck = feedTabs.map((tab, i) => ({
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--nf-glow);
-    opacity: var(--f);
+    opacity: var(--fd-f);
   }
 
   .fd-label-n {
@@ -163,8 +221,9 @@ const deck = feedTabs.map((tab, i) => ({
   }
 
   @media (max-width: 760px) {
-    .fd {
-      --f: 1;
+    .fd .fd-tilt,
+    .fd .fd-cell {
+      --fd-f: 1;
     }
 
     .fd-stage {

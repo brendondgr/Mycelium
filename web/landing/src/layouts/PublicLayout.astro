@@ -273,5 +273,112 @@ const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · ${siteTagl
         }
       })();
     </script>
+  <script is:inline>
+    /*
+      The depth helper: scroll and pointer depth for the front page's sections
+      and the lab's prototypes. One rAF per scroll or pointer move, touching only
+      elements near the viewport.
+
+        [data-progress] gets --p    0 → 1 as the element crosses the viewport
+                                    (top meets bottom → bottom leaves top),
+                                    backwards on the way up;
+        [data-pin]      gets --pin  0 → 1 through a tall container whose child
+                                    is position: sticky;
+        [data-pointer]  gets --mx, --my  −1 → 1, eased, from a mouse over the
+                                    element (0 at rest, and on touch).
+
+      It sets data-motion="on" on <html> while it runs. It never runs under
+      reduced motion, and every reader of these variables falls back to the
+      finished, still composition, so without it nothing is hidden. The lab
+      re-scans after a version switch (the "lab:variant" event).
+    */
+    (function () {
+      try {
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        if (typeof IntersectionObserver === "undefined") return;
+        document.documentElement.setAttribute("data-motion", "on");
+
+        var live = new Set();
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) live.add(e.target);
+            else live.delete(e.target);
+          });
+          schedule();
+        }, { rootMargin: "25% 0px" });
+
+        function observeAll() {
+          document.querySelectorAll("[data-progress], [data-pin]").forEach(function (el) {
+            if (!el.__labSeen) { el.__labSeen = true; io.observe(el); }
+          });
+        }
+        observeAll();
+
+        var queued = false;
+        function schedule() {
+          if (queued) return;
+          queued = true;
+          requestAnimationFrame(paint);
+        }
+        function clamp(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+        function paint() {
+          queued = false;
+          var vh = innerHeight;
+          live.forEach(function (el) {
+            var b = el.getBoundingClientRect();
+            if (!b.height) return;
+            if (el.hasAttribute("data-progress")) {
+              el.style.setProperty("--p", clamp((vh - b.top) / (vh + b.height)).toFixed(4));
+            }
+            if (el.hasAttribute("data-pin")) {
+              var span = b.height - vh;
+              el.style.setProperty("--pin", (span > 0 ? clamp(-b.top / span) : 1).toFixed(4));
+            }
+          });
+        }
+        addEventListener("scroll", schedule, { passive: true });
+        addEventListener("resize", schedule, { passive: true });
+        document.addEventListener("lab:variant", function () {
+          observeAll();
+          requestAnimationFrame(schedule);
+        });
+
+        /* Pointer lean: eased toward the target so it glides rather than tracks. */
+        var leaners = new Map();
+        function bindPointer(el) {
+          if (el.__labLean) return;
+          el.__labLean = true;
+          var s = { x: 0, y: 0, tx: 0, ty: 0, run: false };
+          leaners.set(el, s);
+          el.addEventListener("pointermove", function (e) {
+            if (e.pointerType !== "mouse") return;
+            var b = el.getBoundingClientRect();
+            s.tx = ((e.clientX - b.left) / b.width) * 2 - 1;
+            s.ty = ((e.clientY - b.top) / b.height) * 2 - 1;
+            tick();
+          });
+          el.addEventListener("pointerleave", function () { s.tx = 0; s.ty = 0; tick(); });
+          function tick() {
+            if (s.run) return;
+            s.run = true;
+            requestAnimationFrame(function step() {
+              s.x += (s.tx - s.x) * 0.08;
+              s.y += (s.ty - s.y) * 0.08;
+              el.style.setProperty("--mx", s.x.toFixed(4));
+              el.style.setProperty("--my", s.y.toFixed(4));
+              if (Math.abs(s.tx - s.x) > 0.002 || Math.abs(s.ty - s.y) > 0.002) requestAnimationFrame(step);
+              else s.run = false;
+            });
+          }
+        }
+        document.querySelectorAll("[data-pointer]").forEach(bindPointer);
+        document.addEventListener("lab:variant", function () {
+          document.querySelectorAll("[data-pointer]").forEach(bindPointer);
+        });
+      } catch (e) {
+        document.documentElement.removeAttribute("data-motion");
+      }
+    })();
+  </script>
   </body>
 </html>

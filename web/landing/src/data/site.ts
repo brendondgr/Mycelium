@@ -57,21 +57,25 @@ export const secondaryCta = {
  */
 export const contactEmail = "hello@mycelium.example";
 
+/**
+ * The header's pages. The front page carries what the Product and About pages
+ * used to (both now redirect to `/`, see `astro.config.mjs`); Demo and Source
+ * follow these in the header itself. `icon` names a glyph in `SiteHeader`.
+ */
 export const primaryNav = [
-  { href: "/", label: "Home" },
-  { href: "/product", label: "Product" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
+  { href: "/", label: "Home", icon: "home" },
+  { href: "/contact", label: "Contact", icon: "contact" },
 ] as const;
 
 export const footerNav = {
   product: [
-    { href: "/product", label: "How it works" },
+    { href: "/#how-it-works", label: "How it works" },
+    { href: "/#covers", label: "What it covers" },
+    { href: "/#mylo", label: "Ask Mylo" },
     { href: "/#self-host", label: "Self-host" },
     { href: sourceRepoUrl, label: "Source code" },
   ],
   company: [
-    { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
     { href: appLoginUrl, label: "Log in" },
     { href: appSignupUrl, label: "Sign up" },

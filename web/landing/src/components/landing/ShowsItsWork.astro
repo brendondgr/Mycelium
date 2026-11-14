@@ -75,6 +75,13 @@ const paper = feedTabs[0].items[0];
     var notes = Array.prototype.slice.call(root.querySelectorAll(".note"));
     if (!stage || !spot || !notes.length) return;
 
+    /* The card's own height, for its centred sticky offset (see .stage). */
+    function measure() {
+      stage.style.setProperty("--stage-h", stage.offsetHeight + "px");
+    }
+    measure();
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(measure).observe(stage);
+
     var reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     var STEP_MS = 3200;
     var current = 0;
@@ -246,11 +253,19 @@ const paper = feedTabs[0].items[0];
       0 0 70px rgb(141 166 111 / 12%);
   }
 
-  /* After the base rule, which would otherwise put `relative` back. */
+  /* While the notes are read the card is held in the middle of the screen
+     below the header, not against it: its sticky offset centres it in what
+     the header leaves, from its own height (`--stage-h`, measured by the
+     script below). Unmeasured, or taller than the screen, it falls back to
+     just under the header. After the base rule, which would otherwise put
+     `relative` back. */
   @media (min-width: 1024px) {
     .stage {
       position: sticky;
-      top: calc(var(--header-h) + 2rem);
+      top: max(
+        calc(var(--header-h) + 1rem),
+        calc((100svh + var(--header-h) - var(--stage-h, 100svh)) / 2)
+      );
     }
   }
 

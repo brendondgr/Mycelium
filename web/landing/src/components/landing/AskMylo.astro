@@ -1,7 +1,12 @@
 ---
 /**
- * Lab prototype · mylo/two-places — one question, asked in the app and in the
- * lab's Discord server, answered by the same Mylo from the same sources.
+ * Front page · Ask Mylo: one question, asked in the app and in the lab's
+ * Discord server, answered by the same Mylo from the same sources.
+ *
+ * Every step in the sample is one Mylo can take today (tools/agent/functions):
+ * read an item's details and abstract, read a project's goals and blockers,
+ * find who in the lab could go after a call, check a deadline. He reads; he
+ * changes nothing. Keep it that way when editing the conversation.
  *
  * The two surfaces start apart, angled away from each other on their own
  * planes, and slide together as the section crosses the viewport (`--p`); a
@@ -14,14 +19,15 @@
  */
 ---
 
-<section class="nf-section tp" data-proto="mylo-two-places" aria-labelledby="mylo-two-places-heading" data-progress>
+<section id="mylo" class="nf-section tp" data-proto="mylo-two-places" aria-labelledby="mylo-two-places-heading" data-progress>
   <div class="nf-wrap">
     <div class="nf-head-center reveal">
       <p class="nf-eyebrow">Ask Mylo</p>
       <h2 id="mylo-two-places-heading" class="nf-h2">The same Mylo, wherever the lab talks</h2>
       <p class="nf-sub">
-        Ask in the app, or in your lab's Discord server. It is one Mylo with one view of the lab, so
-        the answer and its sources are the same in both places.
+        Ask in the app, or in your lab's Discord server. He looks things up among the papers, calls,
+        projects and people you may see, cites each one, and changes nothing. One Mylo, so the answer
+        and its sources are the same in both places.
       </p>
     </div>
 
@@ -39,17 +45,17 @@
           In the app
         </p>
         <div class="tp-web-body">
-          <p class="tp-q">Does the Okonkwo paper change anything for the Lakeside grant?</p>
+          <p class="tp-q">Is the Okonkwo paper worth reading for Lakeside?</p>
           <p class="tp-row">
             <img src="/images/mylo-head-96.webp" alt="" width="24" height="24" loading="lazy" />
             <span class="tp-name">Mylo</span>
-            <span class="tp-status">Looked at 3 things</span>
+            <span class="tp-status">Read the paper and the project</span>
           </p>
           <p class="tp-answer">
-            Yes, in one place: it measures grounding falling off as the patient population drifts
-            <span class="tp-pill" title="Source 1: the paper">1</span>, the risk Lakeside lists under what
-            blocks it <span class="tp-pill" title="Source 2: the Lakeside project">2</span>. Its sites are all
-            academic medical centres, so it says nothing direct about community hospitals.
+            Yes, for one blocker. Its abstract measures how grounding falls off as the patient population
+            drifts <span class="tp-pill" title="Source 1: the paper">1</span>, which is the risk Lakeside lists
+            under what blocks it <span class="tp-pill" title="Source 2: the Lakeside project">2</span>. I have
+            only its abstract, so check the methods before you lean on it.
           </p>
         </div>
       </article>
@@ -71,7 +77,7 @@
             <span class="tp-av tp-av-a" aria-hidden="true">DR</span>
             <div>
               <p class="tp-by">Dana R. <time>9:12</time></p>
-              <p><span class="tp-at">@Mylo</span> does the Okonkwo paper change anything for the Lakeside grant?</p>
+              <p><span class="tp-at">@Mylo</span> is the Okonkwo paper worth reading for Lakeside?</p>
             </div>
           </li>
           <li class="tp-msg tp-mylo">
@@ -79,9 +85,9 @@
             <div>
               <p class="tp-by">Mylo <span class="tp-reply">replying to Dana R.</span></p>
               <p>
-                Yes, in one place: it measures grounding falling off as the patient population drifts
-                (<span class="tp-link">the paper</span>), the risk Lakeside lists under what blocks it
-                (<span class="tp-link">Lakeside</span>). Its sites are all academic medical centres.
+                Yes, for one blocker. Its abstract measures how grounding falls off as the patient
+                population drifts (<span class="tp-link">the paper</span>), the risk Lakeside lists under
+                what blocks it (<span class="tp-link">Lakeside</span>). I have only the abstract.
               </p>
             </div>
           </li>
@@ -89,14 +95,17 @@
             <span class="tp-av tp-av-b" aria-hidden="true">SK</span>
             <div>
               <p class="tp-by">Sam K. <time>9:20</time></p>
-              <p><span class="tp-at">@Mylo</span> could we run its harness ourselves?</p>
+              <p><span class="tp-at">@Mylo</span> who here could go after the Smart Health call?</p>
             </div>
           </li>
           <li class="tp-msg tp-mylo">
             <img class="tp-av" src="/images/mylo-head-96.webp" alt="" width="32" height="32" loading="lazy" />
             <div>
               <p class="tp-by">Mylo <span class="tp-reply">replying to Sam K.</span></p>
-              <p>It runs on MIMIC-IV, which the lab already has (<span class="tp-link">datasets</span>).</p>
+              <p>
+                Dana and Priya: both list clinical NLP, the call's focus. It is open, next deadline
+                3 March (<span class="tp-link">the call</span>).
+              </p>
             </div>
           </li>
         </ol>

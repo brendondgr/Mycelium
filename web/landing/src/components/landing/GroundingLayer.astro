@@ -1,6 +1,6 @@
 ---
 /**
- * Lab prototype — stack/layers. A new section: Mycelium as the grounding layer.
+ * Front page · Mycelium as the grounding layer research tools are built on.
  *
  * Four plates make the layer (the corpus, the profiles, the knowledge graph,
  * the ranked feeds) and the tools sit on a fifth plate on top. Threads run up
@@ -462,8 +462,8 @@ function cube(dx: number) {
   }
 
   /* Labels fade in once the plates have room for them. */
-  :global(html[data-lab-motion="on"]) .gs-plate text,
-  :global(html[data-lab-motion="on"]) .gs-plate .gs-leader {
+  :global(html[data-motion="on"]) .gs-plate text,
+  :global(html[data-motion="on"]) .gs-plate .gs-leader {
     opacity: clamp(0, calc(var(--sep) * 2 - 0.8), 1);
   }
 

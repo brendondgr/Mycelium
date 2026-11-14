@@ -15,7 +15,12 @@ function prng(seed: number) {
   };
 }
 
-export type Thread = { d: string; tip: [number, number]; depth: number };
+/**
+ * `start` and `steps` time the growth in segments: a thread starts drawing
+ * `start` segments after the first root and takes `steps` segments to finish,
+ * so a branch begins exactly when its parent's tip reaches the fork.
+ */
+export type Thread = { d: string; tip: [number, number]; depth: number; start: number; steps: number };
 
 export type Spore = {
   left: string;
@@ -34,7 +39,7 @@ export function growThreads(seed: number, width = 1440, height = 900, roots = 15
   const rand = prng(seed);
   const threads: Thread[] = [];
 
-  function grow(x: number, y: number, angle: number, steps: number, depth: number) {
+  function grow(x: number, y: number, angle: number, steps: number, depth: number, start: number) {
     const pts: [number, number][] = [[x, y]];
     for (let i = 0; i < steps; i++) {
       angle += (rand() - 0.5) * 0.55;
@@ -45,7 +50,13 @@ export function growThreads(seed: number, width = 1440, height = 900, roots = 15
       pts.push([x, y]);
       if (depth < 2 && i > 0 && i < steps - 1 && rand() < 0.32) {
         const turn = (rand() < 0.5 ? -1 : 1) * (0.5 + rand() * 0.4);
-        grow(x, y, angle + turn, Math.max(2, steps - i - 1), depth + 1);
+        /* Fork from the midpoint of the last two points: the smoothed path
+           below passes through midpoints, not through the points themselves
+           (they are its control points), so forking from (x, y) left every
+           branch floating a few pixels off its parent. The midpoint is drawn
+           about i + 0.5 segments into the parent. */
+        const [px, py] = pts[pts.length - 2];
+        grow((px + x) / 2, (py + y) / 2, angle + turn, Math.max(2, steps - i - 1), depth + 1, start + i + 0.5);
       }
     }
     let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
@@ -56,13 +67,13 @@ export function growThreads(seed: number, width = 1440, height = 900, roots = 15
     }
     const last = pts[pts.length - 1];
     d += ` L${last[0].toFixed(1)} ${last[1].toFixed(1)}`;
-    threads.push({ d, tip: last, depth });
+    threads.push({ d, tip: last, depth, start, steps });
   }
 
   for (let i = 0; i < roots; i++) {
     const x = 40 + ((width - 80) / (roots - 1)) * i + (rand() - 0.5) * 50;
     const edge = Math.abs(x - width / 2) / (width / 2);
-    grow(x, height + 5, -Math.PI / 2 + (rand() - 0.5) * 0.5, 3 + Math.round(edge * 5 + rand() * 2), 0);
+    grow(x, height + 5, -Math.PI / 2 + (rand() - 0.5) * 0.5, 3 + Math.round(edge * 5 + rand() * 2), 0, (i % 4) * 0.6);
   }
   return threads;
 }

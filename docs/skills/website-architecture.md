@@ -49,10 +49,13 @@ Before generating web code, define:
 
 ## Route expectations
 
-**Public** (`web/landing/src/pages/`) — four pages only: `index`, `product`,
-`about`, `contact`. Adding a fifth needs a reason; `/solutions`, `/resources`,
-`/research`, and `/demo` were removed as stubs that duplicated the homepage, and
-`/pricing` was removed for the open-source release (it redirects to `/`). Every
+**Public** (`web/landing/src/pages/`) — two pages only: `index` and `contact`
+(plus the unlinked, `noindex` front page lab at `/lab`). Adding a third needs a
+reason; `/solutions`, `/resources` and `/research` were removed as stubs that
+duplicated the homepage, `/product` and `/about` were folded into the front
+page, and `/pricing` was removed for the open-source release (all three
+redirect to `/` in `astro.config.mjs`). `/demo` is the app's public demo, not a
+landing page. Every
 "Sign up" CTA points at the real `/signup` (free with a sign-up code); the other
 way in is self-hosting, linked to `/#self-host` and the source repository.
 

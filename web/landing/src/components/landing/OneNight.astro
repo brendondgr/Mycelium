@@ -1,133 +1,520 @@
 ---
 /**
- * How it works, told as one night. The line down the timeline grows with the
- * scroll (scroll-driven CSS; drawn in full where unsupported) and warms from
- * sage at 22:00 to gold at 06:00.
+ * How it works: one night, on a clock, left to right.
+ *
+ * A clock and a track from 22:00 to 06:00. When the track comes into view the
+ * night plays once, in about nine seconds: the clock runs, a line of light
+ * fills the track, and each stop lights up as its hour passes and puts up a
+ * card saying what happens then. A button plays the night again. The 06:00
+ * report itself is the section above this one, so the last stop points to it
+ * rather than repeating it.
+ *
+ * Nothing is pinned or scroll-jacked: the night plays on its own clock, so a
+ * reader can scroll straight past. The stops and their order are in
+ * `data/landing.ts` (`night`).
+ *
+ * Static (no JavaScript, reduced motion): the clock at 06:00, the track full,
+ * every card up. Below 860 px the track turns vertical, because six cards
+ * cannot sit side by side there.
  */
-import { night } from "@/data/landing";
+import { night as steps } from "@/data/landing";
+
+const hours = ["22", "23", "00", "01", "02", "03", "04", "05", "06"];
 ---
 
-<section class="nf-section" aria-labelledby="night-heading">
-  <div class="nf-wrap grid">
-    <div class="head reveal">
-      <p class="nf-eyebrow">How it works</p>
-      <h2 id="night-heading" class="nf-h2">One night, four steps</h2>
-      <p class="nf-sub">The same loop runs every night, whether the lab is two people or twenty.</p>
+
+<section id="how-it-works" class="nf-section rt" data-proto="one-night" aria-labelledby="night-heading">
+  <div class="nf-wrap">
+    <div class="rt-head">
+      <div class="reveal">
+        <p class="nf-eyebrow">How it works</p>
+        <h2 id="night-heading" class="nf-h2">One night, from brief to report</h2>
+        <p class="nf-sub">
+          The same run every night, whether the lab is two people or twenty. Watch one go by.
+        </p>
+      </div>
+
+      <div class="rt-clock reveal" aria-hidden="true">
+        <svg viewBox="0 0 100 100">
+          <circle class="rt-face" cx="50" cy="50" r="44"></circle>
+          {Array.from({ length: 12 }, (_, i) => (
+            <line class="rt-mark" x1="50" y1="9" x2="50" y2={i % 3 === 0 ? 15 : 12} transform={`rotate(${i * 30} 50 50)`}></line>
+          ))}
+          <line class="rt-hand rt-hand-h" x1="50" y1="50" x2="50" y2="27"></line>
+          <line class="rt-hand rt-hand-m" x1="50" y1="50" x2="50" y2="15"></line>
+          <circle class="rt-pin" cx="50" cy="50" r="3"></circle>
+        </svg>
+        <p class="rt-time" data-rt-time>06:00</p>
+        <button type="button" class="rt-replay" data-rt-replay hidden>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10a6 6 0 1 0 1.8-4.3"></path><path d="M4 4v3h3"></path></svg>
+          Play the night again
+        </button>
+      </div>
     </div>
-    <ol class="night">
-      {
-        night.map((s) => (
-          <li class="reveal">
-            <span class="time">{s.time}</span>
-            <h3>{s.title}</h3>
-            <p>{s.description}</p>
+
+    <div class="rt-track" data-rt-track>
+      <ol class="rt-hours" aria-hidden="true">
+        {hours.map((h, i) => <li style={`--x:${i / 8}`}>{h}:00</li>)}
+      </ol>
+      <div class="rt-line" aria-hidden="true"><span class="rt-fill"></span></div>
+      <ol class="rt-steps">
+        {steps.map((s, i) => (
+          <li
+            class:list={["rt-step", i % 2 ? "rt-below" : "rt-above", i === 0 && "rt-first", i === steps.length - 1 && "rt-last"]}
+            style={`--x:${s.at / 8}`}
+            data-at={s.at}
+          >
+            <span class="rt-dot" aria-hidden="true"></span>
+            <div class="rt-card">
+              <p class="rt-card-time"><time>{s.time}</time></p>
+              <p class="rt-card-title">{s.title}</p>
+              <p class="rt-card-text">{s.text}</p>
+              {i === steps.length - 1 && (
+                <a class="rt-card-link" href="#report">Read a sample<span aria-hidden="true"> ↑</span></a>
+              )}
+            </div>
           </li>
-        ))
-      }
-    </ol>
+        ))}
+      </ol>
+    </div>
+
+    <p class="rt-sample">A sample night · your instance sets the hour</p>
   </div>
 </section>
 
+<script is:inline>
+  /*
+    Plays the night once when the track is on screen. Scoped to its own root; arms (hides what is still to come) only when it can play
+    it, so without JavaScript or under reduced motion the night is complete.
+  */
+  (function () {
+    document.querySelectorAll('[data-proto="one-night"]').forEach(function (root) {
+      try {
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        if (typeof IntersectionObserver === "undefined") return;
+        var HOURS = 8;
+        var DURATION = 9000;
+        var steps = [].slice.call(root.querySelectorAll("[data-at]"));
+        var clock = root.querySelector("[data-rt-time]");
+        var replay = root.querySelector("[data-rt-replay]");
+        var raf = 0;
+
+        function pad(n) { return (n < 10 ? "0" : "") + n; }
+        function set(h) {
+          root.style.setProperty("--h", h.toFixed(3));
+          steps.forEach(function (s) {
+            s.classList.toggle("is-on", h >= parseFloat(s.getAttribute("data-at")) - 0.001);
+          });
+          var m = Math.floor(h * 6) * 10;
+          clock.textContent = pad((22 + Math.floor(m / 60)) % 24) + ":" + pad(m % 60);
+          root.classList.toggle("is-done", h >= HOURS);
+        }
+        function play() {
+          cancelAnimationFrame(raf);
+          var t0 = 0;
+          set(0);
+          raf = requestAnimationFrame(function step(ts) {
+            if (!t0) t0 = ts;
+            var k = Math.min(1, (ts - t0) / DURATION);
+            /* Ease out, so the last hours settle rather than stop. */
+            set((1 - Math.pow(1 - k, 1.6)) * HOURS);
+            if (k < 1) raf = requestAnimationFrame(step);
+          });
+        }
+
+        root.setAttribute("data-play", "armed");
+        set(0);
+        replay.hidden = false;
+        replay.addEventListener("click", play);
+
+        var io = new IntersectionObserver(function (entries) {
+          if (!entries[0].isIntersecting) return;
+          io.disconnect();
+          play();
+        }, { threshold: 0.4 });
+        io.observe(root.querySelector("[data-rt-track]"));
+      } catch (e) {
+        root.removeAttribute("data-play");
+        root.style.removeProperty("--h");
+      }
+    });
+  })();
+</script>
+
 <style>
-  .grid {
-    display: grid;
-    gap: 3rem;
+  .rt {
+    /* Hours after 22:00, 0 → 8. The fallback is the finished night. */
+    --hh: var(--h, 8);
+    overflow: clip;
   }
 
-  @media (min-width: 1024px) {
-    .grid {
-      grid-template-columns: 0.8fr 1.2fr;
-      gap: 5rem;
-    }
+  /* -------------------------------------------------------------- head */
+  .rt-head {
+    display: grid;
+    gap: 2rem;
+    align-items: center;
+  }
 
-    .head {
-      position: sticky;
-      top: calc(var(--header-h) + 4rem);
-      align-self: start;
+  @media (min-width: 900px) {
+    .rt-head {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 4rem;
     }
   }
 
-  .night {
-    position: relative;
+  .rt-clock {
     display: grid;
-    gap: 3rem;
+    justify-items: center;
+    gap: 0.5rem;
+  }
+
+  .rt-clock svg {
+    width: 7.5rem;
+    height: 7.5rem;
+    overflow: visible;
+  }
+
+  .rt-face {
+    fill: rgb(184 217 154 / 4%);
+    stroke: rgb(184 217 154 / 30%);
+    stroke-width: 1.5;
+  }
+
+  .rt-mark {
+    stroke: rgb(184 217 154 / 45%);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+
+  .rt-hand {
+    stroke-linecap: round;
+    transform-origin: 50px 50px;
+    transform-box: view-box;
+  }
+
+  /* 22:00 is 300° on the dial; each hour after it is 30° more. */
+  .rt-hand-h {
+    stroke: #f2ebdd;
+    stroke-width: 3.2;
+    transform: rotate(calc(300deg + var(--hh) * 30deg));
+  }
+
+  .rt-hand-m {
+    stroke: var(--nf-glow);
+    stroke-width: 2;
+    transform: rotate(calc(var(--hh) * 360deg));
+    filter: drop-shadow(0 0 3px rgb(184 217 154 / 70%));
+  }
+
+  .rt-pin {
+    fill: var(--nf-glow);
+  }
+
+  .rt-time {
     margin: 0;
-    padding: 0 0 0 3rem;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.5rem;
+    font-variant-numeric: tabular-nums;
+    color: #f2ebdd;
+  }
+
+  /* ------------------------------------------------------------- track */
+  .rt-track {
+    position: relative;
+    height: 26rem;
+    margin: 3rem 0 0;
+  }
+
+  .rt-hours {
+    position: absolute;
+    inset: 50% 0 auto;
+    margin: 0;
+    padding: 0;
     list-style: none;
   }
 
-  .night::before {
-    content: "";
+  .rt-hours li {
     position: absolute;
-    left: 0.45rem;
-    top: 0.6rem;
-    bottom: 0.6rem;
-    width: 2px;
+    left: calc(var(--x) * 100%);
+    top: 0.9rem;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+  }
+
+  .rt-hours li:first-child { transform: none; }
+  .rt-hours li:last-child { transform: translateX(-100%); }
+
+  .rt-line {
+    position: absolute;
+    inset: 50% 0 auto;
+    height: 2px;
+    margin-top: -1px;
     border-radius: 2px;
-    background: linear-gradient(to bottom, rgb(141 166 111 / 25%), var(--brand-primary) 55%, var(--brand-accent));
-    transform-origin: top;
+    background: rgb(184 217 154 / 14%);
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
-      .night::before {
-        animation: night-grow linear both;
-        animation-timeline: view();
-        animation-range: entry 20% cover 60%;
-      }
-    }
-  }
-
-  @keyframes night-grow {
-    from { transform: scaleY(0); }
-  }
-
-  .night li {
-    position: relative;
-  }
-
-  .night li::before {
-    content: "";
+  .rt-fill {
     position: absolute;
-    left: -3rem;
-    top: 0.35rem;
-    width: 1.1rem;
-    height: 1.1rem;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #6f8a56, var(--nf-glow));
+    box-shadow: 0 0 12px rgb(184 217 154 / 60%);
+    transform: scaleX(calc(var(--hh) / 8));
+    transform-origin: 0 50%;
+  }
+
+  .rt-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rt-step {
+    position: absolute;
+    left: calc(var(--x) * 100%);
+    top: 50%;
+  }
+
+  .rt-dot {
+    position: absolute;
+    left: -0.4rem;
+    top: -0.4rem;
+    width: 0.8rem;
+    height: 0.8rem;
     border-radius: 9999px;
     background: var(--nf-night);
-    border: 2px solid var(--brand-primary);
-    box-shadow: 0 0 14px rgb(184 217 154 / 35%);
+    border: 2px solid var(--nf-glow);
+    box-shadow: 0 0 10px rgb(184 217 154 / 70%);
+    transition: transform 400ms var(--nf-ease), background-color 400ms ease, box-shadow 400ms ease;
   }
 
-  .night li:last-child::before {
+  .rt-step.is-on .rt-dot,
+  .rt:not([data-play]) .rt-dot {
+    background: var(--nf-glow);
+  }
+
+  .rt-last .rt-dot {
     border-color: var(--brand-accent);
-    box-shadow: 0 0 18px rgb(211 174 102 / 55%);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--brand-accent) 70%, transparent);
   }
 
-  .time {
-    font-family: "Fraunces", Georgia, serif;
-    font-size: 1.6rem;
-    font-weight: 300;
-    color: var(--nf-glow);
-    font-variant-numeric: tabular-nums;
+  .rt-step.rt-last.is-on .rt-dot,
+  .rt:not([data-play]) .rt-last .rt-dot {
+    background: var(--brand-accent);
   }
 
-  .night li:last-child .time {
+  .rt-card {
+    position: absolute;
+    left: 0;
+    width: 12.5rem;
+    padding: 0.8rem 0.95rem;
+    border: 1px solid rgb(184 217 154 / 16%);
+    border-radius: 0.85rem;
+    background: color-mix(in srgb, var(--card) 88%, transparent);
+    box-shadow: 0 14px 34px rgb(0 0 0 / 35%);
+    transform: translateX(-50%);
+  }
+
+  /* A hairline from the card to its dot. */
+  .rt-card::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    width: 1px;
+    height: 1.6rem;
+    background: rgb(184 217 154 / 35%);
+  }
+
+  .rt-above .rt-card { bottom: 2.2rem; }
+  .rt-above .rt-card::before { top: 100%; }
+  .rt-below .rt-card { top: 3rem; }
+  .rt-below .rt-card::before { bottom: 100%; height: 2.4rem; }
+
+  /* The end cards hang inward so neither leaves the track. */
+  .rt-first .rt-card { transform: translateX(-1rem); }
+  .rt-first .rt-card::before { left: 1rem; }
+  .rt-last .rt-card { transform: translateX(calc(-100% + 1rem)); }
+  .rt-last .rt-card::before { left: auto; right: 1rem; }
+
+  .rt-last .rt-card-time {
     color: var(--brand-accent);
   }
 
-  h3 {
-    margin: 0.3rem 0 0;
-    font-size: 1.15rem;
+  .rt-card-link {
+    display: inline-block;
+    margin-top: 0.45rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--nf-glow);
+    text-decoration: underline;
+    text-decoration-color: rgb(184 217 154 / 35%);
+    text-underline-offset: 0.2em;
+  }
+
+  .rt-card-time {
+    margin: 0;
+    font-size: 0.7rem;
     font-weight: 600;
+    letter-spacing: 0.12em;
+    font-variant-numeric: tabular-nums;
+    color: var(--nf-glow);
+  }
+
+  .rt-card-title {
+    margin: 0.2rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.02rem;
+    line-height: 1.25;
     color: var(--text-primary);
   }
 
-  .night p {
-    max-width: 32rem;
-    margin: 0.45rem 0 0;
-    font-size: 0.95rem;
-    line-height: 1.65;
+  .rt-card-text {
+    margin: 0.3rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.5;
     color: var(--text-secondary);
+  }
+
+  /* Armed: what the night has not reached yet waits, dim and down. */
+  .rt[data-play] .rt-step .rt-dot {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+
+  .rt[data-play] .rt-step.is-on .rt-dot {
+    transform: none;
+    opacity: 1;
+  }
+
+  .rt[data-play] .rt-card {
+    opacity: 0;
+    translate: 0 0.6rem;
+    transition: opacity 500ms ease, translate 600ms var(--nf-ease);
+  }
+
+  .rt[data-play] .rt-below .rt-card {
+    translate: 0 -0.6rem;
+  }
+
+  .rt[data-play] .rt-step.is-on .rt-card {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  .rt-replay {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.75rem;
+    padding: 0 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: transparent;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .rt-replay:hover {
+    color: var(--text-primary);
+    border-color: rgb(184 217 154 / 40%);
+  }
+
+  .rt-replay svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .rt-sample {
+    margin: 1.2rem 0 0;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  /* ------------------------------------------------------------ phones */
+  @media (max-width: 859px) {
+    .rt-head {
+      justify-items: start;
+    }
+
+    .rt-clock {
+      grid-auto-flow: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .rt-clock svg {
+      width: 4.5rem;
+      height: 4.5rem;
+    }
+
+    .rt-track {
+      height: auto;
+      margin-top: 2rem;
+      padding-left: 1.6rem;
+    }
+
+    .rt-hours {
+      display: none;
+    }
+
+    .rt-line {
+      inset: 0.4rem auto 0.4rem 0.35rem;
+      width: 2px;
+      height: auto;
+      margin: 0;
+    }
+
+    .rt-fill {
+      background: linear-gradient(180deg, #6f8a56, var(--nf-glow));
+      transform: scaleY(calc(var(--hh) / 8));
+      transform-origin: 50% 0;
+    }
+
+    .rt-steps {
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .rt-step {
+      position: relative;
+      left: auto;
+      top: auto;
+    }
+
+    .rt-dot {
+      left: -1.6rem;
+      top: 1rem;
+    }
+
+
+
+    .rt-card,
+    .rt-above .rt-card,
+    .rt-below .rt-card,
+    .rt-first .rt-card,
+    .rt-last .rt-card {
+      position: relative;
+      inset: auto;
+      width: auto;
+      transform: none;
+    }
+
+    .rt-card::before {
+      display: none;
+    }
+
+    .rt[data-play] .rt-below .rt-card {
+      translate: 0 0.6rem;
+    }
   }
 </style>

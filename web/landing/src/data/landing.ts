@@ -6,74 +6,18 @@
 import { feedTabs } from "@/data/feed-preview";
 
 /**
- * What Mycelium covers, catalogue-style. `glyph` is one small line drawing in a
- * 48-unit box; it draws itself in when the entry arrives.
+ * How it works: one night of the nightly run, as stops on a clock. The stops
+ * are the run's real stages in their real order (`make tools-plan`: rank,
+ * remind, announce, brief, deliver); the hours are a sample night, since the
+ * operator sets when the run starts. `at` is hours after 22:00.
  */
-export const features = [
-  {
-    title: "Literature discovery",
-    description:
-      "Papers matched to your lab's themes, each with the reason it fits and the strongest reason it might not.",
-    glyph: "M8 14c6-3 12-3 16 1v24c-4-4-10-4-16-1z M40 14c-6-3-12-3-16 1v24c4-4 10-4 16-1z",
-  },
-  {
-    title: "Knowledge connections",
-    description:
-      "Claims, methods, datasets and contradictions linked into an evidence graph your team can review.",
-    glyph: "M12 34 24 14 36 30 12 34 M12 34a3 3 0 1 0 0 .1 M24 14a3 3 0 1 0 0 .1 M36 30a3 3 0 1 0 0 .1",
-  },
-  {
-    title: "Grant alerts",
-    description:
-      "Funding calls matched to projects and timelines, with deadlines tracked per round rather than one flat date.",
-    glyph: "M24 40c-7 0-12-5-12-12s5-12 12-12 12 5 12 12-5 12-12 12z M24 16c0-6 4-9 9-9-1 5-4 8-9 9",
-  },
-  {
-    title: "Fellowship matching",
-    description:
-      "Eligibility checked by rule before it raises anyone's hopes, and named plainly when a human still has to check.",
-    glyph: "M24 42V8 M24 14c-5-1-8 1-10 4 M24 14c5-1 8 1 10 4 M24 22c-6-1-10 1-12 5 M24 22c6-1 10 1 12 5 M24 30c-6-1-9 1-11 5 M24 30c6-1 9 1 11 5",
-  },
-  {
-    title: "Daily reports",
-    description:
-      "One written pass through the night, by theme — in the app, as a PDF, or posted to your lab's Discord.",
-    glyph: "M14 8h16l6 6v26H14z M30 8v6h6 M19 22h12 M19 28h12 M19 34h8",
-  },
-  {
-    title: "Labs, people and projects",
-    description:
-      "Personal, lab and project profiles, each with its own themes, so a side project never drowns the main line of work.",
-    glyph: "M8 26c0-6 5-10 10-10s10 4 10 10z M18 26v12 M27 31c0-4 3-7 7-7s7 3 7 7z M34 31v7 M5 38h38",
-  },
-] as const;
-
-/** The nightly loop, told as one night. */
 export const night = [
-  {
-    time: "22:00",
-    title: "Your profile is the brief",
-    description:
-      "Goals, projects, members and methods become a structured profile, grouped into research themes Mylo can actually search on.",
-  },
-  {
-    time: "02:00",
-    title: "Mylo reads the sources",
-    description:
-      "Scheduled scans read the literature and opportunity feeds, deduplicate across sources, and keep only what clears the relevance floor.",
-  },
-  {
-    time: "04:00",
-    title: "The evidence connects",
-    description:
-      "Papers, claims, methods and datasets link into a graph your team can review — not a black-box memory you have to trust blindly.",
-  },
-  {
-    time: "06:00",
-    title: "A report is waiting",
-    description:
-      "A written report, matched opportunities and deadline reminders, each with its reasoning attached and ready for a human to act on.",
-  },
+  { at: 0, time: "22:00", title: "The brief", text: "Your themes, projects and people: what tonight is ranked against." },
+  { at: 1.5, time: "23:30", title: "New arrivals", text: "Fresh papers, calls and conference deadlines, deduplicated across sources." },
+  { at: 3, time: "01:00", title: "Every theme ranked again", text: "The whole corpus, against each theme. Only what newly makes the cut moves on." },
+  { at: 4.5, time: "02:30", title: "Reminders", text: "A saved item with a deadline coming up gets its reminder, in the app or in Discord." },
+  { at: 6, time: "04:00", title: "New calls announced", text: "Each one a thread in the lab's Discord forums; a changed call updates its thread." },
+  { at: 8, time: "06:00", title: "The report", text: "Mylo's written pass, theme by theme: in the app, as a PDF, and in the lab's Discord." },
 ] as const;
 
 /** The sample 06:00 report. Positions and verdicts belong in a report, never in the feed. */
@@ -163,11 +107,11 @@ export const ways = {
   selfHost: {
     title: "Run it yourself",
     description:
-      "Mycelium is open source. The whole stack — web app, API, workers and database — starts with Docker Compose on your own machine or server.",
+      "Mycelium is open source. The whole stack — web app, API, workers and database — runs in Docker on your own machine or server. make setup asks who it is for, writes the config and secrets, and creates the first admin.",
     commands: [
       "git clone https://github.com/brendondgr/Mycelium.git",
       "cd Mycelium",
-      "docker compose up",
+      "make setup",
     ],
   },
 } as const;

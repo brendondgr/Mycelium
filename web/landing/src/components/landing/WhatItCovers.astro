@@ -1,6 +1,6 @@
 ---
 /**
- * Lab prototype — covers/network. "What it covers" as one living map.
+ * Front page · "What it covers", as one living map.
  *
  * Every capability is a node and the links between them are the point: a
  * grant reaches a project, a fellowship reaches a person, Mylo reads the graph.
@@ -105,7 +105,7 @@ const neighbours = (id: string) =>
 const far = growThreads(41, 1440, 900, 11);
 ---
 
-<section class="nf-section cn" data-proto="covers-network" data-progress data-pointer aria-labelledby="covers-network-heading">
+<section id="covers" class="nf-section cn" data-proto="covers-network" data-progress data-pointer aria-labelledby="covers-network-heading">
   <svg class="cn-far" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     {far.map((t) => <path d={t.d}></path>)}
   </svg>
@@ -436,11 +436,11 @@ const far = growThreads(41, 1440, 900, 11);
   }
 
   /* Tips pop in once their threads have reached them. */
-  :global(html[data-lab-motion="on"]) .cn-node {
+  :global(html[data-motion="on"]) .cn-node {
     --arrive: clamp(0, calc((var(--p, 1) - 0.18) * 4), 1);
   }
 
-  :global(html[data-lab-motion="on"]) .cn-node .cn-dot {
+  :global(html[data-motion="on"]) .cn-node .cn-dot {
     opacity: var(--arrive, 1);
   }
 

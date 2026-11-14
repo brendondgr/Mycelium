@@ -2,6 +2,14 @@
 import { appLoginUrl, demoUrl, primaryCta, primaryNav, siteName, sourceRepoUrl } from "@/data/site";
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
+
+/* One small line glyph per link, in a 20-unit box, stroked in currentColor. */
+const glyphs = {
+  home: '<path d="M3.5 9.5 10 4l6.5 5.5"></path><path d="M5.5 8v7.5h9V8"></path>',
+  contact: '<rect x="3" y="5" width="14" height="10" rx="1.5"></rect><path d="m3.5 6 6.5 5 6.5-5"></path>',
+  demo: '<circle cx="10" cy="10" r="7"></circle><path d="M8.5 7.4v5.2l4.2-2.6z"></path>',
+  source: '<path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path>',
+} as const;
 ---
 
 {/*
@@ -21,15 +29,19 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
           const active = currentPath === item.href;
           return (
             <a class="nav-link" href={item.href} aria-current={active ? "page" : undefined}>
+              <svg viewBox="0 0 20 20" aria-hidden="true" set:html={glyphs[item.icon]}></svg>
               {item.label}
             </a>
           );
         })
       }
       {/* Hidden until the demo reports itself on; see `demoUrl` in site.ts. */}
-      <a class="nav-link" href={demoUrl} data-demo-link hidden>Demo</a>
-      <a class="nav-link nav-source" href={sourceRepoUrl} rel="noopener">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"></path></svg>
+      <a class="nav-link" href={demoUrl} data-demo-link hidden>
+        <svg viewBox="0 0 20 20" aria-hidden="true" set:html={glyphs.demo}></svg>
+        Demo
+      </a>
+      <a class="nav-link" href={sourceRepoUrl} rel="noopener">
+        <svg viewBox="0 0 20 20" aria-hidden="true" set:html={glyphs.source}></svg>
         Source
       </a>
     </nav>
@@ -54,13 +66,18 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
               primaryNav.map((item) => (
                 <li>
                   <a href={item.href} aria-current={currentPath === item.href ? "page" : undefined}>
+                    <svg viewBox="0 0 20 20" aria-hidden="true" set:html={glyphs[item.icon]}></svg>
                     {item.label}
                   </a>
                 </li>
               ))
             }
-            <li data-demo-link hidden><a href={demoUrl}>Demo</a></li>
-            <li><a href={sourceRepoUrl} rel="noopener">Source code</a></li>
+            <li data-demo-link hidden>
+              <a href={demoUrl}><svg viewBox="0 0 20 20" aria-hidden="true" set:html={glyphs.demo}></svg>Demo</a>
+            </li>
+            <li>
+              <a href={sourceRepoUrl} rel="noopener"><svg viewBox="0 0 20 20" aria-hidden="true" set:html={glyphs.source}></svg>Source code</a>
+            </li>
           </ul>
           <div class="mobile-actions">
             <a class="nf-btn nf-btn-line" href={appLoginUrl}>Log in</a>
@@ -151,7 +168,9 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
     box-shadow: 0 0 8px var(--nf-glow);
   }
 
-  .nav-source svg {
+  .nav-link svg,
+  .mobile-panel li a svg {
+    flex: none;
     width: 1rem;
     height: 1rem;
     fill: none;
@@ -259,7 +278,9 @@ const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
   }
 
   .mobile-panel li a {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     padding: 0.65rem 0.75rem;
     border-radius: 0.6rem;
     font-size: 0.9rem;

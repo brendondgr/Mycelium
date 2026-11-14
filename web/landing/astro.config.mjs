@@ -20,10 +20,16 @@ export default defineConfig({
   // ASTRO_OUT_DIR must stay on the same filesystem as this project.
   outDir: process.env.ASTRO_OUT_DIR?.trim() || "./dist",
   integrations: [mdx(), react()],
-  // The pricing page was removed when Mycelium moved to an open-source
-  // release; old links land on the front page rather than a 404.
+  // The public site runs `astro dev` in the stack, so visitors would get
+  // Astro's dev toolbar along the bottom of every page. Keep it off.
+  devToolbar: { enabled: false },
+  // Pages folded into the front page: pricing when Mycelium went open
+  // source, product and about when the front page grew to cover them. Old
+  // links land on the front page rather than a 404.
   redirects: {
     "/pricing": "/",
+    "/product": "/",
+    "/about": "/",
   },
   vite: {
     plugins: [tailwindcss()],
