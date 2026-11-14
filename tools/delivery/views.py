@@ -23,6 +23,7 @@ from rest_framework.views import APIView
 
 from tools.delivery import usability
 from tools.delivery.collaboration import record_event
+from tools.delivery.feed_order import fit_band
 from tools.delivery.models import (
     DailyBriefing,
     IgnoredItem,
@@ -584,7 +585,7 @@ def _ignored_content_ids(viewer) -> set:
 def _latest_scores(
     target_filter: dict, content_type: str, *, viewer=None
 ) -> list[RelevanceScore]:
-    """A target's matched items for the area, from the latest run, pinned-first.
+    """A target's matched items for the area, from the latest run, by fit then rank.
 
     The **fresh-only** read, used for **papers**: the paper feed shows only the
     latest gather batch (see :func:`tools.recommendation.pipeline.recommend_for_user`),
@@ -613,9 +614,7 @@ def _latest_scores(
     today = timezone.now().date().isoformat()
 
     def sort_key(s: RelevanceScore):
-        pinned_until = s.signals.get("pinned_until")
-        pinned = bool(pinned_until and pinned_until >= today)
-        return (0 if pinned else 1, s.signals.get("rank") or 999)
+        return (fit_band(s.signals, today), s.signals.get("rank") or 999)
 
     current.sort(key=sort_key)
     return current
@@ -634,8 +633,9 @@ def _accumulated_scores(
     just the latest run. Items leave the feed only when the underlying
     :class:`ContentItem` is pruned at its deadline (``CASCADE`` drops the score).
 
-    Newly-pinned items lead; below them, strongest match first (then the raw score),
-    so an older still-relevant grant keeps a stable place. Rows marked
+    New items worth reading lead and items judged a skip trail
+    (:mod:`tools.delivery.feed_order`); within a band, slate position first (then
+    the raw score), so an older still-relevant grant keeps a stable place. Rows marked
     ``suggested=False`` (below the match-percent floor) are excluded. Capped by
     ``OPPORTUNITY_FEED_MAX`` as a payload backstop, since an accumulating feed can
     otherwise grow unbounded between prunes.
@@ -667,15 +667,14 @@ def _accumulated_scores(
         return []
 
     def sort_key(s: RelevanceScore):
-        pinned_until = s.signals.get("pinned_until")
-        pinned = bool(pinned_until and pinned_until >= today)
-        # Slate position first — it is the ranking the run actually produced — then
-        # the raw fused score for everything outside a slate. Sorting by the old
+        # Fit band first (tools.delivery.feed_order), then slate position — the
+        # ranking the run actually produced — then the raw fused score for
+        # everything outside a slate. Sorting by the old
         # match percent ranked the feed by "what did the model reach", which is not
         # a relevance order at all.
         rank = s.signals.get("top_rank")
         rank = rank if isinstance(rank, int) else 10**6
-        return (0 if pinned else 1, rank, -s.score)
+        return (fit_band(s.signals, today), rank, -s.score)
 
     scores.sort(key=sort_key)
     if cap is None:

@@ -1,10 +1,11 @@
 """"New" tagging + one-week pinning for freshly-seen recommendations.
 
 A newly-seen item (a grant, conference, fellowship, or paper) that surfaced for a
-user should jump to the top of their list and carry a "New" tag for its first
-week, so it isn't buried under older content. Everything in a feed has already
-cleared the interest/match threshold, so being *in* the feed already means "worth
-recommending"; this only decides which of those are **new** and pin them.
+user carries a "New" tag for its first week and, when the run judged it worth
+reading (verdict ``read`` or ``skim``), leads their list so it isn't buried under
+older content. Being in a feed is not by itself a judgement of fit — an item
+ranked 84th is in it too — so the pin lifts only judged fits
+(:mod:`tools.delivery.feed_order`); this module decides which items are **new**.
 
 An item is new when it was first seen within ``new_window_days`` of today:
 

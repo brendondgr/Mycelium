@@ -57,8 +57,9 @@ def _item(kind, title, *, due_in=None, vector=None):
     return item
 
 
-def _score(item, score, **target):
-    Score.objects.create(content=item, score=score, **target)
+def _score(item, score, verdict=None, **target):
+    signals = {"suggested": True, "verdict": verdict} if verdict else {}
+    Score.objects.create(content=item, score=score, signals=signals, **target)
 
 
 def _feed(built):
@@ -72,12 +73,29 @@ def _feed(built):
     closed = _item("grant", "Closed grant", due_in=-3)
     soon = _item("grant", "Grant closing in a week", due_in=7)
     later = _item("grant", "Grant closing in two months", due_in=60)
+    speculative = _item("grant", "Speculative grant", due_in=50)
+    unjudged = _item("grant", "Unjudged grant", due_in=55)
     fellowship = _item("fellowship", "Open fellowship", due_in=40)
     meeting = _item("conference", "Ocean meeting", due_in=90)
-    for item, score in ((paper, 0.9), (closed, 0.95), (later, 0.8), (fellowship, 0.7)):
-        _score(item, score, target_user=viewer)
-    for item, score in ((soon, 0.99), (later, 0.8), (meeting, 0.7)):
-        _score(item, score, target_lab=lab)
+    # The model's judgement leads the score: a skip is never saved, and a read
+    # beats a higher-scored item it did not judge.
+    for item, score, verdict in (
+        (paper, 0.9, "read"),
+        (closed, 0.95, "read"),
+        (speculative, 0.99, "skip"),
+        (unjudged, 0.9, None),
+        (later, 0.8, "read"),
+        (fellowship, 0.7, "read"),
+        (meeting, 0.6, "skim"),
+    ):
+        _score(item, score, verdict, target_user=viewer)
+    for item, score, verdict in (
+        (soon, 0.99, "read"),
+        (speculative, 0.98, "skip"),
+        (later, 0.8, "read"),
+        (meeting, 0.7, "skim"),
+    ):
+        _score(item, score, verdict, target_lab=lab)
     _score(comment, 0.99, target_project=project)
     _score(paper, 0.9, target_project=project)
     return {"paper": paper, "comment": comment, "project": project}
@@ -90,11 +108,12 @@ def test_the_demo_pages_fill_from_its_own_feed(demo):
     c = Client()
 
     mine = c.get("/api/demo/saves/").json()["items"]
-    # the closed grant is skipped; the lab's saves are a teammate's, not hers
+    # the closed grant and the skip are passed over, the read beats the unjudged
+    # grant, a PI gets no fellowship; the lab's saves are a teammate's, not hers
     assert sorted(i["title"] for i in mine) == [
         "Forecasting heatwaves",
         "Grant closing in two months",
-        "Open fellowship",
+        "Ocean meeting",
     ]
     lab_saves = c.get(f"/api/demo/labs/{lab.slug}/saves/").json()["items"]
     # a call closing within three weeks is not saved for a reminder

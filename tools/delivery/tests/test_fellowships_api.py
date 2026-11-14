@@ -284,9 +284,12 @@ def test_fellowships_feed_pinned_floats_first(client: APIClient):
     top = _fellowship("f_top", "Top Ranked Fellowship")
     pinned = _fellowship("f_pinned", "Brand New Fellowship")
     _score_fellowship(user, top, rank=1, run_at=run_at, match=90)
-    _score_fellowship(
+    row = _score_fellowship(
         user, pinned, rank=3, run_at=run_at, match=80, pinned_until=future, is_new=True
     )
+    # A pin lifts a judged fit only (tools.delivery.feed_order).
+    row.signals["verdict"] = "skim"
+    row.save(update_fields=["signals"])
 
     items = client.get("/api/opportunities/fellowships/").data["items"]
     assert items[0]["content_id"] == str(pinned.id)

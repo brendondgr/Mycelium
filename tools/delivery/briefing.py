@@ -54,6 +54,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from tools.delivery import briefing_sections
+from tools.delivery.feed_order import fit_band
 from tools.delivery.models import DailyBriefing, IgnoredItem
 from tools.delivery.theme_report import (
     ThemeSection,
@@ -130,9 +131,10 @@ def _suggested_scores(
     Mirrors the two read models in ``views.py``:
 
     - **Papers** (``views._latest_scores``) are fresh-only — keep just the latest
-      ``run_at`` (the freshest gather batch), pinned-first by rank.
+      ``run_at`` (the freshest gather batch), fit band first (``feed_order``),
+      then rank.
     - **Opportunities** (``views._accumulated_scores``) accumulate — the union of
-      every run's suggested rows, pinned-first then strongest match.
+      every run's suggested rows, fit band first, then strongest match.
 
     Either way, rows computed but not promoted (``suggested`` false) are dropped.
 
@@ -158,19 +160,15 @@ def _suggested_scores(
         scores = [s for s in scores if s.signals.get("run_at", "") == latest]
 
         def paper_key(s: RelevanceScore):
-            pinned_until = s.signals.get("pinned_until")
-            pinned = bool(pinned_until and pinned_until >= today)
-            return (0 if pinned else 1, s.signals.get("rank") or 999)
+            return (fit_band(s.signals, today), s.signals.get("rank") or 999)
 
         scores.sort(key=paper_key)
         return scores
 
     def opp_key(s: RelevanceScore):
-        pinned_until = s.signals.get("pinned_until")
-        pinned = bool(pinned_until and pinned_until >= today)
         match = s.signals.get("match_percent")
         match = match if isinstance(match, int) else -1
-        return (0 if pinned else 1, -match, -s.score)
+        return (fit_band(s.signals, today), -match, -s.score)
 
     scores.sort(key=opp_key)
     return scores

@@ -92,6 +92,9 @@ qdrant-data/
 # (data/loadtest), grant API sample CSVs (data/grants), and database dumps, which
 # carry the real user table. None of it is source, so none of it is committed.
 /data/
+# The same FastEmbed cache when a tool runs outside the stack without
+# FASTEMBED_CACHE_PATH set: it lands in the working directory.
+/models/
 
 # Generated or uploaded runtime files
 uploads/

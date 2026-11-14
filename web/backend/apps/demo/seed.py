@@ -6,12 +6,17 @@ reminder and shared paper is one the nightly ranking put in the demo people's
 or the lab's feed. Rebuilt after ``demo build`` and every night (the
 ``demo seed`` stage), so nothing points at an item the prune has removed.
 
-- **Saves.** The viewer saves her best-ranked paper, grant and fellowship that
-  are still open; the lab saves its best grant and conference.
+- **Saves.** The viewer saves her best paper, grant and conference that are
+  still open; the lab saves its best grant and conference. "Best" is the run's
+  own judgement first — a ``read`` before a ``skim`` before an unjudged or filed
+  item, never a ``skip`` — then the score, so a call the model found too
+  speculative is never what the demo shows off. No fellowship: she is a PI, and
+  fellowships are for students and postdocs.
 - **Reminders.** A lab reminder on each lab-saved call whose next deadline is
   at least three weeks away, a week and a day before it.
 - **Suggested for you.** A teammate on the viewer's first project shares that
-  project's best paper; delivery's fan-out decides whether it fits the viewer.
+  project's best paper (by the same judgement); delivery's fan-out decides
+  whether it fits the viewer.
 - **Mylo & you.** One open question, about a topic from a project she is on
   that her own profile does not name, with the number of papers in her feed
   about it; and the project status the world file set, as a change.
@@ -55,7 +60,7 @@ def seed(built: DemoWorld, *, log=print) -> dict:
     delivery.clear_activity(users=people, labs=[lab], projects=projects)
 
     out = {"saves": 0, "lab_saves": 0, "reminders": 0, "suggested": 0}
-    for kind in ("paper", "grant", "fellowship"):
+    for kind in ("paper", "grant", "conference"):
         item = _best(viewer.relevance_scores, kind, today)
         if item is not None:
             delivery.save_item(viewer, item)
@@ -92,8 +97,25 @@ def _open(item, today, lead=timedelta(0)) -> bool:
     ).exists()
 
 
+#: The run's verdicts, best first; anything else (unjudged, ``file``) after them.
+FIT_ORDER = {"read": 0, "skim": 1}
+POOL = 200
+
+
+def _by_fit(scores, kind):
+    """A target's suggested rows of one kind, best judged fit first; skips out."""
+    rows = [
+        s
+        for s in scores.filter(content__type=kind).select_related("content")[:POOL]
+        if (s.signals or {}).get("suggested", True)
+        and (s.signals or {}).get("verdict") != "skip"
+    ]
+    rows.sort(key=lambda s: (FIT_ORDER.get(s.signals.get("verdict"), 2), -s.score))
+    return rows
+
+
 def _best(scores, kind, today, lead=timedelta(0)):
-    for score in scores.filter(content__type=kind).select_related("content")[:40]:
+    for score in _by_fit(scores, kind):
         if _open(score.content, today, lead):
             return score.content
     return None
@@ -147,11 +169,8 @@ def _share(delivery, project, viewer) -> int:
     sharer = _teammate([project], viewer)
     if sharer is None:
         return 0
-    papers = project.relevance_scores.filter(content__type="paper").select_related(
-        "content"
-    )
     tried = 0
-    for score in papers[: SHARE_TRIES * 4]:
+    for score in _by_fit(project.relevance_scores, "paper")[: SHARE_TRIES * 4]:
         title = (score.content.metadata or {}).get("title") or ""
         if NOT_A_PAPER.match(title):
             continue

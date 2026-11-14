@@ -133,9 +133,10 @@ def test_grants_feed_pins_new_high_fit_first(client: APIClient):
     top = _grant("g_top", "Knowledge Graphs Award")
     pinned = _grant("g_pinned", "Brand New Agentic AI Award")
     _score(user, top, rank=1, run_at=run_at, match=88)
-    _score(
+    row = _score(
         user, pinned, rank=3, run_at=run_at, match=80, pinned_until=future, is_new=True
     )
+    _set_verdict(row, "read")
 
     resp = client.get("/api/opportunities/grants/")
     assert resp.status_code == 200
@@ -147,6 +148,50 @@ def test_grants_feed_pins_new_high_fit_first(client: APIClient):
     assert items[0]["amount"] == "$100,000"
     assert items[1]["content_id"] == str(top.id)
     assert items[1]["is_new"] is False
+
+
+def _set_verdict(row, verdict):
+    row.signals["verdict"] = verdict
+    row.save(update_fields=["signals"])
+
+
+@pytest.mark.django_db
+def test_a_pin_lifts_only_a_judged_fit_and_skips_trail(client: APIClient):
+    """A new item leads only when the run judged it worth reading; an unjudged
+    new item keeps its rank, and one judged a skip goes below everything."""
+    user = User.objects.create_user("fit", password="x")
+    client.force_authenticate(user)
+    run_at = "2026-07-05T01:00:00+00:00"
+    future = (timezone.now().date() + timedelta(days=5)).isoformat()
+    rows = {}
+    for title, rank, verdict, pinned in (
+        ("Skipped first", 1, "skip", False),
+        ("Strong", 2, "read", False),
+        ("New but ranked 84th", 84, None, True),
+        ("New and filed", 3, "file", True),
+        ("New and worth a skim", 9, "skim", True),
+        ("New but a skip", 4, "skip", True),
+    ):
+        rows[title] = _score(
+            user,
+            _grant(title, title),
+            rank=rank,
+            run_at=run_at,
+            match=90 - rank,
+            pinned_until=future if pinned else None,
+            is_new=pinned,
+        )
+        _set_verdict(rows[title], verdict)
+
+    items = client.get("/api/opportunities/grants/").data["items"]
+    assert [i["title"] for i in items] == [
+        "New and worth a skim",
+        "Strong",
+        "New and filed",
+        "New but ranked 84th",
+        "Skipped first",
+        "New but a skip",
+    ]
 
 
 @pytest.mark.django_db

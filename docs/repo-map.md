@@ -178,6 +178,7 @@ A task index across the three tools; each tool also has its own section below.
 | Ranking-stack seams (ORM-free ranking, swappable vector index) | `tools/retrieval/protocols.py` (`Retrievable`, `VectorIndex`), `tools/retrieval/index.py` (`PgVectorIndex`) |
 | Theme spread (opt-in, all defaults off) | `tools/recommendation/fusion.py` (`SpreadPolicy`, `apply_spread`, `quota_clusters`, `cap_cluster_share`, `mmr_clusters`, `cluster_relative_pass`, `combine_clusters(merge=…)`), reached via `pipeline.fuse_clusters_pool(spread=…)`; measured in `EXP-2026-08-005` |
 | Grants / conferences / fellowships matching | `tools/recommendation/opportunities.py`, `tools/recommendation/fellowships.py`, `tools/recommendation/opportunity_llm.py`, `tools/recommendation/pinning.py` |
+| The order every feed and the report list items in (a "New" pin lifts only a `read`/`skim`; a `skip` goes last; then rank) | `tools/delivery/feed_order.py` (`fit_band`), used by `views._latest_scores`, `views._accumulated_scores` and `briefing._suggested_scores` |
 | Fellowship eligibility gates (stage ladder, prose constraints) | `tools/recommendation/fellowships.py` (`STAGE_LADDER`, `_stage_gate`, `_constraint_gates`, `derive_stage`) |
 | Fellowship eligibility extracted from prose | `tools/retrieval/eligibility/constraints.py`, `tools/retrieval/fellowships/ingest.py` (`extract_fellowship_constraints`) |
 | On-demand whole-corpus refit | `tools/recommendation/refitting.py` |
