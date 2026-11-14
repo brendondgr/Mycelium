@@ -520,7 +520,9 @@ rewritten history.
 
 ## Phase 8 — Public-project basics (can follow publication)
 
-- **CI:** a GitHub Actions workflow on pull requests running:
+- **CI:** *dropped 2026-11-14 at the maintainer's request — nothing runs
+  automatically on GitHub (the workflow and Dependabot were removed); the
+  same checks are run locally.* It was a GitHub Actions workflow running:
   - backend and tool tests against a Postgres service, plus `make test-mylo`;
   - `npm run lint`;
   - `make validate-research`;

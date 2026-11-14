@@ -3,9 +3,9 @@
 Project direction and working rules live in [`CLAUDE.md`](CLAUDE.md) and
 [`docs/skills/global.md`](docs/skills/global.md). This file covers the things
 that have their own process: running an experiment, adding a tool, and the
-checks a change is expected to pass. CI (`.github/workflows/ci.yml`) runs the
-tests, lint, type-check, research-record validation and a dependency and secret
-scan on every pull request; run the checks below locally before you push.
+checks a change is expected to pass. Nothing runs automatically on GitHub —
+no CI and no Dependabot, by the maintainer's choice — so run the checks below
+locally before you push.
 Security problems are reported privately — see [`SECURITY.md`](SECURITY.md).
 Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md).
 
