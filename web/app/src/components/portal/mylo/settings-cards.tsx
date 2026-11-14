@@ -61,7 +61,7 @@ export function ChatSettingsCard() {
           <Toggle
             id="mylo-chat-learning"
             label="Let Mylo learn from your chats"
-            help="Mylo may notice things you say to keep your profile and recommendations current, and asks you before anything changes. Only your own words are read, never Mylo's."
+            help="Mylo may notice things you say to keep your profile and recommendations current, and asks you before anything changes. Only your own words are read, never Mylo's. Turning it off stops new learning; what Mylo already learned stays until you delete it under Mylo & you."
             checked={prefs.data.learning}
             onChange={(on) =>
               update({ learning: on }, on ? "Mylo learns from your chats." : "Mylo no longer learns from your chats.")

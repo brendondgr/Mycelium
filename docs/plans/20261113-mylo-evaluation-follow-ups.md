@@ -132,13 +132,13 @@ limit.
 | O1 | **Facts stated in a sentence are not checked.** Only `Label: value` lines, citation numbers and figures are. | "The lead author of #1 is Marchetti." (invented) passes; so does "presented at IEEE ICAC 2024" for 2026. Caught 0 of 147 times per class. | Deferred by decision on 2026-11-13. The ratings (C-035 recall) will show how often Mylo actually makes this kind of error. |
 | O2 | **Claims with no number in them are not checked.** | "The record states how many days ahead the forecasts remain skilful" (it says the opposite) passes: 0 of 180. | A model-based judge. See the "replace TypeSafe with a local judge" direction; the same small yes/no judge could check a sentence against the item it cites. |
 | O3 | **The checker compares a fact line with all the evidence of the turn, not the item it is about.** | "Authors: J. Whitcombe" passes because Whitcombe is a lab member who appears elsewhere in the evidence. | Tie a fact line to the `#n` it describes and check only that item's record. Medium-sized change in `verify.py` and `loop.py`. |
-| O4 | **Turning learning off keeps what was already learned.** The toggle says "Mylo no longer learns from your chats", which is true going forward. | EXP-2026-11-011: after opting out, the next answer still recalled the earlier plan (5/5). | A product decision: either retract on opt-out (as deletion now does), or add one line to the toggle's help text saying what was learned stays and that Forget removes it. |
+| O4 | ~~Turning learning off keeps what was already learned.~~ **Decided 2026-11-14: by design.** | EXP-2026-11-011: after opting out, the next answer still recalled the earlier plan (5/5). | Turning learning off stops future learning only. Past learning stops being used only when the person deletes it ("Delete my observations" under Mylo & you). The toggle's help text now says so. Nothing else to do. |
 | O5 | **Asking the decision model a state's questions together changes its answers.** | Joint vs one-per-request: the most likely answer differs on 20.6% of questions (Q-064). | Human judgments to decide which form is closer to a person; until then, keep the production form. |
 | O6 | **The weekly report's evidence is not stored**, so its checker's precision cannot be measured (C-025). | 7 model-written weeklies, 0 rebuildable. | Store the evidence packet with each weekly. |
 | O7 | **Mylo sometimes asks back instead of answering.** | "Who runs this funding programme, and is it open now?" (`to03`, rep2) ended in a clarifying question with an empty answer. | Watch in the ratings; if it recurs, tell the prompt that a tagged item is what "this" means. |
 | O8 | **Compound questions are slow under load.** | With 8 people asking at once, compound answers take 73–78 s at the median and up to 234 s (EXP-2026-11-010 A3). A 10-step limit cut that to 33.5 s but cut off half the answers. | Re-measure after fix 4 (fewer wasted steps) before changing the step limit. |
 | O9 | **The `unread` check is untested.** | Single-turn questions cannot exercise it. | A multi-turn test set. |
-| O10 | **Mylo still recalls a chat the person excluded from learning.** A recording exclusion or opt-out stops ambient, but not Mylo's own recall of the person's earlier chats, which still exist. | EXP-2026-11-011 attempts 5–6: excluded content reached the answer twice through `thread_search` and a function result once through the recall digest (Q-068). | A product decision: it is the person's own chat. If exclusion should cover it, the digest and `thread_search` must honour the exclusion. |
+| O10 | ~~Mylo still recalls a chat the person excluded from learning.~~ **Decided 2026-11-14: by design.** | EXP-2026-11-011 attempts 5–6: excluded content reached the answer through `thread_search` and the recall digest (Q-068). | It is the person's own chat, which still exists. Chats stop being readable when they are deleted, or when the lab or department they belong to is deleted. Nothing to do. |
 | O11 | **Re-measure the answer fixes.** | — | EXP-2026-11-013 arm (a) on the project questions (answers should now use the project's description, with fewer loops). Not run today. |
 
 ## The human ratings: what they will tell you, and how to read them
@@ -166,3 +166,14 @@ seen, with thresholds, as claims C-033 to C-035 in
 Note that the raters judge last night's answers. They were produced before
 fixes 1–4, so the project-status questions will score low partly because of
 fix 1's bug.
+
+## Found 2026-11-14 while checking the demo (not yet fixed)
+
+| # | What | What it needs |
+|---|---|---|
+| D1 | **A model outage during the report stage gives everyone a template report.** On 2026-11-14 the tunnel to the model dropped between about 12:15 and 13:08 UTC; all 19 daily reports came out `fallback`. The pre-flight passed at 12:04, so nothing stopped the run. | Check the model again before the report stage and retry it (or the whole stage) once the model is back, instead of writing fallbacks. |
+| D2 | **Empty demo pages.** Saves, Reminders, Suggested and Mylo & you are empty for a visitor ("Nothing saved yet"). | Seed a few saves, one reminder, one shared paper and one pending Mylo question in `world.yaml`. |
+| D3 | **The demo PI's account page says her email isn't at a recognised institution** (`showcase.mycelium.invalid`). | Give the demo people an affiliation, or hide that line in the demo. |
+| D4 | **The SBIR grant source returns HTTP 403** every night, so it contributes nothing. | Look at whether the API moved or now needs a key. |
+| D5 | **Beat's original stall (13:39 UTC, the second since August) is still unexplained.** The healthcheck now recovers it; the leading guess is still the `dbm.sqlite3` schedule store. | A `py-spy dump` the next time it stalls, before the healthcheck kills it. |
+

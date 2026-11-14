@@ -77,12 +77,26 @@ def _target(caller, lab=None, project=None):
     return {"target_user": caller.user}, "your feed", None
 
 
-def _who_should_look(score) -> str:
+def _fit_usernames(score) -> list[str]:
     fits = (score.signals or {}).get("member_fit") or []
-    names = [
-        f"@{f['username']}" for f in fits if isinstance(f, dict) and f.get("username")
-    ]
-    return f" · who should look: {', '.join(names[:4])}" if names else ""
+    return [f["username"] for f in fits if isinstance(f, dict) and f.get("username")]
+
+
+def _display_names(rows) -> dict[str, str]:
+    """Full names for the members named in these rows' ``member_fit``. Mylo
+    repeats what it reads, so a bare ``@demo.tomas`` here reached answers."""
+    from django.contrib.auth import get_user_model
+
+    usernames = {u for s in rows for u in _fit_usernames(s)}
+    if not usernames:
+        return {}
+    users = get_user_model().objects.filter(username__in=usernames)
+    return {u.username: u.get_full_name() or f"@{u.username}" for u in users}
+
+
+def _who_should_look(score, names: dict[str, str]) -> str:
+    shown = [names.get(u, f"@{u}") for u in _fit_usernames(score)]
+    return f" · who should look: {', '.join(shown[:4])}" if shown else ""
 
 
 def feeds_slate(caller, lab=None, project=None, types=None, limit=8):
@@ -96,8 +110,10 @@ def feeds_slate(caller, lab=None, project=None, types=None, limit=8):
             continue
         item_refs, lines = slate_lines(rows)
         if "target_user" not in kwargs:
+            names = _display_names(rows)
             lines = [
-                line + _who_should_look(s) for line, s in zip(lines, rows, strict=True)
+                line + _who_should_look(s, names)
+                for line, s in zip(lines, rows, strict=True)
             ]
         refs += item_refs
         sections.append(f"{t.title()}s (rank order):\n" + "\n".join(lines))

@@ -197,6 +197,11 @@ from _runner import (  # noqa: E402
 # plumbing: if they can't be imported for any reason, the daily run must still
 # complete. Every reporter call goes through ``_notify`` which no-ops when the
 # reporter is unavailable; ``write_run_state`` is guarded the same way.
+# The repository root must be importable first: since this script moved to
+# ops/nightly/ (2026-11-06) the import below failed silently, so the nightly
+# posted no error or summary to Discord and stopped writing its run state.
+if str(Path(__file__).resolve().parents[2]) not in sys.path:
+    sys.path.append(str(Path(__file__).resolve().parents[2]))
 try:  # pragma: no cover - trivial import guard
     from mylo import analytics, reporting
     from mylo.runstate import write_run_state

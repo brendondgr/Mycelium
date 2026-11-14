@@ -209,6 +209,10 @@ projects:
       public dashboard.
     areas: [marine heatwave prediction, ocean data assimilation, ocean data dashboards]
     keywords: [subseasonal forecasting, sea surface temperature, fisheries]
+    status: >-
+      Hindcasts for 2015-2024 beat persistence at four weeks; the public
+      dashboard is in testing with two fisheries offices.
+    progress: 60
   - name: Plastic pathways
     lead: jonah
     members: [jonah, priya, mara]
@@ -217,3 +221,7 @@ projects:
       currents and satellite detections, to target clean-ups.
     areas: [marine litter tracking, satellite ocean remote sensing]
     keywords: [Lagrangian particle tracking, beaching, floating debris detection]
+    status: >-
+      Satellite debris detections run weekly; the beaching model is being
+      checked against last summer's beach surveys.
+    progress: 35

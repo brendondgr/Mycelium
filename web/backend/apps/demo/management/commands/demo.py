@@ -66,6 +66,18 @@ def _interests(entry: dict, *, extra: dict | None = None) -> dict:
     return validate_interests(payload)
 
 
+def _project_goals(entry: dict) -> dict:
+    """A project's ``goals`` as the app's project screens write them, so the
+    demo's Projects page and Mylo show a status and progress, not dashes."""
+    interests = _interests(entry)
+    goals = {"interests": interests, "watch_topics": list(interests["areas"])}
+    if entry.get("status"):
+        goals["status"] = " ".join(str(entry["status"]).split())
+    if entry.get("progress") is not None:
+        goals["progress"] = int(entry["progress"])
+    return goals
+
+
 class Command(BaseCommand):
     help = "Build, show or delete the public demo's fictional lab (apps/demo)."
 
@@ -238,14 +250,8 @@ class Command(BaseCommand):
             )
 
         for pspec in spec.get("projects", []):
-            interests = _interests(pspec)
             project = Project.objects.create(
-                scope_lab=lab,
-                name=pspec["name"],
-                goals={
-                    "interests": interests,
-                    "watch_topics": list(interests["areas"]),
-                },
+                scope_lab=lab, name=pspec["name"], goals=_project_goals(pspec)
             )
             for key in pspec.get("members", []):
                 ProjectMember.objects.get_or_create(project=project, user=people[key])
