@@ -18,13 +18,22 @@ decision at their end, not a bug here. The adapter therefore treats a 403 as a
 reportable source outage rather than a crash, and everything downstream of
 ``fetch`` is exercised from stored raw payloads so the flattening logic stays
 testable regardless.
+
+**Since 2026-11 the API answers 403 to everyone**: SBIR.gov's own API page says
+its APIs are "currently undergoing maintenance". When the API refuses, the
+adapter reads the public topic search instead (``www.sbir.gov/topics``, allowed
+by robots.txt): the listing of open topics, fresh each run, and each topic's
+own page for the full description, cached because a posted topic's text does
+not change. Those are shaped like the API's rows, so ``parse`` is unchanged.
 """
 
 from __future__ import annotations
 
+import html
+import re
 from typing import Any
 
-from tools.retrieval.collect.core.http import PoliteClient
+from tools.retrieval.collect.core.http import FetchError, PoliteClient
 from tools.retrieval.collect.core.rawstore import RawBundle, new_run_id, utc_now
 from tools.retrieval.collect.grants.adapters.base import BaseAdapter
 from tools.retrieval.collect.grants.normalize import (
@@ -45,6 +54,12 @@ MAX_PAGES = 200
 #: against ``current_status``.
 OPEN_STATUSES = frozenset({"open", "future", "pre-release", "prerelease"})
 
+SITE_ROOT = "https://www.sbir.gov"
+#: The public topic search, open topics only (pre-release ones included).
+SITE_LISTING = f"{SITE_ROOT}/topics?status=Open&page={{page}}"
+#: The listing shows ten topics a page; this bounds a runaway pager.
+SITE_MAX_PAGES = 80
+
 
 class SBIRAdapter(BaseAdapter):
     name = "sbir"
@@ -56,6 +71,16 @@ class SBIRAdapter(BaseAdapter):
     # -- stage 1 ----------------------------------------------------------
 
     def fetch(self, client: PoliteClient, *, limit: int | None = None) -> RawBundle:
+        try:
+            return self._fetch_api(client, limit=limit)
+        except FetchError as exc:
+            if exc.status != 403:
+                raise
+        run_id = new_run_id()
+        rows = fetch_site(client, limit=limit)
+        return self.bundle(self.name, run_id, utc_now(), rows, via="site")
+
+    def _fetch_api(self, client: PoliteClient, *, limit: int | None = None) -> RawBundle:
         run_id = new_run_id()
         collected: list[dict[str, Any]] = []
         start = 0
@@ -233,3 +258,139 @@ def _due_dates(row: dict[str, Any]) -> list[str]:
     raw = row.get("application_due_date") or row.get("application_due_dates")
     values = [to_iso_date(entry) for entry in _as_list(raw)]
     return dedupe_preserving_order([value for value in values if value])
+
+
+# --- the public site, while the API is down ---------------------------------
+
+_HIT = re.compile(r'<h3[^>]*>\s*<a href="/topics/(\d+)">(.*?)</a>\s*</h3>(.*?)(?=<h3|</ul>\s*</nav>|$)', re.S)
+_DATE = re.compile(r"<b>(Release Date|Open Date|Close Date):</b>\s*([^<&]+)")
+_STATUS = re.compile(r'<span class="[^"]*radius-sm[^"]*">\s*([^<]+?)\s*</span>')
+
+
+def _text_lines(page: str) -> list[str]:
+    page = re.sub(r"<(script|style)\b.*?</\1>", "", page, flags=re.S)
+    text = html.unescape(re.sub(r"<[^>]+>", "\n", page))
+    return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def parse_listing(page: str) -> list[dict[str, str]]:
+    """The topic hits on one listing page: id, title, status and dates."""
+    hits = []
+    for topic_id, title, rest in _HIT.findall(page):
+        dates = {label: value.strip() for label, value in _DATE.findall(rest)}
+        status = _STATUS.search(rest)
+        hits.append(
+            {
+                "id": topic_id,
+                "title": clean_text(html.unescape(re.sub(r"<[^>]+>", "", title))),
+                "status": status.group(1) if status else "",
+                "release_date": dates.get("Release Date", ""),
+                "open_date": dates.get("Open Date", ""),
+                "close_date": dates.get("Close Date", ""),
+            }
+        )
+    return hits
+
+
+def _after(lines: list[str], label: str, stop: tuple[str, ...]) -> list[str]:
+    """The lines after ``label`` up to the next of ``stop``."""
+    try:
+        start = lines.index(label) + 1
+    except ValueError:
+        return []
+    out = []
+    for line in lines[start:]:
+        if line in stop:
+            break
+        out.append(line)
+    return out
+
+
+_LABELS = (
+    "Funding Agency", "Year:", "Topic Number:", "Solicitation Number:",
+    "Tagged as:", "Solicitation Status:", "NOTE:", "View Official Solicitation",
+    "Release Schedule", "Release Date", "Open Date", "Due Date(s)", "Close Date",
+    "Description",
+)
+_PAGE_END = ("Site Map", "Privacy Policy")
+
+
+def parse_topic(page: str) -> dict[str, Any]:
+    """One topic's own page: agency, numbers, programme, due dates, description."""
+    lines = _text_lines(page)
+    agency = _after(lines, "Funding Agency", _LABELS)
+    tags = [t.upper() for t in _after(lines, "Tagged as:", _LABELS)]
+    official = re.search(r'href="([^"]+)"[^>]*>\s*View Official Solicitation', page)
+    return {
+        "agency": agency[0] if agency else "",
+        "branch": agency[1] if len(agency) > 1 else "",
+        "topic_number": next(iter(_after(lines, "Topic Number:", _LABELS)), ""),
+        "solicitation_number": next(iter(_after(lines, "Solicitation Number:", _LABELS)), ""),
+        "program": "STTR" if "STTR" in tags else "SBIR",
+        "phase": _phases(tags),
+        "due_dates": _after(lines, "Due Date(s)", _LABELS),
+        "agency_url": html.unescape(official.group(1)) if official else "",
+        "description": "\n\n".join(_after(lines, "Description", _PAGE_END)),
+    }
+
+
+def _phases(tags: list[str]) -> list[str]:
+    if "BOTH" in tags:
+        return ["Phase I", "Phase II"]
+    return [p for p, tag in (("Phase I", "PHASE I"), ("Phase II", "PHASE II")) if tag in tags]
+
+
+def fetch_site(client: PoliteClient, *, limit: int | None = None) -> list[dict[str, Any]]:
+    """Open topics from the public site, grouped into API-shaped solicitations."""
+    hits: list[dict[str, str]] = []
+    for page in range(SITE_MAX_PAGES):
+        found = parse_listing(client.get(SITE_LISTING.format(page=page), cache=False).text())
+        hits.extend(found)
+        if not found or (limit is not None and len(hits) >= limit):
+            break
+    if limit is not None:
+        hits = hits[:limit]
+    groups: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for hit in hits:
+        url = f"{SITE_ROOT}/topics/{hit['id']}"
+        topic = parse_topic(client.get(url, min_bytes=1000).text())
+        number = topic["solicitation_number"] or f"topic-{hit['id']}"
+        key = (number, hit["open_date"], hit["close_date"])
+        row = groups.get(key)
+        if row is None:
+            row = groups[key] = {
+                "solicitation_id": number,
+                "solicitation_number": number,
+                "solicitation_title": f"{topic['agency']} {topic['program']} solicitation {number}".strip(),
+                "program": topic["program"],
+                "phase": topic["phase"],
+                "agency": topic["agency"],
+                "branch": topic["branch"],
+                "release_date": hit["release_date"],
+                "open_date": hit["open_date"],
+                "close_date": hit["close_date"],
+                "application_due_date": topic["due_dates"],
+                "solicitation_agency_url": topic["agency_url"],
+                "current_status": hit["status"] or "Open",
+                "solicitation_topics": [],
+            }
+        row["solicitation_topics"].append(
+            {
+                "topic_title": hit["title"],
+                "topic_number": topic["topic_number"],
+                "branch": topic["branch"],
+                "topic_description": topic["description"],
+                "sbir_topic_link": url,
+            }
+        )
+    # A solicitation whose topics carry different dates becomes one row per
+    # date pair; each needs its own id.
+    numbers = [k[0] for k in groups]
+    for (number, opened, closed), row in groups.items():
+        if numbers.count(number) > 1:
+            row["solicitation_id"] = f"{number}@{opened}/{closed}"
+        # The branch belongs to the solicitation only when every topic shares it.
+        if len({t["branch"] for t in row["solicitation_topics"]}) > 1:
+            row["branch"] = ""
+    return list(groups.values())
+

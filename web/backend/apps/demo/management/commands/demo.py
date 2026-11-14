@@ -82,7 +82,9 @@ class Command(BaseCommand):
     help = "Build, show or delete the public demo's fictional lab (apps/demo)."
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument("action", choices=("build", "refresh", "status", "delete"))
+        parser.add_argument(
+            "action", choices=("build", "refresh", "seed", "status", "delete")
+        )
         parser.add_argument(
             "--no-rank",
             action="store_true",
@@ -96,11 +98,14 @@ class Command(BaseCommand):
         action = options["action"]
         if action == "status":
             return self._status()
+        if action == "seed":
+            return self._seed(required=False)
         if action == "refresh":
             built = DemoWorld.objects.select_related("lab", "department").first()
             if built is None:
                 raise CommandError("No demo world. Run `manage.py demo build`.")
             self._refresh(built)
+            self._seed()
             return self._status()
         if action == "delete":
             with transaction.atomic():
@@ -123,6 +128,7 @@ class Command(BaseCommand):
         )
         if not options["no_rank"]:
             self._rank(built)
+            self._seed()
         from django.conf import settings
 
         if not settings.DEMO_ENABLED:
@@ -345,6 +351,30 @@ class Command(BaseCommand):
             self.stdout.write(f"  {built.lab.name}: {briefing.origin}")
         except Exception as exc:  # noqa: BLE001
             self.stderr.write(f"  {built.lab.name}: failed — {exc}")
+
+    def _seed(self, *, required: bool = True) -> None:
+        """Saves, reminders, a shared paper and Mylo's questions from the
+        world's current feed (``apps/demo/seed.py``). The nightly runs this for
+        every instance; with no demo world, or the demo off, it does nothing."""
+        from django.conf import settings
+
+        from ...seed import seed
+
+        built = DemoWorld.objects.select_related("viewer", "lab").first()
+        if built is None or not (required or settings.DEMO_ENABLED):
+            if required:
+                raise CommandError("No demo world. Run `manage.py demo build`.")
+            self.stdout.write("No demo world in use: nothing to seed.")
+            return
+        self.stdout.write(self.style.MIGRATE_HEADING("Activity"))
+        if required:
+            seed(built, log=self.stdout.write)
+            return
+        # In the nightly a failure here must not stop the reports that follow.
+        try:
+            seed(built, log=self.stdout.write)
+        except Exception as exc:  # noqa: BLE001
+            self.stderr.write(f"  Demo activity not refreshed: {exc}")
 
     # -- status ------------------------------------------------------------
 

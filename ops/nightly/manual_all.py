@@ -114,7 +114,9 @@ A pre-flight ``llm_check --strict`` gates the whole run: the pipeline depends on
 the LLM for paper rankings, opportunity scoring, and briefings, so if the
 endpoint is unreachable the run is skipped entirely (nothing scraped, matched, or
 briefed) rather than filling the feeds with deterministic fallbacks. It retries
-on the next scheduled run.
+on the next scheduled run. The model is checked again right before the reports
+(``model_ready_for_reports``); if it dropped out mid-run the run waits up to 30
+minutes for it, then writes template reports and says so on Discord.
 
 Observability: every notable condition is posted to Mylo's Discord error channel
 via :mod:`mylo.reporting` (a stdlib-only REST poster that never raises) — a
@@ -700,6 +702,68 @@ def preflight_llm(base: list[str]) -> bool:
     return True
 
 
+#: Before the reports are written the model is checked again: on 2026-11-14 the
+#: pre-flight passed at 12:04 UTC, the tunnel dropped from about 12:15 to 13:08,
+#: and all 19 reports came out as templates. The run waits this long for it to
+#: come back, checking this often, before writing them anyway.
+MODEL_WAIT_SECONDS = 30 * 60
+MODEL_RECHECK_SECONDS = 2 * 60
+
+
+def report_commands() -> set[str]:
+    """The stages that write reports (phase ``brief``)."""
+    run, _skipped = _tool_nightly.plan_for(None)
+    return {p.stage.command for p in run if p.stage.phase == "brief"}
+
+
+def model_ready_for_reports(
+    base: list[str],
+    *,
+    wait: int = MODEL_WAIT_SECONDS,
+    every: int = MODEL_RECHECK_SECONDS,
+    sleep=time.sleep,
+) -> bool:
+    """Check the model right before the reports; wait for it if it is down.
+
+    Returns whether the model answered. When it never does, the reports are
+    still written (as templates, as before) and the run says so on Discord:
+    a template report today is better than none, but nobody should mistake it
+    for a model-written one.
+    """
+    if model_off_on_purpose():
+        return True
+    print("\n=== Re-checking the LLM endpoint before the reports… ===", flush=True)
+    waited = 0
+    while run_manage("llm_check", ["--strict"], intro=None, base=base) != 0:
+        if waited >= wait:
+            _notify(
+                "warn",
+                "LLM endpoint unreachable before the reports",
+                f"The model was up at the pre-flight but did not answer before "
+                f"the reports, nor in the {wait // 60} minutes the run waited. "
+                "Today's reports are written from templates.",
+                stage="brief",
+                action=f"Check the LLM server / tunnel on {HOST}.",
+            )
+            return False
+        print(
+            f"  · model not answering; checking again in {every // 60} min "
+            f"({waited // 60}/{wait // 60} min waited)",
+            flush=True,
+        )
+        sleep(every)
+        waited += every
+    if waited:
+        _notify(
+            "warn",
+            "LLM endpoint was down before the reports",
+            f"The model came back after about {waited // 60} minutes; the "
+            "reports were written with it.",
+            stage="brief",
+        )
+    return True
+
+
 def start_model_budget(base: list[str]) -> None:
     """Record where tonight's ``nightly.model_calls`` budget starts counting.
 
@@ -813,8 +877,12 @@ def main() -> int:
 
     # Stages 2..N — recommend, remind, prune, and brief inside the backend container.
     stages_run: list[str] = []
+    reports = report_commands()
     for offset, (command, passthrough, intro) in enumerate(stages):
         step = 2 + offset
+        if command in reports:
+            reports = set()  # once, before the first report stage
+            model_ready_for_reports(base)
         print(f"\n=== {step}/{total} · {intro} ===", flush=True)
         code = run_manage(command, passthrough, intro=None, base=base)
         if code != 0:

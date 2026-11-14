@@ -80,6 +80,7 @@ run_reminder_tick
 runserver
 scan_literature
 seed_demo
+seed_understanding
 send_daily_discord_reports
 send_lab_digests
 send_slack_reports

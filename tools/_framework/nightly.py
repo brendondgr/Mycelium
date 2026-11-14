@@ -21,9 +21,18 @@ from dataclasses import dataclass
 from . import discovery, loader
 from .spec import PHASES, Stage, Tool
 
-#: Stages the platform itself owns. Every stage today belongs to a tool; a
-#: platform-owned stage would be declared here.
-PLATFORM_STAGES: tuple[Stage, ...] = ()
+#: Stages the platform itself owns; every other stage belongs to a tool.
+#: ``demo seed`` rebuilds the public demo lab's saves, reminders, shared paper
+#: and Mylo questions from the feed the rank and prune phases just left
+#: (``apps/demo/seed.py``); without a demo world it does nothing.
+PLATFORM_STAGES: tuple[Stage, ...] = (
+    Stage(
+        command="demo",
+        args=("seed",),
+        phase="alert",
+        intro="Demo · Refreshing the demo lab's saves and suggestions…",
+    ),
+)
 
 
 @dataclass(frozen=True)

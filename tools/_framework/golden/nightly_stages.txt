@@ -3,6 +3,7 @@ run_daily_opportunities	--no-prune
 run_reminder_tick	
 prune_opportunities	
 prune_briefings	
+demo	seed
 evaluate_project_alerts	
 announce_opportunities	
 announce_opportunity_updates	

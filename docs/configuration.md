@@ -99,7 +99,10 @@ answer 404 and the front page hides its demo links; the data is kept, and the
 nightly run leaves the world out, so an off demo costs no model calls).
 `manage.py demo refresh` runs the nightly's work for the demo world alone, now;
 `manage.py demo status` shows what each of its people, the lab and its projects
-holds, when it was last ranked and its latest report.
+holds, when it was last ranked and its latest report. `manage.py demo seed`
+rebuilds the world's saves, lab reminders, a teammate's shared paper and Mylo's
+open question from its current feed (`apps/demo/seed.py`); `build` and
+`refresh` run it, and so does the nightly, after the prune.
 `questions_per_visitor` (10), `questions_per_ip_per_day` (20) and
 `questions_per_day` (500, every visitor together — it bounds the model bill; `0`
 keeps the demo up with Mylo off) budget Mylo; `question_max_chars` caps one

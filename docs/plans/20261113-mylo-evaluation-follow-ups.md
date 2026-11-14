@@ -167,13 +167,17 @@ Note that the raters judge last night's answers. They were produced before
 fixes 1–4, so the project-status questions will score low partly because of
 fix 1's bug.
 
-## Found 2026-11-14 while checking the demo (not yet fixed)
+## Found 2026-11-14 while checking the demo — done the same day
 
-| # | What | What it needs |
+Decided 2026-11-14: D2, D1, D4 and D5 were fixed in that order and are live
+(correlation `20261114-demo-pages-and-run-guards`); D3 stays (the demo PI is a
+fictional account, so "not a recognised institution" is right). Nothing in
+this table is open.
+
+| # | What | Done |
 |---|---|---|
-| D1 | **A model outage during the report stage gives everyone a template report.** On 2026-11-14 the tunnel to the model dropped between about 12:15 and 13:08 UTC; all 19 daily reports came out `fallback`. The pre-flight passed at 12:04, so nothing stopped the run. | Check the model again before the report stage and retry it (or the whole stage) once the model is back, instead of writing fallbacks. |
-| D2 | **Empty demo pages.** Saves, Reminders, Suggested and Mylo & you are empty for a visitor ("Nothing saved yet"). | Seed a few saves, one reminder, one shared paper and one pending Mylo question in `world.yaml`. |
-| D3 | **The demo PI's account page says her email isn't at a recognised institution** (`showcase.mycelium.invalid`). | Give the demo people an affiliation, or hide that line in the demo. |
-| D4 | **The SBIR grant source returns HTTP 403** every night, so it contributes nothing. | Look at whether the API moved or now needs a key. |
-| D5 | **Beat's original stall (13:39 UTC, the second since August) is still unexplained.** The healthcheck now recovers it; the leading guess is still the `dbm.sqlite3` schedule store. | A `py-spy dump` the next time it stalls, before the healthcheck kills it. |
-
+| D1 | **A model outage during the report stage gave everyone a template report.** On 2026-11-14 the tunnel to the model dropped between about 12:15 and 13:08 UTC; all 19 daily reports came out `fallback`. The pre-flight had passed at 12:04. | `ops/nightly/manual_all.py` checks the model again right before the report stage (`model_ready_for_reports`). If it is down, the run re-checks every 2 minutes for up to 30; if it never answers, the reports are written as templates and Discord is told. Tests: `mylo/tests/test_report_model_check.py`. |
+| D2 | **Empty demo pages.** Saves, Reminders, Suggested and Mylo & you were empty for a visitor. | `manage.py demo seed` (`apps/demo/seed.py`) rebuilds them from the demo's own current feed: the PI's best-ranked open paper, grant and fellowship; the lab's best grant and conference at least three weeks off, saved by a teammate, each with a lab reminder; a teammate's share of the project's best paper, which delivery's fan-out suggests to her; one open question about a project topic her profile lacks, with the number of papers in her feed about it; and the project statuses as changes. It runs after `build`/`refresh` and as the nightly's platform stage after the prune. "What Mylo knows" already showed her declared interests. Tests: `apps/demo/tests/test_seed.py`. |
+| D3 | The demo PI's account page says her email isn't at a recognised institution. | No change: she is fictional. |
+| D4 | **The SBIR grant source returned HTTP 403** every night. SBIR.gov's API page says its APIs are "currently undergoing maintenance". | When the API refuses with 403, the adapter reads the public topic listing (`www.sbir.gov/topics?status=Open`, fresh each run) and each topic's page (cached), shaped like the API's rows, so parsing is unchanged. Tests: `tools/retrieval/tests/collect/grants/test_sbir_site.py`. |
+| D5 | **Beat stalled twice and nobody knows why** (2026-08-04, 2026-11-14). The leading suspect was its `dbm.sqlite3` schedule file. | Beat now runs `config.beat:HeartbeatScheduler`: the schedule in memory, no file, and a heartbeat file touched on every tick that the healthcheck reads. If it ever stalls again the file was not the cause; take a `py-spy dump` before the healthcheck (900 s) kills it. |

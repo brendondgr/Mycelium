@@ -283,14 +283,15 @@ services:
     logging: *logging
     user: *as-user
     working_dir: /app
-    # Keep the schedule state file off the bind mount (in the container's /tmp).
-    # Start from no state file: /tmp survives a container restart, and the
-    # healthcheck below reads the file's age, so a restarted Beat was judged by
-    # the dead one's stale file and killed again within seconds, before it had
-    # loaded (Docker runs the check every 5 s during start_period). On
-    # 2026-11-14 that kept Beat down for five hours after one stall. Losing the
-    # state only means interval tasks fire once at start.
-    command: sh -c "rm -f /tmp/celerybeat-schedule*; exec uv run --no-sync --directory web/backend celery -A config beat --loglevel=info --schedule /tmp/celerybeat-schedule"
+    # The schedule lives in memory (config/beat.py): Celery's default keeps it
+    # in an SQLite shelve file, the leading suspect for two stalls, and it
+    # bought nothing once every start began from an empty file anyway. Losing
+    # the state only means interval tasks fire once at start. The heartbeat
+    # file is removed first: /tmp survives a container restart, and a restarted
+    # Beat judged by the dead one's stale file was killed again within seconds
+    # (Docker runs the check every 5 s during start_period), which kept Beat
+    # down for five hours on 2026-11-14.
+    command: sh -c "rm -f /tmp/celerybeat-schedule* /tmp/beat-heartbeat; exec uv run --no-sync --directory web/backend celery -A config beat --loglevel=info --scheduler config.beat:HeartbeatScheduler"
     restart: on-failure
     volumes: *python-volumes
     env_file: *env-files
@@ -312,9 +313,9 @@ services:
     # every stage had in fact succeeded. A wedged-but-alive Beat is invisible unless
     # something checks that it is still doing work.
     #
-    # The signal is the mtime of Beat's own schedule state, which PersistentScheduler
-    # rewrites on its sync cadence (observed a few minutes apart). During the stall
-    # it froze at 10:40 while the last tick was 10:41, so it tracks the hang exactly.
+    # The signal is the mtime of /tmp/beat-heartbeat, which the scheduler touches
+    # on every tick (every minute here, with the outbox drains). Until 2026-11-14
+    # it was the mtime of the schedule state file, which no longer exists.
     #
     # A Compose healthcheck only *marks* a container unhealthy; it restarts nothing.
     # So on a stale read this kills the Beat process to make the container exit
@@ -330,19 +331,19 @@ services:
       test:
         - CMD-SHELL
         - >-
-          newest=$$(stat -c %Y /tmp/celerybeat-schedule* 2>/dev/null | sort -n | tail -1);
+          newest=$$(stat -c %Y /tmp/beat-heartbeat 2>/dev/null);
           [ -z "$$newest" ] && exit 0;
           age=$$(( $$(date +%s) - $$newest ));
           [ "$$age" -lt ${BEAT_STALE_SECONDS:-900} ] && exit 0;
-          echo "beat: no schedule sync for $${age}s — killing it so restart:on-failure recovers it";
+          echo "beat: no tick for $${age}s — killing it so restart:on-failure recovers it";
           pkill -9 -f '[c]elery -A config beat';
           exit 1
       interval: 60s
       timeout: 10s
       retries: 3
-      # Beat installs its schedule state only after the interpreter and Django are
-      # up; until then there is no file to read (the command removes any old
-      # one) and the check exits 0 anyway.
+      # Beat first ticks only after the interpreter and Django are up; until
+      # then there is no heartbeat (the command removes any old one) and the
+      # check exits 0 anyway.
       start_period: 120s
 
   # Optional SSH tunnel to a remote LLM server, run *inside* the compose network.
