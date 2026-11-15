@@ -25,8 +25,32 @@ import type { ClusterGroup, WatchCadence } from "@/lib/auth-types";
 import type { LabProfileData, MyLab, WatchData } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
 
-/** Which panel the modal opens on. */
-export type LabEditorTab = "draft" | "purpose" | "focus" | "watch";
+/**
+ * Which part of the lab profile a caller wants to edit.
+ *
+ * These are *destinations*, not tabs: the editor renders three tabs and each of
+ * these names a section inside one of them, so a card's "Edit" button keeps
+ * saying what the reader meant while the tab structure stays free to change.
+ * The personal editor resolves its own targets the same way.
+ */
+export type LabEditorTab =
+  | "draft"
+  | "purpose"
+  | "focus"
+  | "watch"
+  | "delivery";
+
+/** The three tabs the editor actually renders. */
+type PanelId = "research" | "delivery" | "draft";
+
+/** Where each destination lives: the tab that holds it, and the block within. */
+const DESTINATIONS: Record<LabEditorTab, { panel: PanelId; anchor: string | null }> = {
+  purpose: { panel: "research", anchor: "purpose" },
+  focus: { panel: "research", anchor: "focus" },
+  watch: { panel: "research", anchor: "watch" },
+  delivery: { panel: "delivery", anchor: "delivery" },
+  draft: { panel: "draft", anchor: null },
+};
 
 // Signal kinds a lab can ask Mylo to surface. Conferences sit alongside grants as
 // a lab-level, purpose-driven signal.
@@ -77,8 +101,7 @@ function readKeywords(
  *
  * "Purpose & goals" used to be an inline form inside a page card, and the watch
  * settings had a read-only card with no editing surface at all: a lab's cadence
- * could only be changed by re-running the whole setup flow. Both now live here,
- * one tab apart.
+ * could only be changed by re-running the whole setup flow. Both live here now.
  */
 export function LabEditorModal({
   lab,
@@ -201,7 +224,8 @@ export function DeptEditorModal({
     <OrgEditorForm
       noun="department"
       name={name}
-      initialTab={initialTab === "watch" || initialTab === "draft" ? "purpose" : initialTab}
+      // No watch, delivery or drafting for a department: land on its purpose.
+      initialTab={initialTab === "focus" ? "focus" : "purpose"}
       profile={profileQuery.data}
       onClose={onClose}
       saveProfile={saveProfile.mutateAsync}
@@ -236,7 +260,8 @@ function OrgEditorForm({
   /** What Mylo watches. Labs only; without it there is no watch tab. */
   saveWatch?: (payload: WatchPayload) => Promise<unknown>;
 }) {
-  const [tab, setTab] = React.useState<LabEditorTab>(initialTab);
+  const destination = DESTINATIONS[initialTab] ?? DESTINATIONS.purpose;
+  const [tab, setTab] = React.useState<PanelId>(destination.panel);
 
   // Source material for Mylo's draft — never persisted, only used to draft.
   const [description, setDescription] = React.useState("");
@@ -303,7 +328,7 @@ function OrgEditorForm({
             );
           }
           setSynthNote(
-            "Mylo drafted the profile — review it on the Purpose and Focus areas tabs before saving.",
+            "Mylo drafted the profile — review it on the Research profile tab before saving.",
           );
         },
         onError: (caught) => setSynthError((caught as Error).message),
@@ -454,50 +479,58 @@ function OrgEditorForm({
     </EditorSection>
   );
 
-  const panelPurpose = (
-    <EditorSection
-      title="Purpose & goals"
-      description={`The ${noun}'s collective direction — what Mylo grounds every ${noun} recommendation in.`}
-    >
-      <EditorField label="Statement of purpose">
-        <textarea
-          value={statement}
-          onChange={(event) => setStatement(event.target.value)}
-          rows={6}
-          placeholder={`The ${noun}'s shared research purpose.`}
-          className={cn(inputClass, "min-h-32 resize-y py-2.5 leading-relaxed")}
-        />
-      </EditorField>
-      <EditorField
-        label="Funding needs"
-        hint="Comma-separated — used to weight grant matches."
-      >
-        <input
-          value={funding}
-          onChange={(event) => setFunding(event.target.value)}
-          placeholder="NSF, NIH R01"
-          className={inputClass}
-        />
-      </EditorField>
-      <EditorField
-        label="Strategic needs"
-        hint={`Comma-separated — what the ${noun} is trying to build or hire toward.`}
-      >
-        <input
-          value={strategic}
-          onChange={(event) => setStrategic(event.target.value)}
-          placeholder="New postdoc, GPU cluster"
-          className={inputClass}
-        />
-      </EditorField>
-    </EditorSection>
-  );
+  // -- Research profile ----------------------------------------------------
+  //
+  // One tab for the whole matching chain, in the order it runs: what the lab is
+  // for, the areas that come out of it, how those group into themes, and what
+  // Mylo therefore searches for. These were three tabs, and editing a focus area
+  // silently changed what the clusters on another tab showed — the reader had to
+  // leave the page to see the consequence of the edit they had just made.
 
-  const panelFocus = (
+  const panelResearch = (
     <>
+      <EditorSection
+        title="Purpose & goals"
+        description={`The ${noun}'s collective direction — what Mylo grounds every ${noun} recommendation in.`}
+        anchorId="purpose"
+      >
+        <EditorField label="Statement of purpose">
+          <textarea
+            value={statement}
+            onChange={(event) => setStatement(event.target.value)}
+            rows={6}
+            placeholder={`The ${noun}'s shared research purpose.`}
+            className={cn(inputClass, "min-h-32 resize-y py-2.5 leading-relaxed")}
+          />
+        </EditorField>
+        <EditorField
+          label="Funding needs"
+          hint="Comma-separated — used to weight grant matches."
+        >
+          <input
+            value={funding}
+            onChange={(event) => setFunding(event.target.value)}
+            placeholder="NSF, NIH R01"
+            className={inputClass}
+          />
+        </EditorField>
+        <EditorField
+          label="Strategic needs"
+          hint={`Comma-separated — what the ${noun} is trying to build or hire toward.`}
+        >
+          <input
+            value={strategic}
+            onChange={(event) => setStrategic(event.target.value)}
+            placeholder="New postdoc, GPU cluster"
+            className={inputClass}
+          />
+        </EditorField>
+      </EditorSection>
+
       <EditorSection
         title="Focus areas"
         description="The research areas and keywords Mylo matches papers, grants, and conferences against."
+        anchorId="focus"
       >
         <TokenField
           label="Research focus areas"
@@ -520,7 +553,8 @@ function OrgEditorForm({
 
       <EditorSection
         title="Interest clusters"
-        description={`Group related areas into themes so Mylo can report on each thread of the ${noun}'s work separately.`}
+        description={`Group the areas above into themes so Mylo can report on each thread of the ${noun}'s work separately.`}
+        anchorId="clusters"
       >
         <ClusterOrganizer
           areas={areas}
@@ -532,14 +566,13 @@ function OrgEditorForm({
           onWatchSeed={(topics) => setWatchTopics(topics.slice(0, WATCH_SEED_LIMIT))}
         />
       </EditorSection>
-    </>
-  );
 
-  const panelWatch = (
-    <>
+      {saveWatch ? (
+        <>
       <EditorSection
         title="What Mylo watches"
         description="The topics Mylo searches for on the lab's behalf. Left empty, they are seeded from the focus areas and keywords on save."
+        anchorId="watch"
       >
         <TokenField
           label="Topics Mylo monitors for the lab"
@@ -549,7 +582,7 @@ function OrgEditorForm({
         />
       </EditorSection>
 
-      <EditorSection title="Signals to surface">
+      <EditorSection title="Signals to surface" anchorId="signals">
         <div className="flex flex-col">
           {WATCH_CATEGORIES.map((category) => (
             <EditorToggleRow
@@ -568,10 +601,22 @@ function OrgEditorForm({
           ))}
         </div>
       </EditorSection>
+        </>
+      ) : null}
+    </>
+  );
 
+  // -- Delivery ------------------------------------------------------------
+  //
+  // When the lab hears from Mylo, and what it counts as enough runway. The twin
+  // of the personal editor's second tab.
+
+  const panelDelivery = (
+    <>
       <EditorSection
         title="How often should Mylo post to the channel?"
         description="Cadence governs the lab's Discord channel only. Mylo scores the lab and writes its report every day either way, and members see both on the web every day."
+        anchorId="delivery"
       >
         <div className="flex flex-wrap gap-2">
           {CADENCES.map((option) => (
@@ -595,6 +640,7 @@ function OrgEditorForm({
       <EditorSection
         title="The lab's timeline defaults"
         description="What Mylo treats as enough runway when judging whether a venue or a call fits a lab project's plan. A project can override both."
+        anchorId="timeline"
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <EditorField
@@ -629,13 +675,33 @@ function OrgEditorForm({
   );
 
   const tabs: EditorTab[] = [
-    { id: "purpose", label: "Purpose & goals", hint: "Statement, funding, needs", content: panelPurpose },
-    { id: "focus", label: "Focus areas", hint: "Areas, keywords, clusters", content: panelFocus },
+    {
+      id: "research",
+      label: "Research profile",
+      hint: saveWatch
+        ? "Purpose, focus, themes, and what Mylo watches"
+        : "Purpose, focus, and themes",
+      content: panelResearch,
+    },
     ...(saveWatch
-      ? [{ id: "watch", label: "What Mylo watches", hint: "Topics, signals, cadence, timeline", content: panelWatch }]
+      ? [
+          {
+            id: "delivery",
+            label: "Delivery",
+            hint: "Cadence and timeline defaults",
+            content: panelDelivery,
+          },
+        ]
       : []),
     ...(synthesize
-      ? [{ id: "draft", label: "Draft with Mylo", hint: "Rewrite from source material", content: panelDraft }]
+      ? [
+          {
+            id: "draft",
+            label: "Draft with Mylo",
+            hint: "Rewrite from source material",
+            content: panelDraft,
+          },
+        ]
       : []),
   ];
 
@@ -650,7 +716,8 @@ function OrgEditorForm({
       }
       tabs={tabs}
       activeTab={tab}
-      onTabChange={(id) => setTab(id as LabEditorTab)}
+      initialAnchor={destination.anchor}
+      onTabChange={(id) => setTab(id as PanelId)}
       onClose={onClose}
       onSave={() => void save()}
       saving={saving}
