@@ -1,0 +1,198 @@
+{
+  "delete_thread": {
+    "ended_on_question": 0,
+    "target": 60,
+    "attempts": 60,
+    "valid": 60,
+    "invalid": 0,
+    "errors": 0,
+    "leaks": 0,
+    "rate": 0.0,
+    "ci": [
+      0.0,
+      0.0596
+    ],
+    "upper95": 0.0487,
+    "seconds_mean": 28.3,
+    "leak_rows": 0,
+    "leak_derived_only": 0,
+    "recalled_any": 0,
+    "recalled_own_chat": 0,
+    "in_answer": 0,
+    "pending_edges_before": 60,
+    "observations_before_mean": 2.0
+  },
+  "delete_obs": {
+    "ended_on_question": 0,
+    "target": 60,
+    "attempts": 60,
+    "valid": 60,
+    "invalid": 0,
+    "errors": 0,
+    "leaks": 30,
+    "rate": 0.5,
+    "ci": [
+      0.3681,
+      0.6319
+    ],
+    "upper95": 0.6126,
+    "seconds_mean": 44.4,
+    "leak_rows": 0,
+    "leak_derived_only": 0,
+    "recalled_any": 30,
+    "recalled_own_chat": 30,
+    "in_answer": 16,
+    "pending_edges_before": 60,
+    "observations_before_mean": 2.0
+  },
+  "optout": {
+    "ended_on_question": 0,
+    "target": 20,
+    "attempts": 20,
+    "valid": 20,
+    "invalid": 0,
+    "errors": 0,
+    "leaks": 0,
+    "rate": 0.0,
+    "ci": [
+      0.0,
+      0.1684
+    ],
+    "upper95": 0.1391,
+    "seconds_mean": 36.4,
+    "leak_rows": 0,
+    "b_from_ambient": 0,
+    "b_in_answer": 16,
+    "b_from_own_chat": 19,
+    "a_recalled": 19
+  },
+  "excluded": {
+    "ended_on_question": 0,
+    "target": 20,
+    "attempts": 20,
+    "valid": 20,
+    "invalid": 0,
+    "errors": 0,
+    "leaks": 0,
+    "rate": 0.0,
+    "ci": [
+      0.0,
+      0.1684
+    ],
+    "upper95": 0.1391,
+    "seconds_mean": 20.0,
+    "leak_rows": 0,
+    "own_chat_recall": 15
+  },
+  "message": {
+    "ended_on_question": 0,
+    "target": 20,
+    "attempts": 20,
+    "valid": 20,
+    "invalid": 0,
+    "errors": 0,
+    "leaks": 11,
+    "rate": 0.55,
+    "ci": [
+      0.3153,
+      0.7694
+    ],
+    "upper95": 0.7413,
+    "seconds_mean": 47.3,
+    "leak_rows": 0,
+    "leak_derived_only": 0,
+    "recalled_any": 11,
+    "recalled_own_chat": 11,
+    "in_answer": 4,
+    "pending_edges_before": 20,
+    "observations_before_mean": 2.0
+  },
+  "forget": {
+    "ended_on_question": 0,
+    "target": 20,
+    "attempts": 20,
+    "valid": 20,
+    "invalid": 0,
+    "errors": 0,
+    "leaks": 12,
+    "rate": 0.6,
+    "ci": [
+      0.3605,
+      0.8088
+    ],
+    "upper95": 0.7829,
+    "seconds_mean": 32.4,
+    "leak_rows": 0,
+    "leak_derived_only": 0,
+    "recalled_any": 12,
+    "recalled_own_chat": 12,
+    "in_answer": 4,
+    "pending_edges_before": 20,
+    "observations_before_mean": 2.0
+  },
+  "delete_thread_production": {
+    "ended_on_question": 0,
+    "target": 60,
+    "attempts": 61,
+    "valid": 60,
+    "invalid": 0,
+    "errors": 1,
+    "leaks": 0,
+    "rate": 0.0,
+    "ci": [
+      0.0,
+      0.0596
+    ],
+    "upper95": 0.0487,
+    "seconds_mean": 42.3,
+    "leak_rows": 0,
+    "leak_derived_only": 0,
+    "recalled_any": 0,
+    "recalled_own_chat": 0,
+    "in_answer": 0,
+    "pending_edges_before": 0,
+    "observations_before_mean": 2.0
+  },
+  "isolation_plant": {
+    "attempts": 14,
+    "recorded": 8,
+    "errors": 0
+  },
+  "isolation": {
+    "ended_on_question": 0,
+    "target": 120,
+    "attempts": 120,
+    "valid": 96,
+    "invalid": 24,
+    "errors": 0,
+    "leaks": 0,
+    "rate": 0.0,
+    "ci": [
+      0.0,
+      0.0377
+    ],
+    "upper95": 0.0307,
+    "seconds_mean": 26.7,
+    "by_asker_phrasing": {
+      "labmate/phrasing0": {
+        "leaks": 0,
+        "n": 24
+      },
+      "labmate/phrasing1": {
+        "leaks": 0,
+        "n": 24
+      },
+      "admin/phrasing0": {
+        "leaks": 0,
+        "n": 24
+      },
+      "admin/phrasing1": {
+        "leaks": 0,
+        "n": 24
+      }
+    },
+    "at_answer": 0,
+    "at_results": 0,
+    "statements_recorded": 8
+  }
+}

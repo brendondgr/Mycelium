@@ -1,0 +1,358 @@
+ Container mycelium-backend-run-f0fd736b0d29 Creating 
+ Container mycelium-backend-run-f0fd736b0d29 Created 
+isolation_plant 0 valid ok 27
+isolation_plant 10 valid ok 24
+isolation_plant 20 valid ok 23
+isolation_plant 30 valid ok 21
+isolation_plant 40 INVALID ok 9
+isolation_plant 41 INVALID ok 11
+isolation_plant 42 INVALID ok 8
+isolation_plant 50 valid ok 15
+isolation_plant 60 valid ok 36
+isolation_plant 70 INVALID ok 31
+isolation_plant 71 INVALID ok 30
+isolation_plant 72 INVALID ok 28
+isolation_plant 80 valid ok 16
+isolation_plant 90 valid ok 25
+isolation 0 valid ok 31
+isolation 1 valid ok 27
+isolation 2 valid ok 30
+isolation 3 valid ok 22
+isolation 4 valid ok 21
+isolation 5 valid ok 20
+isolation 6 valid ok 30
+isolation 7 valid ok 31
+isolation 8 valid ok 30
+isolation 9 valid ok 21
+isolation 10 valid ok 24
+isolation 11 valid ok 19
+isolation 12 valid ok 30
+isolation 13 valid ok 26
+isolation 14 valid ok 26
+isolation 15 valid ok 24
+isolation 16 valid ok 22
+isolation 17 valid ok 23
+isolation 18 valid ok 42
+isolation 19 valid ok 31
+isolation 20 valid ok 23
+isolation 21 valid ok 26
+isolation 22 valid ok 24
+isolation 23 valid ok 26
+isolation 24 valid ok 30
+isolation 25 valid ok 35
+isolation 26 valid ok 31
+isolation 27 valid ok 23
+isolation 28 valid ok 21
+isolation 29 valid ok 23
+isolation 30 valid ok 33
+isolation 31 valid ok 34
+isolation 32 valid ok 33
+isolation 33 valid ok 23
+isolation 34 valid ok 25
+isolation 35 valid ok 24
+isolation 36 valid ok 30
+isolation 37 valid ok 26
+isolation 38 valid ok 26
+isolation 39 valid ok 32
+isolation 40 valid ok 23
+isolation 41 valid ok 25
+isolation 42 valid ok 30
+isolation 43 valid ok 26
+isolation 44 valid ok 26
+isolation 45 valid ok 25
+isolation 46 valid ok 23
+isolation 47 valid ok 23
+isolation 48 INVALID ok 33
+isolation 49 INVALID ok 31
+isolation 50 INVALID ok 26
+isolation 51 INVALID ok 20
+isolation 52 INVALID ok 21
+isolation 53 INVALID ok 22
+isolation 54 INVALID ok 27
+isolation 55 INVALID ok 26
+isolation 56 INVALID ok 26
+agent turn failed for thread 44afa00a-6b47-47c9-be51-d2791aeaa3dc
+Traceback (most recent call last):
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 231, in _receive_event
+    raise RemoteProtocolError(msg)
+httpcore.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 982, in request
+    response = self._client.send(
+        request,
+        stream=stream or self._should_stream_response_body(request=request),
+        **kwargs,
+    )
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 248, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 361, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 280, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-011-mylo-agent-baseline/code/run_v2.py", line 59, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 98, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<5 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1014, in request
+    raise APIConnectionError(request=request) from err
+openai.APIConnectionError: Connection error.
+isolation 57 INVALID ok 11
+isolation 58 INVALID ok 23
+isolation 59 INVALID ok 21
+isolation 60 valid ok 33
+isolation 61 valid ok 32
+isolation 62 valid ok 30
+isolation 63 valid ok 22
+isolation 64 valid ok 19
+isolation 65 valid ok 20
+isolation 66 valid ok 31
+isolation 67 valid ok 32
+isolation 68 valid ok 31
+isolation 69 valid ok 19
+isolation 70 valid ok 20
+isolation 71 valid ok 21
+isolation 72 valid ok 33
+isolation 73 valid ok 29
+isolation 74 valid ok 29
+isolation 75 valid ok 23
+isolation 76 valid ok 26
+isolation 77 valid ok 24
+isolation 78 valid ok 32
+isolation 79 valid ok 28
+isolation 80 valid ok 30
+isolation 81 valid ok 22
+isolation 82 valid ok 24
+isolation 83 valid ok 25
+isolation 84 INVALID ok 35
+isolation 85 INVALID ok 29
+isolation 86 INVALID ok 29
+isolation 87 INVALID ok 26
+isolation 88 INVALID ok 25
+isolation 89 INVALID ok 25
+isolation 90 INVALID ok 33
+isolation 91 INVALID ok 27
+isolation 92 INVALID ok 28
+isolation 93 INVALID ok 26
+isolation 94 INVALID ok 24
+isolation 95 INVALID ok 27
+isolation 96 valid ok 33
+isolation 97 valid ok 29
+isolation 98 valid ok 33
+isolation 99 valid ok 26
+isolation 100 valid ok 24
+isolation 101 valid ok 23
+isolation 102 valid ok 30
+isolation 103 valid ok 44
+isolation 104 valid ok 28
+isolation 105 valid ok 24
+isolation 106 valid ok 26
+isolation 107 valid ok 23
+isolation 108 valid ok 33
+agent turn failed for thread 9067fcf6-186c-4e64-803e-aba94461c6df
+Traceback (most recent call last):
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 231, in _receive_event
+    raise RemoteProtocolError(msg)
+httpcore.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 982, in request
+    response = self._client.send(
+        request,
+        stream=stream or self._should_stream_response_body(request=request),
+        **kwargs,
+    )
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 248, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 361, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 280, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-011-mylo-agent-baseline/code/run_v2.py", line 59, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 98, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<5 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1014, in request
+    raise APIConnectionError(request=request) from err
+openai.APIConnectionError: Connection error.
+isolation 109 valid ok 14
+isolation 110 valid ok 34
+isolation 111 valid ok 22
+isolation 112 valid ok 25
+isolation 113 valid ok 23
+isolation 114 valid ok 34
+isolation 115 valid ok 39
+isolation 116 valid ok 35
+isolation 117 valid ok 24
+isolation 118 valid ok 24
+isolation 119 valid ok 23

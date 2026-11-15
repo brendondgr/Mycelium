@@ -1,0 +1,50 @@
+ Container mycelium-backend-run-f5d39b0a96fd Creating 
+ Container mycelium-backend-run-f5d39b0a96fd Created 
+message 1 valid ok 45
+message 0 valid ok 48
+message 2 valid ok 37
+message 3 valid LEAK 40
+message 4 valid ok 47
+message 5 valid LEAK 49
+message 6 valid LEAK 38
+message 7 valid LEAK 39
+message 8 valid ok 41
+message 9 valid LEAK 42
+message 10 valid LEAK 39
+message 11 valid ok 39
+message 12 valid ok 37
+message 13 valid LEAK 42
+message 14 valid LEAK 33
+message 15 valid LEAK 34
+message 16 valid LEAK 39
+message 17 valid ok 198
+message 19 valid ok 28
+message 18 valid LEAK 30
+== message: 20 valid of 20 attempted (target 20)
+forget 1 valid ok 32
+forget 0 valid LEAK 33
+forget 3 valid ok 29
+forget 2 valid ok 31
+forget 4 valid LEAK 32
+forget 5 valid LEAK 33
+forget 6 valid ok 29
+forget 7 valid ok 29
+forget 8 valid ok 28
+forget 9 valid LEAK 29
+forget 10 valid ok 30
+forget 11 valid ok 33
+forget 13 valid LEAK 34
+forget 12 valid LEAK 37
+forget 14 valid LEAK 30
+forget 15 valid LEAK 36
+forget 16 valid LEAK 35
+forget 17 valid LEAK 38
+forget 18 valid LEAK 35
+forget 19 valid LEAK 36
+== forget: 20 valid of 20 attempted (target 20)
+delete_thread_production 1 valid ok 32
+delete_thread_production 0 valid ok 33
+delete_thread_production 2 valid ok 33
+delete_thread_production 3 valid ok 33
+delete_thread_production 4 valid ok 31
+

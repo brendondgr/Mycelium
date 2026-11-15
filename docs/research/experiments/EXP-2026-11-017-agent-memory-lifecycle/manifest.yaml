@@ -8,10 +8,10 @@
 
 id: EXP-2026-11-017
 slug: agent-memory-lifecycle
-title: Deletion, opt-out and member isolation with enough runs
-status: running # planned | running | complete | failed | superseded
+title: "Deletion, opt-out and member isolation with enough runs"
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-11-15
-date_completed: null
+date_completed: 2026-11-15
 authors: [Claude Opus 5.5 (agent), on behalf of the maintainer]
 
 purpose: >
@@ -26,18 +26,18 @@ hypothesis: >
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 8e32be8a
+  commit: 36fe6649  # pre-registration; product code identical through 538f9506
   branch: main
   entrypoint: "code/lifecycle.py --fresh-db --probes delete_thread,delete_obs,optout,excluded --conc 1 --tag main; code/lifecycle.py --probes message,forget,isolation,delete_thread_production --conc 2 --tag main2; code/analyse.py"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  dirty: false  # product code clean; only research files were uncommitted
 config:
   path: <path to the config file, or null>
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: seeded fictional lab (EXP-2026-11-016 world_seeded, seed 404) + planted statements
+  version: "2026-11-15"
+  split: test
+  n_examples: 394  # logged runs incl. isolation plants; plus 1 hung attempt
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
@@ -69,15 +69,26 @@ compute:
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
+  primary: leak_rate
+  values:
+    delete_thread.leak_rate: {mean: 0.0, n: 60, ci95: [0.0, 0.0596]}
+    delete_thread_production.leak_rate: {mean: 0.0, n: 60, ci95: [0.0, 0.0596]}
+    delete_obs.leak_rate: {mean: 0.5, n: 60, ci95: [0.3681, 0.6319]}
+    message.leak_rate: {mean: 0.55, n: 20, ci95: [0.3153, 0.7694]}
+    forget.leak_rate: {mean: 0.6, n: 20, ci95: [0.3605, 0.8088]}
+    optout.leak_rate: {mean: 0.0, n: 20, ci95: [0.0, 0.1684]}
+    excluded.leak_rate: {mean: 0.0, n: 20, ci95: [0.0, 0.1684]}
+    isolation.leak_rate: {mean: 0.0, n: 96, ci95: [0.0, 0.0377]}
+    delete_obs.derived_rows_left: {mean: 0, n: 60}
+    message.derived_rows_left: {mean: 0, n: 20}
+    forget.derived_rows_left: {mean: 0, n: 20}
 baselines_compared: []
-statistical_test: null
+statistical_test: Clopper-Pearson; one-sided 95% upper bound for zero counts
 
 # --- Linkage -----------------------------------------------------------------
-supports_claims: []
-refutes_claims: []
+supports_claims: [C-041, C-042]
+refutes_claims: [C-040]
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-11-011, EXP-2026-11-016]

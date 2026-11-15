@@ -18,6 +18,8 @@ HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE.parent / "EXP-2026-11-016-agent-gate-replication" / "code"))
 import stats  # noqa: E402
 
+#: Attempts that never returned and so left no row (Amendment 2): counted as errors.
+HUNG = {"delete_thread_production": 1}
 TARGETS = {"delete_thread": 60, "delete_obs": 60, "message": 20, "forget": 20, "optout": 20,
            "excluded": 20, "delete_thread_production": 60, "isolation": 120}
 
@@ -39,9 +41,10 @@ def main() -> int:
         valid = [r for r in rs if r.get("valid") and "error" not in r]
         leaks = [r for r in valid if r.get("leak")]
         asked = sum("ask_user" in ((r.get("turn") or {}).get("calls") or []) for r in rs)
+        hung = HUNG.get(probe, 0)
         cell = {"ended_on_question": asked,
-                "target": TARGETS.get(probe), "attempts": len(rs), "valid": len(valid),
-                "invalid": len(rs) - len(valid) - len(errors), "errors": len(errors),
+                "target": TARGETS.get(probe), "attempts": len(rs) + hung, "valid": len(valid),
+                "invalid": len(rs) - len(valid) - len(errors), "errors": len(errors) + hung,
                 "leaks": len(leaks), "rate": round(len(leaks) / len(valid), 4) if valid else None,
                 "ci": stats.clopper_pearson(len(leaks), len(valid)),
                 "upper95": stats.upper_one_sided(len(leaks), len(valid)),
