@@ -13,13 +13,18 @@ import type { AmbientSettings } from "@/lib/portal/ambient/types";
 /**
  * Mylo & you — the switches (ambient Plan 07, step 8).
  *
- * Listening per platform, the single "shut off Mylo's questions" switch (the
- * same one "stop asking" flips in a DM), a quiet period, the plain statement of
- * what is stored, and "delete my observations". On a free plan the panel is
- * shown read-only with one sentence: nothing is collected.
+ * Listening per platform, the personal-information opt-out (Q-071), the single
+ * "shut off Mylo's questions" switch (the same one "stop asking" flips in a
+ * DM), a quiet period, the plain statement of what is stored, and "delete my
+ * observations". On a free plan the panel is shown read-only with one
+ * sentence: nothing is collected — except the opt-out, which only restricts
+ * and so is never locked.
  */
 export function AmbientSettingsCard() {
   const settings = useAmbientSettings();
+  // Held here, not in the body: the body remounts when the settings refetch
+  // after a save, and the confirmation would vanish with it.
+  const [message, setMessage] = React.useState<string | null>(null);
   return (
     <Card className="p-[22px]" aria-labelledby="ambient-settings-title" data-ambient="settings">
       <h2 id="ambient-settings-title" className="font-display text-lg text-[var(--text-primary)]">
@@ -30,18 +35,30 @@ export function AmbientSettingsCard() {
       ) : settings.isError || !settings.data ? (
         <p className="mt-3 text-sm text-clay">Couldn&apos;t load these settings.</p>
       ) : (
-        <SettingsBody key={JSON.stringify(settings.data)} data={settings.data} />
+        <SettingsBody
+          key={JSON.stringify(settings.data)}
+          data={settings.data}
+          message={message}
+          setMessage={setMessage}
+        />
       )}
     </Card>
   );
 }
 
-function SettingsBody({ data }: { data: AmbientSettings }) {
+function SettingsBody({
+  data,
+  message,
+  setMessage,
+}: {
+  data: AmbientSettings;
+  message: string | null;
+  setMessage: (message: string | null) => void;
+}) {
   const save = useSaveAmbientSettings();
   const wipe = useDeleteObservations();
   const [quiet, setQuiet] = React.useState(data.quiet_until ?? "");
   const [confirming, setConfirming] = React.useState(false);
-  const [message, setMessage] = React.useState<string | null>(null);
   const readOnly = !data.paid || !data.available;
   const notice = !data.available
     ? "Listening isn't turned on for this Mycelium yet, so these switches are off. Nothing is collected."
@@ -51,12 +68,18 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
         ? "Link your Discord account on your profile to turn on listening there."
         : null;
 
-  const update = (body: Parameters<typeof save.mutate>[0], done: string) => {
+  const update = (
+    body: Parameters<typeof save.mutate>[0],
+    done: string | ((result: AmbientSettings) => string),
+  ) => {
     setMessage(null);
-    save.mutate(body, {
-      onSuccess: () => setMessage(done),
-      onError: (error) => setMessage(error.message),
-    });
+    // mutateAsync, not mutate's callbacks: a save refetches the settings, this
+    // body remounts under its new key, and an unmounted observer's callbacks
+    // never fire. The promise settles either way; the message lives above.
+    save
+      .mutateAsync(body)
+      .then((result) => setMessage(typeof done === "string" ? done : done(result)))
+      .catch((error: Error) => setMessage(error.message));
   };
 
   return (
@@ -110,6 +133,23 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
           />
         ) : null}
         <Toggle
+          id="ambient-personal"
+          label="Keep my personal life out"
+          help="Mylo won't keep notes about your health, immigration or visa, family, pregnancy, money, relationships or conflicts with people, or plans to leave — and deletes the ones it already has. Your research, projects, skills and interests are still noted. Your chats with Mylo stay until you delete them. Turning this off brings nothing back."
+          checked={Boolean(data.personal_withheld)}
+          onChange={(on) =>
+            update({ personal_withheld: on }, (result) =>
+              on
+                ? result.personal_removed
+                  ? `Personal life kept out. Deleted ${result.personal_removed} ${
+                      result.personal_removed === 1 ? "note" : "notes"
+                    }; older ones are checked within the hour.`
+                  : "Personal life kept out. Older notes are checked within the hour."
+                : "Mylo may note personal facts again from now on.",
+            )
+          }
+        />
+        <Toggle
           id="ambient-questions"
           label="Mylo's questions"
           help="Now and then Mylo asks whether it read something right. Turn off to stop them — what it already understood stays."
@@ -160,13 +200,13 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
             <button
               type="button"
               onClick={() =>
-                wipe.mutate(undefined, {
-                  onSuccess: (result) => {
+                wipe
+                  .mutateAsync()
+                  .then((result) => {
                     setConfirming(false);
                     setMessage(`Deleted ${result.deleted_observations} summaries.`);
-                  },
-                  onError: (error) => setMessage(error.message),
-                })
+                  })
+                  .catch((error: Error) => setMessage(error.message))
               }
               disabled={wipe.isPending}
               className="rounded-lg border border-border px-3.5 py-2 text-sm font-medium text-clay hover:bg-surface-alt disabled:opacity-60"

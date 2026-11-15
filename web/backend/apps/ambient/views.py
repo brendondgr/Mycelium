@@ -296,8 +296,8 @@ class UnderstandingReopenView(APIView):
 
 
 class AmbientSettingsView(APIView):
-    """``GET`` / ``PUT {listening_discord?, listening_slack?, questions_muted?,
-    quiet_until?}``."""
+    """``GET`` / ``PUT {listening_discord?, listening_slack?, listening_teams?,
+    questions_muted?, quiet_until?, personal_withheld?}``."""
 
     def get(self, request: Request) -> Response:
         from . import review
@@ -313,6 +313,7 @@ class AmbientSettingsView(APIView):
             "listening_teams",
             "questions_muted",
             "quiet_until",
+            "personal_withheld",
         }
         data = {k: v for k, v in request.data.items() if k in allowed}
         if "quiet_until" in data and data["quiet_until"]:

@@ -174,6 +174,13 @@ class ListeningConsent(models.Model):
     # A quiet period (Plan 06, step 5): no questions until this date. Unlike
     # "shut off" it ends by itself.
     questions_quiet_until = models.DateField(null=True, blank=True)
+    # The personal-information opt-out (Q-071). Per person, kept on the
+    # Discord row like the questions switch, and read for every platform:
+    # facts about the person's life rather than their work (health,
+    # immigration, family, money, relationships, plans to leave) are not
+    # recorded, and those already recorded are deleted (:mod:`.personal`).
+    personal_withheld = models.BooleanField(default=False)
+    personal_withheld_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -604,6 +611,11 @@ class Observation(models.Model):
     # topic seen three times.
     facet = models.CharField(max_length=16, blank=True, default="")
     topic = models.CharField(max_length=200, blank=True, default="")
+    # The extractor's own answer to "is this about the speaker's personal life
+    # rather than their work?" (Q-071), asked in the same call. Null means it
+    # was never asked — written before prompt a5, or the model left it out —
+    # and :mod:`.personal` asks once if the speaker opts out.
+    personal_life = models.BooleanField(null=True, blank=True)
     # For a project development only: what kind of change it was (Plan 05).
     change = models.CharField(
         max_length=24, choices=Change.choices, blank=True, default=""
@@ -1075,6 +1087,9 @@ class ExtractionRun(models.Model):
     outcome = models.CharField(max_length=16, choices=Outcome.choices)
     observations_kept = models.PositiveSmallIntegerField(default=0)
     refused = models.JSONField(default=list, blank=True)
+    # Observations the extractor found but did not write because the speaker
+    # keeps personal information out (Q-071). A count, never what they were.
+    withheld = models.PositiveSmallIntegerField(default=0)
     engagement = models.PositiveSmallIntegerField(
         default=0,
         help_text="Replies to Mylo and reactions on its posts: engagement, "

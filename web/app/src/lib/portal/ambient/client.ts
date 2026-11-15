@@ -125,6 +125,7 @@ export function saveAmbientSettings(body: {
   listening_teams?: boolean;
   questions_muted?: boolean;
   quiet_until?: string | null;
+  personal_withheld?: boolean;
 }): Promise<AmbientSettings> {
   return send("PUT", ["ambient", "settings"], body, "Could not save your settings.");
 }

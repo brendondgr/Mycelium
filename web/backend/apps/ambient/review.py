@@ -429,6 +429,9 @@ def settings_for(user) -> dict:
         "mylo_chat_available": agent_chat_enabled(),
         "questions_muted": bool(consent and consent.questions_muted),
         "quiet_until": consent.questions_quiet_until if consent else None,
+        # The personal-information opt-out (Q-071): not a paid feature — a
+        # restriction anybody may turn on.
+        "personal_withheld": bool(consent and consent.personal_withheld),
         "statement": STORED_STATEMENT,
         "observations": Observation.objects.filter(speaker=user).count(),
     }
@@ -472,6 +475,11 @@ def update_settings(user, data: dict, *, now=None) -> dict:
         from .service import set_agent_chat_listening
 
         set_agent_chat_listening(user, on=bool(data["listening_mylo_chat"]), now=now)
+    removed = None
+    if "personal_withheld" in data:
+        from .personal import set_withheld
+
+        removed = set_withheld(user, on=bool(data["personal_withheld"]), now=now)
     if "questions_muted" in data:
         set_questions(user, on=not bool(data["questions_muted"]), now=now)
     if "quiet_until" in data:
@@ -479,7 +487,10 @@ def update_settings(user, data: dict, *, now=None) -> dict:
         ListeningConsent.objects.filter(pk=consent.pk).update(
             questions_quiet_until=value, updated_at=now
         )
-    return settings_for(user)
+    result = settings_for(user)
+    if removed is not None:
+        result["personal_removed"] = removed
+    return result
 
 
 def delete_everything(user):

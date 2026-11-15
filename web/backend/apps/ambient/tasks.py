@@ -35,5 +35,12 @@ def recompute_attention() -> int:
 
 @shared_task(name="apps.ambient.read_conversations")
 def read_conversations() -> dict:
-    """Read every conversation that has gone quiet (Plan 04). Hourly."""
-    return reading.read_ready().as_dict()
+    """Read every conversation that has gone quiet (Plan 04). Hourly.
+
+    First, the personal-information opt-out's sweep of rows written before the
+    extractor was asked (:func:`apps.ambient.personal.sweep`).
+    """
+    from . import personal
+
+    swept = personal.sweep()
+    return {**reading.read_ready().as_dict(), "personal": swept}

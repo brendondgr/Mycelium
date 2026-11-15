@@ -8,7 +8,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
-from apps.ambient import reading
+from apps.ambient import personal, reading
 
 
 class Command(BaseCommand):
@@ -18,6 +18,6 @@ class Command(BaseCommand):
         parser.add_argument("--limit", type=int, default=None)
 
     def handle(self, *args, **options):
-        self.stdout.write(
-            json.dumps(reading.read_ready(limit=options["limit"]).as_dict())
-        )
+        swept = personal.sweep()
+        result = reading.read_ready(limit=options["limit"]).as_dict()
+        self.stdout.write(json.dumps({**result, "personal": swept}))

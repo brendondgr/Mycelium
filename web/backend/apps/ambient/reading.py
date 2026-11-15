@@ -8,8 +8,9 @@ For each conversation :mod:`.windows` says is ready:
 3. a window already read under the same content hash is closed unread — an
    unchanged window is never sent to the model twice;
 4. the extractor reads it (:mod:`.extract`);
-5. the observations are written, each topic linked to a concept through the
-   knowledge core, and the bodies are deleted.
+5. the observations are written — less anything about the life of a speaker
+   who keeps personal information out (:mod:`.personal`) — each topic linked
+   to a concept through the knowledge core, and the bodies are deleted.
 
 If the model cannot be reached the window is left unread, bodies and all, and
 the next hour tries again; once its bodies are within the expiry margin
@@ -34,7 +35,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from . import extract, windows
+from . import extract, personal, windows
 from .eligibility import agent_chat_enabled, ambient_enabled
 from .extract import Extracted, Outcome
 from .models import (
@@ -62,6 +63,8 @@ class ReadRun:
     duplicate: int = 0
     capped: int = 0
     observations: int = 0
+    #: Not written: personal facts about people who opted out (Q-071).
+    withheld: int = 0
     linked: int = 0
     refused: Counter = field(default_factory=Counter)
 
@@ -176,6 +179,12 @@ def _store(
         from .transcripts import keep_only_developments
 
         outcome.observations = keep_only_developments(outcome.observations)
+    opted_out = personal.withheld_ids(
+        {item.line.speaker_id for item in outcome.observations}
+    )
+    kept = [item for item in outcome.observations if personal.keep(item, opted_out)]
+    withheld = len(outcome.observations) - len(kept)
+    outcome.observations = kept
     if outcome.observations:
         result = ExtractionRun.Outcome.READ
     elif outcome.refused:
@@ -210,6 +219,7 @@ def _store(
             outcome=result,
             observations_kept=len(outcome.observations),
             refused=sorted(set(outcome.refused)),
+            withheld=withheld,
             engagement=sum(1 for line in conversation.readable if line.engagement),
             attempts=outcome.attempts,
             prompt_version=extract.PROMPT_VERSION,
@@ -244,6 +254,7 @@ def _store(
                         facet=item.facet,
                         topic=item.topic,
                         change=item.change,
+                        personal_life=item.personal,
                         explicit=item.line.explicit
                         or item.line.place_kind == PlaceKind.DM,
                         conversation_key=conversation.spec.key,
@@ -392,6 +403,7 @@ def read_ready(
         stored = _store(conversation, outcome, digest, now)
         run.read += 1
         run.observations += stored.observations_kept
+        run.withheld += stored.withheld
         run.linked += Observation.objects.filter(
             run=stored, concept__isnull=False
         ).count()

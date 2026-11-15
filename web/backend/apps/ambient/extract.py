@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 COMPONENT = "ambient_extract"
 #: Bump whenever the prompt or the validation changes.
-PROMPT_VERSION = "a4"
+PROMPT_VERSION = "a5"
 MAX_ATTEMPTS = 2
 MAX_OBSERVATIONS = 8
 MAX_TOPIC_WORDS = 6
@@ -82,6 +82,7 @@ Note what the numbered lines show. Reply as
                e.g. "Said they want to try conformal prediction on the imaging
                data." Never copy their wording.,
     "change": for a project_development only, one of {changes},
+    "personal": true or false (see below),
     "confidence": how sure you are you read it correctly, 0 to 1}}
 ]}}
 
@@ -118,6 +119,13 @@ project or lab when it is about the project or the lab; unknown otherwise.
 
 facet: problem (what is being solved), method (a technique), setting (data, a
 population, an instrument, a place), area (a broad field, or none of these).
+
+personal: true when the line is about someone's life rather than their work —
+health or a medical condition, immigration or a visa, family, pregnancy or
+caring for someone, money or salary, a relationship or a conflict with a
+person, or a plan to leave the lab or job. Still true when it is mentioned
+because it affects the work. false for research, projects, methods, tools,
+skills, interests and career direction in a field.
 
 At most {max_obs} observations. Skip small talk, logistics and anything you
 would have to guess.
@@ -181,6 +189,9 @@ class Extracted:
     account: str
     confidence: float
     change: str = ""
+    #: The model's answer to "about a life rather than work?" (Q-071); None
+    #: when it gave no clear true or false.
+    personal: bool | None = None
 
 
 @dataclass
@@ -318,6 +329,18 @@ def _quotes(account: str, sentence: str, lines: list[Line], topic: str = "") -> 
     return bool(quoted_runs(account, [line.text for line in lines], allowed=topic))
 
 
+def _flag(value) -> bool | None:
+    """A JSON true or false, or the words for them; anything else is None."""
+    if isinstance(value, bool):
+        return value
+    text = str(value or "").strip().lower()
+    if text in {"true", "yes"}:
+        return True
+    if text in {"false", "no"}:
+        return False
+    return None
+
+
 def validate(
     payload: dict, numbered: dict[int, Line], conversation: Conversation
 ) -> tuple[list[Extracted], list[str], list[str]]:
@@ -406,6 +429,7 @@ def validate(
             change = str(entry.get("change") or "").strip().lower()
             if change not in Change.values:
                 change = Change.OTHER
+        personal = _flag(entry.get("personal"))
         key = (line.ref_id, kind, topic.casefold())
         if key in seen:
             continue
@@ -421,6 +445,7 @@ def validate(
                 account=account,
                 confidence=max(0.0, min(1.0, confidence)),
                 change=change,
+                personal=personal,
             )
         )
     if len(kept) > MAX_OBSERVATIONS:

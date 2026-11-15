@@ -112,6 +112,10 @@ export type AmbientSettings = {
   listening: { discord: boolean; slack?: boolean; teams?: boolean };
   questions_muted: boolean;
   quiet_until: string | null;
+  /** The personal-information opt-out (Q-071): life facts are not kept. */
+  personal_withheld?: boolean;
+  /** Only in the reply to turning it on: how many notes were deleted then. */
+  personal_removed?: number;
   statement: string;
   observations: number;
 };
