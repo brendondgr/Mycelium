@@ -8,10 +8,10 @@
 
 id: EXP-2026-11-019
 slug: agent-collab-scenarios
-title: Collaborator search through Mylo, by scenario
-status: running # planned | running | complete | failed | superseded
+title: "Collaborator search through Mylo, by scenario"
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-11-15
-date_completed: null
+date_completed: 2026-11-15
 authors: [Claude (agent, unattended overnight run)]
 
 purpose: >
@@ -31,10 +31,10 @@ hypothesis: >
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 8e32be8a
+  commit: 1b953eae  # harness as run: gate arm at 3a77aef3 (identical run019/world019), baseline after the lexical fix; product code unchanged since 26084157
   branch: main
   entrypoint: "docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/run019.py --arm gate|baseline --reps 1 --conc 1 --tag main (in a one-off backend container; PROTOCOL.md Procedure), then code/analyse.py"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  dirty: true  # other phases' folders were being written in the same checkout; see ISSUES.md
 config:
   path: docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/data/world.json
   hash: null
@@ -42,47 +42,58 @@ data:
   name: collaboration sandbox world (sandbox.collab.world, 600 people) + EXP-019 scenario overlay
   version: world seed 20260918, overlay seed 20261115
   split: test
-  n_examples: 103
+  n_examples: 618  # 103 planned runs x 3 repetitions x 2 arms
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
 seeds: [20260918, 20261115]
-n_runs: 1
+n_runs: 3
 
 environment:
   python: "3.13"
   lockfile: web/backend/uv.lock
-  container: null
+  container: "ghcr.io/astral-sh/uv@sha256:47965cdc9d53a515f68f78241161c901e70051ce428f12e791bd7fe19f6a631a (one-off backend containers)"
 compute:
   hardware: "Intel Xeon Silver 4114 (20 threads), 62 GB RAM; model served remotely through the relay"
-  wall_clock_hours: null
-  estimated_cost_usd: null
+  wall_clock_hours: 3.8  # counted runs 06:02-09:50 UTC
+  estimated_cost_usd: null  # self-hosted model; ~8.5M tokens in all
 
-# --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+llm:
+  model: "relay default-model (instance LLM_MODEL; identity uncertain: recorded as Qwen 3.8 27B in round one, self-reports as Google-trained now)"
+  temperature: null
+  max_tokens: null
+  prompt_files: [tools/agent/prompt.py, docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/baseline019.py]
+  prompt_hash: null
+  total_input_tokens: null
+  total_output_tokens: null
+  nondeterminism_note: >
+    Instance sampling settings, not controlled; three repetitions per seeker.
+    Token totals per run (input+output) are in the logs: gate 3,965,791,
+    baseline 4,489,956.
 
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
-statistical_test: null
+  primary: claim_b_gate_violation_rate_S3_S10
+  values:
+    claim_b_gate_violation_rate_S3_S10: {mean: 0.0, n: 206}
+    claim_b_gate_violation_upper95: 0.0144
+    claim_a_S1_named_rate: {mean: 1.0, n: 22}
+    claim_a_S2_named_rate: {mean: 1.0, n: 23}
+    claim_c_gate_answer_violation_rate: {mean: 0.0, n: 206}
+    claim_c_baseline_answer_violation_rate: {mean: 0.8455, n: 233}
+    claim_c_difference: {mean: 0.8455, n: 439}
+    claim_c_difference_newcombe95_lo: 0.7904
+    claim_c_difference_newcombe95_hi: 0.8863
+    gate_empty_turn_rate: {mean: 0.1586, n: 309}
+    baseline_empty_turn_rate: {mean: 0.0227, n: 309}
+baselines_compared: [prose-rules baseline with an unfiltered people directory (harness only)]
+statistical_test: "Wilson 95% for rates, exact one-sided 95% upper bound for zero counts, Newcombe hybrid-score 95% interval for the arm difference"
 
 # --- Linkage -----------------------------------------------------------------
-supports_claims: []
+supports_claims: [C-050, C-051, C-052]
 refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-09-007, EXP-2026-09-008, EXP-2026-09-010, EXP-2026-09-012, EXP-2026-11-011]

@@ -68,14 +68,14 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-016` | 2026-11-15 | Permission gate replicated: second model, seeded worlds, second reader | complete | — | C-037, C-038 | [folder](experiments/EXP-2026-11-016-agent-gate-replication/RESULTS.md) |
 | `EXP-2026-11-017` | 2026-11-15 | Deletion, opt-out and member isolation with enough runs | complete | — | C-041, C-042 (refutes C-040) | [folder](experiments/EXP-2026-11-017-agent-memory-lifecycle/RESULTS.md) |
 | `EXP-2026-11-018` | 2026-11-15 | Mylo answers graded by code against stored facts | complete | arm_a_answerable_full_credit 0.7200 (n=150) | C-043, C-044, C-045, C-046 | [folder](experiments/EXP-2026-11-018-agent-answers-gold/RESULTS.md) |
-| `EXP-2026-11-019` | 2026-11-15 | Collaborator search through Mylo, by scenario | running | — | — | [folder](experiments/EXP-2026-11-019-agent-collab-scenarios/RESULTS.md) |
+| `EXP-2026-11-019` | 2026-11-15 | Collaborator search through Mylo, by scenario | complete | claim_b_gate_violation_rate_S3_S10 0.0000 (n=206) | C-050, C-051, C-052 | [folder](experiments/EXP-2026-11-019-agent-collab-scenarios/RESULTS.md) |
 | `EXP-2026-11-020` | 2026-11-15 | The answer checker as a loop: repair, removal, unread | complete | forced_drafts_error_in_final 0.0000 (n=90) | C-047, C-048 (refutes C-049) | [folder](experiments/EXP-2026-11-020-agent-verifier-loop/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 56 |
+| complete | 57 |
 | planned | 3 |
-| running | 2 |
+| running | 1 |
 | **total** | **61** |

@@ -255,3 +255,14 @@ the primary grading for every claim; v1 is reported beside it
 (`data/metrics.json` keys `v2`, `v1`). `run019.py` itself is not changed
 mid-run, so every run is graded both ways by the same code. At this point 48
 gate runs were logged, one of them empty; none had been analysed.
+
+## Amendment 3 — 2026-11-15T09:52Z, after all runs (post hoc)
+
+The harness's `turn_outcome` read recall events under the key `content`; their
+text is under `text`, so what Mylo's recall showed the model was never part of
+the results point. Every repetition re-asks the same seeker, and recall brings
+back the person's own earlier conversations (including dry runs and the other
+arm's). `code/recall019.py` re-reads recall from the kept threads and reports,
+per run, whether recall was present and any name in it outside the run's
+allowed set. This is an added check, not a change to any registered point or
+number; it was written after the results were seen and is labelled so.

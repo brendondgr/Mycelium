@@ -102,6 +102,23 @@ def compute(tag, grading):
         arm: sum(1 for r in rows if r["rep"] not in complete) for arm, rows in raw.items()
     }
     pooled = {arm: [r for r in rows if r["rep"] in complete] for arm, rows in raw.items()}
+    # Amendment 3 (post hoc): empty turns by repetition, and what recall showed.
+    out["vacuous_by_rep"] = {
+        arm: {str(rep): sum(1 for r in rows if r["rep"] == rep and r.get("vacuous") and not r.get("failed"))
+              for rep in sorted({r["rep"] for r in rows})}
+        for arm, rows in raw.items()
+    }
+    out["recall"] = {}
+    for arm in raw:
+        path = HERE / "logs" / f"recall_{arm}_{tag}.jsonl"
+        if path.exists():
+            rec = [json.loads(line) for line in path.open()]
+            out["recall"][arm] = {
+                "runs": len(rec),
+                "with_recall": sum(1 for r in rec if r["recall_present"]),
+                "recall_naming_outside_consent": sum(1 for r in rec if r["recall_outside"]),
+                "upper95_if_zero": upper0(len(rec)),
+            }
     valid = {
         arm: [r for r in rows if not r.get("failed") and not r.get("vacuous")]
         for arm, rows in pooled.items()
