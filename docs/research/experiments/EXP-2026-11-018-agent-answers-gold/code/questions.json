@@ -1,0 +1,459 @@
+{
+ "note": "EXP-2026-11-018. Built by code/build_gold.py and frozen before any answer was generated. Asked as the demo lab's fictional PI in lab scope. Mentions are item:<ContentItem id>.",
+ "snapshot": "2026-11-15T05:43:04.968712+00:00",
+ "today": "2026-11-15",
+ "questions": [
+  {
+   "id": "f01",
+   "kind": "field",
+   "text": "How much funding does this call offer?",
+   "mentions": [
+    "item:c4ffc4a1-77b2-4060-ada9-51f292bdd497"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "f02",
+   "kind": "field",
+   "text": "What is the funding range for this call?",
+   "mentions": [
+    "item:292faa75-52a4-47d3-b44c-4342c364cb9a"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "f03",
+   "kind": "field",
+   "text": "How much can one award from this program be?",
+   "mentions": [
+    "item:143a2bb8-abf0-426d-bb3b-db14f5756140"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "f04",
+   "kind": "field",
+   "text": "When is the application deadline for this call?",
+   "mentions": [
+    "item:6eeec7f2-7fad-4197-a554-0fc8fb1fabee"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "f05",
+   "kind": "field",
+   "text": "What is the deadline to apply to this call?",
+   "mentions": [
+    "item:36b49619-9af9-4f8d-a073-ebf98a3328dd"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "f06",
+   "kind": "field",
+   "text": "When are applications for this fellowship due?",
+   "mentions": [
+    "item:0f8b50a8-c940-45af-b5bd-8ad9a5d0d4e6"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "f07",
+   "kind": "field",
+   "text": "Where was this paper published?",
+   "mentions": [
+    "item:410090eb-5b58-4c24-b735-361707b0057d"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "f08",
+   "kind": "field",
+   "text": "Which journal published this paper?",
+   "mentions": [
+    "item:d3ef7054-cc80-4f4a-891a-9876fc99e1ae"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "f09",
+   "kind": "field",
+   "text": "Who are the authors of this?",
+   "mentions": [
+    "item:50626250-280b-405d-a93c-750f2894b7c7"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "f10",
+   "kind": "field",
+   "text": "Who wrote this paper?",
+   "mentions": [
+    "item:7a0631d5-b422-48d9-ba65-6adfc0522437"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "l01",
+   "kind": "list",
+   "text": "Which grants in the lab's feed have an application deadline in February 2027?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "l02",
+   "kind": "list",
+   "text": "Which grants in the lab's feed close between today and 31 January 2027?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "l03",
+   "kind": "list",
+   "text": "Which grants in the lab's feed have an application deadline in March 2027?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "l04",
+   "kind": "list",
+   "text": "Which fellowships in the lab's feed have a confirmed deadline before 1 January 2027?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "l05",
+   "kind": "list",
+   "text": "Which fellowships in the lab's feed have a deadline in the next 30 days?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "l06",
+   "kind": "list",
+   "text": "Which conferences in the lab's feed have a paper submission deadline in December 2026?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "l07",
+   "kind": "list",
+   "text": "Which conferences in the lab's feed have a paper submission deadline in the next 10 days?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "l08",
+   "kind": "list",
+   "text": "Which grants in the lab's feed offer up to at least €40 million?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "l09",
+   "kind": "list",
+   "text": "Which grants in the lab's feed state their funding in US dollars?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "l10",
+   "kind": "list",
+   "text": "Which fellowships in the lab's feed have a deadline in February 2027?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s01",
+   "kind": "project",
+   "text": "How far along is the Marine heatwave early warning project?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s02",
+   "kind": "project",
+   "text": "What progress is recorded for the Plastic pathways project?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s03",
+   "kind": "project",
+   "text": "Which topics does the Marine heatwave early warning project watch?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s04",
+   "kind": "project",
+   "text": "Which topics does the Plastic pathways project watch?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s05",
+   "kind": "project",
+   "text": "Who else, besides me, is on the Marine heatwave early warning project?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s06",
+   "kind": "project",
+   "text": "Who else, besides me, is on the Plastic pathways project?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s07",
+   "kind": "project",
+   "text": "According to its status, which years do the Marine heatwave early warning project's hindcasts cover?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s08",
+   "kind": "project",
+   "text": "According to its status, how far ahead do the Marine heatwave early warning project's hindcasts beat persistence?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s09",
+   "kind": "project",
+   "text": "According to its status, how often do the Plastic pathways project's satellite debris detections run?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "s10",
+   "kind": "project",
+   "text": "According to its status, what is the Plastic pathways project's beaching model being checked against?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p01",
+   "kind": "people",
+   "text": "Who in the lab has declared an interest in marine litter?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p02",
+   "kind": "people",
+   "text": "Who in the lab works on satellite oceanography, by their declared interests?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p03",
+   "kind": "people",
+   "text": "Which lab member has declared an interest in ocean data tools?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p04",
+   "kind": "people",
+   "text": "Who in the lab has declared an interest in turbulence?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p05",
+   "kind": "people",
+   "text": "Who in the lab lists coastal water quality among their interests?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p06",
+   "kind": "people",
+   "text": "Which lab member has declared an interest in Lagrangian analysis?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p07",
+   "kind": "people",
+   "text": "Which lab members, other than me, declare an interest involving machine learning?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p08",
+   "kind": "people",
+   "text": "What research interests has Priya Raman declared?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p09",
+   "kind": "people",
+   "text": "What research interests has Tomás Ferreira-Lind declared?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "p10",
+   "kind": "people",
+   "text": "Which lab members are not on the Marine heatwave early warning project?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j01",
+   "kind": "join",
+   "text": "Which of our projects watches the topic 'marine litter tracking', and which paper ranks first in that project's feed?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j02",
+   "kind": "join",
+   "text": "Which of our projects watches the topic 'marine heatwave prediction', and which paper ranks first in that project's feed?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j03",
+   "kind": "join",
+   "text": "Which grant ranks first in the feed of the project that watches 'ocean data dashboards'?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j04",
+   "kind": "join",
+   "text": "Which grant ranks first in the feed of the project that watches 'satellite ocean remote sensing'?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j05",
+   "kind": "join",
+   "text": "Which conference ranks first in the feed of the project Jonah Whitcombe works on?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j06",
+   "kind": "join",
+   "text": "Which fellowship ranks first in the feed of the project Sun-hee Park works on?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j07",
+   "kind": "join",
+   "text": "Which members of the Marine heatwave early warning project, other than me, declare an interest involving machine learning?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j08",
+   "kind": "join",
+   "text": "Which grants are in the top three of both projects' feeds?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j09",
+   "kind": "join",
+   "text": "What progress is recorded for the project Priya Raman works on?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "j10",
+   "kind": "join",
+   "text": "Of the three top-ranked grants in the Marine heatwave early warning project's feed, which has the earliest application deadline?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "u01",
+   "kind": "unanswerable",
+   "text": "How much funding does this call offer per award?",
+   "mentions": [
+    "item:d0691bc6-c114-41bb-96be-8c60b687474c"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "u02",
+   "kind": "unanswerable",
+   "text": "What is the award size for this call?",
+   "mentions": [
+    "item:e644da43-05ce-49a2-ac9c-5d62aa5bb7f7"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "u03",
+   "kind": "unanswerable",
+   "text": "What is the maximum award under this program?",
+   "mentions": [
+    "item:435caf38-5230-42b5-8f9d-b32ca73d29e7"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "u04",
+   "kind": "unanswerable",
+   "text": "How many times has this paper been cited?",
+   "mentions": [
+    "item:3a964b7a-3e32-454f-b51a-efb81f17637b"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "u05",
+   "kind": "unanswerable",
+   "text": "How many times has this paper been cited?",
+   "mentions": [
+    "item:410090eb-5b58-4c24-b735-361707b0057d"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "u06",
+   "kind": "unanswerable",
+   "text": "What was this conference's acceptance rate last year?",
+   "mentions": [
+    "item:4794d81a-76e1-4c10-8b0b-94807801df1e"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "u07",
+   "kind": "unanswerable",
+   "text": "What is the Plastic pathways project's total budget?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "u08",
+   "kind": "unanswerable",
+   "text": "What is Sun-hee Park's email address?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "u09",
+   "kind": "unanswerable",
+   "text": "What is Tomás Ferreira-Lind's phone number?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "u10",
+   "kind": "unanswerable",
+   "text": "What is Jonah Whitcombe's h-index?",
+   "mentions": [],
+   "scope": "lab"
+  }
+ ]
+}

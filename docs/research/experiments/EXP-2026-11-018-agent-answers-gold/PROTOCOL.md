@@ -1,48 +1,178 @@
 # EXP-2026-11-018 — Protocol
 
-**Write this before running anything.** Pre-registering the protocol is what
-separates an experiment from a fishing expedition, and it means the methods
-section is already half-written.
+Written 2026-11-15, before any answer was generated; committed with the
+frozen questions (`code/questions.json`), gold (`data/gold.json`), grader
+(`code/grade.py`, `code/normalise.py`) and the claim rows C-043 to C-046.
+Phase 3 of `docs/plans/20261115-mylo-evaluation-round-two.md`.
 
 ## Question
 
-What are we trying to find out? One sentence, answerable by a number.
+When the demo lab's PI asks Mylo a question whose correct answer is stored in
+the database, how often is the answer exactly right — every gold object named
+and nothing wrong stated — and is that better than one search plus one model
+call, and better than Mylo without its lab, project and people functions?
 
 ## Hypothesis
 
-What we expect, and why, stated before we look. "Exploratory — no prior
-hypothesis" is an acceptable answer; a hypothesis written after the result is
-not.
+Stated as claims before the run (CLAIMS.md):
+
+- **C-043 (a)** Arm (a) earns full credit on at least 70% of answerable runs.
+- **C-044 (b)** Arm (a) beats arm (b) on full credit: paired bootstrap 95%
+  interval of the difference excludes zero.
+- **C-045 (c)** Arm (a) beats arm (c) on the project, people and join kinds.
+- **C-046 (d)** On unanswerable questions arm (a) states a fact in at most
+  10% of runs.
+
+Expectation, from reading the code: arm (b) fails the project, people and
+list kinds almost entirely (it sees only the corpus); arm (c) fails project
+and people questions it cannot reach through the system prompt; field
+questions on tagged items are close between arms. The strict citation rule
+for naming objects may cost arm (a) on people questions, which is why the
+secondary grading is reported beside it.
 
 ## Setup
 
-The system under test, the version of it, and what is held fixed.
+- System under test: Mylo (`tools/agent/`) at the commit in `manifest.yaml`
+  (contains `60ae301`, round one's fixes), instance model `default-model` via
+  `llm-tunnel` (see `env/hardware.md`: the model behind it changed since round
+  one and is identified only by its self-report), instance defaults.
+- Asker: the public demo world's PI (`demo.mara`, fictional), lab scope
+  (`coastal-ocean-lab`), `surface="web"`, audience `person`. One fresh demo
+  thread per job (`demo_visitor="EXP-2026-11-018"`): no learning pass; deleted
+  at the end of the run. Nothing else is written to the live database.
+- The corpus and slates are the live ones at the snapshot in `data/gold.json`
+  (2026-11-15 05:43 UTC). The nightly run, which re-ranks, starts at 12:00
+  UTC; every run here ends before 11:15 UTC, so gold and answers see the same
+  slates. Date windows ("next 30 days") are relative to 2026-11-15.
+- `AGENT_PARALLEL_CALLS=0` (one request in flight per turn; shared server).
 
 ## Data
 
-Collection, version, split, size, and the provenance of the judgments. If the
-judgments are not human assessments, say so here and say it again next to every
-number.
+`code/build_gold.py` (read-only) computes every gold answer from the stored
+rows the product's functions read, and writes `code/questions.json` and
+`data/gold.json` (per question: the query, gold object ids, gold values, the
+values stored on the records involved, the snapshot). Sixty questions, ten
+per kind:
+
+| kind | what | gold |
+|---|---|---|
+| `field` | a stored field of a tagged item: 3 amounts, 3 deadlines, 2 venues, 2 author lists | values |
+| `list` | a filtered list from the **lab's feed** (`in_slate` rows for the lab): grants/fellowships/conferences by deadline window, amount, currency | item ids (2–7 each) |
+| `project` | a project's progress, watched topics, other members, and four facts in its stored status text | values or people |
+| `people` | who declares an interest (6), "involving machine learning" (1), a named member's declared interests (2), who is not on a project (1) | people or values |
+| `join` | a watched topic → the project → the first paper of its feed (2); a topic or member → the project → the first grant, conference or fellowship (4); project members × interests (1); grants in both projects' top three (1); a member's project → its progress (1); earliest deadline among a feed's top three grants (1) | mixed |
+| `unanswerable` | a fact absent from every record the agent can read for it: an amount on three grants with none stored, citation counts of two papers, a conference's acceptance rate, two project budgets... | declining |
+
+The final unanswerable set is u01–u10 in `questions.json`: three grant amounts,
+two citation counts, an acceptance rate, a project budget, a member's email,
+a member's phone number, a member's h-index. The builder rejects any whose
+fact pattern appears in the record text the agent could read (`corpus_item`,
+`projects_get`, `org_person` output). The plan's example join "a member's
+career stage → fellowships whose eligibility rule admits them" is **not**
+included: career stage (`Profile.academic_title`) is not exposed by any agent
+function, so the question would test nothing Mylo can reach. Candidates are
+listed in a fixed order in the builder; the first ten valid per kind are
+kept (`l12` was rejected for 11 gold items; `u11`–`u14` were not needed).
+Questions were written by the implementing agent; no question names a real
+person (the people are the demo's fictional members; items are real corpus
+records).
+
+## Arms
+
+Same model, same port, three repetitions each (`code/run.py`):
+
+- **(a)** Mylo as shipped: `EXP-2026-11-013/code/mylo_turn.run_question`.
+- **(b)** one `corpus_search` and one model call: `EXP-2026-11-013/code/generate.arm_b`
+  unchanged (tagged items' records first, then search results' full records,
+  numbered `#1..k`, cite `#n`, no tools), budget fixed at 27,100 tokens (round
+  one's arm (a) mean; the 20-result search cap keeps arm (b) below it).
+- **(c)** Mylo with only the corpus functions loaded: arm (a) with the
+  function catalog reduced, inside the harness process, to the agent's own
+  housekeeping functions (`ask_user`, `update_todos`, `find_functions`,
+  `load_functions`, `read_skill`, `read_result`, `thread_search`) plus
+  `corpus_*` and `fulltext_*`. Removed: `feeds_*`, `projects_*`, `org_*`,
+  `me_*`, `knowledge_*`, `files_*`. The system prompt is unchanged, so arm (c)
+  still sees the lab block and the asker's own profile and project names.
+
+540 jobs (60 × 3 arms × 3 reps), shuffled with seed 20261115, 3 in flight.
+A job that raises, hits the 900 s deadline or ends with no final text is
+recorded as failed and retried once after all jobs; both rows are kept.
 
 ## Metrics
 
-Define them, do not just name them. State which is primary and why. A metric
-chosen after seeing the results is a metric that will not survive review.
+Grading is code only (`code/grade.py`, `code/normalise.py`; not
+`tools/agent/verify.py`):
+
+- An answer **names an object** when it cites `#n` and the harness resolves
+  `#n` to that object's id (arms a/c: the thread's reference table; arm b: its
+  numbered evidence). Only objects of the gold's kinds (and, for items, the
+  gold's corpus types) count. **Secondary grading**, reported beside every
+  number: also a gold object whose title (first eight folded words), project
+  name, or person's first name or surname appears in the text.
+- **Values**: dates, amounts (currency-marked; scale words; ranges; equal
+  within 1%), percentages (±0.5) by the normaliser; phrases by folded
+  substring with listed alternates. A stated date/amount/percentage of a
+  question's checked type that matches nothing stored on the involved records
+  (or today's date) is a wrong statement.
+- Per question: recall of gold units; precision of named units (objects plus
+  checked values; 1 when nothing is named); **full credit = recall 1 and
+  precision 1** (primary metric).
+- Unanswerable: `states_fact` if the question's fact pattern (amount,
+  percentage, or the regex in `gold.json`) matches; `declines` if the decline
+  pattern matches; full credit = declines and states no fact.
+- A job is graded on its first non-failed attempt; a job with no successful
+  attempt scores 0 and is counted as failed.
+
+Intervals: Wilson 95% for rates over runs; for arm (a)'s answerable rate and
+for every arm difference, a bootstrap over **questions** (per-question mean
+over the three repetitions; 10,000 resamples, seed 20261115, percentile
+interval), paired by question for differences.
+
+## Decision rules (fixed now)
+
+- **C-043** supported if arm (a)'s full-credit rate over the 150 answerable
+  runs (primary grading) is ≥ 0.70; the bootstrap interval is reported.
+- **C-044** supported if the paired bootstrap 95% interval of
+  (arm a − arm b) full credit over all 60 questions (primary) lies above zero;
+  refuted if it includes zero or lies below. Answerable-only and per-kind
+  differences are reported.
+- **C-045** supported if the paired interval of (arm a − arm c) over the 30
+  project, people and join questions lies above zero **and** the point
+  difference is positive in each of the three kinds; partial if the pooled
+  interval is above zero but one kind is not; refuted otherwise.
+- **C-046** supported if arm (a) states a fact in ≤ 10% of its 30
+  unanswerable runs (Wilson interval reported).
+- Every claim is decided on the primary grading. The secondary grading is
+  reported and never substituted.
 
 ## Baselines
 
-What we compare against, and why those. A result with no baseline is a number,
-not a finding.
+Arm (b) (retrieve-then-answer, as round one) and arm (c) (the agent without
+its lab, project and people functions).
 
 ## Procedure
 
-The exact commands, in order. Someone with the repository and the data should be
-able to paste these and get the same numbers.
-
 ```bash
+R="docker compose run --rm --no-deps -T --user $(id -u):$(id -g) -e HOME=/tmp -e AGENT_PARALLEL_CALLS=0 -v $PWD/docs/research:/app/docs/research backend uv run --no-sync --project web/backend python"
+E=docs/research/experiments/EXP-2026-11-018-agent-answers-gold
+$R $E/code/build_gold.py            # once, before this protocol was committed
+$R $E/code/run.py --dry-run         # job list and arm-c catalog, no model call
+$R $E/code/run.py --conc 3          # 540 jobs → data/runs.jsonl
+python3 $E/code/grade.py            # → data/graded.jsonl, metrics.json/.csv, tables/summary.md
+python3 $E/figures/make_figures.py
+$R $E/code/cleanup.py               # delete this experiment's demo threads
 ```
 
 ## What would falsify this
 
-The concrete result that would make us abandon or revise the hypothesis. Write
-it down now, so that it is not renegotiated once the numbers are in.
+C-043 fails below 70% full credit. C-044 fails if the paired interval
+includes zero or favours arm (b). C-045 fails if the pooled interval includes
+zero. C-046 fails above 10% fact-stating on unanswerable questions.
+
+## What it cannot show
+
+Usefulness; correctness on questions with no stored answer; anything about
+real labs (one fictional lab, its two projects and five members, on the live
+corpus). C-033 and C-034 need people and stay `unsupported`; C-043 to C-046
+are new rows beside them. Questions and grader were written by the
+implementing agent.

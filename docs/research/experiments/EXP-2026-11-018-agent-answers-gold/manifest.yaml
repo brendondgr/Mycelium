@@ -9,24 +9,30 @@
 id: EXP-2026-11-018
 slug: agent-answers-gold
 title: Mylo answers graded by code against stored facts
-status: planned # planned | running | complete | failed | superseded
+status: running # planned | running | complete | failed | superseded
 date_started: 2026-11-15
 date_completed: null
-authors: [<your name>]
+authors: [Claude (agent), Brendon (owner)]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  When the demo lab's PI asks Mylo a question whose answer is stored in the
+  database, how often is the answer exactly right, graded by code against a
+  gold set computed from the database before any answer was generated; and is
+  it better than one search plus one model call, and than Mylo without its
+  lab, project and people functions? Tests C-043 to C-046 (new rows beside
+  C-033/C-034, which need people).
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  C-043: arm (a) full credit on at least 70% of answerable runs. C-044: arm (a)
+  beats arm (b) (paired bootstrap interval excludes zero). C-045: arm (a) beats
+  arm (c) on project, people and join questions. C-046: arm (a) states a fact
+  on at most 10% of unanswerable runs.
 
 # --- Reproducibility block ---------------------------------------------------
 code:
   commit: 8e32be8a
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
+  entrypoint: "docker compose run --rm --no-deps -T backend uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-018-agent-answers-gold/code/run.py --conc 3; python3 docs/research/experiments/EXP-2026-11-018-agent-answers-gold/code/grade.py"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
   path: <path to the config file, or null>
