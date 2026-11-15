@@ -1,0 +1,58 @@
+{
+ "before": [
+  {
+   "id": "auto",
+   "health": null,
+   "upstream": null
+  },
+  {
+   "id": "default-model",
+   "health": "healthy",
+   "upstream": "default-model-2"
+  },
+  {
+   "id": "default-model-2",
+   "health": "healthy",
+   "upstream": "default-model"
+  },
+  {
+   "id": "default-model-3",
+   "health": "failed",
+   "upstream": null
+  },
+  {
+   "id": "default-model-4",
+   "health": "failed",
+   "upstream": null
+  }
+ ],
+ "started": "2026-11-15T09:51:58+0000",
+ "after": [
+  {
+   "id": "auto",
+   "health": null,
+   "upstream": null
+  },
+  {
+   "id": "default-model",
+   "health": "healthy",
+   "upstream": "default-model-2"
+  },
+  {
+   "id": "default-model-2",
+   "health": "healthy",
+   "upstream": "default-model"
+  },
+  {
+   "id": "default-model-3",
+   "health": "failed",
+   "upstream": null
+  },
+  {
+   "id": "default-model-4",
+   "health": "failed",
+   "upstream": null
+  }
+ ],
+ "ended": "2026-11-15T10:13:27+0000"
+}

@@ -975,6 +975,188 @@
    "peak_prompt_tokens_any_call": 17197,
    "turns_with_15_plus_model_calls": 0,
    "peak_prompt_tokens_in_15_plus_turns": null
+  },
+  "a5idle": {
+   "turns": 36,
+   "errors": 0,
+   "single": {
+    "n": 12,
+    "wall_s_median": 14.4,
+    "wall_s_max": 16.85,
+    "wall_s_mean": 12.42,
+    "first_activity_s_median": 2.61,
+    "first_activity_s_max": 3.9,
+    "model_calls_median": 4.0,
+    "model_calls_max": 5,
+    "function_calls_median": 3.0,
+    "function_calls_max": 4,
+    "tokens_median": 10544.5,
+    "tokens_max": 11681,
+    "tokens_mean": 8750,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "few": {
+    "n": 12,
+    "wall_s_median": 28.08,
+    "wall_s_max": 58.12,
+    "wall_s_mean": 34.38,
+    "first_activity_s_median": 3.45,
+    "first_activity_s_max": 9.0,
+    "model_calls_median": 5.0,
+    "model_calls_max": 9,
+    "function_calls_median": 6.0,
+    "function_calls_max": 11,
+    "tokens_median": 18370.5,
+    "tokens_max": 29798,
+    "tokens_mean": 18914,
+    "hit_max_steps": 0,
+    "thrash_stop": 1,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "compound": {
+    "n": 12,
+    "wall_s_median": 63.18,
+    "wall_s_max": 75.09,
+    "wall_s_mean": 60.52,
+    "first_activity_s_median": 5.97,
+    "first_activity_s_max": 8.28,
+    "model_calls_median": 6.0,
+    "model_calls_max": 7,
+    "function_calls_median": 12.0,
+    "function_calls_max": 17,
+    "tokens_median": 27446.0,
+    "tokens_max": 32408,
+    "tokens_mean": 26626,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "turns_with_4_to_6_model_calls": {
+    "n": 29,
+    "wall_s_max": 66.65,
+    "over_60s": 4,
+    "tokens_max": 32358
+   },
+   "turns_with_up_to_5_function_calls": {
+    "n": 18,
+    "wall_s_max": 26.12,
+    "over_60s": 0,
+    "tokens_max": 20092,
+    "over_30k_tokens": 0
+   },
+   "model_call_latency_s": {
+    "n": 183,
+    "median": 3.88,
+    "p90": 12.3,
+    "max": 39.07
+   },
+   "in_flight": 1,
+   "batch_wall_s": {
+    "n": 3,
+    "median": 427.2,
+    "max": 448.9
+   },
+   "seconds_per_question_overall": 35.6,
+   "over_60s_any": 7,
+   "peak_prompt_tokens_any_call": 10716,
+   "turns_with_15_plus_model_calls": 0,
+   "peak_prompt_tokens_in_15_plus_turns": null
+  },
+  "a5p8": {
+   "turns": 96,
+   "errors": 0,
+   "single": {
+    "n": 32,
+    "wall_s_median": 17.87,
+    "wall_s_max": 27.91,
+    "wall_s_mean": 16.58,
+    "first_activity_s_median": 3.11,
+    "first_activity_s_max": 7.5,
+    "model_calls_median": 4.0,
+    "model_calls_max": 5,
+    "function_calls_median": 3.0,
+    "function_calls_max": 4,
+    "tokens_median": 10299.0,
+    "tokens_max": 11681,
+    "tokens_mean": 8558,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "few": {
+    "n": 32,
+    "wall_s_median": 39.05,
+    "wall_s_max": 92.9,
+    "wall_s_mean": 48.01,
+    "first_activity_s_median": 6.08,
+    "first_activity_s_max": 17.21,
+    "model_calls_median": 6.0,
+    "model_calls_max": 9,
+    "function_calls_median": 6.0,
+    "function_calls_max": 18,
+    "tokens_median": 18198.5,
+    "tokens_max": 30540,
+    "tokens_mean": 20027,
+    "hit_max_steps": 0,
+    "thrash_stop": 3,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "compound": {
+    "n": 32,
+    "wall_s_median": 78.95,
+    "wall_s_max": 109.22,
+    "wall_s_mean": 81.06,
+    "first_activity_s_median": 7.62,
+    "first_activity_s_max": 13.18,
+    "model_calls_median": 6.0,
+    "model_calls_max": 7,
+    "function_calls_median": 12.0,
+    "function_calls_max": 17,
+    "tokens_median": 27471.0,
+    "tokens_max": 32786,
+    "tokens_mean": 26617,
+    "hit_max_steps": 0,
+    "thrash_stop": 0,
+    "timed_out": 0,
+    "repair": 0
+   },
+   "turns_with_4_to_6_model_calls": {
+    "n": 75,
+    "wall_s_max": 109.22,
+    "over_60s": 29,
+    "tokens_max": 32373
+   },
+   "turns_with_up_to_5_function_calls": {
+    "n": 48,
+    "wall_s_max": 41.21,
+    "over_60s": 0,
+    "tokens_max": 20093,
+    "over_30k_tokens": 0
+   },
+   "model_call_latency_s": {
+    "n": 492,
+    "median": 5.12,
+    "p90": 19.67,
+    "max": 58.16
+   },
+   "in_flight": 8,
+   "batch_wall_s": {
+    "n": 1,
+    "median": 607.0,
+    "max": 607.0
+   },
+   "seconds_per_question_overall": 6.32,
+   "over_60s_any": 40,
+   "peak_prompt_tokens_any_call": 10739,
+   "turns_with_15_plus_model_calls": 0,
+   "peak_prompt_tokens_in_15_plus_turns": null
   }
  }
 }

@@ -63,6 +63,14 @@ llm:
 metrics:
   primary: a2.a2idle.turns_with_up_to_5_function_calls.wall_s_max
   values:
+    a5.a5idle.single.wall_s_median: 14.4 # n=12
+    a5.a5idle.few.wall_s_median: 28.08 # n=12
+    a5.a5idle.compound.wall_s_median: 63.18 # n=12
+    a5.a5idle.up_to_5_calls.wall_s_max: 26.12 # n=18
+    a5.a5p8.single.wall_s_median: 17.87 # n=32
+    a5.a5p8.few.wall_s_median: 39.05 # n=32
+    a5.a5p8.compound.wall_s_median: 78.95 # n=32
+    a5.a5p8.up_to_5_calls.wall_s_max: 41.21 # n=48
     a1.r1.1.turn_latency_s_mean: 2.65 # n=3
     a1.r1.1.turn_latency_s_max: 6.13 # n=3
     a1.r1.1.turn_tokens_mean: 3716 # n=3

@@ -1,5 +1,16 @@
 # EXP-2026-11-010 — Results
 
+**Round two, A5 (2026-11-15, Amendment 5).** C-030's bar still holds on the
+current commit: every turn with up to five function calls finished within
+**26.1 s idle and 41.2 s with 8 in flight**, under 20.1k tokens (66 such turns,
+0 over 60 s or 30k). But **turns are much slower than round one** — idle
+medians 14.4 / 28.1 / 63.2 s (single / few / compound) against 2.4 / 9.7 /
+22.0 s — **and the instance model is no longer the one round one measured**
+(the relay's `default-model` now self-reports Google-trained), so the loop
+fixes and the model change cannot be separated. O8 (compound turns slow under
+load) is **kept**: the 8-in-flight compound median is 79.0 s (round one 72.5–
+77.8 s), though the worst turn fell from 169–234 s to 109.2 s.
+
 Attempt 2, 2026-11-12/13 (attempt 1 on 2026-11-09 measured nothing; the
 endpoint was down). Model: Qwen 3.8 27B on vLLM, one A100 80GB, through the
 instance relay (`env/hardware.md`). Every number is read from
@@ -154,6 +165,46 @@ reads.
 None required by the gate. If compound turns are common in real use, measure
 whether a lower `max_steps` changes answer quality (EXP-2026-11-013's sheets
 can show it).
+
+## A5 — round two, 2026-11-15 (Amendment 5)
+
+Run on the current commit (the round-one loop fixes included) at 09:53–10:24
+UTC, after every other round-two run had stopped (EXP-2026-11-016 to -020 had
+finished their model work by 09:50 UTC; the backend test suite was running on
+this host's CPU in one-off containers until about 10:06). `a5idle`: the twelve
+questions, three repetitions, one at a time (`--stop-at 10:45`, not reached).
+`a5p8`: eight containers started together, each asking all twelve once with
+`--rotate 0…7`. The process arm's rows were marked `conc: 8` by
+`code/stamp_process_arm.py` so the analysis measures its batch from
+timestamps, as round one's `a3p8` rows were. 132 demo threads
+(`EXP-2026-11-010`) and their 3,910 events were deleted from the live database
+afterwards.
+
+| Run | In flight | Group | Median s | Worst s | Median tokens | Model calls (median/max) |
+|---|---:|---|---:|---:|---:|---|
+| a2idle / a2idle2 (round one) | 1 | single | 2.35 / 2.22 | 4.61 / 4.77 | 5.8k | 2/3–4 |
+| **a5idle** | 1 | single | **14.40** | 16.85 | 10.5k | 4/5 |
+| a2idle / a2idle2 | 1 | few | 9.67 / 7.96 | 17.89 / 18.78 | 21.9k / 21.1k | 6/7–10 |
+| **a5idle** | 1 | few | **28.08** | 58.12 | 18.4k | 5/9 |
+| a2idle / a2idle2 | 1 | compound | 22.01 / 20.31 | 83.84 / 44.87 | 56.6k / 50.3k | 9.5–10.5/17–27 |
+| **a5idle** | 1 | compound | **63.18** | 75.09 | 27.4k | 6/7 |
+| a3p8 / a3p8b (round one) | 8 | compound | 77.78 / 72.54 | 234.0 / 169.34 | 52.7k / 65.3k | 9.5/23–26 |
+| **a5p8** | 8 | compound | **78.95** | 109.22 | 27.5k | 6/7 |
+
+Model-call latency (median / p90): round one idle 0.77–0.87 / 3.5–3.8 s;
+**a5idle 3.88 / 12.3 s**; a5p8 5.12 / 19.7 s. Twelve questions end to end:
+idle 427 s per repetition (round one 138–169 s); with 8 in flight 607 s for
+96 questions, 6.3 s each (round one 5.4–5.9 s). No turn hit `max_steps` or
+timed out; thrash stops 1 (idle) and 3 (8 in flight), all in the few group.
+
+**Reading.** The loop fixes did what they were for — compound turns use about
+6 model calls instead of 9.5 and half the tokens, and the worst case under
+load is half round one's. But every model call is now 4–5× slower, which
+outweighs the saving; that is a property of the server answering as
+`default-model` tonight, not of the loop, and it cannot be separated here.
+C-030 is re-read as still holding (its bar is about turns of up to five
+calls); O8 stays open. The full per-group numbers are in `tables/summary.md`
+and `data/metrics.json`.
 
 ## AMENDMENTS
 
