@@ -11,12 +11,15 @@ run() {  # arm rep
   local left=$(( STOP - $(date -u +%s) ))
   if [ "$left" -le 60 ]; then echo "hard stop: $1 rep $2 not started"; return 1; fi
   echo "$(date -u +%FT%TZ) start $1 rep $2 (timeout ${left}s)"
-  timeout --signal=TERM "$left" docker compose run --rm --no-deps -T \
+  local name="exp019-$1-rep$2"
+  timeout --signal=TERM "$left" docker compose run --rm --no-deps -T --name "$name" \
     --user "$(id -u):$(id -g)" -e HOME=/tmp -e SANDBOX_DB=mycelium_sandbox_exp019 \
     -e AGENT_PARALLEL_CALLS=0 -v "$PWD/docs/research:/app/docs/research" backend \
     uv run --no-sync --project web/backend python "$E/code/run019.py" \
     --arm "$1" --reps 1 --rep-start "$2" --conc 1 --tag main
   local rc=$?
+  # A TERM to compose may leave the container running: stop it at the hard stop.
+  docker stop "$name" >/dev/null 2>&1 || true
   echo "$(date -u +%FT%TZ) end $1 rep $2 rc=$rc"
   return $rc
 }
