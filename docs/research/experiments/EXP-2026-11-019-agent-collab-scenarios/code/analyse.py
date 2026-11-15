@@ -50,11 +50,28 @@ def newcombe(k1, n1, k2, n2):
     return [round(lo, 4), round(hi, 4)]
 
 
-def load(arm, tag):
+def load(arm, tag, grading="v2"):
+    """Run rows; with grading v2 (Amendment 2) the answer-point fields come
+    from ``logs/grades_v2_<arm>_<tag>.jsonl`` (``code/regrade019.py``)."""
     path = HERE / "logs" / f"runs_{arm}_{tag}.jsonl"
     if not path.exists():
         return []
-    return [json.loads(line) for line in path.open()]
+    rows = [json.loads(line) for line in path.open()]
+    if grading == "v2":
+        g = HERE / "logs" / f"grades_v2_{arm}_{tag}.jsonl"
+        over = {}
+        for line in g.open():
+            r = json.loads(line)
+            over[(r["rep"], r["scenario"], r["seeker"])] = r
+        missing = [r for r in rows if (r["rep"], r["scenario"], r["seeker"]) not in over]
+        if missing:
+            raise SystemExit(f"{len(missing)} {arm} rows have no v2 grade: run regrade019.py")
+        for r in rows:
+            v = over[(r["rep"], r["scenario"], r["seeker"])]
+            for k, val in v.items():
+                if k not in ("arm", "rep", "scenario", "seeker"):
+                    r[k] = val
+    return rows
 
 
 def rate(rows, key):
@@ -63,11 +80,8 @@ def rate(rows, key):
     return {"k": k, "n": n, "rate": round(k / n, 4) if n else None, "wilson95": wilson(k, n)}
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--tag", default="main")
-    args = ap.parse_args()
-    raw = {arm: load(arm, args.tag) for arm in ("gate", "baseline")}
+def compute(tag, grading):
+    raw = {arm: load(arm, tag, grading) for arm in ("gate", "baseline")}
     reps = {arm: defaultdict(set) for arm in raw}
     for arm, rows in raw.items():
         for r in rows:
@@ -78,7 +92,11 @@ def main() -> int:
         for rep in set(reps["gate"]) & set(reps["baseline"])
         if len(reps["gate"][rep]) == planned and len(reps["baseline"][rep]) == planned
     )
-    out: dict = {"tag": args.tag, "reps_pooled": complete, "runs_per_rep": planned}
+    out: dict = {"tag": tag, "grading": grading, "reps_pooled": complete,
+                 "runs_per_rep": planned}
+    out["ended_on_question"] = {
+        arm: sum(1 for r in rows if r.get("ended_on_question")) for arm, rows in raw.items()
+    }
     out["runs_logged"] = {arm: len(rows) for arm, rows in raw.items()}
     out["runs_not_pooled"] = {
         arm: sum(1 for r in rows if r["rep"] not in complete) for arm, rows in raw.items()
@@ -176,26 +194,47 @@ def main() -> int:
                  "metric": "claim_c_difference", "k": None, "n": None,
                  "value": claims["c"]["difference"], "lo": diff[0], "hi": diff[1]})
 
-    (HERE / "data").mkdir(exist_ok=True)
-    (HERE / "data" / "metrics.json").write_text(json.dumps(out, indent=1))
-    with (HERE / "data" / "metrics.csv").open("w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["arm", "scenario", "variant", "metric", "k", "n", "value", "lo", "hi"])
-        w.writeheader()
-        w.writerows(flat)
-    lines = ["| Arm | Scenario | n | Violation (any point) | Answer violation | Named (S1/S2) | Says nobody |",
-             "|---|---|---:|---|---|---|---|"]
+    for row in flat:
+        row["grading"] = grading
+    lines = []
     for arm in ("gate", "baseline"):
-        for s, m in per.get(arm, {}).items():
+        for sc, m in per.get(arm, {}).items():
             def cell(key):
                 d = m.get(key)
                 return f"{d['k']}/{d['n']}" if d else "—"
-            lines.append(f"| {arm} | {s} | {m['n']} | {cell('violation_any')} | {cell('violation_answer')} | "
-                         f"{cell('must_named')} | {cell('says_nobody')} |")
+            lines.append(f"| {grading} | {arm} | {sc} | {m['n']} | {cell('violation_any')} | "
+                         f"{cell('violation_answer')} | {cell('must_named')} | {cell('says_nobody')} |")
+    return out, flat, lines
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--tag", default="main")
+    args = ap.parse_args()
+    both, flat, lines = {}, [], []
+    # v2 (Amendment 2) is primary; v1 is the grading registered first.
+    for grading in ("v2", "v1"):
+        out, f, ls = compute(args.tag, grading)
+        both[grading] = out
+        flat += f
+        lines += ls
+    (HERE / "data").mkdir(exist_ok=True)
+    (HERE / "data" / "metrics.json").write_text(json.dumps(both, indent=1))
+    with (HERE / "data" / "metrics.csv").open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=["grading", "arm", "scenario", "variant", "metric",
+                                           "k", "n", "value", "lo", "hi"])
+        w.writeheader()
+        w.writerows(flat)
+    head = ["| Grading | Arm | Scenario | n | Violation (any point) | Answer violation | "
+            "Named (S1/S2) | Says nobody |", "|---|---|---|---:|---|---|---|---|"]
     (HERE / "tables").mkdir(exist_ok=True)
     (HERE / "tables" / "summary.md").write_text(
-        f"Generated by `code/analyse.py` from `logs/runs_*_{args.tag}.jsonl`; "
-        f"repetitions pooled: {complete}.\n\n" + "\n".join(lines) + "\n")
-    print(json.dumps(claims, indent=1))
+        f"Generated by `code/analyse.py` from `logs/runs_*_{args.tag}.jsonl` and "
+        f"`logs/grades_v2_*_{args.tag}.jsonl`; repetitions pooled: "
+        f"{both['v2']['reps_pooled']}. v2 = Amendment 2 (answer = final text + "
+        f"questions shown), primary; v1 = as first registered.\n\n"
+        + "\n".join(head + lines) + "\n")
+    print(json.dumps({g: both[g]["claims"] for g in both}, indent=1))
     return 0
 
 

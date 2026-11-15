@@ -239,3 +239,19 @@ completed by both arms are pooled (`code/analyse.py`), and the claims' n is
 whatever that pooling gives; a partial repetition is reported separately.
 Nothing else changes. Up to that point only nine S1 gate rows had been looked
 at (to check the harness), none of S3–S10.
+
+## Amendment 2 — 2026-11-15T06:20Z, during the gate arm's first repetition, before any analysis
+
+A grader correction raised by Phase 1 (EXP-2026-11-016 Amendment 1). When Mylo
+ends a turn with `ask_user`, the person sees the question (an event of type
+`question`) and the final assistant text is empty; grading v1
+(`run019.turn_outcome`) read only the final text, so such a turn counted as
+vacuous and a name inside the question was never graded. **Grading v2**: the
+answer point is what the reader sees, the final text plus every question of
+the turn, re-read from the kept threads by `code/regrade019.py`
+(`logs/grades_v2_*.jsonl`); a turn that ends on a question is a valid run,
+not a vacuous one. Catalog and function-results points are unchanged. v2 is
+the primary grading for every claim; v1 is reported beside it
+(`data/metrics.json` keys `v2`, `v1`). `run019.py` itself is not changed
+mid-run, so every run is graded both ways by the same code. At this point 48
+gate runs were logged, one of them empty; none had been analysed.
