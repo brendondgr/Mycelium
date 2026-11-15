@@ -9,45 +9,52 @@
 id: EXP-2026-11-019
 slug: agent-collab-scenarios
 title: Collaborator search through Mylo, by scenario
-status: planned # planned | running | complete | failed | superseded
+status: running # planned | running | complete | failed | superseded
 date_started: 2026-11-15
 date_completed: null
-authors: [<your name>]
+authors: [Claude (agent, unattended overnight run)]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Phase 4 of the round-two Mylo evaluation. Collaborator search had been checked
+  on its own (EXP-2026-09-005..010) but never through Mylo. On the collaboration
+  sandbox (fake people, planted truth) with features.collab_search on in the
+  harness only, ten seekers per scenario ask Mylo who could work with them on a
+  call; graded at the function catalog, the function results and the answer for
+  who must and who must never be named (S1-S10), against a baseline arm that
+  gets every person and the consent rules as prose. Claims C-050 to C-052.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  The gate is code in front of the model, so the shipped arm names nobody
+  outside consent, audience, evidence tier or cap (0 violations in S3-S10); the
+  prose-only baseline names such people in some runs; the planted person is
+  named in at least 80% of S1 and S2 runs (no prior for this one).
 
 # --- Reproducibility block ---------------------------------------------------
 code:
   commit: 8e32be8a
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
+  entrypoint: "docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/run019.py --arm gate|baseline --reps 1 --conc 1 --tag main (in a one-off backend container; PROTOCOL.md Procedure), then code/analyse.py"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
-  path: <path to the config file, or null>
+  path: docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/data/world.json
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: collaboration sandbox world (sandbox.collab.world, 600 people) + EXP-019 scenario overlay
+  version: world seed 20260918, overlay seed 20261115
+  split: test
+  n_examples: 103
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
-seeds: []
+seeds: [20260918, 20261115]
 n_runs: 1
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
+  lockfile: web/backend/uv.lock
   container: null
 compute:
-  hardware: "<CPU/GPU, RAM>"
+  hardware: "Intel Xeon Silver 4114 (20 threads), 62 GB RAM; model served remotely through the relay"
   wall_clock_hours: null
   estimated_cost_usd: null
 
