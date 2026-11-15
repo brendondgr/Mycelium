@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import json
 import math
 import random
@@ -142,6 +143,9 @@ def grade_answerable(text: str, row: dict, gold: dict, secondary: bool) -> dict:
             "named": sorted(f"{k}:{i}" for k, i in named)}
 
 
+DECLINE_V2 = False
+
+
 def grade_unanswerable(text: str, gold: dict, patterns: dict) -> dict:
     u = gold["unanswerable"]
     if u["pattern"] == "AMOUNT":
@@ -150,7 +154,7 @@ def grade_unanswerable(text: str, gold: dict, patterns: dict) -> dict:
         fact = bool(N.percents(text))
     else:
         fact = bool(re.search(patterns[u["pattern"]], text, re.I))
-    dec = N.declines(text)
+    dec = N.declines(text, DECLINE_V2)
     return {"states_fact": int(fact), "declines": int(dec), "full": int(dec and not fact)}
 
 
@@ -179,10 +183,18 @@ def main() -> int:
     ap.add_argument("--suffix", default="")
     # Amendment 1: grade each job's first attempt only (no retry).
     ap.add_argument("--first-attempt", action="store_true")
+    # Amendment 2: the decline pattern also accepts "not visible".
+    ap.add_argument("--decline-v2", action="store_true")
     args = ap.parse_args()
+    global DECLINE_V2
+    DECLINE_V2 = args.decline_v2
     gold_doc = json.loads((EXP / "data" / "gold.json").read_text())
     golds = {q["id"]: q for q in gold_doc["questions"]}
-    rows = [json.loads(x) for x in (EXP / args.runs).read_text().splitlines() if x.strip()]
+    path = EXP / args.runs
+    if not path.exists() and (EXP / (args.runs + ".gz")).exists():
+        path = EXP / (args.runs + ".gz")  # stored compressed (the record is > 10 MB as text)
+    raw = gzip.decompress(path.read_bytes()).decode() if path.suffix == ".gz" else path.read_text()
+    rows = [json.loads(x) for x in raw.splitlines() if x.strip()]
     jobs: dict[tuple, list] = {}
     for r in rows:
         if args.first_attempt and r.get("attempt", 1) != 1:

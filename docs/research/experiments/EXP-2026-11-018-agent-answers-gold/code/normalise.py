@@ -125,5 +125,10 @@ DECLINE = re.compile(
 )
 
 
-def declines(text: str) -> bool:
-    return bool(DECLINE.search(str(text or "")))
+#: Amendment 2 (after the run): "is not visible to me" is a refusal the
+#: pre-registered verb list missed. Used only with ``grade.py --decline-v2``.
+DECLINE_V2 = re.compile(DECLINE.pattern.replace("disclos)", "disclos|visib)"), re.I)
+
+
+def declines(text: str, v2: bool = False) -> bool:
+    return bool((DECLINE_V2 if v2 else DECLINE).search(str(text or "")))

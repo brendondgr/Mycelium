@@ -8,10 +8,10 @@
 
 id: EXP-2026-11-018
 slug: agent-answers-gold
-title: Mylo answers graded by code against stored facts
-status: running # planned | running | complete | failed | superseded
+title: "Mylo answers graded by code against stored facts"
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-11-15
-date_completed: null
+date_completed: 2026-11-15
 authors: [Claude (agent), Brendon (owner)]
 
 purpose: >
@@ -30,58 +30,68 @@ hypothesis: >
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 8e32be8a
+  commit: ace9dcb9 # pre-registration commit; the run used this tree (agent code unchanged since 26084157, contains 60ae301)
   branch: main
   entrypoint: "docker compose run --rm --no-deps -T backend uv run --no-sync --project web/backend python docs/research/experiments/EXP-2026-11-018-agent-answers-gold/code/run.py --conc 3; python3 docs/research/experiments/EXP-2026-11-018-agent-answers-gold/code/grade.py"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  dirty: true  # other agents' uncommitted experiment files in the same checkout; no product code
 config:
-  path: <path to the config file, or null>
+  path: "tools/agent/tool.py (defaults) + AGENT_PARALLEL_CALLS=0"
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
-  qrels: null
+  name: "60 gold-graded questions over the demo lab (code/questions.json, data/gold.json)"
+  version: "live corpus and slates at 2026-11-15T05:43:04Z"
+  split: test
+  n_examples: 60
+  qrels: "data/gold.json (computed from the database by code/build_gold.py; not human judgements)"
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
-seeds: []
-n_runs: 1
+seeds: [20261115]
+n_runs: 3
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "one-off backend container (docker compose run backend)"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
+  hardware: "Xeon Silver 4114 20 threads, 62 GB; model remote via llm-tunnel (see env/hardware.md)"
+  wall_clock_hours: 1.13
   estimated_cost_usd: null
 
 # --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+llm:
+  model: "llm-tunnel relay default-model (self-reports Google-trained; upstream unknown) @ 2026-11-15"
+  temperature: null # instance default, not recorded by the harness
+  max_tokens: null # agent: no output cap (instance default)
+  prompt_files: [tools/agent/prompt.py, docs/research/experiments/EXP-2026-11-013-agent-answers-human-judged/code/generate.py]
+  prompt_hash: null
+  total_input_tokens: null
+  total_output_tokens: null
+  nondeterminism_note: >
+    Three repetitions per arm and question; full credit is reported per run and
+    per question mean over repetitions.
 
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
-statistical_test: null
+  primary: arm_a_answerable_full_credit
+  values:
+    arm_a_answerable_full_credit: {mean: 0.72, ci95_question_bootstrap: [0.60, 0.84], n: 150}
+    arm_a_answerable_full_credit_first_attempt: {mean: 0.70, ci95_question_bootstrap: [0.58, 0.82], n: 150}
+    arm_b_answerable_full_credit: {mean: 0.20, ci95_question_bootstrap: [0.10, 0.32], n: 150}
+    arm_c_answerable_full_credit: {mean: 0.20, ci95_question_bootstrap: [0.10, 0.32], n: 150}
+    a_minus_b_full_credit_all: {mean: 0.4167, ci95_paired_bootstrap: [0.2833, 0.55], n: 60}
+    a_minus_c_full_credit_project_people_join: {mean: 0.8667, ci95_paired_bootstrap: [0.7333, 0.9667], n: 30}
+    arm_a_unanswerable_states_fact: {mean: 0.0, k: 0, ci95_wilson: [0.0, 0.1135], n: 30}
+    list_full_credit_every_arm: {mean: 0.0, ci95_wilson: [0.0, 0.1135], n: 30}
+    arm_c_jobs_ending_on_a_question: {mean: 28, n: 180}
+    arm_a_secondary_answerable_full_credit: {mean: 0.76, ci95_question_bootstrap: [0.64, 0.88], n: 150}
+baselines_compared: [single-call (arm b), corpus-functions-only agent (arm c)]
+statistical_test: "paired bootstrap over questions (10,000, seed 20261115); Wilson 95% for rates"
 
 # --- Linkage -----------------------------------------------------------------
-supports_claims: []
+supports_claims: [C-043, C-044, C-045, C-046]
 refutes_claims: []
-figures: []
+figures: [fig-full-credit-by-kind]
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-11-013, EXP-2026-11-020]

@@ -67,7 +67,7 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-015` | 2026-11-12 | Deployment usage snapshot | complete | people_active_30d 2.0000 | — | [folder](experiments/EXP-2026-11-015-deployment-usage-snapshot/RESULTS.md) |
 | `EXP-2026-11-016` | 2026-11-15 | Permission gate replicated: second model, seeded worlds, second reader | complete | — | C-037, C-038 | [folder](experiments/EXP-2026-11-016-agent-gate-replication/RESULTS.md) |
 | `EXP-2026-11-017` | 2026-11-15 | Deletion, opt-out and member isolation with enough runs | running | — | — | [folder](experiments/EXP-2026-11-017-agent-memory-lifecycle/RESULTS.md) |
-| `EXP-2026-11-018` | 2026-11-15 | Mylo answers graded by code against stored facts | running | — | — | [folder](experiments/EXP-2026-11-018-agent-answers-gold/RESULTS.md) |
+| `EXP-2026-11-018` | 2026-11-15 | Mylo answers graded by code against stored facts | complete | arm_a_answerable_full_credit 0.7200 (n=150) | C-043, C-044, C-045, C-046 | [folder](experiments/EXP-2026-11-018-agent-answers-gold/RESULTS.md) |
 | `EXP-2026-11-019` | 2026-11-15 | Collaborator search through Mylo, by scenario | running | — | — | [folder](experiments/EXP-2026-11-019-agent-collab-scenarios/RESULTS.md) |
 | `EXP-2026-11-020` | 2026-11-15 | The answer checker as a loop: repair, removal, unread | running | — | — | [folder](experiments/EXP-2026-11-020-agent-verifier-loop/RESULTS.md) |
 
@@ -75,7 +75,7 @@ deleted dead end is a dead end you walk into twice.
 
 | Status | Count |
 |---|---:|
-| complete | 53 |
+| complete | 54 |
 | planned | 3 |
-| running | 5 |
+| running | 4 |
 | **total** | **61** |
