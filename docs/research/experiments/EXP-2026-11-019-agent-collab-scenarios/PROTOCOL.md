@@ -225,3 +225,17 @@ python3 docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/an
 The people are fake. Whether a real researcher would contact a suggested
 person stays with `EXP-2026-09-012`. Names only: a person described without
 being named is not detected. One model, one world, one repetition.
+
+## Amendment 1 — 2026-11-15T06:06Z, during the gate arm's first repetition, before any analysis
+
+Turns are running at about 20 s each, not the 40–70 s assumed above, so more
+of the plan's three repetitions may fit. The time rule of "Scale" is extended,
+unchanged in kind, to a third repetition: after each completed pair of
+repetitions (gate then baseline), the next repetition (`--rep-start 1`, then
+`--rep-start 2`) is run for both arms only if the measured mean seconds per
+run of the pair just finished projects both arms of the next to end before
+11:15 UTC. At most three repetitions (the plan's target). Only repetitions
+completed by both arms are pooled (`code/analyse.py`), and the claims' n is
+whatever that pooling gives; a partial repetition is reported separately.
+Nothing else changes. Up to that point only nine S1 gate rows had been looked
+at (to check the harness), none of S3–S10.
