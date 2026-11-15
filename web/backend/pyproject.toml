@@ -135,6 +135,9 @@ python_files = ["tests.py", "test_*.py", "*_tests.py"]
 # The platform's tests and every tool's (tools/ at the repository root). Run
 # with no path arguments from web/backend — `make test` does — so both are
 # collected; `config.pytest_plugin` gives them the same suite-wide fixtures.
+# Naming paths from both trees (or only ../../tools)? Add `-c pyproject.toml`:
+# otherwise pytest takes the repository root's pyproject.toml and the plugin
+# is not loaded (the conftest.py beside this file and in tools/ refuse to run).
 testpaths = [".", "../../tools"]
 pythonpath = [".", "../.."]
 addopts = ["-p", "config.pytest_plugin"]
