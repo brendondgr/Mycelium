@@ -219,9 +219,6 @@ def select(
         ).values_list("content_id", flat=True)
     )
     fresh = [r for r in rows if r.content_id not in announced]
-    if target.kind == "department":
-        # A department hears only about calls a lab could not take on alone.
-        fresh = [r for r in fresh if dept_level.reasons(r.content.metadata)]
     if target.settings.seeded_at is None:
         # A seed slot spent on a closed, too-late or ineligible call is a slot
         # wasted, so the seed takes the best rows that would actually be posted.
@@ -767,8 +764,6 @@ def list_items(target: Target, today: date) -> list[ContentItem]:
     from tools.delivery.models import SavedOpportunity
 
     rows = slate_rows(target, today)
-    if target.kind == "department":
-        rows = [r for r in rows if dept_level.reasons(r.content.metadata)]
     items = {r.content_id: r.content for r in rows}
     for ann in Announcement.objects.filter(
         **target.announcement_filter,

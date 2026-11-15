@@ -1,8 +1,9 @@
 """The department path (plan Phase 7, "What a department sees").
 
-A department hears only about calls a lab could not take on alone; its post says
-why (the reason and the quoted sentence), names labs (never people), never tags
-anyone, and carries kind and reason tags in its one forum. A department fellowship
+A department hears about every call that fits its research, as a lab does. A call
+only a department can take on also says why (the reason and the quoted sentence).
+Its post names labs (never people), never tags anyone, and carries kind and reason
+tags in its one forum. A department fellowship
 shows counts only and tells each eligible member by DM. A lab in the same server
 keeps its own channels, and neither changes when the other is switched off.
 """
@@ -120,7 +121,9 @@ def _run(target, poster=None):
 # Selection and alignment
 # --------------------------------------------------------------------------- #
 @pytest.mark.django_db
-def test_a_department_hears_only_department_level_calls() -> None:
+def test_a_department_hears_every_call_and_says_why_for_department_level_ones() -> (
+    None
+):
     target = _department()
     lab_level = _item(eligibility="Any investigator at an eligible institution.")
     limited = _item(eligibility=LIMITED)
@@ -130,21 +133,19 @@ def test_a_department_hears_only_department_level_calls() -> None:
 
     posted = _run(target)
 
-    assert {a.content_id for a in posted} == {limited.id, training.id}
+    assert {a.content_id for a in posted} == {lab_level.id, limited.id, training.id}
     reasons = {
         a.content_id: [r["key"] for r in a.alignment["dept_reasons"]] for a in posted
     }
+    assert reasons[lab_level.id] == []
     assert reasons[limited.id] == ["institutional_selection"]
     assert reasons[training.id] == ["department_programme"]
     evidence = Announcement.objects.get(content=limited).alignment["dept_reasons"][0]
     assert evidence["evidence"] == LIMITED
-    assert not Announcement.objects.filter(content=lab_level).exists()
 
 
 @pytest.mark.django_db
-def test_the_department_seed_spends_its_places_only_on_department_level_calls() -> (
-    None
-):
+def test_the_department_seed_takes_the_best_calls_of_either_sort() -> None:
     target = _department(seeded=False)
     lab_level = [_item() for _ in range(3)]
     dept_level = [_item(eligibility=LIMITED) for _ in range(2)]
@@ -153,9 +154,7 @@ def test_the_department_seed_spends_its_places_only_on_department_level_calls() 
 
     posted = _run(target)
 
-    assert {a.content_id for a in posted} == {i.id for i in dept_level}
-    # A lab-level call is not "seen" by the department: it was never a candidate.
-    assert not Announcement.objects.filter(content__in=lab_level).exists()
+    assert {a.content_id for a in posted} == {i.id for i in [*lab_level, *dept_level]}
 
 
 @pytest.mark.django_db
@@ -482,7 +481,7 @@ def test_a_test_post_goes_once_to_the_department_forum(fake) -> None:
 
 
 @pytest.mark.django_db
-def test_a_manager_can_announce_only_department_level_calls_to_the_department(
+def test_a_manager_can_announce_any_call_to_the_department(
     fake, monkeypatch
 ) -> None:
     from tools.delivery import announcement_links
@@ -500,13 +499,13 @@ def test_a_manager_can_announce_only_department_level_calls_to_the_department(
     options = announcement_links.announce_options(
         target.obj.owner, "g1", [lab_level, limited]
     )
-    assert set(options) == {str(limited.id)}
+    assert set(options) == {str(lab_level.id), str(limited.id)}
 
     status, payload = announcement_links.manual_announce(
         "900", "g1", binding.id, str(lab_level.id)
     )
-    assert status == "not_department_level", payload
-    assert not Announcement.objects.filter(content=lab_level).exists()
+    assert status in ("ok", "queued"), payload
+    assert Announcement.objects.filter(content=lab_level).exists()
 
     status, payload = announcement_links.manual_announce(
         "900", "g1", binding.id, str(limited.id)
@@ -562,7 +561,7 @@ def test_department_closing_soon_lists_name_their_kind_in_the_shared_forum(
     _slate(target, limited, 2)
 
     items = announce.list_items(target, TODAY)
-    assert [i.id for i in items] == [limited.id]  # the list is department-level too
+    assert {i.id for i in items} == {lab_level.id, limited.id}  # the whole slate
     rows = announce_facts.closing_soon(items, TODAY)
     discord_announcements._closing_soon(target, ContentItem.Type.GRANT, rows, TODAY)
     discord_announcements.flush()

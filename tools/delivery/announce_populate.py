@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 
 from django.utils import timezone
 
-from tools.delivery import announce, dept_level, discord_announcements, usability
+from tools.delivery import announce, discord_announcements, usability
 from tools.delivery import announce_editor as editor
 from tools.delivery.models import Announcement, AnnouncementPost
 from tools.retrieval.models import ContentItem
@@ -87,7 +87,6 @@ def populate(
         from tools.delivery import lab_fit
 
         labs = lab_fit.candidates(target.obj)
-        rows = [r for r in rows if dept_level.reasons(r.content.metadata)]
     reader = (
         usability.reader_for_lab(target.obj, min_award=announce._min_award(target))
         if target.kind == "lab"

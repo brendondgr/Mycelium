@@ -238,11 +238,14 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   for **Create them for me** and for adding its tags to a forum you chose; Manage
   Roles only for the "who can start posts" rules.
 
-* **Departments** hear only about calls a lab could not take on alone
-  (`tools/delivery/dept_level.py`: institutional selection, department applicant,
-  department-scale programme). A department has one `#dept-opportunities` forum
-  routing all three kinds, tagged by kind and reason; its post adds *Why it's here*
-  (the reason and the quoted sentence) and names *Labs that could lead*
+* **Departments** hear about every call that fits the department's own research
+  profile, as a lab does: the forum carries the department's whole slate. A call
+  only a department can take on (`tools/delivery/dept_level.py`: institutional
+  selection, department applicant, department-scale programme) is marked as one;
+  the web app's Opportunities page still lists those alone. A department has one
+  `#dept-opportunities` forum routing all three kinds, tagged by kind and, where
+  there is one, reason; such a post adds *Why it's here* (the reason and the
+  quoted sentence). Every department post names *Labs that could lead*
   (`lab_fit.py`), never people, and never tags anyone. A department fellowship
   shows counts only; each member who may be eligible gets one DM. A department is
   scored on a lab's terms (an active plan), whether or not its announcements are

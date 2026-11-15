@@ -117,8 +117,8 @@ def target_for_department(department) -> MatchTarget:
 
     A department works like a lab: papers and every opportunity kind rank against
     this profile, and its feeds, daily report and Discord post read the result.
-    Its announcement channel separately narrows its slates to the calls only a
-    department can take on (``tools.delivery.dept_level``). It declares no watch
+    Its announcement forum carries those slates whole; a call only a department
+    can take on (``tools.delivery.dept_level``) is marked as such. It declares no watch
     topics of its own, so it ranks the corpus its people's searches gathered.
     """
     interests = _lab_interests(getattr(department, "profile", None))
