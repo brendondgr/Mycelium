@@ -30,6 +30,11 @@ reader's container only (`EVAL2_LLM_*`; the key is the instance's own
 describes itself as Qwen, trained by Alibaba, and serves a different usage
 format from `default-model`, so it is taken to be a different model family
 from the instance model. Its size and version are not exposed: unknown.
+Preflight at 07:08 UTC, asked which company trained it: "I was trained by
+Alibaba Group's Tongyi Lab, and my model name is Qwen." (164 completion
+tokens, 142 of them reasoning). The relay's response field named the model
+`default-model` although `default-model-2` was requested, so the response
+field cannot confirm which upstream answered.
 
 ## What else used the model server
 
@@ -43,4 +48,7 @@ overlap: every model run of this experiment finished before 11:15 UTC.
 
 Latency depends on the shared server's load and is reported only as context.
 Repair seconds depend on the shared server's load and are context only;
-5b makes no model call.
+5b makes no model call. 5c's reader ran 07:08–08:52 UTC at up to 3
+requests in flight; it slowed from ~40 s to ~100 s per answer as the shared
+server's load rose. No model run of this experiment overlapped the nightly
+run (12:00 UTC).

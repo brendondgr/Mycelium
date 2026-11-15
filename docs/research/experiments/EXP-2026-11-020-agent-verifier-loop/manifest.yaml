@@ -8,10 +8,10 @@
 
 id: EXP-2026-11-020
 slug: agent-verifier-loop
-title: The answer checker as a loop: repair, removal, unread
-status: running # planned | running | complete | failed | superseded
+title: "The answer checker as a loop: repair, removal, unread"
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-11-15
-date_completed: null
+date_completed: 2026-11-15
 authors: [Claude (agent), Brendon (owner)]
 
 purpose: >
@@ -29,58 +29,73 @@ hypothesis: >
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 8e32be8a
+  commit: 4fabd3f2 # pre-registration commit; 5b/5a/5c ran on this tree (agent code unchanged since 26084157, contains 60ae301)
   branch: main
   entrypoint: "docker compose run … python docs/research/experiments/EXP-2026-11-020-agent-verifier-loop/code/{unread,forced_drafts,reader}.py; python3 docs/research/experiments/EXP-2026-11-020-agent-verifier-loop/code/analyse.py"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  dirty: true  # other agents' uncommitted experiment files in the same checkout; no product code
 config:
-  path: <path to the config file, or null>
+  path: "tools/agent/tool.py (defaults) + AGENT_PARALLEL_CALLS=0"
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
-  qrels: null
+  name: "90 forced drafts (data/forced_sample.jsonl from EXP-2026-11-013 inject_rep2/rep3), 20 topics × 3 scripted threads, 100 fix1 answers (EXP-2026-11-013 Amendment 5)"
+  version: "live corpus on 2026-11-15"
+  split: test
+  n_examples: 250
+  qrels: "5a/5b labels by construction; 5c judged by a second model (not people)"
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
-seeds: []
-n_runs: 1
+seeds: [20261115]
+n_runs: 1 # 5a: one replay per draft; 5b: one thread per topic and arm; 5c: one reading per answer
 
 environment:
   python: "3.13"
-  lockfile: <path to the lockfile that pinned this run>
-  container: null
+  lockfile: web/backend/uv.lock
+  container: "one-off backend container (docker compose run backend)"
 compute:
-  hardware: "<CPU/GPU, RAM>"
-  wall_clock_hours: null
+  hardware: "Xeon Silver 4114 20 threads, 62 GB; models remote via llm-tunnel (see env/hardware.md)"
+  wall_clock_hours: 1.9 # 5b 05:55-05:58, 5a 06:58-07:08, 5c 07:08-08:52 UTC
   estimated_cost_usd: null
 
 # --- LLM block (delete entirely if no model was called) ----------------------
-# llm:
-#   model: "<provider>/<model>@<version-or-date>"
-#   temperature: 0.0
-#   max_tokens: 2048
-#   prompt_files: []
-#   prompt_hash: null
-#   total_input_tokens: 0
-#   total_output_tokens: 0
-#   nondeterminism_note: >
-#     Provider-side nondeterminism remains even at temperature 0; report
-#     mean ± std over n_runs.
+llm:
+  model: "repairs: llm-tunnel default-model (self-reports Google-trained); 5c reader: llm-tunnel default-model-2 (self-reports Qwen, Alibaba) @ 2026-11-15"
+  temperature: 0.0 # reader; repairs use the instance default
+  max_tokens: 6000 # reader, pre-registered; 16000 in Amendment 1's re-read
+  prompt_files: [docs/research/experiments/EXP-2026-11-020-agent-verifier-loop/code/reader.py]
+  prompt_hash: null
+  total_input_tokens: null
+  total_output_tokens: null
+  nondeterminism_note: >
+    One run per item; 5b is deterministic (no model).
 
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
-statistical_test: null
+  primary: forced_drafts_error_in_final
+  values:
+    forced_drafts_error_in_final: {mean: 0.0, k: 0, n: 90, upper95_one_sided: 0.0327}
+    forced_drafts_repaired: {mean: 1.0, k: 90, n: 90, ci95_wilson: [0.9591, 1.0]}
+    forced_drafts_removed_with_notice: {mean: 0.0, k: 0, n: 90}
+    forced_drafts_final_under_half_of_draft_exploratory: {mean: 0.3333, k: 30, n: 90, ci95_wilson: [0.2445, 0.4358]}
+    forced_drafts_repair_seconds_median: {mean: 16.26, n: 90}
+    forced_drafts_repair_tokens_median: {mean: 5873, n: 90}
+    unread_surfaced_flagged: {mean: 0.0, k: 0, n: 20, ci95_wilson: [0.0, 0.1611]}
+    unread_read_control_flagged: {mean: 0.0, k: 0, n: 20, ci95_wilson: [0.0, 0.1611]}
+    unread_cleared_flagged_exploratory: {mean: 1.0, k: 20, n: 20, ci95_wilson: [0.8389, 1.0]}
+    reader_unsupported_per_answer_mylo_amend1: {mean: 1.02, n: 50}
+    reader_unsupported_per_answer_single_call_amend1: {mean: 0.479, n: 48}
+    reader_answers_with_unsupported_mylo_amend1: {mean: 0.36, k: 18, n: 50, ci95_wilson: [0.2414, 0.4986]}
+    checker_recall_model_judged_mylo_amend1: {mean: 0.0, k: 0, n: 51, ci95_wilson: [0.0, 0.07]}
+    checker_recall_model_judged_single_call_amend1: {mean: 0.0, k: 0, n: 23, ci95_wilson: [0.0, 0.1431]}
+    reader_unsupported_per_answer_mylo_preregistered: {mean: 0.208, n: 24}
+    reader_failed_at_6000_tokens: {mean: 0.48, k: 48, n: 100}
+baselines_compared: ["5b read-reference controls", "5c single-call answers (never checked)"]
+statistical_test: "Wilson 95%; exact one-sided 95% upper bound for zero counts"
 
 # --- Linkage -----------------------------------------------------------------
-supports_claims: []
-refutes_claims: []
-figures: []
+supports_claims: [C-047, C-048]
+refutes_claims: [C-049]
+figures: [fig-forced-draft-outcomes]
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-11-013, EXP-2026-11-018]
