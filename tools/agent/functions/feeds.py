@@ -45,6 +45,15 @@ def _project_ok(caller, p) -> None:
         audience_lab_ok(caller, p.scope_lab)
 
 
+def _part(shown: int, total: int, top: int) -> str:
+    """``", the first 8 of 23 — …"`` when a list was cut, else ``""`` (Q-079):
+    the model must not report a cut list as the whole."""
+    if total <= shown:
+        return ""
+    more = f"; pass limit (at most {top}) for more" if shown < top else ""
+    return f", only the first {shown} of {total}{more}"
+
+
 def _target(caller, lab=None, project=None):
     """``(persist kwargs, label, head RefInfo or None)`` for the slate asked for."""
     if project:
@@ -105,7 +114,8 @@ def feeds_slate(caller, lab=None, project=None, types=None, limit=8):
     refs = [head] if head else []
     sections = []
     for t in _types(types):
-        rows = _slate(kwargs, [t], limit)
+        ranked = _slate(kwargs, [t], None)
+        rows = ranked[:limit]
         if not rows:
             continue
         item_refs, lines = slate_lines(rows)
@@ -116,7 +126,10 @@ def feeds_slate(caller, lab=None, project=None, types=None, limit=8):
                 for line, s in zip(lines, rows, strict=True)
             ]
         refs += item_refs
-        sections.append(f"{t.title()}s (rank order):\n" + "\n".join(lines))
+        sections.append(
+            f"{t.title()}s (rank order{_part(len(rows), len(ranked), 25)}):\n"
+            + "\n".join(lines)
+        )
     title = f"{{ref:{head.ref}}} {label}" if head else label.capitalize()
     if not sections:
         return Result(
@@ -189,25 +202,30 @@ def feeds_saved(caller, types=None, limit=20):
     types = _types(types)
     limit = _limit(limit, 20, 50)
     refs, out = [], []
-    mine = (
-        SavedOpportunity.objects.filter(
-            user=caller.user, target_lab__isnull=True, area__in=types
-        )
-        .select_related("content")
-        .order_by("deadline_date", "-created_at")[:limit]
+    mine_all = SavedOpportunity.objects.filter(
+        user=caller.user, target_lab__isnull=True, area__in=types
     )
+    mine = list(
+        mine_all.select_related("content").order_by("deadline_date", "-created_at")[
+            :limit
+        ]
+    )
+    cut = _part(len(mine), mine_all.count(), 50)
     out.append(
-        "Your saves:\n" + ("\n".join(_save_line(s, refs) for s in mine) or "(none)")
+        f"Your saves{f' ({cut[2:]})' if cut else ''}:\n"
+        + ("\n".join(_save_line(s, refs) for s in mine) or "(none)")
     )
     lab = caller.scope.lab
     if lab is not None:
-        rows = (
-            SavedOpportunity.objects.filter(target_lab=lab, area__in=types)
-            .select_related("content")
-            .order_by("deadline_date", "-created_at")[:limit]
+        lab_all = SavedOpportunity.objects.filter(target_lab=lab, area__in=types)
+        rows = list(
+            lab_all.select_related("content").order_by(
+                "deadline_date", "-created_at"
+            )[:limit]
         )
+        cut = _part(len(rows), lab_all.count(), 50)
         out.append(
-            f"{lab.name}'s saves:\n"
+            f"{lab.name}'s saves{f' ({cut[2:]})' if cut else ''}:\n"
             + ("\n".join(_save_line(s, refs) for s in rows) or "(none)")
         )
     return Result(content="\n\n".join(out), refs=refs)
@@ -269,13 +287,14 @@ def feeds_deadlines(caller, days=60, limit=20):
     p = caller.scope.project
     if p is not None and common.audience_allows(caller, common.project_output(p)):
         add(_slate_ids({"target_project": p}), f"{p.name}'s feed")
-    rows = (
-        ContentDeadline.objects.filter(
-            content_id__in=list(origin), due_date__gte=today, due_date__lte=until
-        )
-        .select_related("content")
-        .order_by("due_date", "kind")[:limit]
+    ahead = ContentDeadline.objects.filter(
+        content_id__in=list(origin), due_date__gte=today
     )
+    in_window = ahead.filter(due_date__lte=until)
+    rows = list(
+        in_window.select_related("content").order_by("due_date", "kind")[:limit]
+    )
+    total, later = in_window.count(), ahead.filter(due_date__gt=until).count()
     refs, lines = [], []
     for d in rows:
         info = common.item_info(d.content)
@@ -295,11 +314,21 @@ def feeds_deadlines(caller, days=60, limit=20):
             f"{common.clip(s.title, 160)} — saved date (item left the corpus); "
             "from your saves"
         )
+    after = (
+        f"\n{later} more deadline{'s fall' if later != 1 else ' falls'} after "
+        f"{until:%Y-%m-%d}; pass days (at most 366) to see them."
+        if later
+        else ""
+    )
     if not lines:
         return Result(
             content=f"No deadlines in the next {days} days among the saved and "
-            "slate items read here."
+            "slate items read here." + after
         )
+    cut = _part(len(rows), total, 50)
     return Result(
-        content=f"Deadlines in the next {days} days:\n" + "\n".join(lines), refs=refs
+        content=f"Deadlines in the next {days} days{f' ({cut[2:]})' if cut else ''}:\n"
+        + "\n".join(lines)
+        + after,
+        refs=refs,
     )

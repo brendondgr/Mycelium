@@ -82,6 +82,27 @@ def current_kind() -> str:
     return route().kind
 
 
+#: Server kinds that take vLLM's ``thinking_token_budget``. Servers that do
+#: not know the field ignore it; it is harmless with thinking off.
+BUDGET_KINDS = {"vllm", "openai_compatible"}
+
+
+def limits(kind: str) -> tuple[int | None, dict | None]:
+    """``(max_tokens, extra_body)`` for one chat model call (Q-078).
+
+    ``max_output_tokens`` caps the whole reply, thinking included; 0 leaves
+    the instance's ``llm.max_tokens`` in force (``None``). ``thinking_budget``
+    caps the thinking alone where the server supports it, so a model that
+    overthinks still answers; 0 sends none.
+    """
+    cap = int(config.get("max_output_tokens") or 0) or None
+    budget = int(config.get("thinking_budget") or 0)
+    if not budget or kind not in BUDGET_KINDS:
+        return cap, None
+    extra = {"thinking_token_budget": budget}
+    return cap, extra
+
+
 def default_port() -> ModelPort:
     """The routed server through the shared client, streamed. The route is
     resolved once here, so it holds for the whole turn."""
@@ -92,7 +113,7 @@ def default_port() -> ModelPort:
     if not name:
         raise NoModel("no model configured")
     client = build_llm_client(component=COMPONENT)
-    cap = int(config.get("max_output_tokens") or 0)
+    cap, extra = limits(current.kind)
 
     def port(*, messages, tools, tool_choice, on_delta, should_stop):
         return client.complete_stream(
@@ -101,6 +122,7 @@ def default_port() -> ModelPort:
             tools=tools or None,
             tool_choice=tool_choice if tools else None,
             max_tokens=cap,
+            extra_body=extra,
             on_delta=on_delta,
             should_stop=should_stop,
         )

@@ -114,9 +114,37 @@ def resolve(caller, token: str, *, expect_kind: str | None = None) -> RefInfo | 
     from tools._framework.host import resolve_ref
 
     try:
-        return resolve_ref(ref_kind.resolve)(caller, key)
+        info = resolve_ref(ref_kind.resolve)(caller, key)
     except Exception:  # a malformed key is just "not something you can open"
+        info = None
+    if info is None and not num:
+        info = by_name(caller, kind, key)
+    return info
+
+
+def _plain(text: str) -> str:
+    return re.sub(r"[^0-9a-z]+", " ", str(text).casefold()).strip()
+
+
+def by_name(caller, kind: str, name: str) -> RefInfo | None:
+    """The one visible object of ``kind`` whose title is ``name`` (Q-069,
+    Q-075): a model often passes a project's name, or a slug of it, where a
+    reference belongs. Case, spaces and punctuation are ignored; two or more
+    matches resolve nothing, so a name never picks between objects."""
+    from tools._framework.host import resolve_ref
+
+    ref_kind = registry().refs.get(kind)
+    wanted = _plain(name)
+    if ref_kind is None or not ref_kind.search or not wanted or kind == "item":
         return None
+    try:
+        found = resolve_ref(ref_kind.search)(caller, wanted, 20)
+        if not found and " " in wanted:  # a slug: search its first word
+            found = resolve_ref(ref_kind.search)(caller, wanted.split()[0], 50)
+    except Exception:  # a failing search is just "not found"
+        return None
+    exact = {f.key: f for f in found if _plain(f.title) == wanted}
+    return next(iter(exact.values())) if len(exact) == 1 else None
 
 
 def search(caller, q: str, *, kinds=None, limit: int = 10) -> list[RefInfo]:

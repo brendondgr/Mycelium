@@ -246,6 +246,16 @@ def test_feeds_slate_personal_lab_and_project(world):
     assert denied["status"] == "denied" and denied["error"]["code"] == "not_visible"
 
 
+def test_a_cut_list_says_it_is_cut(world):
+    # Q-079: Mylo reported the first rows of a list as the whole set.
+    for rank in range(1, 6):
+        score(item(f"Paper {rank}"), rank, target_user=world.member)
+    out = run(world.member, "feeds_slate", {"types": ["paper"], "limit": 3})
+    assert "only the first 3 of 5; pass limit (at most 25) for more" in out["content"]
+    whole = run(world.member, "feeds_slate", {"types": ["paper"], "limit": 5})
+    assert "only the first" not in whole["content"]
+
+
 def test_feeds_slate_in_a_lab_channel_never_shows_the_persons_own(world):
     score(item("Mine paper"), 1, target_user=world.member)
     score(item("Lab grant", "grant"), 1, target_lab=world.lab)
@@ -335,6 +345,8 @@ def test_feeds_deadlines_mixed_output(world):
     content = out["content"]
     assert content.index("My saved grant") < content.index("Lab slate grant")
     assert "in 10 days" in content and "Far grant" not in content
+    # Q-079: what lies past the window is counted, never silently dropped.
+    assert "1 more deadline falls after" in content and "pass days" in content
     out = lab_run(world.member, "feeds_deadlines", {}, world.lab)
     assert (
         "Lab slate grant" in out["content"] and "My saved grant" not in out["content"]

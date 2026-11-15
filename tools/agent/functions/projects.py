@@ -44,6 +44,7 @@ def _check_audience(caller, project) -> None:
 
 def _project(caller, ref):
     from apps.research.models import Project
+    from django.core.exceptions import ValidationError
 
     if not ref:
         if caller.scope.kind == "project":
@@ -53,7 +54,10 @@ def _project(caller, ref):
             "Which project?",
             "Pass project='#n' or call projects_list first.",
         )
-    project = Project.objects.filter(pk=common.ref_key(ref)).first()
+    try:
+        project = Project.objects.filter(pk=common.ref_key(ref)).first()
+    except (ValueError, ValidationError):  # not an id: never an internal error (Q-069)
+        project = None
     if project is None:  # the gate already cleared it; this is a race
         raise FunctionError("not_visible", "That project is not available.")
     return project

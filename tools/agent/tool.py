@@ -27,8 +27,17 @@ class AgentTool(Tool):
         _s(
             "max_output_tokens",
             "int",
-            0,
-            "Most tokens one chat reply may use, thinking included. 0 = no cap.",
+            4096,
+            "Most tokens one chat reply may use, thinking included, so one "
+            "runaway reply cannot hold a turn open. A reply cut off here is "
+            "asked for again, shorter. 0 uses llm.max_tokens.",
+        ),
+        _s(
+            "thinking_budget",
+            "int",
+            512,
+            "Most tokens a model may spend thinking before each reply, on "
+            "servers that support it (vLLM). 0 = no thinking budget.",
         ),
         _s(
             "context_window",

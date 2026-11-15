@@ -287,7 +287,8 @@ ambient_explain = 200                    # env AMBIENT_EXPLAIN_NIGHTLY_CAP
 [tools.agent]
 enabled = true
 # model = ""                             # env AGENT_MODEL
-# max_output_tokens = 0                  # env AGENT_MAX_OUTPUT_TOKENS
+# max_output_tokens = 4096               # env AGENT_MAX_OUTPUT_TOKENS
+# thinking_budget = 512                  # env AGENT_THINKING_BUDGET
 # context_window = 0                     # env AGENT_CONTEXT_WINDOW
 # max_steps = 25                         # env AGENT_MAX_STEPS
 # result_cap_tokens = 4000               # env AGENT_RESULT_CAP_TOKENS

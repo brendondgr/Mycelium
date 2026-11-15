@@ -89,3 +89,20 @@ def test_results_are_capped_with_a_pointer(settings):
     settings.AGENT_RESULT_CAP_TOKENS = 10
     text = rebuild.capped("x" * 100, "c1")
     assert text.startswith("x" * 40) and 'read_result(call_id="c1", offset=40)' in text
+
+
+def test_each_chat_call_is_capped_and_its_thinking_budgeted(settings):
+    # Q-078: one runaway generation held a turn open for 15 minutes.
+    settings.AGENT_MAX_OUTPUT_TOKENS = 4096
+    settings.AGENT_THINKING_BUDGET = 512
+    assert llmcall.limits("openai_compatible") == (
+        4096, {"thinking_token_budget": 512})
+    assert llmcall.limits("vllm")[1] == {"thinking_token_budget": 512}
+    # Servers without the field get the cap only.
+    assert llmcall.limits("anthropic") == (4096, None)
+
+
+def test_zero_leaves_the_instance_cap_and_sends_no_budget(settings):
+    settings.AGENT_MAX_OUTPUT_TOKENS = 0
+    settings.AGENT_THINKING_BUDGET = 0
+    assert llmcall.limits("vllm") == (None, None)

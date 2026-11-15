@@ -155,7 +155,7 @@ function SettingsBody({ data }: { data: AmbientSettings }) {
         {confirming ? (
           <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label="Confirm deletion">
             <span className="text-sm text-clay">
-              Delete every summary and everything Mylo understood from them? This can&apos;t be undone.
+              Delete every summary and everything Mylo understood from them? Your chats with Mylo stay, and Mylo can still read them back to you, until you delete them. This can&apos;t be undone.
             </span>
             <button
               type="button"

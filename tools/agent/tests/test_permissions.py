@@ -413,3 +413,46 @@ def test_matrix_expectations(world):
         for fn in registry.registry().functions.values()
         if fn.output == "instance"
     }
+
+
+# -- a project named instead of referenced (Q-069, Q-075) ---------------------
+
+
+@pytest.mark.parametrize(
+    "token", ["Segmentation", "segmentation", "project:Segmentation"]
+)
+def test_a_visible_project_may_be_named_instead_of_referenced(world, token):
+    from tools.agent import dispatch
+
+    c = caller(world.member, thread=thread_for(world.member))
+    assert permissions.decide(c, fn("projects_get"), {"project": token}).allowed
+    args = dispatch._canonical_args(c, fn("projects_get"), {"project": token})
+    assert args["project"] == f"project:{world.lab_project.pk}"
+
+
+def test_a_slug_of_the_name_works_too(world):
+    from apps.research.models import Project, ProjectMember
+
+    from tools.agent import refs
+
+    p = Project.objects.create(scope_lab=world.lab, name="Kestrel Array")
+    ProjectMember.objects.create(project=p, user=world.member)
+    c = caller(world.member, thread=thread_for(world.member))
+    assert refs.resolve(c, "kestrel-array", expect_kind="project").key == str(p.pk)
+
+
+def test_a_name_never_opens_what_the_caller_cannot_see_or_picks_between_two(world):
+    from apps.research.models import Project, ProjectMember
+
+    c = caller(world.member, thread=thread_for(world.member))
+    # "Secret" belongs to another lab; "Old work" is archived.
+    for token in ("Secret", "Old work", "no such project"):
+        d = permissions.decide(c, fn("projects_get"), {"project": token})
+        assert (d.layer, d.code) == (6, "not_visible")
+    for p in (
+        Project.objects.create(scope_lab=world.lab, name="Twin"),
+        Project.objects.create(scope_user=world.member, name="twin"),
+    ):
+        ProjectMember.objects.create(project=p, user=world.member)
+    d = permissions.decide(c, fn("projects_get"), {"project": "Twin"})
+    assert (d.layer, d.code) == (6, "not_visible")

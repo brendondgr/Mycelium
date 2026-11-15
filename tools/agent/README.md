@@ -127,7 +127,11 @@ the API, a developer CLI, the web chat panel and Discord.
 - `manage.py agent chat --user <name> [--scope lab:<slug>|project:<uuid>]` —
   chat from the terminal (audited as `surface=cli`); `manage.py agent catalog
   --user <name>` shows what that person may use and why not.
-- The output cap is off by default (`max_output_tokens = 0`). The context
+- Each chat call is capped (Q-078): `max_output_tokens` (default 4096) for
+  the whole reply, thinking included, and `thinking_budget` (default 512) for
+  the thinking alone on servers that take vLLM's `thinking_token_budget`. A
+  reply cut off at the cap is asked for again, shorter; an empty one gets one
+  more try and then an honest line, never a blank (Q-070). The context
   window is `context_window` when set; at its default `0` it is what the
   model server reports (vLLM, llama.cpp, Ollama, Anthropic, Gemini), else
   32768.

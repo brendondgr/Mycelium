@@ -58,6 +58,24 @@ RUNAWAY_GIVE_UP = (
     "I got stuck writing that answer, so I've left it out rather than post "
     "something broken. Ask me again, or ask about one item at a time."
 )
+#: Told to the model when its reply came back empty twice (the model call's
+#: own retry included): one more chance, with no functions (Q-070, Q-088).
+EMPTY_RETRY = (
+    "Your last reply was empty, so the person saw nothing. Answer now in a "
+    "few sentences with what you found. If you found nothing useful, say so "
+    "plainly and say what they could ask instead."
+)
+#: Posted when that chance is empty too, so the person never sees a blank.
+EMPTY_GIVE_UP = (
+    "I couldn't put together an answer to that. Try asking again, or ask in a "
+    "narrower way, for example about one project or one item."
+)
+#: Told to the model when its answer hit the output cap mid-sentence (Q-078).
+LENGTH_RETRY = (
+    "Your last answer ran past the length limit and was cut off, so it was "
+    "thrown away and nobody saw it. Answer again, much shorter: the main "
+    "points only."
+)
 #: Shown to the person when unbacked details were taken out of an answer.
 CLAIMS_REMOVED = (
     "Mylo removed details from this answer that it could not find in what it "
@@ -290,6 +308,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
     overflowed = False
     repaired = False
     runaway_retried = False
+    empty_retried = False
     force_final = ""
     while True:
         if stream.cancel_requested(thread.pk):
@@ -425,7 +444,9 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
 
         if not calls:
             gave_up = False
-            if "runaway_cut" in (reply.repairs or []):
+            # Cut off at the output cap: treated like a runaway (Q-078).
+            cut_off = reply.finish == "length"
+            if "runaway_cut" in (reply.repairs or []) or cut_off:
                 if not runaway_retried:
                     # The looped text is never posted, and never replayed.
                     runaway_retried = True
@@ -434,16 +455,34 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                         "verdict",
                         {
                             "ok": False,
-                            "action": "runaway_retry",
+                            "action": "length_retry" if cut_off else "runaway_retry",
                             "cut": (reply.text or "")[-300:],
                         },
                     )
                     store.append(
-                        thread, "note", {"text": RUNAWAY_RETRY, "to_model": True}
+                        thread,
+                        "note",
+                        {"text": LENGTH_RETRY if cut_off else RUNAWAY_RETRY,
+                         "to_model": True},
                     )
+                    if cut_off:
+                        force_final = force_final or "Answer now."
                     continue
                 gave_up = True
-            text = RUNAWAY_GIVE_UP if gave_up else reply.text
+            empty = not gave_up and not (reply.text or "").strip()
+            if empty and not empty_retried:
+                # Never post a blank: one more try, without functions (Q-070).
+                empty_retried = True
+                store.append(
+                    thread, "verdict", {"ok": False, "action": "empty_retry"}
+                )
+                store.append(thread, "note", {"text": EMPTY_RETRY, "to_model": True})
+                force_final = force_final or "Answer now."
+                continue
+            text = (
+                EMPTY_GIVE_UP if empty else RUNAWAY_GIVE_UP if gave_up else reply.text
+            )
+            gave_up = gave_up or empty
             missing, unread_refs, claims = [], [], []
             if not gave_up:
                 missing = verify.unmatched(thread, text)
@@ -512,7 +551,9 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                     "unread": unread_refs,
                     "unsupported": claims,
                     "action": (
-                        "runaway_gave_up"
+                        "empty_gave_up"
+                        if empty
+                        else "runaway_gave_up"
                         if gave_up
                         else "stripped"
                         if (missing or claims)
