@@ -118,3 +118,33 @@ per-group time and tokens, and how many turns ended on the cap. Answer
 quality is not judged here (no raters); the share of turns that hit the cap
 and had to answer with what they had is the proxy, stated as such. No
 default is changed.
+
+## Amendment 5 — 2026-11-15, before arm A5 (round two, Phase 6)
+
+**A5 — speed after the loop fixes** (plan
+`docs/plans/20261115-mylo-evaluation-round-two.md`, Phase 6; correlation
+`20261115-mylo-evaluation-round-two`). On the current commit (which includes
+`60ae301`, the loop fixes), repeat:
+
+- **A2 idle** — the twelve A2 questions, three repetitions, one at a time
+  (`run_a2.py --reps 3 --tag a5idle`);
+- **A3 with 8 processes** — eight one-off containers started together, each
+  asking all twelve once with `--rotate k` (k = 0…7) (`--reps 1 --tag a5p8_k`).
+
+Questions unchanged (`code/questions_a2.json`). No new bar: C-030's bar (a
+turn of up to five tool calls under 60 s and under 30k tokens) is re-read on
+these rows, reported beside the round-one rows (`a2idle`, `a2idle2`, `a3p8`,
+`a3p8b`). Closes or keeps O8 ("compound questions slow under load") in
+`docs/plans/20261113-mylo-evaluation-follow-ups.md`.
+
+**Run condition.** Only when every other round-two run has stopped (A2 idle
+needs an idle server; A3 p8 alone uses the night's cap of 8 requests), and no
+new turn after 11:15 UTC (the nightly starts 12:00 UTC); otherwise A5 is
+recorded as blocked.
+
+**A confound stated before the run.** The relay model `default-model` that
+the instance uses self-reported on 2026-11-15 as Google-trained (Gemma-style
+reasoning); round one recorded it as Qwen 3.8 27B. The relay was reconfigured
+in between. A5 therefore compares the loop fixes **and a different model**
+against round one; the two cannot be separated here, and RESULTS.md says so
+next to every comparison.
