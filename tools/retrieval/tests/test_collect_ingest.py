@@ -295,8 +295,10 @@ def test_a_dateless_conference_is_pruned_once_the_source_stops_listing_it():
     assert prune_expired(today=TODAY_ISO) == 0
     assert ContentItem.objects.filter(id=item.id).exists()
 
-    # Unseen for longer than the window: gone.
-    assert prune_expired(today="2027-01-01") == 1
+    # Unseen for longer than the window: gone. ``last_seen`` is stamped with the
+    # real clock, so "later" must be far past any real date this runs on (the
+    # old "2027-01-01" stopped being two months away in November 2026).
+    assert prune_expired(today="2099-01-01") == 1
     assert not ContentItem.objects.filter(id=item.id).exists()
 
 
@@ -325,7 +327,7 @@ def test_stale_only_skips_the_ordinary_expiry_sweep():
         today=TODAY_ISO,
     )
 
-    removed = prune_expired(today="2027-01-01", stale_only=True)
+    removed = prune_expired(today="2099-01-01", stale_only=True)  # see above
     assert removed == 1
     assert not ContentItem.objects.filter(source="conf:openreview").exists()
     # The past-dated grant is untouched: this sweep was not asked about it.

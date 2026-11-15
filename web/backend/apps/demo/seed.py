@@ -32,7 +32,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.utils import timezone
 
-from apps.research.models import Project
+from apps.research import visibility
 
 from . import world as demo_world
 from .models import DemoWorld
@@ -55,7 +55,8 @@ def seed(built: DemoWorld, *, log=print) -> dict:
     people = list(
         get_user_model().objects.filter(email__iendswith="@" + demo_world.DOMAIN)
     )
-    projects = list(Project.objects.filter(scope_lab=lab).order_by("name"))
+    # Every project of the fictional lab, through the one door for project scope.
+    projects = list(visibility.lab_projects(lab).order_by("name"))
     today = timezone.localdate()
     delivery.clear_activity(users=people, labs=[lab], projects=projects)
 
