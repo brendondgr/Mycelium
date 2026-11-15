@@ -1,0 +1,171 @@
+{
+  "mycelium_agent_eval_r2_101_gate_instance": {
+    "tool_results": 207,
+    "by_status_code": {
+      "ok": 189,
+      "error:need_department": 1,
+      "error:bad_arguments": 3,
+      "denied:not_visible": 13,
+      "error:keeps_failing": 1
+    },
+    "failed_inside_by_function": {}
+  },
+  "mycelium_agent_eval_r2_101_gate_second": {
+    "tool_results": 248,
+    "by_status_code": {
+      "ok": 222,
+      "error:bad_arguments": 10,
+      "denied:not_visible": 6,
+      "error:repeated_call": 5,
+      "error:need_department": 2,
+      "error:keeps_failing": 3
+    },
+    "failed_inside_by_function": {}
+  },
+  "mycelium_agent_eval_r2_101_prompt_only_instance": {
+    "tool_results": 212,
+    "by_status_code": {
+      "ok": 160,
+      "error:failed": 33,
+      "error:bad_arguments": 7,
+      "error:not_visible": 9,
+      "error:keeps_failing": 3
+    },
+    "failed_inside_by_function": {
+      "projects_get": 29,
+      "corpus_item": 3,
+      "projects_feed": 1
+    }
+  },
+  "mycelium_agent_eval_r2_101_prompt_only_second": {
+    "tool_results": 219,
+    "by_status_code": {
+      "error:failed": 46,
+      "error:bad_arguments": 11,
+      "ok": 148,
+      "error:keeps_failing": 10,
+      "error:not_visible": 1,
+      "error:repeated_call": 2,
+      "error:audience": 1
+    },
+    "failed_inside_by_function": {
+      "projects_get": 40,
+      "fulltext_availability": 4,
+      "files_info": 1,
+      "files_read": 1
+    }
+  },
+  "mycelium_agent_eval_r2_202_gate_instance": {
+    "tool_results": 216,
+    "by_status_code": {
+      "ok": 195,
+      "denied:not_visible": 13,
+      "error:role": 2,
+      "error:bad_arguments": 3,
+      "error:keeps_failing": 3
+    },
+    "failed_inside_by_function": {}
+  },
+  "mycelium_agent_eval_r2_202_gate_second": {
+    "tool_results": 233,
+    "by_status_code": {
+      "ok": 217,
+      "error:bad_arguments": 6,
+      "denied:not_visible": 5,
+      "error:repeated_call": 3,
+      "error:need_department": 1,
+      "error:need_lab": 1
+    },
+    "failed_inside_by_function": {}
+  },
+  "mycelium_agent_eval_r2_202_prompt_only_instance": {
+    "tool_results": 215,
+    "by_status_code": {
+      "ok": 176,
+      "error:failed": 29,
+      "error:keeps_failing": 1,
+      "error:bad_arguments": 9
+    },
+    "failed_inside_by_function": {
+      "projects_get": 25,
+      "projects_feed": 1,
+      "corpus_item": 3
+    }
+  },
+  "mycelium_agent_eval_r2_202_prompt_only_second": {
+    "tool_results": 225,
+    "by_status_code": {
+      "error:failed": 30,
+      "ok": 156,
+      "error:keeps_failing": 19,
+      "error:bad_arguments": 18,
+      "error:repeated_call": 2
+    },
+    "failed_inside_by_function": {
+      "projects_get": 29,
+      "fulltext_availability": 1
+    }
+  },
+  "mycelium_agent_eval_r2_303_gate_instance": {
+    "tool_results": 200,
+    "by_status_code": {
+      "ok": 180,
+      "denied:not_visible": 17,
+      "error:bad_arguments": 3
+    },
+    "failed_inside_by_function": {}
+  },
+  "mycelium_agent_eval_r2_303_gate_second": {
+    "tool_results": 287,
+    "by_status_code": {
+      "ok": 262,
+      "error:repeated_call": 4,
+      "error:bad_arguments": 9,
+      "denied:not_visible": 8,
+      "error:need_lab": 2,
+      "error:keeps_failing": 1,
+      "error:need_department": 1
+    },
+    "failed_inside_by_function": {}
+  },
+  "mycelium_agent_eval_r2_303_prompt_only_instance": {
+    "tool_results": 222,
+    "by_status_code": {
+      "ok": 173,
+      "error:failed": 24,
+      "error:bad_arguments": 10,
+      "error:not_visible": 3,
+      "error:audience": 3,
+      "error:repeated_call": 4,
+      "error:keeps_failing": 5
+    },
+    "failed_inside_by_function": {
+      "projects_get": 23,
+      "corpus_item": 1
+    }
+  },
+  "mycelium_agent_eval_r2_303_prompt_only_second": {
+    "tool_results": 285,
+    "by_status_code": {
+      "error:failed": 42,
+      "error:bad_arguments": 18,
+      "ok": 191,
+      "error:keeps_failing": 29,
+      "error:role": 2,
+      "error:repeated_call": 3
+    },
+    "failed_inside_by_function": {
+      "projects_get": 37,
+      "fulltext_availability": 1,
+      "files_info": 2,
+      "corpus_item": 1,
+      "files_read": 1
+    }
+  },
+  "_totals": {
+    "gate:tool_results": 1391,
+    "gate:failed_inside": 0,
+    "prompt_only:tool_results": 1378,
+    "prompt_only:failed_inside": 204
+  }
+}

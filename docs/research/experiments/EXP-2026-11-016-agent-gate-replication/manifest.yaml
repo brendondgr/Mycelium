@@ -8,10 +8,10 @@
 
 id: EXP-2026-11-016
 slug: agent-gate-replication
-title: Permission gate replicated: second model, seeded worlds, second reader
-status: running # planned | running | complete | failed | superseded
+title: "Permission gate replicated: second model, seeded worlds, second reader"
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-11-15
-date_completed: null
+date_completed: 2026-11-15
 authors: [Claude Opus 5.5 (agent), on behalf of the maintainer]
 
 purpose: >
@@ -26,18 +26,18 @@ hypothesis: >
 
 # --- Reproducibility block ---------------------------------------------------
 code:
-  commit: 8e32be8a
+  commit: 14a24374  # pre-registration; product code identical through 44100c04 (Amendment 1)
   branch: main
   entrypoint: "code/run_gate.py --seed {101,202,303} --arm {gate,prompt_only} --model {instance,second} --reps 3 --conc 3 --tag main; then code/analyse.py"
-  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+  dirty: false  # product code clean; only other experiments' research files were uncommitted
 config:
   path: <path to the config file, or null>
   hash: null
 data:
-  name: <collection or dataset>
-  version: <version or snapshot>
-  split: <train | test | dev>
-  n_examples: 0
+  name: seeded fictional worlds (code/world_seeded.py), seeds 101/202/303
+  version: "2026-11-15"
+  split: test
+  n_examples: 648
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
@@ -69,15 +69,30 @@ compute:
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: <metric name>
-  values: {}
-baselines_compared: []
-statistical_test: null
+  primary: answer_leak_rate_a1
+  values:
+    gate_instance.answer_leak_rate: {mean: 0.0, n: 128, ci95: [0.0, 0.0284]}
+    gate_instance.answer_leaks: {mean: 0, n: 128}
+    gate_instance.controls_passed: {mean: 16, n: 16}
+    gate_second.answer_leak_rate: {mean: 0.0, n: 144, ci95: [0.0, 0.0253]}
+    gate_second.answer_leaks: {mean: 0, n: 144}
+    gate_second.controls_passed: {mean: 18, n: 18}
+    prompt_only_instance.answer_leak_rate: {mean: 0.3565, n: 115, ci95: [0.2694, 0.4512]}
+    prompt_only_instance.answer_leaks: {mean: 41, n: 115}
+    prompt_only_instance.controls_passed: {mean: 13, n: 18}
+    prompt_only_second.answer_leak_rate: {mean: 0.5903, n: 144, ci95: [0.5053, 0.6714]}
+    prompt_only_second.answer_leaks: {mean: 85, n: 144}
+    prompt_only_second.controls_passed: {mean: 16, n: 18}
+    diff_prompt_only_minus_gate.instance: {mean: 0.3565, n: 243, ci95: [0.2699, 0.4474]}
+    diff_prompt_only_minus_gate.second: {mean: 0.5903, n: 288, ci95: [0.5046, 0.6672]}
+    adjudication.kappa_string_vs_model: {mean: 0.6, n: 20}
+baselines_compared: [prompt_only]
+statistical_test: Clopper-Pearson; Newcombe hybrid-score difference
 
 # --- Linkage -----------------------------------------------------------------
-supports_claims: []
+supports_claims: [C-037, C-038]
 refutes_claims: []
 figures: []
 supersedes: null
 superseded_by: null
-related: []
+related: [EXP-2026-11-011]
