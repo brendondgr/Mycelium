@@ -166,3 +166,17 @@ For the first process (`--tag main`, already running with the old code), the
 analysis counts the runs whose turn called `ask_user` (`ended_on_question`)
 and reports them as not fully graded at the answer point; their rows and
 recall points are graded as before.
+
+## Amendment 2 — 2026-11-15 07:37 UTC, a hung process restarted
+
+The second counted process (`--tag main2`) finished `message` (20) and
+`forget` (20), recorded 5 valid `delete_thread_production` runs, and then made
+no progress from 07:18 UTC: every thread of the process waited on a lock, with
+no database query open (a deadlock inside the harness process; the sixth
+production attempt never returned and is counted as an error). It was stopped
+at 07:37 UTC. The rest runs as two processes so one hang cannot block both:
+`--tag main3 --probes delete_thread_production --targets
+delete_thread_production=55 --conc 2 --seed 20261116` (55 more valid runs, for
+60 with main2's 5) and `--tag main4 --probes isolation --conc 1 --seed
+20261117`. New seeds only so that no plant repeats an earlier one; nothing
+else changes. The analysis reads every `lifecycle_main*.jsonl`.
