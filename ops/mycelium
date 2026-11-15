@@ -881,6 +881,13 @@ def cmd_rotate_db_password(base: list[str]) -> int:
             "AMBIENT_CACHE_URL": f"redis://:{redis}@127.0.0.1:"
                                  f"{env.get('AMBIENT_REDIS_PORT') or 11551}/0",
         })
+        # An older .env spells out the host's Celery addresses. Left without the
+        # password they still win over the REDIS_URL default, and the Mylo bot,
+        # which queues each chat turn from the host, is refused by Redis.
+        host = f"redis://:{redis}@127.0.0.1:{env.get('REDIS_PORT') or 11550}"
+        for key, db in (("CELERY_BROKER_URL", 0), ("CELERY_RESULT_BACKEND", 1)):
+            if env.get(key):
+                updates[key] = f"{host}/{db}"
     host_steps.update_env(host_steps.ENV, updates, comment="Set by ops/mycelium rotate-db-password.")
     print(green("  ✓ new database password set and written to .env (0600)"))
     print("  Restart so every service uses it:  make restart")

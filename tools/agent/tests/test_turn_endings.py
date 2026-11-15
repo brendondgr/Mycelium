@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import pytest
 from apps.core.llm import LLMResponse
 
 from tools.agent import loop, service, store
@@ -73,3 +74,29 @@ def test_a_second_cut_off_posts_an_honest_line(scripted, db):
     _send(thread, "tell me everything")
     loop.run_turn(thread.pk, port=scripted(_cut("Long"), _cut("Still long")))
     assert _final(thread) == loop.RUNAWAY_GIVE_UP
+
+
+def test_a_turn_the_queue_refuses_does_not_leave_the_thread_running(
+    db, monkeypatch
+) -> None:
+    """The broker being unreachable used to strand the thread as ``running``, so
+    every later message sat "waiting for my turn" behind a turn nobody ran."""
+    from tools.agent import tasks
+    from tools.agent.models import AgentQueuedMessage, AgentThread
+
+    def refuse(*args, **kwargs):
+        raise RuntimeError("broker unreachable")
+
+    monkeypatch.setattr(tasks.run_turn, "delay", refuse)
+    thread = thread_for(make_user("ada"))
+
+    with pytest.raises(RuntimeError):
+        service.start_turn(thread)
+
+    thread.refresh_from_db()
+    assert thread.state == AgentThread.State.ERROR
+    # So the next message starts a turn of its own instead of queueing.
+    monkeypatch.setattr(tasks.run_turn, "delay", lambda *a, **k: None)
+    out = service.send(for_thread(thread), thread, "are you there?")
+    assert out["status"] != "queued"
+    assert not AgentQueuedMessage.objects.filter(thread=thread).exists()

@@ -461,7 +461,14 @@ def start_turn(thread: AgentThread) -> None:
 
     store.set_state(thread, AgentThread.State.RUNNING)
     stream.clear_cancel(thread.pk)
-    result = tasks.run_turn.delay(str(thread.pk))
+    try:
+        result = tasks.run_turn.delay(str(thread.pk))
+    except Exception:
+        # The queue refused the task (the broker is down or misconfigured). Left
+        # ``running``, the thread would hold every later message "waiting for my
+        # turn" behind a turn nobody is running, until the stuck-turn sweep.
+        store.set_state(thread, AgentThread.State.ERROR)
+        raise
     data = dict(thread.settings or {})
     data["task_id"] = getattr(result, "id", "") or ""
     AgentThread.objects.filter(pk=thread.pk).update(settings=data)
