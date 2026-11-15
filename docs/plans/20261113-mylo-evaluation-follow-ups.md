@@ -167,6 +167,34 @@ Note that the raters judge last night's answers. They were produced before
 fixes 1–4, so the project-status questions will score low partly because of
 fix 1's bug.
 
+## Round two measured (2026-11-15) — what changed for the open items
+
+The second evaluation round (`EXP-2026-11-016` to `-020`, `-010` A5, `-013`
+Amendment 5) ran overnight. What it says about the items above:
+
+| Item | Now |
+|---|---|
+| O1–O3 | Still deferred, and now measured as mattering: a second model read 50 regenerated answers sentence by sentence and marked 51 details unsupported (18 of 50 answers had one); the checker flagged none of them. 40 of the 51 are claims with no number (O2). Model-judged; the 30-answer calibration sheet (`EXP-2026-11-020/data/sheets/calibration.csv`) is for a person. |
+| O7 | Common on tonight's instance model: 23 of 144 gate-arm turns ended on a clarifying question (`EXP-2026-11-016`). Separately, turns that end with **no reply at all** — 11% of gate turns, 16% in collaborator search — are a defect (Q-070, Q-088). |
+| O8 | Kept. Compound turns with 8 in flight: median 79 s (round one 73–78 s), worst 109 s (234 s). Idle turns are 3–6× slower than round one because every model call is slower on the relay model now answering as `default-model` (self-reports Google); not separable from the loop fixes. |
+| O9 | Measured: the `unread` check flags 0 of 20 surfaced-but-unread references, because a search listing counts as "seen" (Q-076); an `unread` citation that survives the repair is posted (Q-077). |
+| O11 | Done: the 50 questions regenerated after the fixes (`EXP-2026-11-013` Amendment 5, sheets in `data/sheets_fix1/`). By code against stored facts, Mylo earned full credit on 72% of 60 questions and beat one search plus one call by +0.42 (`EXP-2026-11-018`); no list question was answered fully, because feed functions return truncated views presented as complete (Q-079). |
+
+New, for the owner to decide (not defects of the run): what "Delete my
+observations" should stop — it removes every derived row but Mylo still reads
+the undeleted chats back (53 of 100 runs; Q-072, against O4's wording); and
+whether ambient should record health or immigration facts about a person
+(Q-071). Defects found and left unfixed, as the plan required: Q-069 / Q-075
+(a project name instead of a reference fails, and the retries use up the
+function's failure budget), Q-070 / Q-088 (empty replies), Q-076 / Q-077
+(`unread`), Q-078 (a single model call that streams for 15 minutes; no output
+cap), Q-079 (truncated feed lists), Q-087 (a loaded function missing from the
+tool list).
+
+Two sheets wait for a person (about an hour): `EXP-2026-11-016/data/sheets/adjudication.csv`
+(20 rows; the key says which project was narrowed in `scope-narrowed`) and
+`EXP-2026-11-020/data/sheets/calibration.csv` (30 answers).
+
 ## Found 2026-11-14 while checking the demo — done the same day
 
 Decided 2026-11-14: D2, D1, D4 and D5 were fixed in that order and are live

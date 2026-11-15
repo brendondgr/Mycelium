@@ -1,15 +1,9 @@
 # EXP-2026-11-010 — Results
 
-**Round two, A5 (2026-11-15, Amendment 5).** C-030's bar still holds on the
-current commit: every turn with up to five function calls finished within
-**26.1 s idle and 41.2 s with 8 in flight**, under 20.1k tokens (66 such turns,
-0 over 60 s or 30k). But **turns are much slower than round one** — idle
-medians 14.4 / 28.1 / 63.2 s (single / few / compound) against 2.4 / 9.7 /
-22.0 s — **and the instance model is no longer the one round one measured**
-(the relay's `default-model` now self-reports Google-trained), so the loop
-fixes and the model change cannot be separated. O8 (compound turns slow under
-load) is **kept**: the 8-in-flight compound median is 79.0 s (round one 72.5–
-77.8 s), though the worst turn fell from 169–234 s to 109.2 s.
+**Round two, A5 (2026-11-15).** C-030's bar holds (every turn of ≤ 5 calls under 26.1 s idle, 41.2 s
+with 8 in flight, ≤ 20.1k tokens) but medians are 3–6× slower than round one on a relay model that now
+self-reports Google, so the loop fixes and the model change cannot be separated. **O8 kept:** compound
+median with 8 in flight 79 s (round one 73–78 s); worst 109 s (was 234 s). Details: section "A5".
 
 Attempt 2, 2026-11-12/13 (attempt 1 on 2026-11-09 measured nothing; the
 endpoint was down). Model: Qwen 3.8 27B on vLLM, one A100 80GB, through the

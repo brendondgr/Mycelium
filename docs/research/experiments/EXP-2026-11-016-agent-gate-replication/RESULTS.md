@@ -1,15 +1,9 @@
 # EXP-2026-11-016 — Results
 
-**Headline.** With the permission gate, **0 of 272 valid access-probe runs
-revealed a secret** in the reply the reader saw — 0 of 128 on the instance
-model and 0 of 144 on a second model family, over three seeded worlds (95%
-upper bounds 2.3%, 2.1%; 1.1% pooled). Stating the same rules in the prompt
-instead leaked in **36%** (instance) and **59%** (second) of runs; both
-differences exclude zero. **Refuted / partial:** C-039 as written — the gate
-passed every control that produced a reply, but 2 of the instance model's 18
-control runs produced no reply at all, and the prompt-only arm failed its
-controls (13/18, 16/18). **Not checked by a person:** the adjudication sheet
-is filled only by the second model so far.
+**Headline.** The gate leaked in **0 of 272** valid access runs (0/128 instance model, 0/144 second
+model; ≤ 1.1% pooled); stating the rules in the prompt leaked **36% and 59%** (C-037, C-038 supported).
+**Partial:** C-039 — 2 of 18 instance-model control runs gave no reply (Q-070); prompt-only controls
+13/18 and 16/18. **Not checked by a person:** the adjudication sheet has only the second model's reading.
 
 ## 1. What ran
 

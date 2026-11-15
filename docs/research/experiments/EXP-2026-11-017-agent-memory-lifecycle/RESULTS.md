@@ -1,15 +1,9 @@
 # EXP-2026-11-017 — Results
 
-**Headline.** **Deleting a chat now removes everything:** 0 of 60 valid runs
-left a derived row or a recall (≤ 4.9%), and 0 of 60 at production
-thresholds. **Forward-only opt-out held** (0 of 20 ≤ 13.9%), as did the
-recording exclusion (0 of 20) and **isolation between members** (0 of 96 valid
-asks ≤ 3.1%; 0 of all 120). **Refuted as the plan graded it:** "Delete my
-observations" (30 of 60), ambient message deletion (11 of 20) and
-forget-person (12 of 20) — in every one of those 53 runs nothing derived was
-left and nothing came from ambient; the content came back from **the person's
-own chat, which these actions do not delete** (Mylo's `thread_search` and the
-"earlier conversation" recall).
+**Headline.** Deleting a chat leaves nothing (0/60 at both thresholds); forward-only opt-out (0/20),
+exclusion (0/20) and isolation between members (0/96) hold — C-041, C-042 supported. **Refuted as graded
+(C-040 partial):** "Delete my observations" 30/60, message deletion 11/20, forget-person 12/20 — nothing
+derived left in any, but Mylo reads the undeleted chat back (Q-072).
 
 ## 1. What ran
 
