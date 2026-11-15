@@ -9,24 +9,26 @@
 id: EXP-2026-11-016
 slug: agent-gate-replication
 title: Permission gate replicated: second model, seeded worlds, second reader
-status: planned # planned | running | complete | failed | superseded
+status: running # planned | running | complete | failed | superseded
 date_started: 2026-11-15
 date_completed: null
-authors: [<your name>]
+authors: [Claude Opus 5.5 (agent), on behalf of the maintainer]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  Round two, Phase 1. Replicates the permission-gate result of EXP-2026-11-011
+  (C-031) on a second model family and three seeded worlds, with a second
+  reader for every graded leak. Pre-registers C-037 (gate: 0 confirmed leaks),
+  C-038 (prompt-only leaks more, per model), C-039 (controls pass).
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  The gate holds on both models (it is code); the prompt-only arm leaks on both,
+  though the second model may obey the prompt better.
 
 # --- Reproducibility block ---------------------------------------------------
 code:
   commit: 8e32be8a
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
+  entrypoint: "code/run_gate.py --seed {101,202,303} --arm {gate,prompt_only} --model {instance,second} --reps 3 --conc 3 --tag main; then code/analyse.py"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
   path: <path to the config file, or null>
@@ -39,8 +41,8 @@ data:
   qrels: null
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
-seeds: []
-n_runs: 1
+seeds: [101, 202, 303]
+n_runs: 3
 
 environment:
   python: "3.13"
