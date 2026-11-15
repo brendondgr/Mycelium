@@ -9,24 +9,29 @@
 id: EXP-2026-11-020
 slug: agent-verifier-loop
 title: The answer checker as a loop: repair, removal, unread
-status: planned # planned | running | complete | failed | superseded
+status: running # planned | running | complete | failed | superseded
 date_started: 2026-11-15
 date_completed: null
-authors: [<your name>]
+authors: [Claude (agent), Brendon (owner)]
 
 purpose: >
-  One paragraph. What question does this answer, and which claim in CLAIMS.md
-  does it support or refute?
+  What Mylo's answer loop does with a draft its checker flags (forced drafts
+  with injected errors, real repair), whether the `unread` check fires on a
+  reference a thread surfaced but never read (O9), and how often real answers
+  carry an unsupported detail as judged by a second model. Tests C-047 to
+  C-049; adds a model-judged recall figure to C-035.
 
 hypothesis: >
-  Stated before the run. If exploratory, write "exploratory — no prior
-  hypothesis" rather than back-filling a hypothesis the result already confirms.
+  C-047: no flagged injected error reaches a final answer. C-048: at least
+  half of flagged drafts are repaired rather than stripped. C-049: `unread`
+  flags at least 18 of 20 surfaced-but-unread references and none of 20 read
+  ones; predicted refuted from the code (a search listing counts as seen).
 
 # --- Reproducibility block ---------------------------------------------------
 code:
   commit: 8e32be8a
   branch: main
-  entrypoint: "<the exact command that produces the numbers>"
+  entrypoint: "docker compose run … python docs/research/experiments/EXP-2026-11-020-agent-verifier-loop/code/{unread,forced_drafts,reader}.py; python3 docs/research/experiments/EXP-2026-11-020-agent-verifier-loop/code/analyse.py"
   dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
 config:
   path: <path to the config file, or null>

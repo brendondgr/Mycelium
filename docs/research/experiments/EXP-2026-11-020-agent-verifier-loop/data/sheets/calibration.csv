@@ -1,0 +1,174 @@
+answer_id,question,answer,evidence_file,n_details,unsupported_details,notes
+R1741F57F,"Who in my lab could contribute to an application to this call, and in what role?","Based on the requirements for the **Integrating Remote Sensing and in-situ observations of Biodiversity** grant (#1), here is how members of the Coastal Ocean Intelligence Lab could contribute:
+
+**Potential Contributors**
+*   **Priya Raman (#3):** Could handle the **satellite-based Earth observation data** component, as she has declared expertise in satellite ocean remote sensing.
+*   **Sun-hee Park (#4):** Could contribute to the **interoperable observation and data framework** by building the necessary web dashboards and GIS tools.
+
+**Gaps in the Lab**
+There are currently no members in the lab who cover the following requirements:
+*   Integrating remote sensing and in-situ biodiversity observations.
+*   Omics-based data (genomic, transcriptomic, metabolomic).
+*   Machine learning (specifically for this call's requirements).
+*   Copernicus and/or Galileo/EGNOS.
+*   In-situ data collection frameworks (e.g., GBIF, OBIS, LUCAS).",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R1741F57F.md,,,
+R219CB58C,"Which open grant fits the Plastic pathways project best, who in the lab should lead the application, and who outside the lab could we partner with?","Based on the provided evidence, the open grant that fits the Plastic pathways project best is **Developing novel recycling technologies for complex plastic materials applying biotech solutions** (#13), which seeks proposals to advance biotech solutions for recycling complex plastic materials and products in sectors such as transport, construction, packaging, and renewable energy infrastructure (#13).
+
+The provided evidence does not contain information regarding the members of the lab or potential external partners to identify who should lead the application or who to partner with.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R219CB58C.md,,,
+R2E0D7F72,What region and period does this dataset cover?,"The available details for #1 do not specify the region or period covered by the dataset. Since the full text is not yet stored, you can request it in the app to find those specifics.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R2E0D7F72.md,,,
+R32739596,"What data does this model take as input, and what does it output?",The VMCF model uses the OISST dataset for its setting #1. It is designed to take sea surface temperature (SST) data as input to produce short-term SST forecasting as output #1.,../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R32739596.md,,,
+R3A89A5AD,"Who runs this funding programme, and is it open now?","The Marine Geology and Geophysics Core Program is run by the NSF #1, and it is currently open #1.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R3A89A5AD.md,,,
+R3BF378D2,"Which fellowship in our feed has the nearest deadline, who in the lab is eligible, and what would make their application strong?","Based on the provided evidence, the fellowship with the nearest deadline is the Children’s Hospital of Philadelphia (CHOP) - Supporting Promising Academic Researchers (SPAR) Postdoctoral Fellowship, which has a deadline of 2026-11-20 #17. The provided evidence does not contain information regarding who in the lab is eligible or what would make their application strong #17.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R3BF378D2.md,,,
+R3D639968,"Which of our two projects is further along, and why do you say so?","The provided evidence does not contain information regarding ""our two projects,"" and therefore cannot determine which one is further along or why.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R3D639968.md,,,
+R420271A2,Which fellowship in our feed would suit a PhD student on the Marine heatwave early warning project?,"The fellowship in the feed that would suit a PhD student on the Marine heatwave early warning project (#1) is the **Woods Hole Oceanographic Institution (WHOI) - Geophysical Fluid Dynamics (GFD) Summer Graduate Research Fellowship (#9)**.
+
+**Fit analysis:**
+*   **Strongest reason:** The fellowship supports graduate students interested in the nonlinear dynamics of rotating, stratified fluids, which aligns with the project's focus on ocean forecasting and sea surface temperature prediction #1, #9.
+*   **Biggest doubt:** I cannot confirm if the specific PhD student's research focus is sufficiently aligned with ""nonlinear dynamics"" as required by the call #9.
+
+**Details:**
+*   **Deadline:** 2027-02-05
+*   **Status:** Open
+*   **Scope:** A ten-week residential research fellowship at WHOI in Massachusetts.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R420271A2.md,,,
+R435F77C3,"What has entered our feed recently that matters for the Plastic pathways project, and what should we do about it this month?","For the **Plastic pathways** project, a few items have entered the feed recently that are highly relevant to your current focus on beaching models and satellite detections.
+
+### What matters for the project
+*   **Directly relevant research:** A new entry (#8) provides the **code and aggregated results for a tide-resolving beaching kernel** for marine litter. Since your project is currently checking the beaching model against summer surveys, this kernel (developed for *OceanParcels*) could be a valuable benchmark or a potential replacement for your current method.
+*   **Funding opportunities:** Two grants are open with deadlines in mid-February 2027:
+    *   **Ocean Technology and Interdisciplinary Coordination (#12):** Supports instrumentation and technology that enhances observational or analytical capabilities for ocean science.
+    *   **Global Ocean Observing System (#3):** A large-scale call (€50M) focusing on strengthening global observation networks, specifically for biodiversity and ecosystem knowledge.
+
+### Recommended actions for this month
+1.  **Technical Review:** Have the team (likely Jonah or Priya) review the code in **#8** to see if the ""tide-resolving beaching kernel"" improves the accuracy of your current beaching model checks.
+2.  **Grant Strategy:** Evaluate if the project's satellite debris detection work fits the ""analytical capabilities"" scope of the **OTIC grant (#12)** or the broader observation goals of the **GOOS grant (#3)**.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R435F77C3.md,,,
+R4A71FCDD,"Which open grant fits the Marine heatwave early warning project best, who in the lab should lead the application, and who outside the lab could we partner with?","Based on the provided evidence, the open grant that best fits a Marine heatwave early warning project is the **""Unlocking a safe operating space for Antarctica and the Southern Ocean""** grant (#1), as its scope specifically includes advancing the knowledge of Southern Ocean and sea ice dynamics to ""reduce uncertainties in projected future changes of large-scale ocean circulation and transport"" and improving ""monitoring indicators"" (#1).
+
+The provided evidence does not contain information regarding the members of the lab or potential external partners to identify who should lead the application or with whom to partner.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R4A71FCDD.md,,,
+R5870C3CB,"Across both of our projects, what are the two most urgent upcoming deadlines, who in the lab fits each, and which recent paper would strengthen each application?","Based on the provided evidence, there is only one upcoming deadline mentioned:
+
+*   **CHEERS Open Period 1 - All Technical Areas:** The application deadline is 2027-09-30 #16.
+
+The provided evidence does not specify who in the lab fits this deadline or which recent paper would strengthen the application. Additionally, the evidence does not mention a second project or a second deadline.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R5870C3CB.md,,,
+R69F8F79E,Who in my lab should apply to this call?,"Based on the requirements for the **Global Ocean Observing System** grant (#1), here is who in your lab is a fit:
+
+**Stabilizing and operationalizing the observing system**
+* **Mara Ellison (@demo.mara)**: Based on your declared interest in ocean data assimilation.
+* **Priya Raman (@demo.priya)**: Based on her declared interest in satellite ocean remote sensing.
+
+**Gaps in the lab**
+No one in the lab currently covers these specific requirements:
+* Observing system experiments (OSEs) or simulation experiments (OSSEs)
+* Network optimization approaches
+* Expertise in areas beyond national jurisdiction
+
+The call also specifically seeks partners from **industry**, which is not currently matched to any lab member's profile.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R69F8F79E.md,,,
+R76700F73,"Which paper in our feed matters most for the Plastic pathways project, and why?","The paper that matters most for the Plastic pathways project is **#7: Code and aggregated results for ""A tide-resolving beaching kernel for marine litter: development and application to field records from Uido, Republic of Korea""**, as it is the only paper in the feed specifically focused on marine litter.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R76700F73.md,,,
+R80C808C9,"Which open grant fits the Plastic pathways project best, who in the lab should lead the application, and who outside the lab could we partner with?","Based on the project's focus on tracing floating debris using forecast currents and satellite detections, the best fit among the open grants is **#11 Integrating Remote Sensing and in-situ observations of Biodiversity**, as it specifically funds the integration of satellite remote sensing with in-situ data for predictive analytics and AI in marine ecosystems.
+
+**Who should lead the application:**
+*   **Priya Raman (#4)** is the strongest lead for the remote sensing component, as she has declared expertise in satellite ocean remote sensing.
+*   **Sun-hee Park (#5)** could support the technical side, as she builds the GIS tools and dashboards necessary for an interoperable data framework.
+
+**Partnership:**
+Since no one in the lab currently covers the **omics-based data** (genomic/transcriptomic) or the specific **in-situ biodiversity data frameworks** (like GBIF or OBIS) required by the call, you would need to partner with a group specializing in marine biodiversity sampling or genomic data integration.
+
+*Note: I cannot suggest specific people outside the lab as collaborator search is currently turned off.*",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R80C808C9.md,,,
+R81F89E43,Which three papers from the feed should the team on the Marine heatwave early warning project read first?,"Based on the feed for the Marine heatwave early warning project (#1), the team should read these three papers first:
+
+1. **#7 Evaluation of 1-14-Day Machine-Learning Forecasts of Marine Heatwaves in the Northern Bay of Bengal Against Persistence Benchmarks** — Directly addresses MHW forecasting using ML.
+2. **#6 Marine heatwave forecast triggers rapid response strategy for critically endangered red handfish** — Focuses on the application of MHW forecasts for rapid response.
+3. **#4 An end-to-end machine-learning system for global eddy-resolving ocean forecast** — Provides a broader look at ML systems for global ocean forecasting.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/R81F89E43.md,,,
+RA428AE66,"When does this call close, and how much funding does it offer?","This call closes on 2027-02-16 and offers €50,000,000 in funding #1.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RA428AE66.md,,,
+RA781C8CF,"When does this call close, and how much funding does it offer?","The call closes on February 16, 2027, and offers €50,000,000 in funding (#1).",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RA781C8CF.md,,,
+RA7991A64,"Which fellowship in our feed has the nearest deadline, who in the lab is eligible, and what would make their application strong?","The fellowship in your feed with the nearest deadline is the **Sandia National Laboratory - John von Neumann Postdoctoral Fellowship in Computational Science** (#2), which is due in 3 days (2026-11-18).
+
+**Who is eligible:**
+Based on profile matches from the nightly ranking, the following lab members are strong candidates:
+*   **Tomás Ferreira-Lind** (@demo.tomas) — 63% match
+*   **Mara Ellison** (@demo.mara) — 62% match
+*   **Priya Raman** (@demo.priya) — 58% match
+
+**What would make an application strong:**
+The fellowship seeks researchers in computational and applied mathematics. An application would be strongest if it demonstrates expertise in:
+*   **Computational methods:** Specifically in areas like machine learning, data science, numerical analysis, or modeling & simulation.
+*   **Application:** Showing how research findings can be applied to ""science and engineering problems of national importance.""
+*   **Track record:** A history of publishing in leading journals and presenting at top-tier conferences.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RA7991A64.md,,,
+RB299B574,Which open grant in our feed fits the Marine heatwave early warning project best?,"Based on the provided evidence, there is no open grant that specifically targets a ""Marine heatwave early warning project."" However, the most relevant open grant is **""Unlocking a safe operating space for Antarctica and the Southern Ocean""** (#4), as its scope includes:
+
+*   Improving projections and resolving uncertainties regarding the future of the region, including the impacts of ""extreme events"" (#4).
+*   Developing monitoring indicators and strengthening long-term monitoring systems for biodiversity and ecosystem functioning (#4).
+*   Advancing the understanding of Southern Ocean dynamics to reduce uncertainties in projected future changes (#4).",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RB299B574.md,,,
+RBA5C28FE,"Compare these two calls for our lab: which one fits better, and who would lead it?","Based on the call details and your lab's current expertise, **#1 (Global Ocean Observing System)** is the better fit.
+
+### Why #1 fits better
+Call #1 aligns directly with the core technical strengths of your lab. It focuses on strengthening the global observing system through data delivery and operational resilience. You and Priya Raman both have declared interests (Data Assimilation and Satellite Oceanography) that map directly to the call's goals of stabilizing and operationalizing ocean observing systems.
+
+In contrast, Call #2 is highly specialized toward the Antarctic and Southern Ocean. While your work on extremes is applicable, the lab lacks the specific regional expertise or the Earth System Modeling (ESM) capabilities the call emphasizes.
+
+### Who should lead it?
+**Priya Raman (#6)** is the strongest candidate to lead this effort. 
+*   **Evidence:** Her declared interest in satellite oceanography aligns with the call's need for enhanced observation capabilities and the use of Copernicus services.
+*   **Support:** You would be a key collaborator, providing the data assimilation expertise needed to make those observations ""fit-for-purpose"" and resilient for forecasting.
+
+**Potential Gaps to Address:**
+To be competitive for #1, you would need to partner with experts in:
+*   Observing System Experiments (OSEs/OSSEs).
+*   Network optimization.
+*   Industry partners for technology roadmaps.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RBA5C28FE.md,,,
+RC09226B7,"What method does this paper propose, in two sentences?",The paper proposes a two-way coupled data assimilation system where an ensemble variational (EnVar) component evolves the mean and an ensemble Kalman filter (EnKF) evolves the covariances. This system integrates the MLWP model GraphCast for the EnKF and the physics-based MPAS model for the EnVar (#1).,../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RC09226B7.md,,,
+RC3CE87FF,Who in my lab should apply to this call?,"Based on the provided evidence, the following groups should apply to this call:
+
+*   **The scientific community** engaged in the Global Ocean Observing System (#1).
+*   **European SMEs and technology providers**, **maritime industries**, and **service operators** (#1).
+*   **Observation communities** and **marine research infrastructures** (#1).",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RC3CE87FF.md,,,
+RD0FC15A6,"Is this fellowship for students or postdocs, and when is the next deadline?",This fellowship is for doctoral students (Doctoral Fellowship) #1. The next deadline is anticipated for March 2027 #1.,../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RD0FC15A6.md,,,
+RD71FF3D1,"What has entered our feed recently that matters for the Plastic pathways project, and what should we do about it this month?","Based on the provided evidence, the following developments are relevant to the Plastic pathways project:
+
+**Recent Findings and Risks**
+*   **Environmental and Systemic Impacts:** Plastic pollution is a global challenge that exacerbates biodiversity loss and climate change #17. In agricultural systems, microplastics (MPs) have become a ""slow-onset stressor"" that can inhibit crop germination, impair root architecture, and reduce photosynthetic efficiency, potentially reducing staple crop production by tens to hundreds of millions of tons annually #12, #15.
+*   **Human Health Risks:** Micro- and nanoplastics (MNPs) are detected in drinking water, seafood, salt, and other foods #7. They may cross biological barriers and cause oxidative stress, inflammation, and gut microbiota alterations #7. Specifically, MNPs can disrupt the gut-brain axis by reducing beneficial bacteria (e.g., *Bifidobacterium*) and stimulating opportunistic pathogens #10.
+*   **Behavioral Barriers:** In deposit return schemes for reusable cups, return behaviors are hindered by forgetting cups or using them as mementos, while uptake is influenced by perceived hygiene and the need for clear instructions #1. In waste picker communities, plastic reduction is hindered by low environmental literacy, overly technical messages, and inadequate infrastructure #6.
+
+**Recommended Actions**
+*   **Mitigation and Management:** Strategies should include upstream prevention through redesign for reuse, the use of biodegradable plastics, and improved waste management #17. In agriculture, options include source reduction, material substitution, and biochar amendment #12, #15.
+*   **Communication and Education:** 
+    *   Use interpersonal, participatory communication through trusted intermediaries and simple, visual messages for waste-reduction programs #6.
+    *   Provide clearer step-by-step instructions and timely reminders to encourage the return of reusable assets #1.
+    *   Implement public health education and standardized monitoring to reduce risk #7.
+    *   Utilize brief educational videos to increase knowledge and short-term intentions to reduce plastic use, though these should be paired with strategies to address structural barriers #4.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RD71FF3D1.md,,,
+RDD7BE9ED,Does this call fit the Marine heatwave early warning project?,"Based on the provided evidence, the grant call ""Unlocking a safe operating space for Antarctica and the Southern Ocean"" (#1) fits a Marine heatwave early warning project in the following ways:
+
+*   **Problem Alignment:** The call seeks to resolve uncertainties and improve projections for the future of the Antarctic and Southern Ocean region, including the impacts of climate change and anthropogenic activities on ecosystems (#1).
+*   **Methodological Alignment:** It encourages the development of mechanisms to distinguish human-induced changes from natural ones, the improvement of monitoring indicators, and the enhancement of regional coupled models and Earth System Models (ESMs) (#1).
+*   **Scope Alignment:** Proposals should aim to improve projections and quantifications of the region's future, specifically focusing on ""abrupt, irreversible change/tipping elements and thresholds"" and ""extreme events"" (#1).
+*   **Expected Outcomes:** The call aims to contribute to key ocean, cryosphere, climate, and biodiversity monitoring indicators to support global assessments and informed policies for climate resilience (#1).",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RDD7BE9ED.md,,,
+RE0AF28FF,"Which paper in our feed matters most for the Marine heatwave early warning project, and why?","Based on the current feed for the **Marine heatwave early warning** project (#1), the most relevant paper is likely **#7: Evaluation of 1-14-Day Machine-Learning Forecasts of Marine Heatwaves in the Northern Bay of Bengal Against Persistence Benchmarks**.
+
+It is the most direct match because it specifically focuses on the **forecasting of marine heatwaves** using machine learning, evaluating performance over a 1-14 day window.
+
+While paper **#4** is also highly relevant as it introduces an end-to-end ML system for global ocean forecasts (WenHai-E2E) that outperforms traditional numerical systems, paper **#7** is a precise match for the project's specific goal of early warning for heatwave events.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RE0AF28FF.md,,,
+REC779FA8,"When was this paper published, and what does it conclude about heat conservation?","Paper #1 was published in 2026 and concludes that the improved version of the Coupled Arctic Prediction System (CAPS), which ensures the conservation of heat fluxes exchanged between the atmosphere (WRF) and ocean-sea ice (ROMS-CICE) components, significantly reduces inconsistency in heat flux exchange and leads to better performance in simulating Arctic sea ice conditions compared to its predecessor #1.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/REC779FA8.md,,,
+REE8587E2,What is the next step for the Marine heatwave early warning project?,"The project is currently at 60% progress. Hindcasts for 2015-2024 have successfully beaten persistence at four weeks, and the public dashboard is currently in testing with two fisheries offices.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/REE8587E2.md,,,
+RF1F8FDD6,"Summarise where the Plastic pathways project stands, name the three most relevant new papers for it, and suggest one funding opportunity it could apply to.","I couldn't retrieve the current status of the **Plastic pathways** project as the project details were not available to me. However, based on the project's current slate, here are the three most relevant new papers and a suggested funding opportunity:
+
+### Relevant New Papers
+1. **#14 Code and aggregated results for ""A tide-resolving beaching kernel for marine litter: development and application to field records from Uido, Republic of Korea""** — Directly addresses marine litter and beaching kernels.
+2. **#17 AgentRMOT: Multi-agent Collaboration for Open-World Referring Multi-object Tracking** — Potentially useful for tracking debris pathways.
+3. **#18 A Deep Learning Framework for Automatic Detection and Segmentation of Internal Solitary Waves in Satellite Imagery over the Northern South China Sea** — Relevant for understanding the oceanographic features that influence plastic transport.
+
+### Suggested Funding Opportunity
+**#5 Developing novel recycling technologies for complex plastic materials applying biotech solutions**
+*   **Focus:** Advancing biotech solutions for recycling complex plastic materials (multi-material/multi-layer/composites).
+*   **Amount:** €3,000,000–€8,000,000
+*   **Deadline:** 2027-09-22",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RF1F8FDD6.md,,,
+RF60D60AC,"Who in my lab fits this call, and what expertise would we be missing?","Based on the requirements for the **Marine Geology and Geophysics** grant (#1), here is how your lab fits:
+
+**Potential Fits**
+*   **Jonah Whitcombe (#4)** covers ""geology and geophysics of the present ocean basins and margins,"" based on his declared interest in Lagrangian ocean analysis.
+
+**Missing Expertise**
+The call has a broad scope in marine geoscience that is not currently covered by the lab's declared interests, specifically:
+*   **Geological & Geochemical processes:** Submarine volcanology, petrology, geochemistry of the crust/mantle, and hydrothermal venting.
+*   **Seafloor & Lithosphere:** Tectonics, evolution of the oceanic lithosphere, and subduction zone systems.
+*   **Sedimentology & Hazards:** Marine sediment transport, diagenesis, and geohazards (e.g., earthquakes, tsunamis).
+*   **Paleoceanography:** Paleoclimate and sea-level change.",../../../EXP-2026-11-013-agent-answers-human-judged/data/sheets_fix1/evidence/RF60D60AC.md,,,
