@@ -25,6 +25,7 @@ accident.
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -43,12 +44,23 @@ from .discord_failure import (
 
 log = logging.getLogger(__name__)
 
+#: Pacing. Discord limits how fast one channel takes posts, and a forum far more
+#: tightly than a text channel; a burst (a server being populated, a night with
+#: many entrants) used to be sent back to back, so its tail was rate limited,
+#: burned an attempt and waited out the flat retry. One drain now leaves a gap
+#: between posts to the same channel and opens only a few forum threads per
+#: channel, handing the rest to the next drain untouched. Each is a Django
+#: setting of the same name with the ``DISCORD_OUTBOX_`` prefix.
+SPACING_SECONDS = 2.0  # between two posts to one channel
+THREADS_PER_DRAIN = 4  # forum threads opened in one channel by one drain
+
 
 @dataclass
 class DrainResult:
     """A tally of one drain pass."""
 
     claimed: int = 0
+    paced: int = 0  # handed to a later drain untouched, to space a channel's posts
     delivered: int = 0
     retried: int = 0
     failed: int = 0
@@ -58,6 +70,7 @@ class DrainResult:
     def as_dict(self) -> dict:
         return {
             "claimed": self.claimed,
+            "paced": self.paced,
             "delivered": self.delivered,
             "retried": self.retried,
             "failed": self.failed,
@@ -378,11 +391,61 @@ def drain(*, limit: int | None = None, now: datetime | None = None) -> DrainResu
     limit = limit or getattr(settings, "DISCORD_OUTBOX_BATCH_LIMIT", 50)
     result = DrainResult()
 
+    spacing = float(
+        getattr(settings, "DISCORD_OUTBOX_SPACING_SECONDS", SPACING_SECONDS)
+    )
+    per_drain = int(
+        getattr(settings, "DISCORD_OUTBOX_THREADS_PER_DRAIN", THREADS_PER_DRAIN)
+    )
+    posted: dict[str, int] = {}  # channel -> posts this drain attempted
+    threads: dict[str, int] = {}  # channel -> forum threads this drain attempted
+    closed: dict[str, float] = {}  # channel -> seconds Discord asked us to wait
+    queued: dict[str, int] = {}  # channel -> rows handed on so far
+
     for message in resolve.claim_outbox_batch(limit=limit, now=now):
         result.claimed += 1
+        channel = _paced_channel(message)
+        is_thread = _opens_thread(message)
+        if channel and (
+            channel in closed or (is_thread and threads.get(channel, 0) >= per_drain)
+        ):
+            # Not an attempt: nothing was sent, so the row keeps its budget. Due
+            # after Discord's wait (if it gave one), each a gap behind the last.
+            queued[channel] = queued.get(channel, 0) + 1
+            wait = closed.get(channel, 0.0) + spacing * queued[channel]
+            resolve.release_outbox_claim(
+                message, next_attempt_at=now + timedelta(seconds=wait)
+            )
+            result.paced += 1
+            continue
+        if channel and posted.get(channel) and spacing > 0:
+            _sleep(spacing)
         verdict = deliver_one(message)
+        if channel:
+            posted[channel] = posted.get(channel, 0) + 1
+            if is_thread:
+                threads[channel] = threads.get(channel, 0) + 1
+            if verdict.reason is Reason.RATE_LIMITED:
+                closed[channel] = _wait_seconds(verdict)
         _settle(message, verdict, result, now=now)
     return result
+
+
+def _sleep(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+def _paced_channel(message) -> str:
+    """The channel whose rate limit this row draws on, or ``""`` for a DM (each
+    person's DM channel is its own, so DMs never crowd one another)."""
+    if message.target_type == resolve.OUTBOX_DM:
+        return ""
+    return str(message.channel_id or "")
+
+
+def _opens_thread(message) -> bool:
+    mode = getattr(message, "mode", "") or resolve.OUTBOX_MODE.MESSAGE
+    return mode == resolve.OUTBOX_MODE.FORUM_THREAD
 
 
 def _settle(message, verdict: Classification, result: DrainResult, *, now) -> None:

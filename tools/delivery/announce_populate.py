@@ -200,10 +200,13 @@ def summary(results: list[KindResult], count: int) -> str:
         lines.append(line + ".")
     if not lines:
         return "This server's announcements carry no kinds. Choose some in `/setup`."
+    posted = any(r.posted for r in results)
     return (
         "📣 "
-        + ("Done.\n" if any(r.posted for r in results) else "Nothing new to post.\n")
+        + ("Done.\n" if posted else "Nothing new to post.\n")
         + "\n".join(lines)
+        # Discord takes a forum's threads a few at a time (the outbox paces them).
+        + ("\nThey appear a few a minute, so give it a moment." if posted else "")
     )
 
 

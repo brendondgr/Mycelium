@@ -1393,6 +1393,19 @@ def mark_outbox_sent(
     )
 
 
+def release_outbox_claim(
+    message: DiscordOutboxMessage, *, next_attempt_at: datetime
+) -> None:
+    """Hand a claimed message back unsent: PENDING again, due later, and the
+    attempt the claim counted given back, because nothing was tried."""
+    message.status = DiscordOutboxMessage.Status.PENDING
+    message.attempts = max(0, message.attempts - 1)
+    message.next_attempt_at = next_attempt_at
+    message.save(
+        update_fields=["status", "attempts", "next_attempt_at", "updated_at"]
+    )
+
+
 def mark_outbox_retry(
     message: DiscordOutboxMessage,
     *,

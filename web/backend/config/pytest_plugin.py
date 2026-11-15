@@ -95,6 +95,19 @@ def billing_off(settings):
 
 
 @pytest.fixture(autouse=True)
+def _unpaced_discord_outbox(settings):
+    """Send a test's queued Discord posts back to back, in one drain.
+
+    The outbox spaces a channel's posts out and opens a few forum threads per
+    drain (``apps.integrations.services.outbox``), which against a fake Discord
+    would only make the suite sleep and split one test's posts across drains.
+    ``test_outbox_pacing.py`` sets the real values.
+    """
+    settings.DISCORD_OUTBOX_SPACING_SECONDS = 0
+    settings.DISCORD_OUTBOX_THREADS_PER_DRAIN = 10_000
+
+
+@pytest.fixture(autouse=True)
 def _serial_llm_calls(settings):
     """Keep the write-up and opportunity scorers on the test thread.
 

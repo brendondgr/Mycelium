@@ -160,6 +160,14 @@ feature (Lab and Canopy) and the `BOT_SERVER` add-on.
   them, grounded in their own stated interests rather than in member-fit's
   matching note, which it is told not to copy. A post shows a project as
   `**Name** project (Ana, Ben) · why`. At most four entries.
+* **Pacing** (`apps/integrations/services/outbox.py`). Discord rate limits each
+  channel, a forum hardest. One drain leaves two seconds between posts to the same
+  channel and opens at most four forum threads per channel; the rest are handed to
+  the next drain (every minute) unsent, with no attempt spent. A channel that
+  answers "rate limited" is left alone for the rest of that drain and its waiting
+  rows are held until Discord's wait has passed. So a server being populated, or a
+  night with many entrants, arrives a few threads a minute instead of failing
+  halfway. DMs are not paced: each person's DM channel is its own.
 * **Delivery** (`tools/delivery/discord_announcements.py`) produces outbox rows in
   two thread modes: `forum_thread` (start a thread; its id lands on
   `AnnouncementPost.thread_id`) and `thread_update` (one retry-safe unit: patch the
