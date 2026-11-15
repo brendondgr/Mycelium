@@ -1,0 +1,492 @@
+answer_id,question,answer,evidence_file,correct,citation_support,unsupported_details,useful_1to5,notes
+RE7290A3C,Is there anything in our feed about how marine litter is transported or beached?,"Yes, there is a paper in the feed for the **Plastic pathways** project (#2) that specifically addresses this:
+
+#6 **Code and aggregated results for ""A tide-resolving beaching kernel for marine litter: development and application to field records from Uido, Republic of Korea""**",evidence/RE7290A3C.md,,#2=?; #6=?,,,
+RF9425032,"What is the main idea of this paper, and who are its authors?","The main idea of Rescene-ESM is the presentation of an Earth system model that uses a coupler called YAHO to link a frozen 20.8-million-parameter AI weather model to physically formulated components (energy, carbon, river, land, sea-ice, and ocean) constrained by observations #1. The model is designed to address the high computational costs of traditional Earth system models and the weak El Niño variability produced by existing machine-learning weather models coupled to oceans #1. The authors of the paper are Minjong Cheon and Kaoru Kakinuma #1.",evidence/RF9425032.md,,#1=?,,,
+RA4AE4BB2,"Who in my lab, if anyone, should apply to this call?","Based on the requirements for this call, there isn't a strong fit in your lab. No one's declared profile covers the specific slots needed, such as operational validation of GenAI tools, reinforcement learning, or experience with operational grids.
+
+While the nightly ranking suggests Tomás (#3), Priya (#4), and yourself (#5) as the closest matches based on your general profiles, there is no specific evidence (declared or demonstrated) that anyone in the lab covers the core technical needs of this energy-system-focused grant.",evidence/RA4AE4BB2.md,,#3=?; #4=?; #5=?,,,
+R8C7E2353,"Across both of our projects, what are the two most urgent upcoming deadlines, who in the lab fits each, and which recent paper would strengthen each application?","Based on the current slates for your projects, here are the two most urgent upcoming deadlines, the best fit from your lab, and a supporting paper for each.
+
+### 1. Oil Spill Recovery Institute (OSRI) Fellowship
+*   **Deadline:** 2027-01-01
+*   **Project:** Plastic pathways (#2)
+*   **Who fits:** **Jonah Whitcombe** (#15), given his declared interests in marine litter and Lagrangian analysis, which align with the fellowship's focus on spill detection and tracking.
+*   **Strengthening Paper:** **#30 ""Marine litter in the Mediterranean: observation-based Lagrangian particle tracking""** would be a strong addition to this application to demonstrate expertise in tracking debris.
+
+### 2. WHOI Geophysical Fluid Dynamics (GFD) Fellowship
+*   **Deadline:** 2027-02-05
+*   **Project:** Marine heatwave early warning (#1)
+*   **Who fits:** **Tomás Ferreira-Lind** (#18), as his interests in circulation, turbulence, and physics-informed ML align with the fellowship's focus on the nonlinear dynamics of rotating, stratified fluids.
+*   **Strengthening Paper:** **#21 ""Ocean-E2E: Hybrid Physics-Based and Data-Driven Global Forecasting of Marine Heatwaves with End-to-End Neural Assimilation""** would strengthen this application by showcasing the integration of physics and ML for ocean forecasting.",evidence/R8C7E2353.md,,#1=?; #2=?; #15=?; #18=?; #21=?; #30=?,,,
+R26315E78,Could this paper help the Plastic pathways project? Say why or why not.,"Based on the provided evidence, paper #1 could help the Plastic pathways project because it provides a tide-resolving beaching kernel and six other particle kernels for OceanParcels 3.1.4, as well as scripts for aggregating results and running particle-tracking experiments #1. These tools were developed and applied to field records from Uido, Republic of Korea, using particle trajectories and ROMS flow fields to track marine litter #1.",evidence/R26315E78.md,,#1=?,,,
+RE87B4AAA,"What method does this paper propose, in two sentences?",The paper proposes a two-way coupled data assimilation system where an ensemble variational component evolves the mean and an ensemble Kalman filter evolves the covariances #1. This system utilizes the physics-based MPAS model for the ensemble variational component and the machine learning weather prediction model GraphCast for the ensemble Kalman filter #1.,evidence/RE87B4AAA.md,,#1=?,,,
+R87862DE1,"What data does this model take as input, and what does it output?",The VMCF model takes the OISST dataset as input to forecast sea surface temperature (SST) #1. Its output is the predicted SST for lead times ranging from 1 to 10 days #1.,evidence/R87862DE1.md,,#1=?,,,
+R53696EC2,"Who is eligible for this fellowship, and when is it due?","Graduate students in any field who share a common interest in the nonlinear dynamics of rotating, stratified fluids are eligible for this fellowship, including those in fields such as physics, geophysics, astrophysics, engineering, applied mathematics, meteorology, and oceanography #1. The deadline is 2027-02-05 #1.",evidence/R53696EC2.md,,#1=?,,,
+R1B866B5E,What method does the Marine heatwave early warning project use?,The Marine heatwave early warning project (#1) uses an ML-corrected ensemble to provide two-to-six-week forecasts of marine heatwaves for the regional coast.,evidence/R1B866B5E.md,,#1=?,,,
+R81F89E43,Which three papers from the feed should the team on the Marine heatwave early warning project read first?,"Based on the feed for the Marine heatwave early warning project (#1), the team should read these three papers first:
+
+1. **#7 Evaluation of 1-14-Day Machine-Learning Forecasts of Marine Heatwaves in the Northern Bay of Bengal Against Persistence Benchmarks** — Directly addresses MHW forecasting using ML.
+2. **#6 Marine heatwave forecast triggers rapid response strategy for critically endangered red handfish** — Focuses on the application of MHW forecasts for rapid response.
+3. **#4 An end-to-end machine-learning system for global eddy-resolving ocean forecast** — Provides a broader look at ML systems for global ocean forecasting.",evidence/R81F89E43.md,,#1=?; #4=?; #6=?; #7=?,,,
+RD9A56C69,Which student in my lab should apply for this fellowship?,"Based on the provided evidence, the Woods Hole Oceanographic Institution (WHOI) - Geophysical Fluid Dynamics (GFD) Summer Graduate Research Fellowship should be applied for by graduate students in any field who share a common interest in the nonlinear dynamics of rotating, stratified fluids #1. This includes students in the following fields:
+* Classical fluid dynamics #1
+* Oceanography #1
+* Meteorology #1
+* Geophysics #1
+* Astrophysics #1
+* Applied mathematics #1
+* Engineering #1
+* Physics #1",evidence/RD9A56C69.md,,#1=?,,,
+R69F8F79E,Who in my lab should apply to this call?,"Based on the requirements for the **Global Ocean Observing System** grant (#1), here is who in your lab is a fit:
+
+**Stabilizing and operationalizing the observing system**
+* **Mara Ellison (@demo.mara)**: Based on your declared interest in ocean data assimilation.
+* **Priya Raman (@demo.priya)**: Based on her declared interest in satellite ocean remote sensing.
+
+**Gaps in the lab**
+No one in the lab currently covers these specific requirements:
+* Observing system experiments (OSEs) or simulation experiments (OSSEs)
+* Network optimization approaches
+* Expertise in areas beyond national jurisdiction
+
+The call also specifically seeks partners from **industry**, which is not currently matched to any lab member's profile.",evidence/R69F8F79E.md,,#1=?,,,
+R5D908812,"Is this fellowship open now, and what was its previous deadline?","The National Oceanic and Atmospheric Administration (NOAA) - Dr. Nancy Foster Scholarship Program is still open/current, and its previous deadline was 10/31/2024 #1.",evidence/R5D908812.md,,#1=?,,,
+R76700F73,"Which paper in our feed matters most for the Plastic pathways project, and why?","The paper that matters most for the Plastic pathways project is **#7: Code and aggregated results for ""A tide-resolving beaching kernel for marine litter: development and application to field records from Uido, Republic of Korea""**, as it is the only paper in the feed specifically focused on marine litter.",evidence/R76700F73.md,,#7=?,,,
+R1741F57F,"Who in my lab could contribute to an application to this call, and in what role?","Based on the requirements for the **Integrating Remote Sensing and in-situ observations of Biodiversity** grant (#1), here is how members of the Coastal Ocean Intelligence Lab could contribute:
+
+**Potential Contributors**
+*   **Priya Raman (#3):** Could handle the **satellite-based Earth observation data** component, as she has declared expertise in satellite ocean remote sensing.
+*   **Sun-hee Park (#4):** Could contribute to the **interoperable observation and data framework** by building the necessary web dashboards and GIS tools.
+
+**Gaps in the Lab**
+There are currently no members in the lab who cover the following requirements:
+*   Integrating remote sensing and in-situ biodiversity observations.
+*   Omics-based data (genomic, transcriptomic, metabolomic).
+*   Machine learning (specifically for this call's requirements).
+*   Copernicus and/or Galileo/EGNOS.
+*   In-situ data collection frameworks (e.g., GBIF, OBIS, LUCAS).",evidence/R1741F57F.md,,#1=?; #3=?; #4=?,,,
+RF4C7A693,"What is blocking the Marine heatwave early warning project, and is there a paper in our feed that could help with it?","The provided evidence does not mention a specific ""Marine heatwave early warning project"" or any factors blocking such a project. However, several papers in the feed discuss early warning systems and forecasting tools for marine heatwaves:
+
+*   **Mediterranean temperate reefs:** An explainable, policy-aware early-warning system was developed to forecast site-level risk in Mediterranean coralligenous reefs, using a model that identifies macroclimatic thermal stress modulated by local factors like depth and spatial protection #1.
+*   **South Korean aquaculture:** A ""Hybrid GNN-BiLSTM"" graph-temporal architecture was benchmarked to provide operationally actionable early warnings for coastal aquaculture, demonstrating a 38 h mean advisory lead time during a 2024 regional alert period #19.
+*   **Adriatic Sea:** A framework coupling a high-resolution Regional Ocean Modeling System (ROMS) with eddy diagnostics was used to strengthen early-warning capabilities by identifying MHW precursors #7.
+*   **Levantine Basin:** A paper provides code and results for depth-resolved MHW prediction using machine learning and explainable artificial intelligence #11.",evidence/RF4C7A693.md,,#1=?; #7=?; #11=?; #19=?,,,
+R366BAB10,Which open grant in our feed fits the Plastic pathways project best?,"Based on the provided evidence, there are two open grants that fit a ""Plastic pathways"" project depending on the specific focus:
+
+*   **For complex plastic materials and biotech solutions:** The grant ""Developing novel recycling technologies for complex plastic materials applying biotech solutions"" is open with a deadline of 2027-09-22 #17. It seeks proposals to advance biotech solutions for recycling complex plastic materials in sectors such as transport, renewable energy infrastructure, construction, and packaging #17.
+*   **For footwear-specific circular solutions:** The grant ""Innovative circular solutions for end-of-life footwear through collection, sorting and recycling"" is open with a deadline of 2027-09-22 #14. It focuses on improving the circularity of the footwear value chain and reducing the environmental footprint of post-consumer footwear #14.",evidence/R366BAB10.md,,#14=?; #17=?,,,
+RE0AF28FF,"Which paper in our feed matters most for the Marine heatwave early warning project, and why?","Based on the current feed for the **Marine heatwave early warning** project (#1), the most relevant paper is likely **#7: Evaluation of 1-14-Day Machine-Learning Forecasts of Marine Heatwaves in the Northern Bay of Bengal Against Persistence Benchmarks**.
+
+It is the most direct match because it specifically focuses on the **forecasting of marine heatwaves** using machine learning, evaluating performance over a 1-14 day window.
+
+While paper **#4** is also highly relevant as it introduces an end-to-end ML system for global ocean forecasts (WenHai-E2E) that outperforms traditional numerical systems, paper **#7** is a precise match for the project's specific goal of early warning for heatwave events.",evidence/RE0AF28FF.md,,#1=?; #4=?; #7=?,,,
+RA7991A64,"Which fellowship in our feed has the nearest deadline, who in the lab is eligible, and what would make their application strong?","The fellowship in your feed with the nearest deadline is the **Sandia National Laboratory - John von Neumann Postdoctoral Fellowship in Computational Science** (#2), which is due in 3 days (2026-11-18).
+
+**Who is eligible:**
+Based on profile matches from the nightly ranking, the following lab members are strong candidates:
+*   **Tomás Ferreira-Lind** (@demo.tomas) — 63% match
+*   **Mara Ellison** (@demo.mara) — 62% match
+*   **Priya Raman** (@demo.priya) — 58% match
+
+**What would make an application strong:**
+The fellowship seeks researchers in computational and applied mathematics. An application would be strongest if it demonstrates expertise in:
+*   **Computational methods:** Specifically in areas like machine learning, data science, numerical analysis, or modeling & simulation.
+*   **Application:** Showing how research findings can be applied to ""science and engineering problems of national importance.""
+*   **Track record:** A history of publishing in leading journals and presenting at top-tier conferences.",evidence/RA7991A64.md,,#2=?,,,
+R636B42FF,Which three papers from the feed should the team on the Marine heatwave early warning project read first?,"Based on the provided evidence, the team on the Marine heatwave early warning project should first read these three papers:
+
+1. **Multi-horizon forecasting of coastal high water temperature events for operational marine-heatwave early warning in South Korean aquaculture** (#3), which benchmarks a Hybrid GNN-BiLSTM model for operationally actionable early warning in coastal aquaculture, demonstrating a 38 h mean advisory lead time #3.
+2. **An explainable, policy-aware early-warning system for Mediterranean temperate reefs: forecasting climate-driven mortality under context-dependent local protection** (#6), which presents a practical forecasting tool blueprint and an interactive decision-support platform to optimize monitoring and guide proactive triage for Mediterranean coralligenous reefs #6.
+3. **FOCCUS WP9 D9.1 Application Demonstrator: ESC3 – 3.1.2 - Tracking sub-regional marine heatwaves in the Mediterranean Sea** (#16, #17), which describes a web-based application integrating satellite products and regional models for near real-time detection and 10-day forecasting of marine heatwaves to support environmental management and marine policy #16, #17.",evidence/R636B42FF.md,,#3=?; #6=?; #16=?; #17=?,,,
+R507455DE,Is there a conference in our feed that fits the Plastic pathways project?,"Yes, there are several conferences in the feed for the Plastic pathways project (#2). The top match is the 47th IEEE International Geoscience and Remote Sensing Symposium (#3).",evidence/R507455DE.md,,#2=?; #3=?,,,
+RD71C12FC,"Who in my lab could contribute to an application to this call, and in what role?","Based on the provided evidence, the call for proposals (#1) requires the development and validation of multisensory biodiversity data integration systems to harmonize in-situ and omics-based data with remote sensing, climatic, and socio-ecological data across terrestrial, freshwater, and marine ecosystems.
+
+While the evidence does not list the specific members of your lab, the following roles are required to address the scope of the call:
+
+*   **Data Integration and AI Specialists:** To design data integration approaches for predictive analytics and AI, and to develop systems that enable the harmonization of omics-based and in-situ data with remote sensing data from space or sub-orbital platforms (#1).
+*   **Biodiversity and Ecosystem Experts:** To identify critical biodiversity knowledge gaps and develop demonstration cases focusing on specific ecosystems under the EU ecosystem typology, particularly those under pressure or identified as restoration priorities (#1).
+*   **Remote Sensing and Earth Observation (EO) Specialists:** To ensure interoperability with global frameworks (such as EUNIS and the Global Ecosystem Typology) and support AI-assisted ecosystem and habitat mapping (#1).
+*   **Policy and Environmental Specialists:** To align the project with the EU biodiversity strategy for 2030, the Kunming-Montreal Global Biodiversity Framework, and reporting requirements under the Birds Directive, Habitats Directive, and Marine Strategy Framework (#1).",evidence/RD71C12FC.md,,#1=?,,,
+RE5954AE3,Which fellowship in our feed would suit a PhD student on the Marine heatwave early warning project?,"Based on the provided evidence, the following fellowships may suit a PhD student working on a Marine heatwave early warning project:
+
+*   **American Meteorological Society (AMS) - Graduate Fellowship**: This program supports first-year graduate students in atmospheric or related oceanic and hydrologic sciences, including those from fields such as oceanography and environmental sciences #4.
+*   **Woods Hole Oceanographic Institution (WHOI) - Geophysical Fluid Dynamics (GFD) Summer Graduate Research Fellowship**: This fellowship supports graduate students in any field with an interest in the nonlinear dynamics of rotating, stratified fluids, specifically including oceanography and meteorology #6.
+*   **National Oceanic & Atmospheric Administration (NOAA) - Margaret A. Davidson Graduate Fellowships for the National Estuarine Research Reserve System**: This fellowship supports doctoral students conducting research in coastal management and estuarine science #11.
+*   **National Oceanic and Atmospheric Administration (NOAA) - John A. Knauss Marine Policy Fellowship**: This is offered to students interested in ocean, coastal, and Great Lakes resources and the national policy decisions affecting them #20.",evidence/RE5954AE3.md,,#4=?; #6=?; #11=?; #20=?,,,
+R219CB58C,"Which open grant fits the Plastic pathways project best, who in the lab should lead the application, and who outside the lab could we partner with?","Based on the provided evidence, the open grant that fits the Plastic pathways project best is **Developing novel recycling technologies for complex plastic materials applying biotech solutions** (#13), which seeks proposals to advance biotech solutions for recycling complex plastic materials and products in sectors such as transport, construction, packaging, and renewable energy infrastructure (#13).
+
+The provided evidence does not contain information regarding the members of the lab or potential external partners to identify who should lead the application or who to partner with.",evidence/R219CB58C.md,,#13=?,,,
+RA3713848,Is there anything in our feed about how marine litter is transported or beached?,"Based on the provided evidence, marine litter transport and beaching are addressed through several methods and observations:
+
+*   **Lagrangian Modeling:** 
+    *   In the Mediterranean, a stochastic Lagrangian framework using Parcels, Copernicus Marine Service currents, and ERA5 wind fields was used to predict the transport and coastal deposition of floating marine macro-litter (FMML) #2.
+    *   Along the coast of Côte d'Ivoire, a Lagrangian particle-tracking model (Ichthyop) forced by a high-resolution ocean circulation model (CROCO) showed that approximately 48% of urban plastic debris remains nearshore and beaches at least once, with seasonal variability and regional hydrodynamics controlling the pathways #5.
+    *   A tide-resolving beaching kernel was developed for marine litter tracking using ROMS flow fields and particle trajectories in Uido, Republic of Korea #16.
+*   **Field Observations and Experiments:**
+    *   In the Dutch Wadden Sea, tracking 24 shallow surface drifters revealed that wind blowing towards the coast increases the frequency of litter interactions with the coast, and drifters are rarely re-floated during falling tides #6.
+    *   Laboratory investigations of wave–swash interactions on an impermeable sloping beach suggested that large, short-lived vertical flow accelerations and velocities in the swash zone can cause the pickup of negatively buoyant debris #18.
+*   **Spatial and Environmental Patterns:**
+    *   On Trindade Island, leeward beaches accumulated significantly more and larger litter items than windward beaches, showing local-scale variation in debris retention #1.
+    *   In the Mediterranean, coastal deposition frequencies for FMML were highest on Corsica, western Sardinia, and northern Tunisia #2.
+    *   On three tropical small islands in Indonesia, macroplastic accumulation was found to be primarily structured by habitat characteristics and local retention processes #8.",evidence/RA3713848.md,,#1=?; #2=?; #5=?; #6=?; #8=?; #16=?; #18=?,,,
+R83250322,Who is working on the Plastic pathways project?,"Based on the provided evidence, there is no mention of a ""Plastic pathways project"" or the individuals working on such a project.",evidence/R83250322.md,,,,,
+R3A1DE33F,Who in my lab is best placed to lead an application to this call?,"Based on the provided evidence, the grant ""Unlocking a safe operating space for Antarctica and the Southern Ocean"" (#1) requires a multidisciplinary research approach to resolve uncertainties and improve projections regarding the Antarctic and Southern Ocean region (#1). Specifically, the call seeks proposals that can:
+
+*   Advance understanding of interactions between the ocean, atmosphere, sea ice, and ice dynamics, with a focus on the Antarctic continental shelves and regions for bottom water formation (#1).
+*   Explore the vulnerability of Southern Ocean ecosystems to climate change, pollution, and anthropogenic activities, including the microbiome and functional diversity (#1).
+*   Develop mechanisms to distinguish human-induced environmental changes from natural ones and establish the efficacy of conservation measures (#1).
+*   Improve monitoring indicators for the ocean, cryosphere, climate, and biodiversity (#1).
+
+The provided evidence does not list the members of your lab or their specific expertise; therefore, it cannot be determined who is best placed to lead the application.",evidence/R3A1DE33F.md,,#1=?,,,
+RC84DC140,"Is this fellowship open now, and what was its previous deadline?","Yes, this fellowship is still open. Its previous deadline was October 31, 2024 #1.",evidence/RC84DC140.md,,#1=?,,,
+R5EFCD19C,Which lab members have the expertise this call asks for?,"The provided evidence does not list the members of the lab or their specific expertise; therefore, it cannot be determined which lab members have the expertise requested by the call in #1.",evidence/R5EFCD19C.md,,#1=?,,,
+R55E032C1,Where does the Marine heatwave early warning project stand right now?,"The Marine heatwave early warning project is currently 60% complete. 
+
+Hindcasts for 2015-2024 have beaten persistence at the four-week mark, and the public dashboard is currently being tested with two fisheries offices.",evidence/R55E032C1.md,,,,,
+RB299B574,Which open grant in our feed fits the Marine heatwave early warning project best?,"Based on the provided evidence, there is no open grant that specifically targets a ""Marine heatwave early warning project."" However, the most relevant open grant is **""Unlocking a safe operating space for Antarctica and the Southern Ocean""** (#4), as its scope includes:
+
+*   Improving projections and resolving uncertainties regarding the future of the region, including the impacts of ""extreme events"" (#4).
+*   Developing monitoring indicators and strengthening long-term monitoring systems for biodiversity and ecosystem functioning (#4).
+*   Advancing the understanding of Southern Ocean dynamics to reduce uncertainties in projected future changes (#4).",evidence/RB299B574.md,,#4=?,,,
+R78F28CFC,What is the next step for the Marine heatwave early warning project?,"Based on the provided evidence, there is no single ""Marine heatwave early warning project"" mentioned; however, several studies suggest different next steps or future directions for various MHW warning and mitigation efforts:
+
+*   **Mitigation Research:** One study suggests that the demonstrated local efficacy of marine cloud brightening to mitigate ""The Blob 2.0"" motivates further study into whether such localized and temporary climate interventions can safely and effectively mitigate MHWs #9.
+*   **Conservation Strategies:** For the red handfish, a proactive rescue strategy was implemented as a way to strengthen capacity to safeguard threatened species during environmental extremes and long-term climate change impacts #4.
+*   **Model Development:** In the Adriatic Sea, coupling regional ocean models with mesoscale eddy diagnostics is highlighted as a pathway for anticipating hazards and improving regional climate resilience #5.
+*   **Management Strategies:** For Western Australia, proposed adaptive management strategies for future MHWs include the relocation of vulnerable species, the development of rapid response monitoring programs for key benthic indicator groups, and the implementation of adaptive fisheries management frameworks #11.",evidence/R78F28CFC.md,,#4=?; #5=?; #9=?; #11=?,,,
+R269423A7,Is there a conference in our feed that fits the Plastic pathways project?,"Based on the provided evidence, there is no conference mentioned that specifically fits a ""Plastic pathways project."" The available conference-related information includes:
+
+*   A **Transport Research Arena (TRA) conference** planned for 2030 to discuss political, industrial, and research issues in the transport sector #11.
+*   The **ABTT MAKE A DiFFERENCE Conference 2026**, which focused on lifelong learning and professional development in the backstage entertainment industry #14.
+*   The **2026 ACCESS Community Workshop** focused on connecting machine learning to Earth system science #10.",evidence/R269423A7.md,,#10=?; #11=?; #14=?,,,
+RA781C8CF,"When does this call close, and how much funding does it offer?","The call closes on February 16, 2027, and offers €50,000,000 in funding (#1).",evidence/RA781C8CF.md,,#1=?,,,
+RC30AB60B,"Who runs this funding programme, and is it open now?",The Marine Geology and Geophysics program is run by the NSF (National Science Foundation) #1. It is currently open #1.,evidence/RC30AB60B.md,,#1=?,,,
+RDBA1D102,"Summarise where the Plastic pathways project stands, name the three most relevant new papers for it, and suggest one funding opportunity it could apply to.","The provided evidence does not contain information regarding a ""Plastic pathways project,"" so its current status cannot be summarized.
+
+Based on the provided text, the three most relevant new papers for a project focused on plastics are:
+1. ""An agenda for plastics crisis research in the synthetic age,"" which recasts the plastics crisis as a structural feature of growth-dependent economies and provides a roadmap for ecological economics to accelerate research #16.
+2. ""Also of Interest,"" a guide on how acoustic data is driving environmental technology and sustainability #15.
+3. ""Selecting Materials Outreach Topics from Community Repair Demand: Organizational Weighting, Temporal Transfer and Local Fit,"" which evaluates topic selection for materials science outreach based on community repair attempts #2.
+
+A suggested funding opportunity is the grant for ""Developing novel recycling technologies for complex plastic materials applying biotech solutions,"" which seeks proposals to advance biotech solutions (such as microbes and enzymes) for recycling complex plastic materials in sectors including transport, renewable energy infrastructure, construction, and packaging #1.",evidence/RDBA1D102.md,,#1=?; #2=?; #15=?; #16=?,,,
+RF9EC87BB,"Would a postdoc in our lab be eligible for this, and when is it due?","A postdoc in your lab would be eligible if they have a PhD in one of the listed fields (such as oceanography, physics, or mathematics) or a field contributing to WHOI's research areas #1.
+
+The application deadline is 2027-10-01 #1.",evidence/RF9EC87BB.md,,#1=?,,,
+R8202FBA1,"Does this paper change anything for the Marine heatwave early warning project, and who on the team should read it?","Based on the provided evidence, paper #1 evaluates 1-14-day machine-learning forecasts of marine heatwaves in the Northern Bay of Bengal against persistence benchmarks #1. The evidence does not specify how this paper changes the Marine heatwave early warning project or identify which team members should read it.",evidence/R8202FBA1.md,,#1=?,,,
+RDFA49FCF,"Who in my lab, if anyone, should apply to this call?","The provided evidence does not contain information regarding the members of your lab or their specific qualifications, so it cannot be determined who should apply to this call.",evidence/RDFA49FCF.md,,,,,
+R0D8E6B14,"According to this paper, how many days ahead do machine-learning forecasts of marine heatwaves stay skilful?","The abstract for this paper (#1) does not specify how many days the forecasts stay skilful; it only identifies the study as an evaluation of 1–14-day forecasts. 
+
+Since the full text is not currently available to me, I cannot provide the specific skill duration. You can request the full text in the app to find this detail.",evidence/R0D8E6B14.md,,#1=?,,,
+R64DCC6E9,"Is this fellowship for students or postdocs, and when is the next deadline?",The Link Foundation - Doctoral Fellowship in Ocean Engineering & Instrumentation is for doctoral students #1. The next anticipated deadline is 03/2027 #1.,evidence/R64DCC6E9.md,,#1=?,,,
+RDF255383,"Who in my lab fits this call, and what expertise would we be missing?","Based on the provided evidence, there is no information regarding the members of your lab or their specific expertise; therefore, it is not possible to determine who fits the call or what expertise is missing.
+
+The ""Marine Geology and Geophysics"" call (#1) supports research on:
+*   The oceanic lithosphere's structure, composition, tectonics, and evolution #1.
+*   Sea level change, paleoclimate, and paleoceanography #1.
+*   The oceanic crust and upper mantle lithosphere's geochemistry, petrology, and submarine volcanology #1.
+*   Gas hydrates, seeps, water-rock interaction, and marine hydrogeology #1.
+*   Associated geochemistry and in situ fluid processes and hydrothermal venting #1.
+*   Geochemical indicators of life below the seafloor #1.
+*   Diagenesis, stratigraphy, marine sedimentology, and sediment transport #1.
+*   Ocean island/seamount formation and evolution, transform processes, back-arc rifting, and mid-ocean ridge spreading #1.
+*   Passive margins and submarine components of subduction zone systems #1.
+*   Marine geohazards, such as faulting, earthquakes, geological aspects of tsunamis, and mass wasting #1.
+*   Coastal processes, including erosion, offshore deposition, sea-level change, and geological aspects of hurricanes #1.",evidence/RDF255383.md,,#1=?,,,
+R66C980F4,What are the goals of the Marine heatwave early warning project?,"Based on the provided evidence, there are several different projects and systems related to marine heatwave (MHW) early warnings, each with specific goals:
+
+*   **Mediterranean Temperate Reefs System:** This explainable, policy-aware early warning system aims to forecast site-level risk in Mediterranean coralligenous reefs to anticipate vulnerability and support ""climate-smart"" Marine Spatial Planning #2.
+*   **South Korean Aquaculture System:** This operational early warning system for coastal aquaculture aims to provide site-specific, operationally actionable early warnings for high water temperature events to address mass mortalities in cage aquaculture #10.
+*   **FOCCUS Application (Mediterranean Sea):** This web-based application aims to provide near real-time detection and short-term (10-day) forecasting of sub-regional MHWs to support environmental management and marine policy for rapid interventions #15, #16.
+*   **Adriatic Sea Framework:** This model-based detection framework aims to advance the understanding of MHW drivers and occurrences to strengthen early-warning capabilities, inform adaptive measures for coastal stakeholders, and improve regional climate resilience #6.
+*   **General Predictability Research:** Research in vulnerable coral reef regions aims to determine if MHW frequency and cumulative intensity are predictable on multi-year timescales to support targeted regional preparedness and coral reef conservation #11.",evidence/R66C980F4.md,,#2=?; #6=?; #10=?; #11=?; #15=?; #16=?,,,
+R6FA826EF,Is anyone in my lab a good fit for this fellowship?,"Based on the provided evidence, the Link Foundation - Doctoral Fellowship in Ocean Engineering & Instrumentation supports research in ocean engineering and ocean instrumentation to enhance theoretical and practical knowledge and applications, as well as the dissemination of results through publications, seminars, and lectures #1. Anyone in your lab conducting research in these specific areas would be a good fit #1.",evidence/R6FA826EF.md,,#1=?,,,
+R435F77C3,"What has entered our feed recently that matters for the Plastic pathways project, and what should we do about it this month?","For the **Plastic pathways** project, a few items have entered the feed recently that are highly relevant to your current focus on beaching models and satellite detections.
+
+### What matters for the project
+*   **Directly relevant research:** A new entry (#8) provides the **code and aggregated results for a tide-resolving beaching kernel** for marine litter. Since your project is currently checking the beaching model against summer surveys, this kernel (developed for *OceanParcels*) could be a valuable benchmark or a potential replacement for your current method.
+*   **Funding opportunities:** Two grants are open with deadlines in mid-February 2027:
+    *   **Ocean Technology and Interdisciplinary Coordination (#12):** Supports instrumentation and technology that enhances observational or analytical capabilities for ocean science.
+    *   **Global Ocean Observing System (#3):** A large-scale call (€50M) focusing on strengthening global observation networks, specifically for biodiversity and ecosystem knowledge.
+
+### Recommended actions for this month
+1.  **Technical Review:** Have the team (likely Jonah or Priya) review the code in **#8** to see if the ""tide-resolving beaching kernel"" improves the accuracy of your current beaching model checks.
+2.  **Grant Strategy:** Evaluate if the project's satellite debris detection work fits the ""analytical capabilities"" scope of the **OTIC grant (#12)** or the broader observation goals of the **GOOS grant (#3)**.",evidence/R435F77C3.md,,#3=?; #8=?; #12=?,,,
+REC779FA8,"When was this paper published, and what does it conclude about heat conservation?","Paper #1 was published in 2026 and concludes that the improved version of the Coupled Arctic Prediction System (CAPS), which ensures the conservation of heat fluxes exchanged between the atmosphere (WRF) and ocean-sea ice (ROMS-CICE) components, significantly reduces inconsistency in heat flux exchange and leads to better performance in simulating Arctic sea ice conditions compared to its predecessor #1.",evidence/REC779FA8.md,,#1=?,,,
+RB35BC698,Which open grant in our feed fits the Plastic pathways project best?,"Based on the project's focus on tracing floating debris using forecast currents and satellite detections, the best fit among the open grants in the feed is **#10 Towards community-driven business models: coastal and freshwaters sustainable tourism**.
+
+The strongest reason for this fit is that the grant explicitly includes ""clean up initiatives"" as a way to engage tourists and local communities to protect marine and freshwater habitats, which aligns with the project's goal of targeting clean-ups #2. The biggest doubt is that the grant focuses on developing ""business models"" and ""sustainable tourism,"" whereas the project is primarily a technical research effort in tracking and modeling #2.
+
+Other grants in the feed are less aligned:
+*   **#3** focuses on global observing systems (GOOS) and biodiversity in areas beyond national jurisdiction.
+*   **#11** is focused on geology and geophysics.
+*   **#12** is focused on wave and tidal energy systems.",evidence/RB35BC698.md,,#2=?; #3=?; #10=?; #11=?; #12=?,,,
+RA428AE66,"When does this call close, and how much funding does it offer?","This call closes on 2027-02-16 and offers €50,000,000 in funding #1.",evidence/RA428AE66.md,,#1=?,,,
+R82DC9A89,Is anyone in my lab a good fit for this fellowship?,Tomás Ferreira-Lind (#3) is a good fit for this fellowship. His work developing physics-informed neural networks as surrogates for circulation models aligns with the ocean engineering and theoretical research scope of the Link Foundation fellowship (#1). This fit is based on his declared profile.,evidence/R82DC9A89.md,,#1=?; #3=?,,,
+RA96438E6,"Which paper in our feed matters most for the Plastic pathways project, and why?","Because the ""Plastic pathways project"" is not defined in the provided evidence, it is not possible to determine which paper matters most.",evidence/RA96438E6.md,,,,,
+R37262DB7,"What does this paper predict, and how far ahead?","The available information for this paper (#1) only includes the title and abstract, which do not specify the exact prediction targets or the lead time. 
+
+The paper focuses on depth-resolved marine heatwave prediction in the Levantine Basin using machine learning and explainable AI, but the specific ""what"" and ""how far ahead"" are not visible to me. You can request the full text in the app to find these details.",evidence/R37262DB7.md,,#1=?,,,
+RD0FC15A6,"Is this fellowship for students or postdocs, and when is the next deadline?",This fellowship is for doctoral students (Doctoral Fellowship) #1. The next deadline is anticipated for March 2027 #1.,evidence/RD0FC15A6.md,,#1=?,,,
+R308A1C60,What kinds of work does this call fund?,"The Oceanographic Technology and Interdisciplinary Coordination (OTIC) Program funds the following:
+
+*   **Instrumentation development:** The program accepts unsolicited proposals for instrumentation development that enhance the analytical, experimental, or observational capabilities of the ocean science research community and have broad applicability to research projects #1.
+*   **Specific funding opportunities:** The program issues specific announcements for projects involving the National Ocean Partnership Program and Improvements in Communications, Equipment, and Facilities at Marine Laboratories and Biological Field Stations (FSML) #1.
+*   **General activities:** The program supports a broad range of technology development and research activities #1.",evidence/R308A1C60.md,,#1=?,,,
+R3D639968,"Which of our two projects is further along, and why do you say so?","The provided evidence does not contain information regarding ""our two projects,"" and therefore cannot determine which one is further along or why.",evidence/R3D639968.md,,,,,
+RE8BF7691,When was the state of the Plastic pathways project last confirmed?,The state of the Plastic pathways project (#2) has never been confirmed by its members.,evidence/RE8BF7691.md,,#2=?,,,
+RAEB31943,What are the goals of the Marine heatwave early warning project?,The goal of the Marine heatwave early warning project is to provide a two-to-six-week forecast of marine heatwaves for the regional coast. This is achieved using an ML-corrected ensemble and delivered to fisheries managers via a public dashboard (#1).,evidence/RAEB31943.md,,#1=?,,,
+R353F509C,What is blocking the Plastic pathways project?,"The Plastic pathways project doesn't have any confirmed blockers listed in its state. Currently, satellite debris detections are running weekly, and the beaching model is being checked against beach surveys from last summer.",evidence/R353F509C.md,,,,,
+R686E7C62,"Compare these two calls for our lab: which one fits better, and who would lead it?","Based on the provided evidence, here is the comparison of the two calls:
+
+**Comparison of Calls**
+*   **Focus and Setting:** Call #1 focuses on strengthening the Global Ocean Observing System (GOOS), specifically targeting areas beyond national jurisdiction, the deep sea, and polar regions #1. Call #2 focuses specifically on the Antarctic and Southern Ocean region, with an emphasis on the Antarctic continental shelves and regions for bottom water formation #2.
+*   **Objectives:** Call #1 aims to enhance Europe's strategic autonomy, climate resilience, and biodiversity conservation by stabilizing and operationalizing a global ocean observing system #1. Call #2 aims to resolve uncertainties and improve projections regarding the future of the Antarctic and Southern Ocean, including the vulnerability of ecosystems to climate change and anthropogenic activities #2.
+*   **Funding Amount:** Call #1 offers €50,000,000 #1, while Call #2 offers between €5,000,000 and €11,000,000 #2.
+*   **Deadlines:** Call #1 has an application deadline of 2027-02-16 #1, and Call #2 has a deadline of 2027-09-23 #2.
+
+**Fit and Leadership**
+The provided evidence does not contain information regarding the specific capabilities, interests, or personnel of your lab; therefore, it cannot be determined which call fits better or who would lead it.",evidence/R686E7C62.md,,#1=?; #2=?,,,
+RF5FB178D,"Which of our two projects is further along, and why do you say so?","The **Marine heatwave early warning** project (#1) is further along.
+
+I say this because its progress is estimated at 60%, compared to 35% for **Plastic pathways** (#2). Additionally, the heatwave project has already achieved hindcasts that beat persistence and has a public dashboard currently in testing with fisheries offices, whereas the plastic pathways project is still in the stage of checking its beaching model against previous surveys.",evidence/RF5FB178D.md,,#1=?; #2=?,,,
+R4A71FCDD,"Which open grant fits the Marine heatwave early warning project best, who in the lab should lead the application, and who outside the lab could we partner with?","Based on the provided evidence, the open grant that best fits a Marine heatwave early warning project is the **""Unlocking a safe operating space for Antarctica and the Southern Ocean""** grant (#1), as its scope specifically includes advancing the knowledge of Southern Ocean and sea ice dynamics to ""reduce uncertainties in projected future changes of large-scale ocean circulation and transport"" and improving ""monitoring indicators"" (#1).
+
+The provided evidence does not contain information regarding the members of the lab or potential external partners to identify who should lead the application or with whom to partner.",evidence/R4A71FCDD.md,,#1=?,,,
+RF44B5FFC,"According to this paper, how many days ahead do machine-learning forecasts of marine heatwaves stay skilful?","According to the provided evidence, the paper evaluates machine-learning forecasts of marine heatwaves in the Northern Bay of Bengal for a range of 1-14 days #1.",evidence/RF44B5FFC.md,,#1=?,,,
+R7086A9DD,What method does the Marine heatwave early warning project use?,"Because multiple projects address marine heatwave early warning, the methods vary by study:
+
+*   **Mediterranean temperate reefs:** An explainable, policy-aware early warning system uses a rigorous modelling framework and historical mass mortality data (1986-2020) to forecast site-level risk #2.
+*   **Mediterranean Sea (sub-regional):** A web-based application integrates Copernicus Marine satellite products and high-resolution regional model analysis for real-time detection and 10-day forecasts #12, #13.
+*   **South Korean aquaculture:** A Hybrid GNN-BiLSTM graph–temporal architecture (combining a weighted spatial GNN with a BiLSTM temporal core, reversible instance normalization, and a persistence skip connection) is used for operational early warning #16.
+*   **Adriatic Sea:** A high-resolution Regional Ocean Modeling System (ROMS) is integrated with an eddy detection and tracking algorithm and long-term observational temperature data #7.
+*   **South China Sea:** Machine learning models are trained using multi-member ensemble simulations from the Coupled Model Intercomparison Project Phase 6 (CMIP6) to create a physically consistent training dataset #6.",evidence/R7086A9DD.md,,#2=?; #6=?; #7=?; #12=?; #13=?; #16=?,,,
+RF7B0A86A,"What is blocking the Marine heatwave early warning project, and is there a paper in our feed that could help with it?","The project details for **Marine heatwave early warning (#1)** do not list any open blockers or a confirmed state, so it's not clear what is currently blocking the work.
+
+However, looking at the project's feed, there are several papers that might be relevant to its focus on ML-corrected ensembles and forecasting:
+* **#4** An end-to-end machine-learning system for global eddy-resolving ocean forecast.
+* **#7** Evaluation of 1-14-Day Machine-Learning Forecasts of Marine Heatwaves in the Northern Bay of Bengal Against Persistence Benchmarks.
+* **#12** An online-learned eddy parameterization in a differentiable shallow water model.",evidence/RF7B0A86A.md,,#1=?; #4=?; #7=?; #12=?,,,
+RD71FF3D1,"What has entered our feed recently that matters for the Plastic pathways project, and what should we do about it this month?","Based on the provided evidence, the following developments are relevant to the Plastic pathways project:
+
+**Recent Findings and Risks**
+*   **Environmental and Systemic Impacts:** Plastic pollution is a global challenge that exacerbates biodiversity loss and climate change #17. In agricultural systems, microplastics (MPs) have become a ""slow-onset stressor"" that can inhibit crop germination, impair root architecture, and reduce photosynthetic efficiency, potentially reducing staple crop production by tens to hundreds of millions of tons annually #12, #15.
+*   **Human Health Risks:** Micro- and nanoplastics (MNPs) are detected in drinking water, seafood, salt, and other foods #7. They may cross biological barriers and cause oxidative stress, inflammation, and gut microbiota alterations #7. Specifically, MNPs can disrupt the gut-brain axis by reducing beneficial bacteria (e.g., *Bifidobacterium*) and stimulating opportunistic pathogens #10.
+*   **Behavioral Barriers:** In deposit return schemes for reusable cups, return behaviors are hindered by forgetting cups or using them as mementos, while uptake is influenced by perceived hygiene and the need for clear instructions #1. In waste picker communities, plastic reduction is hindered by low environmental literacy, overly technical messages, and inadequate infrastructure #6.
+
+**Recommended Actions**
+*   **Mitigation and Management:** Strategies should include upstream prevention through redesign for reuse, the use of biodegradable plastics, and improved waste management #17. In agriculture, options include source reduction, material substitution, and biochar amendment #12, #15.
+*   **Communication and Education:** 
+    *   Use interpersonal, participatory communication through trusted intermediaries and simple, visual messages for waste-reduction programs #6.
+    *   Provide clearer step-by-step instructions and timely reminders to encourage the return of reusable assets #1.
+    *   Implement public health education and standardized monitoring to reduce risk #7.
+    *   Utilize brief educational videos to increase knowledge and short-term intentions to reduce plastic use, though these should be paired with strategies to address structural barriers #4.",evidence/RD71FF3D1.md,,#1=?; #4=?; #6=?; #7=?; #10=?; #12=?; #15=?; #17=?,,,
+R51B4D647,When was the state of the Plastic pathways project last confirmed?,"The provided evidence does not contain information regarding a ""Plastic pathways project"" or when its state was last confirmed.",evidence/R51B4D647.md,,,,,
+R88DDB43A,What region and period does this dataset cover?,The provided evidence for the Pacific Regional Ocean Forecast System model (#1) does not state the region or period the dataset covers.,evidence/R88DDB43A.md,,#1=?,,,
+R559BD4D2,"Which open grant fits the Marine heatwave early warning project best, who in the lab should lead the application, and who outside the lab could we partner with?","The open grant that fits the **Marine heatwave early warning** project (#15) best is **#11 Advancing understanding, modelling and prediction of extreme events in a changing climate**.
+
+**Fit Analysis**
+*   **Strongest reason:** The grant's focus on improving early warning systems and predicting extreme events using AI-based approaches and high-resolution models aligns directly with the project's goal of providing ML-corrected marine heatwave forecasts (#11, #15).
+*   **Biggest doubt:** The grant emphasizes a European and global scope with integration into EU initiatives like Copernicus and Destination Earth, while the project is focused on regional coastal forecasts (#11, #15).
+
+**Who should lead the application**
+Based on the requirements for #11:
+*   **Mara Ellison (@demo.mara)** is a strong lead as she specifically focuses on the prediction of coastal ocean extremes, such as marine heatwaves, in the context of climate change (declared in profile).
+*   **Tomás Ferreira-Lind (@demo.tomas)** provides supporting expertise in regional ocean models (declared in profile).
+
+**Partnerships**
+Because collaborator search is currently turned off, I cannot suggest specific people outside the lab to partner with. However, the grant (#11) explicitly encourages cooperation with:
+*   **Global, EU, national, and regional actors** in Disaster Risk Reduction and climate adaptation.
+*   Initiatives like **Copernicus** and **Destination Earth**.
+*   **Low- to middle-income countries** for capacity building.",evidence/R559BD4D2.md,,#11=?; #15=?,,,
+R2E0D7F72,What region and period does this dataset cover?,"The available details for #1 do not specify the region or period covered by the dataset. Since the full text is not yet stored, you can request it in the app to find those specifics.",evidence/R2E0D7F72.md,,#1=?,,,
+R91590FBB,"When was this paper published, and what does it conclude about heat conservation?","This paper was published in 2026. It concludes that implementing heat flux conservation between the atmosphere (WRF) and ocean-sea ice (ROMS-CICE) components significantly reduces inconsistency in heat flux exchange, which leads to better simulation of Arctic sea ice conditions compared to satellite observations (#1).",evidence/R91590FBB.md,,#1=?,,,
+RE05B52D9,What is blocking the Plastic pathways project?,"The provided evidence does not mention a ""Plastic pathways project,"" so it cannot be determined what is blocking it.",evidence/RE05B52D9.md,,,,,
+RD239BFB8,Who is working on the Plastic pathways project?,"Jonah Whitcombe, Priya Raman, and Mara Ellison are working on the Plastic pathways project.",evidence/RD239BFB8.md,,,,,
+REE8587E2,What is the next step for the Marine heatwave early warning project?,"The project is currently at 60% progress. Hindcasts for 2015-2024 have successfully beaten persistence at four weeks, and the public dashboard is currently in testing with two fisheries offices.",evidence/REE8587E2.md,,,,,
+R714BB265,"What does this paper predict, and how far ahead?",Paper #1 predicts depth-resolved marine heatwaves in the Levantine Basin #1. The provided evidence does not state how far ahead the paper predicts #1.,evidence/R714BB265.md,,#1=?,,,
+R05CF38F4,Who in my lab is best placed to lead an application to this call?,"Based on the requirements for the **Unlocking a safe operating space for Antarctica and the Southern Ocean** grant (#1), here is how your lab aligns:
+
+**Potential Leads**
+*   **Priya Raman (#3)** is well-positioned for the observation components, as she has declared expertise in **satellite ocean remote sensing**, which aligns with the call's need for monitoring indicators and Earth Observation datasets.
+*   **You (@demo.mara)** are noted as a fit due to your focus on **forecasting coastal ocean extremes**, which is applicable to the call's goals of understanding ecosystem dynamics and vulnerabilities in the Southern Ocean.
+
+**Gaps in the Lab**
+There are currently no members in the lab who cover the following requirements:
+*   Earth System Models (ESMs)
+*   In-situ data collection
+*   Copernicus and/or Galileo/EGNOS data and services",evidence/R05CF38F4.md,,#1=?; #3=?,,,
+R41EA2D36,What kinds of work does this call fund?,"This call funds a broad range of research and technology development, specifically:
+
+*   **Instrumentation development:** Projects that enhance the observational, experimental, or analytical capabilities of the ocean science research community and have broad applicability (#1).
+*   **Infrastructure improvements:** Specific opportunities for improvements in facilities, communications, and equipment at Marine Laboratories and Biological Field Stations (FSML), as well as the National Ocean Partnership Program (#1).",evidence/R41EA2D36.md,,#1=?,,,
+R3BF378D2,"Which fellowship in our feed has the nearest deadline, who in the lab is eligible, and what would make their application strong?","Based on the provided evidence, the fellowship with the nearest deadline is the Children’s Hospital of Philadelphia (CHOP) - Supporting Promising Academic Researchers (SPAR) Postdoctoral Fellowship, which has a deadline of 2026-11-20 #17. The provided evidence does not contain information regarding who in the lab is eligible or what would make their application strong #17.",evidence/R3BF378D2.md,,#17=?,,,
+R11EB651B,"Which paper in our feed matters most for the Marine heatwave early warning project, and why?","Depending on the specific focus of the early warning project, several papers are highly relevant:
+
+*   **For coastal aquaculture in South Korea:** Kang et al. (#8) is most relevant as it benchmarks eleven statistical and deep-learning models to provide ""operationally actionable early warning"" for coastal aquaculture, demonstrating a 38 h mean advisory lead time using a Hybrid GNN-BiLSTM architecture.
+*   **For Mediterranean temperate reefs:** Castro‐Gutiérrez et al. (#2) is most relevant because it presents an ""explainable, policy-aware early warning system"" that forecasts site-level risk in Mediterranean coralligenous reefs to support climate-adaptive Marine Spatial Planning.
+*   **For coral reef regions globally:** Karwat et al. (#6) is most relevant as it demonstrates that MHW frequency and cumulative intensity in 12 vulnerable coral reef regions are ""skillfully predictable from months to years ahead.""
+*   **For the Adriatic Sea:** Liyana et al. (#12) is most relevant as it couples a Regional Ocean Modeling System (ROMS) with eddy diagnostics to ""strengthen early-warning capabilities"" by identifying MHW precursors.
+*   **For the Levantine Basin:** Weerasinghe and Viswakula (#19) provide a ""Depth-Resolved Marine Heatwave Prediction"" using machine learning and explainable artificial intelligence.",evidence/R11EB651B.md,,#2=?; #6=?; #8=?; #12=?; #19=?,,,
+R8845AC1D,Which open grant in our feed fits the Marine heatwave early warning project best?,"Based on the current feed for the **Marine heatwave early warning** project (#1), the best fit among the open grants is **#6 Unlocking a safe operating space for Antarctica and the Southern Ocean**.
+
+**Why it fits:**
+The grant specifically calls for improving projections of the future of the Southern Ocean, including the study of ""extreme events and mid-latitude weather"" (#6), which aligns with the project's focus on marine heatwave forecasting (#1).
+
+**Biggest doubt:**
+The grant is strictly limited to the Antarctic and Southern Ocean region (#6), whereas the project's current scope is for the ""regional coast"" (#1) without a specified location.
+
+**Other options in the feed:**
+*   **#4 A stronger Global Ocean Observing System...**: This is a very large-scale infrastructure grant focused on the deployment of observation equipment and governance frameworks, which is less aligned with the project's specific focus on ML-corrected forecasting and dashboards.
+*   **#3, #5, #7-12**: These cover unrelated areas such as carbon sinks, marine geology, and sustainable tourism.",evidence/R8845AC1D.md,,#1=?; #3=?; #4=?; #5=?; #6=?; #7=?,,,
+RC31E3DBD,"Is this call worth applying to for our lab, and if so, which project would it fund and who would lead it?","Based on the details of the call and your lab's current work, this grant is likely **not a strong fit** for your existing projects.
+
+**Why it doesn't fit:**
+The call #1 focuses specifically on the **protection, restoration, and management of ""blue forest"" ecosystems** (marine vegetated habitats) in European sea basins, requiring a multidisciplinary approach that includes active restoration and innovative financing. Neither the ""Marine heatwave early warning"" project #2 nor the ""Plastic pathways"" project #3 deals with habitat restoration or blue carbon ecosystems.
+
+**Analysis:**
+*   **Project Fit:** There is no direct overlap between the call's requirements (restoration of vegetated habitats) and your projects' focuses (heatwave forecasting #2 and debris tracking #3).
+*   **Personnel Fit:** According to the lab's records, no one in the Coastal Ocean Intelligence Lab has a declared profile that covers the specific requirements for blue forest ecosystem management.
+*   **Eligibility:** The call requires the project to be based in one of four European ""lighthouse"" areas (Atlantic/Arctic, Mediterranean, Baltic/North Sea, or Danube/Black Sea). I cannot verify if your lab or its partners meet these geographic requirements.
+
+**Conclusion:**
+Unless you have a new, unlisted project focused on marine vegetation restoration in Europe, this call does not align with your current lab activities.",evidence/RC31E3DBD.md,,#1=?; #2=?; #3=?,,,
+RC3CE87FF,Who in my lab should apply to this call?,"Based on the provided evidence, the following groups should apply to this call:
+
+*   **The scientific community** engaged in the Global Ocean Observing System (#1).
+*   **European SMEs and technology providers**, **maritime industries**, and **service operators** (#1).
+*   **Observation communities** and **marine research infrastructures** (#1).",evidence/RC3CE87FF.md,,#1=?,,,
+R2ABC60EE,Could this paper help the Plastic pathways project? Say why or why not.,"Yes, this paper could be very helpful for the Plastic pathways project (#3).
+
+The project is currently focusing on tracing floating debris to beaches and is in the process of checking its beaching model against field surveys. Paper #1 provides a ""tide-resolving beaching kernel"" specifically for marine litter tracking, including the code and aggregated results from field records in Korea. Since the project uses Lagrangian particle tracking and is specifically looking at beaching, the three-phase beaching kernel and the associated scripts for particle-tracking experiments in this paper could provide a useful method or benchmark for your current model checks.",evidence/R2ABC60EE.md,,#1=?; #3=?,,,
+RDD7BE9ED,Does this call fit the Marine heatwave early warning project?,"Based on the provided evidence, the grant call ""Unlocking a safe operating space for Antarctica and the Southern Ocean"" (#1) fits a Marine heatwave early warning project in the following ways:
+
+*   **Problem Alignment:** The call seeks to resolve uncertainties and improve projections for the future of the Antarctic and Southern Ocean region, including the impacts of climate change and anthropogenic activities on ecosystems (#1).
+*   **Methodological Alignment:** It encourages the development of mechanisms to distinguish human-induced changes from natural ones, the improvement of monitoring indicators, and the enhancement of regional coupled models and Earth System Models (ESMs) (#1).
+*   **Scope Alignment:** Proposals should aim to improve projections and quantifications of the region's future, specifically focusing on ""abrupt, irreversible change/tipping elements and thresholds"" and ""extreme events"" (#1).
+*   **Expected Outcomes:** The call aims to contribute to key ocean, cryosphere, climate, and biodiversity monitoring indicators to support global assessments and informed policies for climate resilience (#1).",evidence/RDD7BE9ED.md,,#1=?,,,
+R420271A2,Which fellowship in our feed would suit a PhD student on the Marine heatwave early warning project?,"The fellowship in the feed that would suit a PhD student on the Marine heatwave early warning project (#1) is the **Woods Hole Oceanographic Institution (WHOI) - Geophysical Fluid Dynamics (GFD) Summer Graduate Research Fellowship (#9)**.
+
+**Fit analysis:**
+*   **Strongest reason:** The fellowship supports graduate students interested in the nonlinear dynamics of rotating, stratified fluids, which aligns with the project's focus on ocean forecasting and sea surface temperature prediction #1, #9.
+*   **Biggest doubt:** I cannot confirm if the specific PhD student's research focus is sufficiently aligned with ""nonlinear dynamics"" as required by the call #9.
+
+**Details:**
+*   **Deadline:** 2027-02-05
+*   **Status:** Open
+*   **Scope:** A ten-week residential research fellowship at WHOI in Massachusetts.",evidence/R420271A2.md,,#1=?; #9=?,,,
+R2B23DC63,"Is this call worth applying to for our lab, and if so, which project would it fund and who would lead it?","Based on the provided evidence, the call for ""Large-scale demonstration of protection, restoration and management of blue forest ecosystems in European sea basins"" (#1) is a grant opportunity with a funding amount between €1,000,000 and €8,925,000 (#1).
+
+Regarding your lab's application:
+*   **Project Funding:** The call would fund innovative multidisciplinary projects that advance the large-scale demonstration of protection, restoration, and management of blue forest ecosystems (marine and coastal vegetated habitats) within European sea basins (#1). These projects should integrate active and passive restoration, conservation efforts, innovative financing mechanisms (such as nature credits), multi-sensor research and monitoring, and community engagement (#1).
+*   **Leadership/Collaboration:** The evidence does not specify a single individual who would lead the project; however, it requires collaborations with policy makers, national and regional agencies and authorities from EU Member States and Associated Countries, as well as engagement with NGOs, researchers, and local communities (#1).",evidence/R2B23DC63.md,,#1=?,,,
+RBA5C28FE,"Compare these two calls for our lab: which one fits better, and who would lead it?","Based on the call details and your lab's current expertise, **#1 (Global Ocean Observing System)** is the better fit.
+
+### Why #1 fits better
+Call #1 aligns directly with the core technical strengths of your lab. It focuses on strengthening the global observing system through data delivery and operational resilience. You and Priya Raman both have declared interests (Data Assimilation and Satellite Oceanography) that map directly to the call's goals of stabilizing and operationalizing ocean observing systems.
+
+In contrast, Call #2 is highly specialized toward the Antarctic and Southern Ocean. While your work on extremes is applicable, the lab lacks the specific regional expertise or the Earth System Modeling (ESM) capabilities the call emphasizes.
+
+### Who should lead it?
+**Priya Raman (#6)** is the strongest candidate to lead this effort. 
+*   **Evidence:** Her declared interest in satellite oceanography aligns with the call's need for enhanced observation capabilities and the use of Copernicus services.
+*   **Support:** You would be a key collaborator, providing the data assimilation expertise needed to make those observations ""fit-for-purpose"" and resilient for forecasting.
+
+**Potential Gaps to Address:**
+To be competitive for #1, you would need to partner with experts in:
+*   Observing System Experiments (OSEs/OSSEs).
+*   Network optimization.
+*   Industry partners for technology roadmaps.",evidence/RBA5C28FE.md,,#1=?; #2=?; #6=?,,,
+R5870C3CB,"Across both of our projects, what are the two most urgent upcoming deadlines, who in the lab fits each, and which recent paper would strengthen each application?","Based on the provided evidence, there is only one upcoming deadline mentioned:
+
+*   **CHEERS Open Period 1 - All Technical Areas:** The application deadline is 2027-09-30 #16.
+
+The provided evidence does not specify who in the lab fits this deadline or which recent paper would strengthen the application. Additionally, the evidence does not mention a second project or a second deadline.",evidence/R5870C3CB.md,,#16=?,,,
+RF60D60AC,"Who in my lab fits this call, and what expertise would we be missing?","Based on the requirements for the **Marine Geology and Geophysics** grant (#1), here is how your lab fits:
+
+**Potential Fits**
+*   **Jonah Whitcombe (#4)** covers ""geology and geophysics of the present ocean basins and margins,"" based on his declared interest in Lagrangian ocean analysis.
+
+**Missing Expertise**
+The call has a broad scope in marine geoscience that is not currently covered by the lab's declared interests, specifically:
+*   **Geological & Geochemical processes:** Submarine volcanology, petrology, geochemistry of the crust/mantle, and hydrothermal venting.
+*   **Seafloor & Lithosphere:** Tectonics, evolution of the oceanic lithosphere, and subduction zone systems.
+*   **Sedimentology & Hazards:** Marine sediment transport, diagenesis, and geohazards (e.g., earthquakes, tsunamis).
+*   **Paleoceanography:** Paleoclimate and sea-level change.",evidence/RF60D60AC.md,,#1=?; #4=?,,,
+R9BC236EB,"Does this paper change anything for the Marine heatwave early warning project, and who on the team should read it?","The paper #1 evaluates 1-14 day machine-learning forecasts for marine heatwaves in the Northern Bay of Bengal against persistence benchmarks.
+
+**Impact on the Marine heatwave early warning project (#8):**
+The project's goal is a two-to-six-week forecast using an ML-corrected ensemble. Since this paper specifically tests ML forecasts against persistence benchmarks (the same baseline your project used to show success for 2015-2024), it provides a relevant external comparison for ML-based heatwave prediction, though it focuses on a shorter timeframe (1-14 days) and a specific region (Bay of Bengal).
+
+**Who should read it:**
+*   **Tomás Ferreira-Lind (#7):** Given his interest in Physics-informed ML and his membership in the project.
+*   **Sun-hee Park (#6):** As a project member and expert in ocean data tools.
+*   **Mara Ellison (#3):** As the PI and lead on ocean extremes.",evidence/R9BC236EB.md,,#1=?; #3=?; #6=?; #7=?; #8=?,,,
+RECDA23B7,Where does the Marine heatwave early warning project stand right now?,"Based on the provided evidence, marine heatwave (MHW) early warning efforts are currently focused on several regional and methodological advancements:
+
+*   **Technological and Model-Based Approaches:** 
+    *   In South Korean aquaculture, a ""Hybrid GNN-BiLSTM"" graph-temporal model has demonstrated an operationally actionable advisory lead time of 38 hours for coastal high water temperature events #5.
+    *   In the Adriatic Sea, coupling high-resolution Regional Ocean Modeling Systems (ROMS) with mesoscale eddy diagnostics is being used to strengthen early-warning capabilities by identifying MHW precursors #3.
+    *   In the Mediterranean, an explainable, policy-aware early-warning system for temperate reefs uses historical data (1986-2020) to forecast site-level risk, achieving an average precision of 0.75 #1.
+*   **Predictability and Forecasting Scales:**
+    *   Research indicates that MHW frequency and cumulative intensity in vulnerable coral reef regions are skillfully predictable from months to years in advance #6.
+    *   In the Gulf of Panama, seasonal forecasting systems have demonstrated the capability to provide early warning of upwelling collapse, accurately predicting extreme sea surface temperatures a season in advance #14, #19.
+*   **Mitigation and Frameworks:**
+    *   Experimental evaluations suggest that preemptive, localized marine cloud brightening (MCB) can mitigate the impacts of a predicted MHW, as seen in a case study of ""The Blob 2.0"" #17.
+    *   New frameworks, such as the Probabilistic Marine Heat Stress Wave (PMHSW), are being proposed to shift early warning focus from simple temperature anomalies to biologically relevant thermal exposure #16.
+*   **Other Systems:**
+    *   The Dutch heat early warning system (HEWS) has evolved from a single trigger into a tiered system between 2007 and 2025, though it faces misalignment between warnings and actions #2.",evidence/RECDA23B7.md,,#1=?; #2=?; #3=?; #5=?; #6=?; #14=?; #16=?; #17=?; #19=?,,,
+R6BA1FA12,"Would a postdoc in our lab be eligible for this, and when is it due?","A postdoc in your lab would be eligible if they are a new or recent PhD in any field that may contribute to WHOI's research areas, specifically including chemistry, engineering, geology, geophysics, mathematics, meteorology, physics, biology, economics, oceanography, and marine policy #1. The application deadline is 2027-10-01 #1.",evidence/R6BA1FA12.md,,#1=?,,,
+RC5DD0BBB,Which student in my lab should apply for this fellowship?,"Based on the profile fit, **Tomás Ferreira-Lind (@demo.tomas)** should apply. His work on coastal circulation and turbulence models aligns with the fellowship's focus on the nonlinear dynamics of rotating, stratified fluids (declared in his profile).",evidence/RC5DD0BBB.md,,,,,
+RC8C3FB3D,"What is the main idea of this paper, and who are its authors?","The main idea of this paper is the presentation of **Rescene-ESM**, an Earth system model that uses a coupler (called YAHO) to link a frozen, 20.8-million-parameter AI weather model to physically formulated components for the ocean, sea-ice, land, river, carbon, and energy. The goal is to reduce the high computational cost of traditional models while maintaining the ability to simulate climate projections, El Niño variability, and impact pathways (such as routing runoff to river gauges).
+
+The authors are **Minjong Cheon** and **Kaoru Kakinuma** #1.",evidence/RC8C3FB3D.md,,#1=?,,,
+RC09226B7,"What method does this paper propose, in two sentences?",The paper proposes a two-way coupled data assimilation system where an ensemble variational (EnVar) component evolves the mean and an ensemble Kalman filter (EnKF) evolves the covariances. This system integrates the MLWP model GraphCast for the EnKF and the physics-based MPAS model for the EnVar (#1).,evidence/RC09226B7.md,,#1=?,,,
+R32739596,"What data does this model take as input, and what does it output?",The VMCF model uses the OISST dataset for its setting #1. It is designed to take sea surface temperature (SST) data as input to produce short-term SST forecasting as output #1.,evidence/R32739596.md,,#1=?,,,
+RF1F8FDD6,"Summarise where the Plastic pathways project stands, name the three most relevant new papers for it, and suggest one funding opportunity it could apply to.","I couldn't retrieve the current status of the **Plastic pathways** project as the project details were not available to me. However, based on the project's current slate, here are the three most relevant new papers and a suggested funding opportunity:
+
+### Relevant New Papers
+1. **#14 Code and aggregated results for ""A tide-resolving beaching kernel for marine litter: development and application to field records from Uido, Republic of Korea""** — Directly addresses marine litter and beaching kernels.
+2. **#17 AgentRMOT: Multi-agent Collaboration for Open-World Referring Multi-object Tracking** — Potentially useful for tracking debris pathways.
+3. **#18 A Deep Learning Framework for Automatic Detection and Segmentation of Internal Solitary Waves in Satellite Imagery over the Northern South China Sea** — Relevant for understanding the oceanographic features that influence plastic transport.
+
+### Suggested Funding Opportunity
+**#5 Developing novel recycling technologies for complex plastic materials applying biotech solutions**
+*   **Focus:** Advancing biotech solutions for recycling complex plastic materials (multi-material/multi-layer/composites).
+*   **Amount:** €3,000,000–€8,000,000
+*   **Deadline:** 2027-09-22",evidence/RF1F8FDD6.md,,#5=?; #14=?; #17=?; #18=?,,,
+R80C808C9,"Which open grant fits the Plastic pathways project best, who in the lab should lead the application, and who outside the lab could we partner with?","Based on the project's focus on tracing floating debris using forecast currents and satellite detections, the best fit among the open grants is **#11 Integrating Remote Sensing and in-situ observations of Biodiversity**, as it specifically funds the integration of satellite remote sensing with in-situ data for predictive analytics and AI in marine ecosystems.
+
+**Who should lead the application:**
+*   **Priya Raman (#4)** is the strongest lead for the remote sensing component, as she has declared expertise in satellite ocean remote sensing.
+*   **Sun-hee Park (#5)** could support the technical side, as she builds the GIS tools and dashboards necessary for an interoperable data framework.
+
+**Partnership:**
+Since no one in the lab currently covers the **omics-based data** (genomic/transcriptomic) or the specific **in-situ biodiversity data frameworks** (like GBIF or OBIS) required by the call, you would need to partner with a group specializing in marine biodiversity sampling or genomic data integration.
+
+*Note: I cannot suggest specific people outside the lab as collaborator search is currently turned off.*",evidence/R80C808C9.md,,#4=?; #5=?; #11=?,,,
+R3BDD56FA,Which lab members have the expertise this call asks for?,"The ""Ocean Technology and Interdisciplinary Coordination"" call (#1) focuses on instrumentation development and technology to enhance observational, experimental, or analytical capabilities for ocean science.
+
+Based on their declared interests, the following lab members have relevant expertise:
+
+*   **Sun-hee Park (#6):** Ocean data tools (analytical capabilities).
+*   **Priya Raman (#5):** Satellite oceanography (observational capabilities).
+*   **Tomás Ferreira-Lind (#7):** Physics-informed ML (analytical/technology development).
+*   **Mara Ellison (#3):** Data assimilation with ML (analytical capabilities).",evidence/R3BDD56FA.md,,#1=?; #3=?; #5=?; #6=?; #7=?,,,
+RC54F2B6E,Does this call fit the Marine heatwave early warning project?,"The grant ""Unlocking a safe operating space for Antarctica and the Southern Ocean"" (#1) is a partial fit for the ""Marine heatwave early warning"" project (#2).
+
+**Fit**
+The call specifically asks for research into ""extreme events and mid-latitude weather"" and the ""distribution, underlying mechanisms and impacts of changes in the Southern Ocean"" (#1), which aligns with the project's focus on marine heatwave prediction (#2).
+
+**Doubt**
+The grant is strictly focused on the Antarctic and Southern Ocean region (#1), whereas the project's current scope is ""regional coast"" and its current success is measured against ""fisheries offices"" (#2), without a specified geographic link to the Southern Ocean.
+
+**Other details**
+*   **Status:** The call is open.
+*   **Deadline:** 2027-09-23 (#1).
+*   **Amount:** €5,000,000–€11,000,000 (#1).
+*   **Eligibility:** Not specified in the provided text.",evidence/RC54F2B6E.md,,#1=?; #2=?,,,
+R3A89A5AD,"Who runs this funding programme, and is it open now?","The Marine Geology and Geophysics Core Program is run by the NSF #1, and it is currently open #1.",evidence/R3A89A5AD.md,,#1=?,,,
+R5D2BEAC6,"Who is eligible for this fellowship, and when is it due?","The WHOI GFD Summer Graduate Research Fellowship is open to graduate students in any field who share an interest in the nonlinear dynamics of rotating, stratified fluids (including fields like oceanography, meteorology, geophysics, astrophysics, applied mathematics, engineering, and physics) #1.
+
+It is due on February 5, 2027 #1.",evidence/R5D2BEAC6.md,,#1=?,,,

@@ -1,0 +1,231 @@
+# R3A1DE33F
+
+## Question
+
+Who in my lab is best placed to lead an application to this call?
+
+## Answer
+
+Based on the provided evidence, the grant "Unlocking a safe operating space for Antarctica and the Southern Ocean" (#1) requires a multidisciplinary research approach to resolve uncertainties and improve projections regarding the Antarctic and Southern Ocean region (#1). Specifically, the call seeks proposals that can:
+
+*   Advance understanding of interactions between the ocean, atmosphere, sea ice, and ice dynamics, with a focus on the Antarctic continental shelves and regions for bottom water formation (#1).
+*   Explore the vulnerability of Southern Ocean ecosystems to climate change, pollution, and anthropogenic activities, including the microbiome and functional diversity (#1).
+*   Develop mechanisms to distinguish human-induced environmental changes from natural ones and establish the efficacy of conservation measures (#1).
+*   Improve monitoring indicators for the ocean, cryosphere, climate, and biodiversity (#1).
+
+The provided evidence does not list the members of your lab or their specific expertise; therefore, it cannot be determined who is best placed to lead the application.
+
+## Evidence
+
+### Evidence #1 [grant] Unlocking a safe operating space for Antarctica and the Southern Ocean
+Amount: €5,000,000–€11,000,000
+Link: https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/HORIZON-CL6-2027-02-CLIMATE-04
+Still open/current: yes
+Deadline (application): 2027-09-23
+Problem (Mycelium's reading): Resolving uncertainties and improving projections of the future of the Antarctic and Southern Ocean region, including changes in the near-, mid-, and long-term, their impacts on the Earth's System, and the vulnerability of ecosystems to climate change and anthropogenic activities.
+Method (Mycelium's reading): Multidisciplinary research advancing understanding of interactions between the ocean, atmosphere, sea ice, and ice dynamics; developing mechanisms to distinguish human-induced from natural changes; improving monitoring indicators; enhancing Earth System Models (ESMs) and regional coupled models; an…
+Setting (Mycelium's reading): The Antarctic and Southern Ocean region, with a specific focus on the Antarctic continental shelves and regions for bottom water formation.
+Abstract:
+Expected Outcome:
+
+Project results are expected to contribute to all of the following expected outcomes:
+
+- improved multidisciplinary scientific understanding of the functioning of the Southern Ocean and the Antarctic cryosphere and associated ecosystem dynamics, in the near term (∼2030), mid-term (2050–2060) and long-term (after ∼2060), including their mutual interaction with, impact on and vulnerability to, current and future changes in the other components of the regional and global climate systems;
+
+- important contributions made to key ocean, cryosphere, climate and biodiversity monitoring indicators that support international, regional and global assessments. Fostered development of a regional approach to polar ocean, climate and biodiversity observations, monitoring and reporting;
+
+- informed policies for environmental conservation and climate resilience and enabled evidence-based regional, European, and global decision–making on polar ocean governance; sustained European leadership in ocean–climate–biodiversity-cryosphere science; significant contributions made to global scientific assessments (e.g. IPCC, IPBES and WOA), as well as to the UN Decades of Action of Ocean (2021-2030) and Cryospheric (2025-2034) Sciences, the Antarctica InSync programme (2027 and 2030), the International Polar Year (2032-2033), UN SDGs 13 and 14, and the European polar science coordination efforts.
+
+Scope:
+
+Proposals should:
+
+- resolve uncertainties, improve projections and quantifications of the future of the region, looking at changes in the near-, mid- and long-term (irreversible, abrupt and committed changes), their likelihood, timing, rate, amplitude, and impacts on the Earth’s System (decadal to millennial climate projections, global sea level, ocean circulation, global carbon budget);
+
+- advance understanding of the complex interactions and feedbacks between the ocean, the atmosphere, sea ice, ice shelves, and land ice dynamics, considering multiple scales and processes simultaneously, with focus on the Antarctic continental shelves where conditions are or will change rapidly and on regions for bottom water formation;
+
+- advance the knowledge of Southern Ocean dynamics and sea ice dynamics in the near-, mid- and long-term. Better understand the distribution, underlying mechanisms and impacts of changes in the Southern Ocean and sea ice to reduce uncertainties in projected future changes of large-scale ocean circulation and transport, including abrupt, irreversible change/tipping elements and thresholds, collapse of the overturning circulations, regional and global climate and weather systems. This should include extreme events and mid-latitude weather; fluxes between the ice sheet and the ocean; the future dynamics of oceanic carbon pools;
+
+- explore the vulnerability of Southern Ocean ecosystems, including the impacts of climate change, pollution and other anthropogenic activities on marine biodiversity and ecosystem dynamics changes in the near (∼2030), mid (2050–2060) and long-term (after ∼2060). This includes improved control variables for the diversity of all life forms incorporating also the microbiome and functions (functional diversity), as well as the biocomplexity suitable for measuring biosphere integrity in different facets. Proposals should also contribute to the development or strengthening of long-term, continuous monitoring systems for Southern Ocean biodiversity and ecosystem functioning, in synergy with existing observation infrastructures;
+
+- develop mechanisms to distinguish human-induced environmental changes from natural ones and develop strategies to protect the fragile environment of the Southern Ocean from human activities and climate change, as well as comprehensively establish the efficacy of Southern Ocean conservation measures for preserving evolutionary potential and those properties that best anticipate change;
+
+- further improve key ocean, cryosphere, climate and biodiversity monitoring indicators tha
+
+### Evidence #2 [paper] From Algorithm Performance to Laboratory Deployment: A Critical Review of Artificial Intelligence in Clinical Chemistry.
+Authors: Baniahmad, Abdelraheem, Bani-Ahmad, Sulieman
+Venue: Molecules (Basel, Switzerland)
+Year: 2026
+Link: https://pubmed.ncbi.nlm.nih.gov/42943689/
+Still open/current: yes
+Abstract:
+Artificial intelligence (AI) is increasingly being applied in clinical laboratories to support laboratory processes and interpretation of test results. Recent developments in machine learning, deep learning, and large language models have expanded the potential applications of AI across different stages of laboratory testing. However, the use of AI in clinical laboratories also raises important questions regarding validation, analytical performance, and transferability between laboratories. This narrative review examines recent applications of AI across the total testing process in clinical chemistry. Recent English-language scientific literature published from 2023 to 18 August 2026 was identified through searches of PubMed, Scopus, and Google Scholar. It describes AI-assisted test utilization; specimen handling and quality assessment; detection of laboratory errors; patient-based quality control; interpretation of complex analytical outputs, including signals from emerging AI-integrated biosensors and nanomaterial-based analytical platforms; result verification; and laboratory-report interpretation. The review also discusses major implementation challenges, including analytical variability, data quality, sensor and platform reproducibility, model generalizability, interoperability, and limitations of large language models. Particular attention is given to external validation, transportability, and real-world implementation. Among the studies considered in this review, many applications remain supported mainly by retrospective or internally validated studies, while prospective and operational evaluations are less common. Finally, practical considerations for validation, local verification, quality assurance, and performance monitoring are discussed. AI has considerable potential to support clinical chemistry laboratories, but safe use requires appropriate evaluation and continued involvement of laboratory professionals.
+
+### Evidence #3 [paper] Editorial: Innovations in dementia policies and services
+Authors: Walter D Dawson, Alison Jane Canty, Joaquín Migeot, Laura O’Philbin, Sherril B. Gelmon
+Venue: Frontiers in Dementia
+Year: 2026
+Link: https://doi.org/10.3389/frdem.2026.2006454
+Still open/current: yes
+Abstract:
+There is an increasing global consensus that dementia is a significant public health issue (Chapman et al., 2006;Jackson et al., 2023;World Health Organization, 2017). As the global population ages and the number of people living with dementia increases, dementia will continue to grow in salience (Nichols et al., 2022). The complexities associated with dementia require innovative approaches to the provision of care and support as well as to the design of service systems at local and national levels across the globe that can truly meet the unique needs of people living with dementia and their care partners. These systems need policies to provide the foundation for better dementia care and support.Innovations in dementia policies and services are typically discussed and reported far less frequently in the general dementia literature than innovations in clinical care, diagnostics, treatment, or basic science. The wide variation in approaches to policy and regulatory environments, as well as unique sociocultural contexts across the world, offer multiple opportunities to showcase innovative programs, networks, and policies that make non-clinical services and supports available and accessible to people living with dementia and their care partners. Highlighting and sharing these innovations in dementia services and policies is needed to support greater accessibility. This collection of Frontiers in Dementia, Innovations in Dementia Policies and Services, includes nine original research manuscripts as well as two systematic reviews, two reviews, one mini review, nine perspectives, one brief research report, and two opinions, all of which advance a better understanding of the breadth of innovation taking place in dementia policies and services. Some of the thematic areas that emerged from the submissions to this special issue include Access for Underserved Populations, Nature-based Supports and Programs, Creative Pursuits in Dementia Services, Specific Policies, and Technological Innovations for Care and Support. In total, 26 papers with 178 co-authors are included within this edition of Frontiers in Dementia, with these co-authors listing affiliation with institutions in 23 countries across the globe.Inequities in access to dementia prevention, diagnosis, care, and support remain a major challenge across diverse health systems and communities (Calil et al., 2020;Giebel et al., 2025). These barriers are often amplified for populations facing social disadvantage, cultural exclusion, geographic limitations, low income, migration, or limited access to specialized services (Bernstein Sideman et al., 2022;Giebel et al., 2025;Ibrahim & Mohamed, 2025), being associated with worse brain health (Migeot et al., 2026). The articles in this theme highlight innovations designed with and for underserved populations, including community-embedded prevention models, culturally responsive care pathways, public memory clinic services, Indigenous-led adaptation of educational resources, and frontline approaches that connect local assessment with policy and practice. This set of evidence shows that improving dementia care equity requires services that are locally grounded, culturally meaningful, and responsive to the realities of the communities they aim to serve.Phaedra Bell and colleagues in a "Perspectives" article describes the Multimodal Intergenerational Social Contact Intervention (MISCI), a community-embedded program designed to address dementia risk factors of reduced loneliness and depressed mood through culturally meaningful intergenerational engagement (Bell, 2026).Pallavi Nair and colleagues extend this equity-oriented focus by proposing a Community Health and Wellbeing Worker-led model in a "Perspectives" article, designed to provide proactive, culturally responsive dementia support across the care continuum (Nair et al., 2026). The innovation lies in strengthening existing neighborhood-based roles, offering a scalable pathway to improve earl
+
+### Evidence #4 [paper] Developing and evaluating an AI-assisted chatbot for promotion and tenure guidance in an academic medical center
+Authors: May May Yeo, Deborah D. Navedo, Patrick J. Casey, Bernard C. Y. Tan
+Venue: Frontiers in Artificial Intelligence
+Year: 2026
+Link: https://doi.org/10.3389/frai.2026.1919009
+Still open/current: yes
+Abstract:
+Abstract The SingHealth Duke–NUS Academic Medical Center manages over 2,800 clinical faculty members and processes over 400 appointments and promotions annually. The current Promotion and Tenure documentation includes over 30 documents, making it difficult and time-consuming for the faculty to locate specific appointment information. We developed “AskADD” in response to requests for clearer academic career development guidance. This study reports initial alpha testing and subsequent beta testing with 35 faculty members using AskADD. AskADD aids the faculty—physician-educators, physician-scientists, physician-innovators, and physician-leaders—in navigating academic career paths while increasing transparency and trust in appointment, promotion, and tenure processes. Our AI-integrated systems, initially tested using low or no-code Microsoft platforms and later developed with a custom GPT, deliver contextualized responses to promotion and tenure queries. The faculty and staff participated in user testing, providing feedback for improvements. Alpha and beta testing conducted with the same group of users indicated that a substantial portion of participants found the tool beneficial; suggestions were given for further refinement. Our experience contributes to the limited literature on AI-driven faculty advancement in academic medical centers and offers a novel paradigm for academic career support.
+
+### Evidence #5 [paper] AI Call Center Supervisor in a Live Company: A Three-Week Case Study of an Autonomous AI Agent Supervising a Phone Team
+Authors: Evgeny V. Arsentyev
+Venue: Zenodo (CERN European Organization for Nuclear Research)
+Year: 2026
+Link: https://doi.org/10.5281/zenodo.23926850
+Still open/current: yes
+Abstract:
+This technical report shows how the figures in the article "An AI Supervisor Ran a Call Center Team for Three Weeks. Then Someone Checked Its Weekly Report" were calculated. An AI supervisor is a software agent that does a team lead's daily work: it watches the team's numbers, reviews calls, flags problems, answers the team's questions and reports up. The subject is an autonomous Claude agent that supervised the small remote phone team of a US-facing telemedicine company for three weeks, with a human team supervisor, a department head and company leadership kept in the loop. In 16 days the agent was started 459 times, about 280 of them to answer people in the team chat. In week three the team's talk time with partners was 33% to 80% above its best week before the agent, depending on whether the human supervisor's own calls are counted; the first two weeks with the agent were worse. Both main operational defects of the period (a call-screening setting on a caller's phone and the dialer connection order) were found by people, not by the agent. The agent decided nothing about people and recommended no dismissals. Of the nine checkable claims in its own weekly report, one held exactly as written, three held only under one way of counting, two were misleading and three could not be reproduced from the raw call records. The report gives the formulas, assumptions, confounders and limitations (no control group, one team, call classification available for week three only). The company operates under a non-disclosure agreement: the report contains only the published figures and how they were calculated; the underlying data is not published.
+
+### Evidence #6 [paper] A Cloud-Enabled LIMS-QMS Platform With Large Language Model-Assisted Standard Operating Procedure Generation for GLP/GMP-Aligned Theranostics Laboratory Operations.
+Authors: Durmaz, F Aytac
+Venue: SLAS technology
+Year: 2026
+Link: https://pubmed.ncbi.nlm.nih.gov/42901382/
+Still open/current: yes
+Abstract:
+Theranostic development centers operate under stringent good laboratory practice (GLP) and good manufacturing practice (GMP) requirements that fragmented, paper-based workflows cannot adequately support. This paper presents the design, regulatory compliance mapping, and pilot deployment of the Laboratory Tracking Software (LTS) platform, a cloud-ready, web-based system that unifies laboratory information management system (LIMS) and quality management system (QMS) functions under a risk-based Computer Software Assurance (CSA) framework aligned with U.S. Food and Drug Administration (FDA) 21 CFR Part 11 and ISO/IEC 17025. The platform operationalizes a 6×6 deterministic request-and-service lifecycle across nine governance modules and embeds a large language model (LLM)-assisted module that, from a single service-name input, generates structured standard operating procedures (SOPs), identifies required consumables and instruments, performs operational risk assessment, and proposes an executable workflow. Pilot deployment across 187 laboratory requests is reported descriptively (23-day mean turnaround time, 1,456 quality-control checkpoints, and 43 deviation-handling episodes); because no comparable pre-deployment dataset could be reconstructed, these values are not interpreted as efficiency or error-reduction gains. A 21 CFR Part 11-aligned control matrix and a CSA-based verification package document authenticated electronic approvals, activity records, two-factor authentication (2FA), and role-based access control (RBAC); a consolidated high-risk user-acceptance campaign executed 31 of 31 scripted scenarios successfully, with independent reviewer and approver sign-off still pending. Beyond the original single BRAF droplet digital PCR (ddPCR) illustrative case, a document-level evaluation was performed across a locked corpus of 20 laboratory services (10 analysis and 10 synthesis workflows). All 280 mandatory template elements were present (100.0% template adherence), and none of the 80 predefined automated document-control checks was flagged (0.0%). Expert-adjudicated error rate, human edit distance, and time saving were not measured and are deferred to a prospective follow-up study. Comparative analysis against QT9 ERP/QMS, RAMS®, and SENAITE LIMS positions the platform as a governance-first, theranostic-specific informatics system with native LLM-assisted documentation generation, a capability absent from existing commercial and open-source alternatives. The results indicate that integrating LLM-assisted document generation into a regulated laboratory informatics platform is technically feasible; however, given the hallucination risk documented in the medical LLM literature, systematic human-in-the-loop validation of generated content remains a prerequisite for unsupervised deployment in GLP/GMP settings. The revised design description additionally specifies a template-constrained prompting strategy, a generation-record schema supporting prompt and output reconstruction, a model-change-control procedure, an explicit LLM data-privacy boundary, and alignment with the January 2026 FDA/EMA guiding principles of good artificial intelligence (AI) practice in drug development.
+
+### Evidence #7 [paper] Guidance for laboratory implementation, governance and continuous assurance of artificial intelligence in histopathology
+Authors: Emad A. Rakha, Jelle Wesseling, Anikó Kovács, Aleš Ryška, Elena Provenzano, Gábor Cserni, Zsuzsanna Varga, Zsuzsanna Bagó-Horváth
+Venue: Archiv für Pathologische Anatomie und Physiologie und für Klinische Medicin
+Year: 2026
+Link: https://doi.org/10.1007/s00428-026-04684-y
+Still open/current: yes
+Abstract:
+Abstract Artificial intelligence (AI) is rapidly transforming histopathology, with applications ranging from workflow optimisation and quality assurance to tumour diagnosis, grading, biomarker assessment and estimation of prognosis. While numerous AI algorithms have demonstrated promising analytical and clinical performance, pathology laboratories are increasingly adopting commercially available AI systems with regulatory-approval rather than developing their own algorithms. Existing guidance largely focuses on AI development, validation and regulatory approval, with comparatively little practical direction on the local verification, governance and ongoing assurance required for safe routine clinical implementation. This paper proposes a practical framework for the clinical implementation of AI specifically within pathology laboratories. Rather than addressing AI development, it focuses on the responsibilities of laboratories adopting established AI systems into clinical practice. The framework distinguishes AI applications according to their intended clinical function, recognising that diagnostic applications, biomarker evaluation, workflow optimisation and generative AI applications require different implementation, verification, governance and quality assurance strategies. It further distinguishes algorithm validation, local verification and continuous assurance as complementary stages of implementation and advocates a function-based, risk-proportionate approach integrated within existing laboratory quality management systems. Practical recommendations are provided for workflow integration, interoperability, human oversight, user competency, performance monitoring, incident management, software updates and proportionate re-verification throughout the AI operational lifecycle. By extending implementation beyond regulatory approval, this guidance complements existing AI development and regulatory frameworks rather than replacing them. It provides a practical governance framework for pathology laboratories, professional organisations, accreditation bodies, and healthcare providers to support the safe, standardised, and sustainable integration of AI into routine histopathology while maintaining diagnostic quality, patient safety, and clinical governance.
+
+### Evidence #8 [paper] Guidance for laboratory implementation, governance and continuous assurance of artificial intelligence in histopathology.
+Authors: Rakha, Emad A, Wesseling, Jelle, Kovács, Anikó, Ryška, Aleš, Provenzano, Elena, Cserni, Gábor, Varga, Zsuzsanna, Bagó-Horváth, Zsuzsanna
+Venue: Virchows Archiv : an international journal of pathology
+Year: 2026
+Link: https://pubmed.ncbi.nlm.nih.gov/42684470/
+Still open/current: yes
+Abstract:
+Artificial intelligence (AI) is rapidly transforming histopathology, with applications ranging from workflow optimisation and quality assurance to tumour diagnosis, grading, biomarker assessment and estimation of prognosis. While numerous AI algorithms have demonstrated promising analytical and clinical performance, pathology laboratories are increasingly adopting commercially available AI systems with regulatory-approval rather than developing their own algorithms. Existing guidance largely focuses on AI development, validation and regulatory approval, with comparatively little practical direction on the local verification, governance and ongoing assurance required for safe routine clinical implementation. This paper proposes a practical framework for the clinical implementation of AI specifically within pathology laboratories. Rather than addressing AI development, it focuses on the responsibilities of laboratories adopting established AI systems into clinical practice. The framework distinguishes AI applications according to their intended clinical function, recognising that diagnostic applications, biomarker evaluation, workflow optimisation and generative AI applications require different implementation, verification, governance and quality assurance strategies. It further distinguishes algorithm validation, local verification and continuous assurance as complementary stages of implementation and advocates a function-based, risk-proportionate approach integrated within existing laboratory quality management systems. Practical recommendations are provided for workflow integration, interoperability, human oversight, user competency, performance monitoring, incident management, software updates and proportionate re-verification throughout the AI operational lifecycle. By extending implementation beyond regulatory approval, this guidance complements existing AI development and regulatory frameworks rather than replacing them. It provides a practical governance framework for pathology laboratories, professional organisations, accreditation bodies, and healthcare providers to support the safe, standardised, and sustainable integration of AI into routine histopathology while maintaining diagnostic quality, patient safety, and clinical governance.
+
+### Evidence #9 [paper] AI agents in clinical medicine: delegation, supervision, and the problem of correlated failure
+Authors: Ethan Waisberg, Joseph W. Guarnieri
+Venue: Irish Journal of Medical Science (1971 -)
+Year: 2026
+Link: https://doi.org/10.1007/s11845-026-04584-9
+Still open/current: yes
+Abstract:
+Clinical artificial intelligence has to date generated outputs upon which a clinician then acted. Agentic systems execute the task itself, completing a sequence of steps and returning finished work. Adoption has proceeded rapidly across other sectors while clinical uptake has remained confined largely to pilots, an interval that affords medicine an a opportunity to govern the technology deliberately rather than retrospectively. The governing question is thereby transformed from whether a prediction is accurate to whether a task may be entrusted, a question medicine has addressed throughout its history of training juniors under supervision. We argue that the appropriate frame for agentic systems is consequently delegation rather than prediction, and that the entrustment frameworks developed within postgraduate education furnish a serviceable structure of graded autonomy, task-level scope, and named supervisory responsibility. We then identify the point at which the correspondence ceases to hold. Supervision of human colleagues presupposes that errors are independent and idiosyncratic, such that mistakes arise individually and are detected individually. A single agent deployed across an institution generates one error process reproduced at scale. The consequence is that agentic systems cannot be adequately supervised through case-level review, and require instead the population-level surveillance characteristic of quality improvement.
+
+### Evidence #10 [paper] AI agents in clinical medicine: delegation, supervision, and the problem of correlated failure.
+Authors: Waisberg, Ethan, Guarnieri, Joseph W
+Venue: Irish journal of medical science
+Year: 2026
+Link: https://pubmed.ncbi.nlm.nih.gov/42667591/
+Still open/current: yes
+Abstract:
+Clinical artificial intelligence has to date generated outputs upon which a clinician then acted. Agentic systems execute the task itself, completing a sequence of steps and returning finished work. Adoption has proceeded rapidly across other sectors while clinical uptake has remained confined largely to pilots, an interval that affords medicine an a opportunity to govern the technology deliberately rather than retrospectively. The governing question is thereby transformed from whether a prediction is accurate to whether a task may be entrusted, a question medicine has addressed throughout its history of training juniors under supervision. We argue that the appropriate frame for agentic systems is consequently delegation rather than prediction, and that the entrustment frameworks developed within postgraduate education furnish a serviceable structure of graded autonomy, task-level scope, and named supervisory responsibility. We then identify the point at which the correspondence ceases to hold. Supervision of human colleagues presupposes that errors are independent and idiosyncratic, such that mistakes arise individually and are detected individually. A single agent deployed across an institution generates one error process reproduced at scale. The consequence is that agentic systems cannot be adequately supervised through case-level review, and require instead the population-level surveillance characteristic of quality improvement.
+
+### Evidence #11 [paper] Improving Laboratory Test Turnaround Time Through Collaboration Between Secretary Nurses, Laboratory Specialists, and Medical Records Professionals
+Venue: International Journal of Drug Delivery Technology
+Year: 2026
+Link: https://doi.org/10.25258/ijddt.16.73s.138
+Still open/current: yes
+Abstract:
+Background: Laboratory test turnaround time (TAT) is a critical quality indicator in healthcare It has a direct impact on patient safety, emergency department productivity, clinical decision-making, and general healthcare quality.Delays in laboratory testing often arise from communication failures, incomplete documentation, inefficient specimen management, and fragmented interdisciplinary collaboration.Objective: This review explores how structured collaboration among secretary nurses, laboratory specialists, and medical records professionals can significantly improve laboratory turnaround time while enhancing patient safety and workflow efficiency.Methods: A narrative review of current healthcare quality improvement literature was conducted.Evidence regarding laboratory workflow optimization, health information management, interdisciplinary teamwork, electronic medical records (EMRs), and laboratory information systems (LIS) was synthesized to identify collaborative strategies that reduce delays throughout the laboratory testing cycle.Results: Successful collaboration improves every phase of laboratory testing, including order entry, specimen collection, transportation, analysis, result reporting, and documentation.Digital integration, standardized communication, and clearly defined professional responsibilities significantly reduce turnaround time and decrease laboratory errors.Conclusion: Improving laboratory performance can be achieved through the establishment of cooperative multidisciplinary workflows backed by electronic information systems, increasing patient satisfaction, and promoting healthcare quality.
+
+### Evidence #12 [paper] An agentic framework for intelligent clinical laboratory medicine.
+Authors: Yang, He S, Pan, Weishen, Cushing, Melissa M, Fleischut, Peter M, Wang, Fei
+Venue: npj health systems
+Year: 2026
+Link: https://pubmed.ncbi.nlm.nih.gov/42957762/
+Still open/current: yes
+Problem (Mycelium's reading): Clinical laboratory medicine is an underrecognized frontier for artificial intelligence, lacking effective AI-driven management and oversight.
+Method (Mycelium's reading): Proposition of LabARIA, a human-supervised multi-agent framework that coordinates laboratory data, quality management, workflow optimization, and operational intelligence using specialized agents under transparent governance.
+Setting (Mycelium's reading): Clinical laboratory medicine environment.
+Abstract:
+Clinical laboratory medicine is fundamental to healthcare yet remains an underrecognized frontier for artificial intelligence. We propose LabARIA, a human-supervised multi-agent framework that coordinates laboratory data, quality management, workflow optimization, and operational intelligence. By integrating specialized agents under transparent governance, LabARIA enables proactive laboratory management while preserving human oversight. Laboratory medicine offers a promising environment for developing, evaluating, and translating trustworthy agentic AI into healthcare delivery.
+
+### Evidence #13 [paper] Clinical-priority task orchestration and verified safety supervision for a physician-directed ward-rounding robot: a simulation-based feasibility study
+Authors: Cheng Hang, Safaa Najah Saud Al-Humairi, Ahgalya Subbiah
+Venue: Frontiers in Robotics and AI
+Year: 2026
+Link: https://doi.org/10.3389/frobt.2026.1996839
+Still open/current: yes
+Abstract:
+Introduction A ward-rounding robot that accepts orders at the level of clinical intent becomes a shared clinical resource: several clinicians may hold outstanding requests of differing urgency, and execution is punctuated by confirmation gates at which the robot waits on a human and by engagement steps that cannot safely be interrupted. This paper formalizes the resulting scheduling problem together with the safety layer that it necessitates. Methods We present (i) a task model in which an intent-level order expands into primitives carrying resource locks, physician confirmation gates, and an explicit interruptibility partition; (ii) the Clinical-Priority Scheduler (CP-Sched), which combines urgency weighting, aging, travel awareness, and class-relative escalation and preempts only at safe interruption points; and (iii) a safety supervisor specified as a network of timed automata and verified exhaustively for a single robot serving one order at a time, with independent reproduction in the TLA+ model checker TLC. All task timings in the 1,590 discrete-event simulation runs are modeling assumptions, not hardware measurements. Results Across 1,080 runs spanning two ward sizes and three utilization levels, CP-Sched reduced the 95th-percentile time for urgent orders to bedside from 347 s to 215 s at moderate utilization, a 38% reduction relative to the strongest of four baselines; all comparisons survived Holm’s correction at p < 0.0001 under both the paired Wilcoxon signed-rank and unpaired Mann–Whitney tests (rank-biserial effect sizes: 0.93–1.00 paired, 0.66–0.93 unpaired). A further 510 runs showed that aging alone cannot bound the waiting time and that escalation at a fixed absolute horizon restores a guarantee only by inflating the urgent tail at saturation. All five clinical invariants hold under the supervisor and each is violable without it, so none is vacuous. Runtime enforcement eliminated all 757 unsafe interruptions observed in the unshielded ablation at a cost of 2.1–35.4 s in the median urgent tail. Discussion The enforcement cost is small but systematic at light and moderate loads and undetectable at saturation, which supports keeping the safety layer independent of the scheduling policy. The formal guarantee covers a single-order model, and absolute timings require calibration on a physical platform.
+
+### Evidence #14 [paper] Responsibility without a map: defining oversight of automated result release in the medical laboratory.
+Authors: Said İncir, Kerim Erhan Palaoğlu, Osman Oğuz
+Venue: Clinical Chemistry and Laboratory Medicine (CCLM)
+Year: 2026
+Link: https://doi.org/10.1515/cclm-2026-1371
+Still open/current: yes
+Abstract:
+Laboratory specialists have been assigned responsibility for algorithmically assisted reporting without an operational definition of what responsible oversight means. Results pass largely through rule-based approval systems, and increasingly through probabilistic models, yet the obligation attached to the specialist's name on the report has never been restated. Taking the position of the specialist who signs rather than the regulator who writes, and starting from requirements the discipline already accepts, we derive four capacities on which approving a result depends: designing the release logic and making it legible, anticipating where it will fail, correcting it when it does, and detecting that it has failed. These are not properties of a technology. Every system sits on a gradient whose position depends less on whether it uses machine learning than on what the laboratory has recorded about it. The oversight problem therefore did not arrive with machine learning but with automation, and most of what is now asked of laboratories in respect of artificial intelligence was already owed in respect of autoverification. Mapped against the four capacities, current frameworks require documentation and change control, address detection only in general terms, and nowhere require a laboratory to state in advance which results may be released without human review. Where laboratories have been asked, they report holding few of the records by which compliance could be shown. We propose a set of such records, identify what a single laboratory can and cannot reasonably do, and set out the questions the profession has not yet answered.
+
+### Evidence #15 [paper] Assigned roles change how clinical AI agents allocate shared resources
+Authors: A. Gorenshtein, M. Omar, Y. Barash, J. B. Kruskal, M. Ahmed, O. Brook, E. Klang
+Venue: medRxiv
+Year: 2026
+Link: https://www.semanticscholar.org/paper/2e795227d001fc2dbe836d8700e35fc3bfdd8760
+Still open/current: yes
+Abstract:
+Clinical AI agents may be assigned to individual patients, but hospital resources are shared across many patients. We tested what agents do when helping their assigned patient would violate the hospital's rule for a scarce resource. We analyzed 22,916 simulated cases comprising 274,992 logged agent actions across 20 AI models. In each scenario, the agent could claim a scarce resource for its patient even though the hospital rule gave another patient priority. We varied only the agent's assigned role, from responsibility for the whole ward to strong advocacy for one patient. Violations of the hospital rule rose from 32.5% under whole-ward responsibility to 69.4% under strong patient advocacy, a 36.9-point increase (95% CI, 25.7-48.0). Agents correctly identified which patient should receive the resource in 95.7% of tests, yet still took it for their own patient in 65.9% of those episodes. Asking the agent to apply its own allocation judgment immediately before acting reduced violations to 0-2% in a three-model follow-up experiment. Assigned roles can shape how clinical AI agents use shared hospital resources, even when they identify the correct priority patient. Patient-focused agents should not independently control shared resources without an allocation check.
+
+### Evidence #16 [paper] AI Appointment Scheduling Built Around Healthcare Operations
+Authors: NATHAN ALLEN
+Venue: Zenodo (CERN European Organization for Nuclear Research)
+Year: 2026
+Link: https://doi.org/10.5281/zenodo.21769361
+Still open/current: yes
+Abstract:
+A patient appointment call may sound simple, but the operational workflow behind it is not. This visual presentation from Gyan Solutions Health & Life Sciences explores how an AI-enabled appointment scheduling assistant can support real clinic operations. It illustrates patient identity verification, provider availability checks, appointment rules, EHR/PMS updates, confirmation steps, audit visibility, and structured human handoffs when staff review is required. The presentation includes examples of successful appointment booking and failed-verification handling, showing how automation can stop when required information cannot be confirmed. Its focus is not replacing clinic teams, but supporting repetitive scheduling activities while keeping staff involved in exceptions and decisions requiring human judgment. The resource is intended for healthcare operations leaders, clinic administrators, scheduling teams, digital transformation professionals, and technology decision-makers evaluating practical applications of voice AI and workflow automation in healthcare. Topics covered: • AI appointment scheduling• Healthcare call-intake workflows• Patient identity verification• Provider calendar and scheduling rules• EHR/PMS workflow integration• Appointment confirmations• Audit visibility• Human escalation and staff handoff• Healthcare operations advisory• Technology and AI implementation Gyan Solutions is a Detroit-area operations consulting and systems implementation firm helping mid-sized, process-heavy organizations align workflows, systems, data, reporting, and decision-making. Our approach begins with Operational Advisory, followed by separately scoped Technology & AI Implementation where needed.
+
+### Evidence #17 [paper] AI system helps lab devices 'talk' with each other - streamlining research.
+Authors: Glickman, Kaia
+Venue: Nature
+Year: 2026
+Link: https://pubmed.ncbi.nlm.nih.gov/42786214/
+Still open/current: yes
+
+### Evidence #18 [paper] Local AI agent brings tumor board expertise to hematological malignancies.
+Authors: Sha Yu
+Venue: Nature Cancer
+Year: 2026
+Link: https://doi.org/10.1038/s43018-026-01228-w
+Still open/current: yes
+
+### Evidence #19 [paper] A Seneschal for the Research Computing Desk
+Authors: Charles E. Forsyth III
+Venue: Zenodo (CERN European Organization for Nuclear Research)
+Year: 2026
+Link: https://doi.org/10.5281/zenodo.23752272
+Still open/current: yes
+Abstract:
+Since September 2026 one AI agent, Hermes, has done most of the drafting behind my job as Director of Research Computing at UC Riverside. I call it my seneschal, the old word for a steward who ran a household in the owner's name and answered to the owner. It drafts email, ticket notes and ledger entries. I approve the exact text before anything leaves. Two of my tools enforce that approval in code. On the path I use most, it is a written rule the agent follows. On 28 October 2026 the work ledger picked up 15 entries. Eleven record an email that went out after I approved the text. In nine of those the agent says it then found the message in my Sent folder, which is the agent checking itself. None of the 11 mentions the code-enforced composer. I trust the setup because of the approval step and the log, and the log is less complete than I would like. Field Notes technical report. Web edition: https://charles-forsyth.github.io/papers/2026-10-29-a-seneschal-for-the-research-computing-desk.html. This record holds the PDF (ACM sigconf, PDF/A-2b) and the LaTeX source.
+
+### Evidence #20 [paper] A maturity model for AI-augmented clinical biochemistry: the BASM framework for diagnostic stewardship, algorithmic governance, and health-service outcomes
+Authors: Mobin Sokhanvar, Alireza Nourazarian
+Venue: BMC Health Services Research
+Year: 2026
+Link: https://doi.org/10.1186/s12913-026-15923-y
+Still open/current: yes
+Abstract:
+Clinical biochemistry generates approximately 70% of the objective data used in medical decision-making, yet the integration of artificial intelligence (AI), machine learning, and large language models (LLMs) into laboratory operations remains fragmented. Existing digital-health maturity constructs (HIMSS EMRAM, HITI, CAMM) do not jointly address analytical metrology, algorithmic lifecycle governance, and clinical outcome accountability, leaving laboratories without a structured roadmap for AI-augmented diagnostic stewardship. To develop and face-validate the biochemistry–AI Stewardship Maturity (BASM) framework, a system-level maturity model that links laboratory analytics, AI governance, and health-service outcomes across five progressive tiers. A PRISMA-ScR-guided scoping review of six databases (MEDLINE, Embase, Scopus, Web of Science, IEEE Xplore, Cochrane) covering January 2022–July 2026 identified 1,482 records; 29 sources were retained after dual-independent screening (Cohen’s κ = 0.86). Charted evidence was triangulated with IFCC, ADLM, CAP, and CLSI position statements, and consolidated into a seven-dimension rubric. Face validity was assessed with five laboratory directors, and structural comparisons were performed against four precedent maturity models. BASM operationalizes maturity across seven dimensions—analytical foundations, data infrastructure, algorithmic lifecycle governance, diagnostic stewardship, workforce competency, equity and safety, and outcome accountability—resolved into five ordinal tiers (BASM-1 to BASM-5) with 12–24-month transition milestones. A chain of custody aggregation rule prevents high analytical scores from masking governance or equity deficits. Alignment with TRIPOD + AI, DECIDE-AI, and TRIPOD-LLM reporting standards is embedded at tiers 3–5. BASM provides laboratories, health systems, and regulators with an actionable, standards-aligned instrument to plan, benchmark, and audit AI-augmented diagnostic stewardship. A multi-institutional modified-Delphi validation is the priority next step.
+
+### Evidence #21 [paper] Reply to: Clinician engagement modifies effectiveness of AI enabled ECG screening
+Authors: Alberto Calleri, Yiğit Yazarkan, Douglas A. Simonetto
+Venue: npj Digital Medicine
+Year: 2026
+Link: https://doi.org/10.1038/s41746-026-03096-1
+Still open/current: yes
+Abstract:
+Chen highlights the importance of distinguishing algorithmic performance from deployment stability in AI-enabled screening. Drawing on a post hoc analysis evaluating AI-enabled ECG screening for chronic liver disease in primary care, we discuss how clinician engagement, workflow integration, and alert burden may influence the translation of AI algorithms into clinical practice. These observations reinforce the view that implementation is a key determinant of the real-world effectiveness of AI-enabled care.

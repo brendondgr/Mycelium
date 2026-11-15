@@ -164,3 +164,23 @@ of all three repetitions, unchanged, with the verifier as changed on
   deferred.
 - **The rated `main` answers were not regenerated.** Raters judge what the old
   verifier produced.
+
+## Regenerated answers after the fixes (Amendment 5, 2026-11-15)
+
+Generated 05:40–05:50 UTC on the round-two commit (contains `60ae301`), 3 turns
+in flight, `AGENT_PARALLEL_CALLS=0`; the instance model behind `default-model`
+had changed since round one (it now self-reports as Google-trained; see
+`EXP-2026-11-018/env/hardware.md`), so these are not a like-for-like re-run of
+round one's model.
+
+| tag `fix1` | answers | errors | median s | mean s | mean tokens | repairs | verdicts not ok |
+|---|---|---|---|---|---|---|---|
+| arm (a) | 50 | 0 | 14.7 | 17.3 | 14,683 | 0 | 0 |
+| arm (b) (budget 14,683, the arm (a) mean) | 50 | 0 | 14.5 | 15.8 | 9,260 | — | — |
+
+The checker flagged nothing in any of the 50 Mylo answers (round one: 1 in
+50 per run). Blinded sheets for both arms are in `data/sheets_fix1/` (keys
+`data/key_fix1.csv`, `data/removed_key_fix1.csv`); nobody has rated them. A
+second model's sentence-by-sentence reading of all 100 is EXP-2026-11-020 5c.
+The preflight answer (`data/arm_a_preflight-r2.jsonl`, 11.5 s) is counted
+nowhere. The 51 demo threads were deleted at 07:10 UTC.
