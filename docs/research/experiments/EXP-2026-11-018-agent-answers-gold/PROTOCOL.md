@@ -176,3 +176,28 @@ real labs (one fictional lab, its two projects and five members, on the live
 corpus). C-033 and C-034 need people and stay `unsupported`; C-043 to C-046
 are new rows beside them. Questions and grader were written by the
 implementing agent.
+
+## Amendment 1 — 2026-11-15 ~06:20 UTC, during the run, before any grading was recorded
+
+Prompted by EXP-2026-11-016's Amendment 1: a turn can end with `ask_user`;
+the person then sees a clarifying question (an event of type `question`) and
+the turn has no final answer. The pre-registered grading treats such a job as
+**failed** (`no_final_text`), retries it once, and scores a job with no
+successful attempt as 0 — and, for an unanswerable question, as *not* stating
+a fact (`states_fact` 0) and not declining (full credit 0). That grading stays
+the primary one and is unchanged. Added, and reported beside it:
+
+1. **Count of turns that end on a question**, per arm and per attempt
+   (`state == "waiting"`), and the question texts, read from the threads'
+   events before they are deleted (`code/asked.py` → `data/asked.jsonl`).
+2. **First-attempt grading** (`grade.py --first-attempt`): only each job's
+   first attempt is graded, so the retry's second chance is removed; a first
+   attempt that ended on a question scores 0 and states no fact. This shows how
+   much the retry rule moves each arm.
+3. A turn that ended on a question is reported as its own category
+   (`asked`) in RESULTS.md, separate from harness failures (exception,
+   deadline).
+
+Partial grades were looked at once mid-run (from a scratch copy, to check
+that the grader reads real answers as intended); no question, gold value,
+grader rule or bar was changed.

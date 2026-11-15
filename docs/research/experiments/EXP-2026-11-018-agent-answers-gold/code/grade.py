@@ -177,12 +177,16 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default="data/runs.jsonl")
     ap.add_argument("--suffix", default="")
+    # Amendment 1: grade each job's first attempt only (no retry).
+    ap.add_argument("--first-attempt", action="store_true")
     args = ap.parse_args()
     gold_doc = json.loads((EXP / "data" / "gold.json").read_text())
     golds = {q["id"]: q for q in gold_doc["questions"]}
     rows = [json.loads(x) for x in (EXP / args.runs).read_text().splitlines() if x.strip()]
     jobs: dict[tuple, list] = {}
     for r in rows:
+        if args.first_attempt and r.get("attempt", 1) != 1:
+            continue
         jobs.setdefault((r["arm"], r["rep"], r["id"]), []).append(r)
     graded = []
     for (arm, rep, qid), attempts in sorted(jobs.items()):
@@ -191,7 +195,9 @@ def main() -> int:
         q = golds[qid]
         base = {"arm": arm, "rep": rep, "id": qid, "kind": q["kind"],
                 "attempts": len(attempts), "failed_attempts": sum(1 for r in attempts if r.get("failed")),
-                "failed": ok is None}
+                "failed": ok is None,
+                "asked_attempts": sum(1 for r in attempts if r.get("state") == "waiting"),
+                "asked": ok is None and any(r.get("state") == "waiting" for r in attempts)}
         if ok is None:
             g = {"primary": {"recall": 0, "precision": 0, "full": 0} if q["kind"] != "unanswerable"
                  else {"states_fact": 0, "declines": 0, "full": 0}}
@@ -236,6 +242,8 @@ def main() -> int:
             k_full = sum(g[grading]["full"] for g in ans)
             entry = {
                 "runs": len(runs), "failed_jobs": sum(g["failed"] for g in runs),
+                "asked_jobs": sum(g["asked"] for g in runs),
+                "asked_attempts": sum(g["asked_attempts"] for g in runs),
                 "failed_attempts": sum(g["failed_attempts"] for g in runs),
                 "answerable_full": {"k": k_full, "n": len(ans), "rate": round(k_full / len(ans), 4) if ans else None,
                                     "wilson95": wilson(k_full, len(ans)),

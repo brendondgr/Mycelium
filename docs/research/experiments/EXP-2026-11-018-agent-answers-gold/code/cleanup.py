@@ -18,8 +18,16 @@ VISITORS = ("EXP-2026-11-018", "EXP-2026-11-020", "EXP-2026-11-013")
 mylo_turn.setup()
 from tools.agent.models import AgentThread  # noqa: E402
 
+from apps.accounts.models import AuditEvent  # noqa: E402
+
 rows = AgentThread.objects.filter(demo_visitor__in=VISITORS)
 counts = {v: rows.filter(demo_visitor=v).count() for v in VISITORS}
+# Audited agent functions (org_lab_members, org_person, knowledge_*) write an
+# audit row per call, targeting the thread: counted, never deleted.
+ids = [str(pk) for pk in rows.values_list("pk", flat=True)]
+audits = AuditEvent.objects.filter(target_type="agent_call", target_id__in=ids)
+counts["audit_rows_by_action"] = {a: audits.filter(action=a).count()
+                                  for a in sorted(set(audits.values_list("action", flat=True)))}
 if "--dry-run" not in sys.argv:
     deleted, by_model = rows.delete()
     counts["deleted_rows"] = by_model
