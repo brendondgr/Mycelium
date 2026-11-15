@@ -153,3 +153,16 @@ $R $E/code/analyse.py
 
 The two counted processes share the database (each run has its own member;
 the scoping above keeps their passes apart; `evolve` is the only global step).
+
+## Amendment 1 — 2026-11-15 06:30 UTC, during the first counted process
+
+EXP-2026-11-016 found (its Amendment 1) that round one's grader reads only the
+final text and misses a clarifying question (`ask_user`), which the reader
+also sees. Here, of the first 52 counted runs, **none** called `ask_user` and
+none had an empty answer, so no grade so far is affected. From the second
+process (`--tag main2`) on, `lifecycle.ask` appends any clarifying question to
+the graded answer and logs it (`question_text`) with the asking thread's id.
+For the first process (`--tag main`, already running with the old code), the
+analysis counts the runs whose turn called `ask_user` (`ended_on_question`)
+and reports them as not fully graded at the answer point; their rows and
+recall points are graded as before.

@@ -217,6 +217,12 @@ def ask(user, text, base, scope=None):
                               str(e.payload.get("content") or "")) for e in events
                              if e.type == "tool_result"]
     out["recall_text"] = out["_recall_text"][:2000]
+    # Amendment 1: a clarifying question is part of the reply the reader sees.
+    questions = [str(e.payload.get("question") or "") for e in events if e.type == "question"]
+    out["question_text"] = "\n".join(q for q in questions if q)
+    if out["question_text"]:
+        out["text"] = "\n".join(x for x in [out.get("text") or "", out["question_text"]] if x)
+    out["thread"] = str(thread.pk)
     return out
 
 
