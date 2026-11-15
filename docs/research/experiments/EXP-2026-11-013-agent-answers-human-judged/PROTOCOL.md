@@ -199,3 +199,35 @@ missed one planted amount (`rep3` co04, "$3.8 million") because the number
 reader parsed a DOI's digits as 3,770,855. Links and DOIs are now left out of
 the evidence's numbers. `data/rescore_v3.json` is the run after that fix;
 the run before it differs only in that one copy.
+
+## Amendment 5 — 2026-11-15, regenerate the 50 answers after the round-one fixes (tag `fix1`)
+
+Written and committed before any `fix1` answer was generated, as step 4 of
+Phase 3 of `docs/plans/20261115-mylo-evaluation-round-two.md`.
+
+1. **What.** The same 50 questions (`code/questions.json`, unchanged), both
+   arms, one repetition each, on the current commit (which contains `60ae301`,
+   the fixes from round one):
+   - arm (a): `generate.py --arm a --conc 3 --tag fix1`;
+   - arm (b): `generate.py --arm b --budget-from data/arm_a_fix1.jsonl --tag fix1`
+     (same budget rule as round one: the mean total tokens of the same tag's
+     arm (a)).
+   Concurrency is 3 turns (not 4) because three experiments share the model
+   server tonight; the environment adds `AGENT_PARALLEL_CALLS=0` so a turn
+   never has more than one request in flight (the function calls it
+   serialises are database reads; the answer path is unchanged).
+2. **Sheets.** `make_sheets.py --tag fix1 --sheets sheets_fix1 --key-suffix _fix1`
+   writes the blinded sheets under `data/sheets_fix1/` and the keys to
+   `data/key_fix1.csv` and `data/removed_key_fix1.csv`. `make_sheets.py` gained
+   these two options in this amendment; their defaults reproduce round one's
+   paths, so round one's sheets and keys are untouched. Nobody rates `fix1`
+   tonight; the sheets are ready if a rater appears.
+3. **Use.** These 100 answers are the input of `EXP-2026-11-020` 5c (a second
+   model reads each against the evidence the producer had). Nothing in this
+   experiment's round-one numbers is recomputed.
+4. **Preflight, not counted.** `data/arm_a_preflight-r2.jsonl` is one arm (a)
+   answer to `ta01` (11.5 s), generated 2026-11-15 05:33 UTC as the round-two
+   preflight (`generate.py --arm a --only ta01 --tag preflight-r2`). It checked
+   that the harness still runs; it is kept and counted nowhere.
+5. **Failures.** A question whose generation raises is recorded with its
+   error and not retried; the count of failed rows is reported.

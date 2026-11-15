@@ -111,11 +111,15 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="main")
     ap.add_argument("--raters", type=int, default=3)
+    # Amendment 5: regenerated answers get their own sheets and key; the
+    # defaults reproduce round one's paths exactly.
+    ap.add_argument("--sheets", default="sheets")
+    ap.add_argument("--key-suffix", default="")
     args = ap.parse_args()
     qs = {q["id"]: q for q in json.loads((HERE / "code" / "questions.json").read_text())["questions"]}
     a = {r["id"]: r for r in load(HERE / "data" / f"arm_a_{args.tag}.jsonl") if "error" not in r}
     b = {r["id"]: r for r in load(HERE / "data" / f"arm_b_{args.tag}.jsonl") if "error" not in r}
-    sheets = HERE / "data" / "sheets"
+    sheets = HERE / "data" / args.sheets
     ev_dir = sheets / "evidence"
     ev_dir.mkdir(parents=True, exist_ok=True)
     items, key, removed = [], [], []
@@ -179,11 +183,11 @@ def main() -> int:
                 w.writerow({"removed_id": rid, "kind": r["kind"], "item": r["item"],
                             "sentence": r["sentence"], "evidence_file": f"evidence/{r['aid']}.md",
                             "supported": "", "notes": ""})
-    with (HERE / "data" / "key.csv").open("w", newline="") as fh:
+    with (HERE / "data" / f"key{args.key_suffix}.csv").open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=["answer_id", "question_id", "category", "arm"])
         w.writeheader()
         w.writerows(key)
-    with (HERE / "data" / "removed_key.csv").open("w", newline="") as fh:
+    with (HERE / "data" / f"removed_key{args.key_suffix}.csv").open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=["removed_id", "answer_id", "question_id", "kind", "flag", "action", "item"])
         w.writeheader()
         for r in removed:
