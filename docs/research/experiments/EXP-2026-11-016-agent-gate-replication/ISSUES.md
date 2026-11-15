@@ -42,3 +42,9 @@ model, and 2 of its 18 gate-arm control turns, ended after a few function
 calls with neither final text nor a clarifying question. The second model did
 this 0 times in 288. These runs are invalid (Amendment 1) and counted
 separately. Not investigated further inside the run.
+
+Mechanism, read from one stored thread (seed 101, gate, instance): after a
+`load_functions` result the model's next step returned 13 completion tokens
+with no text and no function call; the loop's single `empty_retry` repair got
+the same; the loop stored an empty final assistant message, the answer
+checker returned `ok`, and the thread went idle.
