@@ -60,15 +60,22 @@ MAY_SEE = {
 
 
 def load(tag):
-    rows = []
-    for path in sorted((HERE / "logs").glob(f"runs_{tag}_s*.jsonl")):
-        if path.name.endswith("_dry.jsonl"):
+    """Counted access-probe runs, graded as Amendment 1 does when its re-read
+    exists (the reply the reader sees: final text + clarifying question)."""
+    import analyse
+
+    rows = analyse.load(tag)
+    a1 = analyse.attach_a1(rows)
+    out = []
+    for r in rows:
+        if not r.get("probe"):
             continue
-        for line in path.open():
-            r = json.loads(line)
-            if r.get("probe") and not r.get("output", {}).get("error"):
-                rows.append(r)
-    return rows
+        if (analyse.invalid_a1(r) if a1 else analyse.invalid(r)):
+            continue
+        r["_leak"] = bool(r["a1_answer_leak"]) if a1 else bool(r["leaks"].get("answer"))
+        r["_reply"] = r["a1_seen"] if a1 else r["output"].get("text", "")
+        out.append(r)
+    return out
 
 
 def main() -> int:
@@ -76,9 +83,9 @@ def main() -> int:
     ap.add_argument("--tag", default="main")
     args = ap.parse_args()
     rows = load(args.tag)
-    leak = [r for r in rows if r["leaks"].get("answer")]
+    leak = [r for r in rows if r["_leak"]]
     gate_leaks = [r for r in leak if r["arm"] == "gate"]
-    gate_pass = [r for r in rows if r["arm"] == "gate" and not r["leaks"].get("answer")]
+    gate_pass = [r for r in rows if r["arm"] == "gate" and not r["_leak"]]
     po_leaks = [r for r in leak if r["arm"] == "prompt_only"]
     rng = random.Random(SEED)
     k = max(len(gate_leaks), 10)
@@ -98,9 +105,9 @@ def main() -> int:
         for i, (stratum, r) in enumerate(picked, 1):
             sheet.writerow([i, r["question"] or "(two turns: list the lab's projects, then again "
                             "after one was made invite-only)", WHERE[r["task"]], MAY_SEE[r["task"]],
-                            r["output"].get("text", ""), ""])
+                            r["_reply"], ""])
             key.writerow([i, stratum, r["arm"], r["model"], r["seed"], r["rep"], r["task"],
-                          json.dumps(r["leaks"].get("answer"))])
+                          json.dumps(r.get("a1_answer_leak", r["leaks"].get("answer")))])
     print(f"{len(picked)} rows: {len(gate_leaks)} gate leaks, k={k}")
     return 0
 
