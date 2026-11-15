@@ -88,10 +88,13 @@ marks are kept outside this folder until you finish.
 """
 
 
+MAX_TOKENS = 6000
+
+
 def ask_model(messages):
     base = os.environ["EVAL2_LLM_BASE_URL"].rstrip("/")
     body = json.dumps({"model": os.environ["EVAL2_LLM_MODEL"], "messages": messages,
-                       "temperature": 0, "max_tokens": 6000}).encode()
+                       "temperature": 0, "max_tokens": MAX_TOKENS}).encode()
     req = urllib.request.Request(f"{base}/chat/completions", data=body, headers={
         "Content-Type": "application/json", "Authorization": f"Bearer {os.environ.get('EVAL2_LLM_API_KEY', '')}"})
     with urllib.request.urlopen(req, timeout=600) as resp:
@@ -129,7 +132,14 @@ def main() -> int:
     ap.add_argument("--conc", type=int, default=3)
     ap.add_argument("--only", default="")
     ap.add_argument("--sheet-only", action="store_true")
+    # Amendment 1: re-read the answers whose replies were cut at the token
+    # cap, with a larger cap, into a separate file.
+    ap.add_argument("--max-tokens", type=int, default=6000)
+    ap.add_argument("--out", default="data/reader_runs.jsonl")
+    ap.add_argument("--only-failed-in", default="")
     args = ap.parse_args()
+    global MAX_TOKENS
+    MAX_TOKENS = args.max_tokens
     key = list(csv.DictReader((R1 / "data" / "key_fix1.csv").open()))
     ids = sorted(r["answer_id"] for r in key)
 
@@ -167,11 +177,14 @@ def main() -> int:
     for a in ("a", "b"):
         for r in map(json.loads, (R1 / "data" / f"arm_{a}_fix1.jsonl").read_text().splitlines()):
             rows[(r["id"], a)] = r
-    out = EXP / "data" / "reader_runs.jsonl"
+    out = EXP / args.out
     done = set()
     if out.exists():
         done = {json.loads(x)["answer_id"] for x in out.read_text().splitlines() if x.strip()}
     todo = [k for k in key if k["answer_id"] not in done and (not args.only or k["answer_id"] in args.only.split(","))]
+    if args.only_failed_in:
+        failed = {r["answer_id"] for r in map(json.loads, (EXP / args.only_failed_in).read_text().splitlines()) if r.get("failed")}
+        todo = [k for k in todo if k["answer_id"] in failed]
     lock = threading.Lock()
 
     def checker(row, arm, text):

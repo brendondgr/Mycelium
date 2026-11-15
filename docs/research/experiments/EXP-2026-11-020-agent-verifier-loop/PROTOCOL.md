@@ -156,3 +156,18 @@ references flagged, or any control flagged, refutes C-049.
 5a's drafts are rule-built errors on round one's answers, not errors the
 model made; the repair is the real model's. 5c is one model's judgement of
 another's answers, not people's. One fictional lab, one instance model.
+
+## Amendment 1 — 2026-11-15 ~07:20 UTC, during 5c, before any 5c number was recorded
+
+The reader is a reasoning model and its reasoning counts against the
+pre-registered `max_tokens` of 6,000: on long answers the reply is cut before
+the JSON list closes, and the identical retry is cut the same way (2 of the
+first 18 answers). The pre-registered rule stands — those answers are
+`failed` and left out of the primary 5c numbers, which are reported with the
+failure count. Added: after the main pass, every failed answer is read once
+more with `max_tokens` 16,000 (`reader.py --max-tokens 16000
+--only-failed-in data/reader_runs.jsonl --out data/reader_runs_amend1.jsonl`),
+and `analyse.py` reports a second 5c (`5c_amend1`) in which a failed row is
+replaced by its re-read when that parsed. Both are reported; nothing else in
+the prompt, matching rule or sample changes. The calibration sheet is
+unaffected.

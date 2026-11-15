@@ -103,6 +103,12 @@ def score_5a():
                     "error_flagged": eflag, "token_in_final": st, "repair_s": r.get("repair_s"),
                     "repair_tokens": r.get("repair_tokens"), "real_calls": len(r.get("real_calls") or []),
                     "final_action": vlast.get("action"), "functions": r.get("functions")})
+    # Exploratory (added after the run, in no claim): how much of the draft
+    # the repaired answer keeps, by length.
+    sample = {x["draft_id"]: x for x in load("forced_sample.jsonl")}
+    for p, r in zip(per, rows):
+        if "error" not in r and r["draft_id"] in sample:
+            p["length_ratio"] = round(len(r.get("final_text") or "") / max(1, len(sample[r["draft_id"]]["draft"])), 3)
     out = {"n_rows": len(rows), "by_class": {}, "per_draft": per}
     for cls in ("cite", "figure", "factline", "all"):
         sub = [p for p in per if cls == "all" or p["cls"] == cls]
@@ -122,6 +128,9 @@ def score_5a():
             "repair_s_mean": round(statistics.mean(rs), 2) if rs else None,
             "repair_tokens_median": round(statistics.median(rt)) if rt else None,
             "repair_tokens_mean": round(statistics.mean(rt)) if rt else None,
+            "length_ratio_median": round(statistics.median(p["length_ratio"] for p in fl if "length_ratio" in p), 3) if fl else None,
+            "final_under_half_of_draft": sum(1 for p in fl if p.get("length_ratio", 1) < 0.5),
+            "repair_called_functions": sum(1 for p in fl if p.get("functions")),
         }
     return out
 
@@ -158,8 +167,16 @@ def matches_checker(detail, snippets):
 KINDS = ("sentence", "fact_line", "figure", "claim", "other")
 
 
-def score_5c():
+def merged_amend1():
+    """Amendment 1: a row that failed at the 6,000-token cap is replaced by its
+    re-read at the larger cap, when that re-read parsed."""
     rows = load("reader_runs.jsonl")
+    again = {r["answer_id"]: r for r in load("reader_runs_amend1.jsonl") if not r.get("failed")}
+    return [again.get(r["answer_id"], r) if r.get("failed") else r for r in rows]
+
+
+def score_5c(rows=None):
+    rows = load("reader_runs.jsonl") if rows is None else rows
     if not rows:
         return {"status": "not run"}
     out = {"n_rows": len(rows), "failed": sum(1 for r in rows if r.get("failed")), "by_arm": {}}
@@ -220,6 +237,8 @@ def score_5c():
 
 def main():
     m = {"5a": score_5a(), "5b": score_5b(), "5c": score_5c()}
+    if load("reader_runs_amend1.jsonl"):
+        m["5c_amend1"] = score_5c(merged_amend1())
     a = m["5a"]["by_class"]["all"]
     b = m["5b"]
     claims = {
@@ -248,27 +267,30 @@ def main():
                      "value": e["still_rate"], "lo": 0, "hi": e["still_upper95"]})
         rows.append({"part": "5a", "group": cls, "metric": "repair_s_median", "k": "", "n": e["flagged"], "value": e["repair_s_median"], "lo": "", "hi": ""})
         rows.append({"part": "5a", "group": cls, "metric": "repair_tokens_median", "k": "", "n": e["flagged"], "value": e["repair_tokens_median"], "lo": "", "hi": ""})
+        rows.append({"part": "5a", "group": cls, "metric": "exploratory_final_under_half_of_draft", "k": e["final_under_half_of_draft"], "n": e["flagged"],
+                     "value": round(e["final_under_half_of_draft"] / e["flagged"], 4) if e["flagged"] else "",
+                     "lo": wilson(e["final_under_half_of_draft"], e["flagged"])[0], "hi": wilson(e["final_under_half_of_draft"], e["flagged"])[1]})
     for arm in ("surfaced", "read", "cleared"):
         e = b.get(arm) or {}
         if e:
             rows.append({"part": "5b", "group": arm, "metric": "flag_unread", "k": e["flag_unread"], "n": e["valid"],
                          "value": round(e["flag_unread"] / e["valid"], 4) if e["valid"] else "",
                          "lo": e["flag_unread_wilson95"][0], "hi": e["flag_unread_wilson95"][1]})
-    c = m["5c"]
-    for arm, e in (c.get("by_arm") or {}).items():
-        rows.append({"part": "5c", "group": f"arm_{arm}", "metric": "unsupported_per_answer_mean", "k": e["unsupported"], "n": e["answers"],
-                     "value": e["unsupported_per_answer_mean"], "lo": "", "hi": ""})
-        rows.append({"part": "5c", "group": f"arm_{arm}", "metric": "answers_with_unsupported", "k": e["answers_with_unsupported"], "n": e["answers"],
-                     "value": round(e["answers_with_unsupported"] / e["answers"], 4) if e["answers"] else "",
-                     "lo": e["answers_with_unsupported_wilson95"][0], "hi": e["answers_with_unsupported_wilson95"][1]})
-        rows.append({"part": "5c", "group": f"arm_{arm}", "metric": "checker_recall_model_judged", "k": "", "n": e["unsupported"],
-                     "value": e["checker_recall_model_judged"], "lo": e["checker_recall_wilson95"][0], "hi": e["checker_recall_wilson95"][1]})
-        for kind, t in e["by_kind"].items():
-            rows.append({"part": "5c", "group": f"arm_{arm}:{kind}", "metric": "unsupported", "k": t["unsupported"], "n": t["details"],
-                         "value": round(t["unsupported"] / t["details"], 4) if t["details"] else "", "lo": "", "hi": ""})
-            rows.append({"part": "5c", "group": f"arm_{arm}:{kind}", "metric": "checker_flagged_of_unsupported", "k": t["checker_flagged"], "n": t["unsupported"],
-                         "value": round(t["checker_flagged"] / t["unsupported"], 4) if t["unsupported"] else "",
-                         "lo": wilson(t["checker_flagged"], t["unsupported"])[0], "hi": wilson(t["checker_flagged"], t["unsupported"])[1]})
+    for part, c in (("5c", m["5c"]), ("5c_amend1", m.get("5c_amend1") or {})):
+      for arm, e in (c.get("by_arm") or {}).items():
+          rows.append({"part": part, "group": f"arm_{arm}", "metric": "unsupported_per_answer_mean", "k": e["unsupported"], "n": e["answers"],
+                       "value": e["unsupported_per_answer_mean"], "lo": "", "hi": ""})
+          rows.append({"part": part, "group": f"arm_{arm}", "metric": "answers_with_unsupported", "k": e["answers_with_unsupported"], "n": e["answers"],
+                       "value": round(e["answers_with_unsupported"] / e["answers"], 4) if e["answers"] else "",
+                       "lo": e["answers_with_unsupported_wilson95"][0], "hi": e["answers_with_unsupported_wilson95"][1]})
+          rows.append({"part": part, "group": f"arm_{arm}", "metric": "checker_recall_model_judged", "k": "", "n": e["unsupported"],
+                       "value": e["checker_recall_model_judged"], "lo": e["checker_recall_wilson95"][0], "hi": e["checker_recall_wilson95"][1]})
+          for kind, t in e["by_kind"].items():
+              rows.append({"part": part, "group": f"arm_{arm}:{kind}", "metric": "unsupported", "k": t["unsupported"], "n": t["details"],
+                           "value": round(t["unsupported"] / t["details"], 4) if t["details"] else "", "lo": "", "hi": ""})
+              rows.append({"part": part, "group": f"arm_{arm}:{kind}", "metric": "checker_flagged_of_unsupported", "k": t["checker_flagged"], "n": t["unsupported"],
+                           "value": round(t["checker_flagged"] / t["unsupported"], 4) if t["unsupported"] else "",
+                           "lo": wilson(t["checker_flagged"], t["unsupported"])[0], "hi": wilson(t["checker_flagged"], t["unsupported"])[1]})
     with (D / "metrics.csv").open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=["part", "group", "metric", "k", "n", "value", "lo", "hi"])
         w.writeheader()
