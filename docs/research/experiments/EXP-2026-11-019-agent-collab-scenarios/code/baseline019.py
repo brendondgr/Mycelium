@@ -116,8 +116,12 @@ def people_directory(caller, query):
     evidence: dict[int, list[str]] = {}
     low = query.casefold().strip()
     for i, e in enumerate(s["edges"]):
-        lexical = bool(low) and (low in (e[3] or "").casefold() or (e[3] or "").casefold() in low)
-        if concept[i] >= settings.COLLAB_CONCEPT_MATCH_COSINE or (lexical and len(e[3] or "") > 3):
+        surface = (e[3] or "").casefold()
+        # The words themselves: the query inside a concept, or a concept of at
+        # least ten characters inside the query (not "method" in "the call's
+        # method" — the dry run's artefact, fixed before the arm's counted run).
+        lexical = bool(low) and (low in surface or (len(surface) >= 10 and surface in low))
+        if concept[i] >= settings.COLLAB_CONCEPT_MATCH_COSINE or lexical:
             score[e[0]] = max(score.get(e[0], 0.0), float(concept[i]))
             line = f"{e[2].replace('_', ' ')} {e[3]} [{TIER.get(e[1], e[1])}]"
             if line not in evidence.setdefault(e[0], []):

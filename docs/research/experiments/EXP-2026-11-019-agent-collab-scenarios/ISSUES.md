@@ -30,4 +30,10 @@
 
 ## During the run
 
-(appended as it happens)
+1. **Baseline directory, lexical match narrowed before the baseline's first
+   counted run** (commit after `c52f5a00`). The dry run's query "the call's
+   method" matched every concept called "method" because the directory also
+   accepted any concept whose words appear inside the query. It now accepts a
+   concept inside the query only when the concept is at least ten characters
+   long; the embedding bars are unchanged. Only the baseline arm's harness
+   changed; the gate arm (already running) does not use it.
