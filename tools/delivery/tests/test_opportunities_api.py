@@ -201,11 +201,12 @@ def test_grants_feed_accumulates_across_runs(client: APIClient):
     user = User.objects.create_user("u", password="x")
     client.force_authenticate(user)
     _score(user, _grant("old", "Old"), rank=1, run_at="2026-07-01T00:00:00", match=90)
-    _score(user, _grant("new", "New"), rank=1, run_at="2026-07-05T00:00:00", match=70)
+    _score(user, _grant("new", "New"), rank=2, run_at="2026-07-05T00:00:00", match=70)
 
     items = client.get("/api/opportunities/grants/").data["items"]
-    # Both runs' matches are present; unpinned rows order by match strength, so the
-    # older-but-stronger grant leads. generated_at reflects the most recent run.
+    # Both runs' matches are present; outside a slate, unpinned rows order by the
+    # raw score, so the older-but-stronger grant leads. (At equal scores the two
+    # tied and came back in whatever order the database chose.)
     assert [i["title"] for i in items] == ["Old", "New"]
 
 

@@ -20,6 +20,21 @@ Technical Skills: COBOL, assembly, FLOW-MATIC
 """
 
 
+@pytest.fixture(autouse=True)
+def _no_model(monkeypatch) -> None:
+    """These tests check the deterministic draft, so no call reaches a model.
+
+    With the live server up, the model rewords the areas and the assertions on
+    them pass or fail by its mood; with it down, the fallback runs anyway.
+    """
+    from apps.core import llm as llm_module
+
+    def offline(**_kwargs):
+        raise RuntimeError("no model in this test")
+
+    monkeypatch.setattr(llm_module, "build_llm_client", offline)
+
+
 @pytest.fixture
 def client() -> APIClient:
     return APIClient()

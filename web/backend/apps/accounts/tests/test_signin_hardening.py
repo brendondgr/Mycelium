@@ -390,7 +390,7 @@ def test_export_contains_only_own_data(user: User) -> None:
     text = response.content.decode()
     assert "MINE" in text
     assert "THEIRS" not in text and "bo@example.com" not in text
-    assert "pbkdf2" not in text and "argon2" not in text  # no password hash
+    assert not any(h in text for h in ("pbkdf2", "argon2", "md5$"))  # no hash
     works = body["records"]["accounts.AuthorWork.user"]
     assert [w["source_id"] for w in works] == ["MINE"]
     assert "accounts.Profile.user" in body["records"]

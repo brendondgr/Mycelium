@@ -163,3 +163,15 @@ def _verified_gate_off(settings):
 def _inline_password_reset_mail(settings):
     """Send reset mail inline, never through whatever broker the machine runs."""
     settings.PASSWORD_RESET_MAIL_ASYNC = False
+
+
+@pytest.fixture(autouse=True)
+def _fast_password_hasher(settings):
+    """Hash test passwords with MD5, not the deployment's PBKDF2.
+
+    PBKDF2's million rounds cost about 0.8 s per ``create_user``, and nearly
+    every test makes one, which more than doubled the suite's run time. The
+    suite never checks the hash's strength; ``test_signin_hardening`` checks
+    that no hash, of any scheme, leaves the server.
+    """
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

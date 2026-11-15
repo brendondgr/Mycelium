@@ -78,9 +78,10 @@ def test_each_step_turns_done_from_the_data():
     assert body["complete"] is True
 
 
-def test_an_unnamed_model_is_still_to_do(settings, monkeypatch):
+def test_an_unnamed_model_is_still_to_do(settings):
+    # The server table reads the model name from settings, not the environment.
     settings.LLM_ENABLED = True
-    monkeypatch.setenv("LLM_MODEL", "")
+    settings.LLM_MODEL = ""
     client, _ = _client(True)
     model = client.get(URL).json()["steps"]["model"]
     assert model["state"] == "todo"
