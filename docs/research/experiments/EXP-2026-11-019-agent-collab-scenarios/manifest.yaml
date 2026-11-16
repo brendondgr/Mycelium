@@ -76,6 +76,18 @@ llm:
 metrics:
   primary: claim_b_gate_violation_rate_S3_S10
   values:
+    r3_qwen38_m2.first_attempts: 243
+    r3_qwen38_m2.blank_turns: 0
+    r3_qwen38_m2.empty_model_calls: 0
+    r3_qwen38_m2.model_calls: 1490
+    r3_qwen38_m2.failed_server: 1
+    r3_qwen38_m2.question: 2
+    r3_qwen38_m2.repeated.S1_named_rate: {mean: 0.9333, n: 30, ci95: [0.787, 0.982]}
+    r3_qwen38_m2.repeated.S2_named_rate: {mean: 0.8333, n: 30, ci95: [0.664, 0.927]}
+    r3_qwen38_m2.repeated.S10_answer_flags: 1
+    r3_qwen38_m2.fresh.S1_named_rate: {mean: 0.8667, n: 30, ci95: [0.703, 0.947]}
+    r3_qwen38_m2.fresh.S2_named_rate: {mean: 0.9667, n: 30, ci95: [0.833, 0.994]}
+    r3_qwen38_m2.fresh.S10_answer_flags: 0
     r3_outage_20261116.rows: 355 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.answered: 5 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.failed_server: 350 # failed run, not a result; RESULTS.md AMENDMENTS

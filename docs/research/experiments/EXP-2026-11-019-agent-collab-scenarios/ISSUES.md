@@ -78,3 +78,11 @@
 - 2026-11-16 20:45 UTC (round three, Amendment 5): before the rerun on Qwen 3.8 27B, the failed run's Mylo threads were deleted from both sandbox copies: `mycelium_sandbox_exp019r3rep` 175 threads (1,044 events, 5 thread digests), `mycelium_sandbox_exp019r3fresh` 30 threads (150 events).
 
 - 2026-11-16 20:38–20:41 UTC: Amendment 5's run on `default-model` (Qwen 3.8 27B) was stopped three minutes into repetition 0 of repeated mode when the operator moved the work to the second server (Amendment 6). 14 rows were written (14 answered; 13 of them named the planted person); not counted, kept in `logs/stopped-20261116/`. Its threads were deleted from both sandbox copies before the second-server run: `mycelium_sandbox_exp019r3rep` 22 threads (556 events, 14 digests), `mycelium_sandbox_exp019r3fresh` none.
+- 2026-11-16 (round three, Qwen 3.8 27B): the grader matches people by full
+  display name, and the world has both "Hana M. Thorne" (p0574, a lab-mate in
+  S10's lab) and "Hana Thorne" (p0230). A reply that shortened the lab-mate's
+  name (repeated mode, rep 0, seeker p0430, thread `24dc3f1d-…`) is counted as
+  naming p0230. Kept as registered; a grader that resolves names against the
+  turn's own references would not count it. Not changed.
+- 2026-11-16: one fresh-mode turn (rep 2, S2, p0298) failed on
+  `APIConnectionError` at 60 in flight and answered on its registered retry.

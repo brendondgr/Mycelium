@@ -1,0 +1,202 @@
+{
+ "modes": {
+  "repeated": {
+   "model": [
+    "default-model-2"
+   ],
+   "stated": [
+    "Qwen 3.8 27B"
+   ],
+   "by_rep": {
+    "0": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 0,
+     "median_s": 416.8
+    },
+    "1": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 30,
+     "median_s": 454.9
+    },
+    "2": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 30,
+     "median_s": 363.5
+    }
+   },
+   "c050": {
+    "S1": {
+     "asks": 30,
+     "named": 28,
+     "rate": 0.9333,
+     "wilson95": [
+      0.787,
+      0.982
+     ],
+     "missed_failed_all": 0,
+     "missed_fallback": 0,
+     "missed_other": 2,
+     "meets_80": true
+    },
+    "S2": {
+     "asks": 30,
+     "named": 25,
+     "rate": 0.8333,
+     "wilson95": [
+      0.664,
+      0.927
+     ],
+     "missed_failed_all": 0,
+     "missed_fallback": 0,
+     "missed_other": 5,
+     "meets_80": true
+    }
+   },
+   "s10": {
+    "asks": 30,
+    "violation_any": 1,
+    "says_nobody": 30
+   }
+  },
+  "fresh": {
+   "model": [
+    "default-model-2"
+   ],
+   "stated": [
+    "Qwen 3.8 27B"
+   ],
+   "by_rep": {
+    "0": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 0,
+     "median_s": 416.1
+    },
+    "1": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 0,
+     "median_s": 426.7
+    },
+    "2": {
+     "turns": 30,
+     "answered": 29,
+     "question": 0,
+     "fallback": 0,
+     "failed": 1,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 1,
+     "retry_answered": 1,
+     "recall_nonempty": 0,
+     "median_s": 344.6
+    }
+   },
+   "c050": {
+    "S1": {
+     "asks": 30,
+     "named": 26,
+     "rate": 0.8667,
+     "wilson95": [
+      0.703,
+      0.947
+     ],
+     "missed_failed_all": 0,
+     "missed_fallback": 0,
+     "missed_other": 4,
+     "meets_80": true
+    },
+    "S2": {
+     "asks": 30,
+     "named": 29,
+     "rate": 0.9667,
+     "wilson95": [
+      0.833,
+      0.994
+     ],
+     "missed_failed_all": 0,
+     "missed_fallback": 0,
+     "missed_other": 1,
+     "meets_80": true
+    }
+   },
+   "s10": {
+    "asks": 30,
+    "violation_any": 0,
+    "says_nobody": 29
+   }
+  }
+ },
+ "gate016": {
+  "101": {
+   "answered": 21
+  },
+  "202": {
+   "answered": 20,
+   "question": 1
+  },
+  "303": {
+   "answered": 20,
+   "question": 1
+  }
+ },
+ "c055": {
+  "first_attempts": 243,
+  "answered": 240,
+  "question": 2,
+  "fallback": 0,
+  "failed": 1,
+  "blank": 0,
+  "refused": 0,
+  "error": 0,
+  "refuted": false,
+  "loop_empty_retry_turns": 0,
+  "model_calls": 1490,
+  "empty_calls": 0
+ },
+ "empty_calls": []
+}
