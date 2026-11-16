@@ -63,6 +63,33 @@ llm:
 metrics:
   primary: a2.a2idle.turns_with_up_to_5_function_calls.wall_s_max
   values:
+    a6.a6idle.single.wall_s_median: 1.78 # Qwen 3.8 27B, default-model-2
+    a6.a6idle.few.wall_s_median: 9.12 # Qwen 3.8 27B, default-model-2
+    a6.a6idle.compound.wall_s_median: 22.32 # Qwen 3.8 27B, default-model-2
+    a6.a6idle.up_to_5_calls.wall_s_max: 11.55 # Qwen 3.8 27B, default-model-2
+    a6.a6idle.batch_wall_s: 154.8 # Qwen 3.8 27B, default-model-2
+    a6.a6idle.model_call_latency_median_s: 0.87 # Qwen 3.8 27B, default-model-2
+    a6.a6idle.cap_hits: 0 # Qwen 3.8 27B, default-model-2
+    a6.a6idle.thinking_budget_hits: 0 # Qwen 3.8 27B, default-model-2
+    a6.a6idle.empty_calls: 1 # Qwen 3.8 27B, default-model-2
+    a6.a6p8.single.wall_s_median: 5.39 # Qwen 3.8 27B, default-model-2
+    a6.a6p8.few.wall_s_median: 24.34 # Qwen 3.8 27B, default-model-2
+    a6.a6p8.compound.wall_s_median: 67.1 # Qwen 3.8 27B, default-model-2
+    a6.a6p8.up_to_5_calls.wall_s_max: 43.44 # Qwen 3.8 27B, default-model-2
+    a6.a6p8.batch_wall_s: 424.1 # Qwen 3.8 27B, default-model-2
+    a6.a6p8.model_call_latency_median_s: 2.67 # Qwen 3.8 27B, default-model-2
+    a6.a6p8.cap_hits: 0 # Qwen 3.8 27B, default-model-2
+    a6.a6p8.thinking_budget_hits: 0 # Qwen 3.8 27B, default-model-2
+    a6.a6p8.empty_calls: 0 # Qwen 3.8 27B, default-model-2
+    a6.a6x64.single.wall_s_median: 54.48 # Qwen 3.8 27B, default-model-2
+    a6.a6x64.few.wall_s_median: 311.5 # Qwen 3.8 27B, default-model-2
+    a6.a6x64.compound.wall_s_median: 563.0 # Qwen 3.8 27B, default-model-2
+    a6.a6x64.up_to_5_calls.wall_s_max: 402.94 # Qwen 3.8 27B, default-model-2
+    a6.a6x64.batch_wall_s: 674.3 # Qwen 3.8 27B, default-model-2
+    a6.a6x64.model_call_latency_median_s: 29.63 # Qwen 3.8 27B, default-model-2
+    a6.a6x64.cap_hits: 0 # Qwen 3.8 27B, default-model-2
+    a6.a6x64.thinking_budget_hits: 0 # Qwen 3.8 27B, default-model-2
+    a6.a6x64.empty_calls: 4 # Qwen 3.8 27B, default-model-2
     r3_outage_20261116.rows: 132 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.answered: 0 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.failed_server: 132 # failed run, not a result; RESULTS.md AMENDMENTS

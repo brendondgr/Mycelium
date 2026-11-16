@@ -1,0 +1,15 @@
+ Container a6p8-0 Creating 
+ Container a6p8-0 Created 
+s1 0 6.478 2 1 
+s2 0 7.043 2 1 
+s3 0 5.897 3 2 
+s4 0 3.799 2 1 
+f1 0 20.146 5 8 
+f2 0 21.327 4 3 
+f3 0 16.082 5 4 
+f4 0 32.504 3 5 
+[0;93m2026-11-16 22:11:33.926381064 [W:onnxruntime:Default, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card0": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card0/device/vendor"[m
+c1 0 117.646 12 28 
+c2 0 81.514 8 25 
+c3 0 59.98 9 13 
+c4 0 51.205 10 22 

@@ -39,3 +39,9 @@
 - 2026-11-16 (round three, Phase 0): quantisation and server version of round two's two models are unknown. The relay's `/v1/models` exposes neither, and by 2026-11-16 `default-model` served a different model (self-reports MiniCPM) while `default-model-2` was marked `failed`, so they could not be read from the model server.
 
 - 2026-11-16 (round three, Phase 3): the counted run (18:35–18:36 UTC) met a model-server outage: connect timeouts from 17:13 UTC, every connection refused (502 `ConnectError: All connection attempts failed`) from 17:31 to about 18:36, after which `default-model` self-reported Qwen instead of MiniCPM. 132 of 132 rows failed; recorded in RESULTS.md AMENDMENTS, files in `data/outage-20261116/ and logs/outage-20261116/`. Not caused by this host: the relay listed every endpoint `failed` while it lasted.
+- 2026-11-16 (arm A6): run on the second server (`default-model-2`) with nothing
+  else on it, but the host (Postgres, CPU) was shared with the live instance as
+  in every arm. A6x64's rows are stamped `conc: 64` (8 containers × 8 threads);
+  the real in-flight count rose and fell within the batch as each container's
+  last questions ran.
+- 2026-11-16: arm A6's 228 demo threads (`EXP-2026-11-010`, 8,714 events) were deleted from the live database after the run.

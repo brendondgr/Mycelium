@@ -59,6 +59,8 @@
 - 2026-11-16: the partial-list pattern (measure 3) misses "I checked the top
   25 in rank order. The remaining 11 weren't visible" — counted as presented
   complete as registered; the hand reading is in RESULTS.md.
-- 2026-11-16: 531 demo threads from this run are deleted after Phase 3 (the
-  speed test was running on the same host when grading finished).
+- 2026-11-16: this run's demo threads were deleted after Phase 3 (the speed
+  test was running on the same host when grading finished): 377 threads (arms
+  a and c; arm b keeps none), 12,716 events; 44 audit rows of
+  `agent.org_lab_members` calls kept, as `code/cleanup.py` keeps audit rows.
 - 2026-11-16: `data/runs_r3.jsonl` is stored compressed as `data/runs_r3.jsonl.gz` (13 MB as text, over the record's 10 MB limit), as round two stored `runs.jsonl`; `grade_r3.py` and `partial_r3.py` read the `.gz`, and regrading from it reproduces every output byte for byte.

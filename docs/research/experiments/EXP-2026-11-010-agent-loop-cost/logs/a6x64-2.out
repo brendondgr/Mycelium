@@ -1,0 +1,16 @@
+ Container a6x64-2 Creating 
+ Container a6x64-2 Created 
+s4 0 31.038 
+[0;93m2026-11-16 22:16:47.192309990 [W:onnxruntime:Default, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card0": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card0/device/vendor"[m
+s3 0 50.028 
+f3 0 91.574 
+s1 0 55.823 
+s2 0 98.155 
+f2 0 267.724 
+f4 0 378.618 
+f1 0 382.17 
+c3 0 542.41 
+c2 0 593.739 
+c1 0 641.425 
+c4 0 593.994 
+rep 0 wall 645.1
