@@ -213,3 +213,50 @@ credit. The pattern gains `visib` (`normalise.DECLINE_V2`, `grade.py
 pre-registered one, `data/metrics_amend2.json` the amended one); the claims
 are decided on the pre-registered grading. `states_fact` (C-046) does not
 depend on the decline pattern and is the same under both.
+
+## Amendment 3 — 2026-11-16, round three, Phase 2, before its first answer (tag `r3`)
+
+Plan: `docs/plans/20261115-mylo-evaluation-round-three.md`, Phase 2 (Q-079,
+Q-075, C-043). Measures `a8e21c0` (feed lists say when they show only part;
+a project's exact name resolves as its reference) on whatever model serves.
+
+1. **Gold recomputed before any answer** (done 2026-11-16 ~17:10 UTC, before
+   this amendment was committed; no answer had been generated):
+   `code/build_gold_r3.py` = `build_gold.py` with three listed changes
+   (frozen questions only, a rejected one dropped not replaced, writes
+   `data/gold_r3.json`). Kept 59; **dropped `l02`** (gold size 12 > 8). Gold
+   changed for `l03`, `l04`, `l05`, `l06`, `l07`, `j01` (the feeds moved);
+   round two's `data/gold.json` is kept beside it.
+2. **Runs.** `code/run.py` unchanged — all three arms, three repetitions, the
+   59 kept questions (`--only` with every arm:rep:qid key except `l02`;
+   `code/jobs_r3.txt`), `--conc 4`, `--out data/runs_r3.jsonl`. A failed job is
+   retried once at the end, as before. Graded by `code/grade.py` unchanged —
+   primary and secondary gradings, and first-attempt — against `gold_r3.json`
+   (`code/grade_r3.py` points `grade.py` at it and writes `_r3` outputs).
+3. **New measure for list questions, fixed now.** For each arm-(a) and
+   arm-(c) run of a `list` question (`code/partial_r3.py`):
+   - the run *saw a partial list* when any function result it received
+     contains `only the first <n> of <m>` or `<n> more deadline(s) fall(s)
+     after`;
+   - **(i) fetched the rest**: a later result of the same function in that
+     run carries no such marker;
+   - else, when the run has no final text (it ended on a question; the
+     harness keeps no question text), **no answer** — nothing was presented;
+   - else **(ii) said it was partial**: the final text matches, case-insensitively, `\b(first|top|only)\s+\d+\s+(of|out of)\s+\d+`,
+     `\bpartial\b`, `\bnot (a )?(complete|full|exhaustive)\b`,
+     `\b\d+\s+more\b`, `\bmore (items|results|grants|fellowships|conferences|calls|papers|deadlines)\b`,
+     `\bnot all\b`, `\b(and|plus) others\b`, `\bincomplete\b`;
+   - else **(iii) presented as complete** — the old defect.
+   Reported per arm: (iii) over all list runs, and (iii) over runs that saw a
+   partial list.
+4. **`j08`** (round two's blocked corrected call) is reported on its own:
+   every attempt's calls, errors and grade.
+
+**Claims.** C-043 to C-046 re-read against their own bars on this model,
+beside (never pooled with) round two's numbers. C-056 (new, written first): on
+list questions Mylo (arm a) presents a partial view as complete in at most 10%
+of runs (measure 3, (iii) over all arm-a list runs).
+
+**Model.** Recorded with the operator's statement at the start and end of the
+run; numbers reported beside it. A failed turn (relay error) is a failed
+attempt as before.

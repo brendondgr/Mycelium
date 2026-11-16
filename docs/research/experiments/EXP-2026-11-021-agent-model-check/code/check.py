@@ -386,7 +386,17 @@ def main() -> int:
     ap.add_argument("--model", choices=["instance", "second"], default="instance")
     ap.add_argument("--conc", type=int, default=4)
     ap.add_argument("--only", default="")
+    ap.add_argument("--record-model", default="",
+                    help="append one model record (relay list, self-report, operator's name) "
+                         "to this JSONL path and exit; used by other round-three phases")
+    ap.add_argument("--label", default="")
     args = ap.parse_args()
+    if args.record_model:
+        rec = model_record(args.model == "second")
+        with open(args.record_model, "a") as fh:
+            fh.write(json.dumps({"label": args.label, **rec}, default=str) + "\n")
+        print(json.dumps(rec, default=str)[:600])
+        return 0
     assert args.conc <= 4, "at most 4 Mylo turns in flight"
     if args.cleanup:
         cleanup()

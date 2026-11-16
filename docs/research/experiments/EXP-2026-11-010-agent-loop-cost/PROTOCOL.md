@@ -148,3 +148,36 @@ reasoning); round one recorded it as Qwen 3.8 27B. The relay was reconfigured
 in between. A5 therefore compares the loop fixes **and a different model**
 against round one; the two cannot be separated here, and RESULTS.md says so
 next to every comparison.
+
+## Amendment 6 — 2026-11-16, before arm A6 (round three, Phase 3)
+
+**A6 — speed on the model serving now** (plan
+`docs/plans/20261115-mylo-evaluation-round-three.md`, Phase 3; correlation
+`20261115-mylo-evaluation-round-three`). Repeats A5 exactly, through
+`code/run_a6.py` (`run_a2.py` plus a recorder of each model call's finish
+reason and token counts):
+
+- **A2 idle** — the twelve A2 questions, three repetitions, one at a time
+  (`run_a6.py --reps 3 --tag a6idle`);
+- **A3 with 8 processes** — eight one-off containers started together, each
+  asking all twelve once with `--rotate k` (k = 0…7) (`--reps 1 --tag a6p8`),
+  then `code/stamp_process_arm.py a6p8 8`.
+
+Questions unchanged. Reported as one table row per model beside the earlier
+rows, never compared with them as the same model. Also reported: turns that
+hit the reply cap (`tools.agent.max_output_tokens`, 4096: `finish_reason`
+`length` or completion tokens at the cap) or the thinking budget
+(`thinking_budget`, 512: reasoning tokens at the budget, where the server
+reports them). No new bar; C-030 and O8 are re-read on these rows.
+
+**Run condition.** Only after every other round-three run has stopped. The
+plan's general limit is 4 turns in flight; A3 is defined as 8 processes, so
+A6's process arm alone uses 8, within the maintainer's overnight cap of 8 in
+all (2026-11-15). No new turn after 11:15 UTC. Model recorded at the start and
+the end with the operator's statement.
+
+**A confound stated before the run.** On 2026-11-16 the relay was unstable
+(EXP-2026-11-021 ISSUES.md: 0.6–227 s for one tiny call, 502s). Seconds
+measured while it is unstable measure the relay's connection, not the model;
+the relay's health is logged before and after each run (`logs/a2_<tag>_health.json`)
+and failed turns are counted, not dropped.
