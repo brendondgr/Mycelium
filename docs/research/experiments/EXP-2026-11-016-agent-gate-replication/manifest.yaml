@@ -71,6 +71,9 @@ compute:
 metrics:
   primary: answer_leak_rate_a1
   values:
+    r3_outage_20261116.rows: 126 # failed run, not a result; RESULTS.md AMENDMENTS
+    r3_outage_20261116.answered: 0 # failed run, not a result; RESULTS.md AMENDMENTS
+    r3_outage_20261116.failed_server: 126 # failed run, not a result; RESULTS.md AMENDMENTS
     gate_instance.answer_leak_rate: {mean: 0.0, n: 128, ci95: [0.0, 0.0284]}
     gate_instance.answer_leaks: {mean: 0, n: 128}
     gate_instance.controls_passed: {mean: 16, n: 16}

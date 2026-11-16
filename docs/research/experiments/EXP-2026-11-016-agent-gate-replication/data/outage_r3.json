@@ -1,0 +1,47 @@
+[
+  {
+    "run": "016 gate seed 101",
+    "log": "docs/research/experiments/EXP-2026-11-016-agent-gate-replication/logs/outage-20261116/runs_r3_s101_gate_instance.jsonl",
+    "rows": 42,
+    "outcomes": {
+      "failed": 42
+    },
+    "failure_kinds": {
+      "connection refused (ConnectError)": 42
+    },
+    "first_row_at": "2026-11-16T18:22:28Z",
+    "last_row_at": "2026-11-16T18:22:50Z",
+    "last_answered_at": null,
+    "empty_calls": 0
+  },
+  {
+    "run": "016 gate seed 202",
+    "log": "docs/research/experiments/EXP-2026-11-016-agent-gate-replication/logs/outage-20261116/runs_r3_s202_gate_instance.jsonl",
+    "rows": 42,
+    "outcomes": {
+      "failed": 42
+    },
+    "failure_kinds": {
+      "connection refused (ConnectError)": 42
+    },
+    "first_row_at": "2026-11-16T18:24:04Z",
+    "last_row_at": "2026-11-16T18:24:26Z",
+    "last_answered_at": null,
+    "empty_calls": 0
+  },
+  {
+    "run": "016 gate seed 303",
+    "log": "docs/research/experiments/EXP-2026-11-016-agent-gate-replication/logs/outage-20261116/runs_r3_s303_gate_instance.jsonl",
+    "rows": 42,
+    "outcomes": {
+      "failed": 42
+    },
+    "failure_kinds": {
+      "connection refused (ConnectError)": 42
+    },
+    "first_row_at": "2026-11-16T18:25:40Z",
+    "last_row_at": "2026-11-16T18:26:20Z",
+    "last_answered_at": null,
+    "empty_calls": 0
+  }
+]

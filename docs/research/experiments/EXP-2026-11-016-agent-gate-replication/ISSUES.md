@@ -50,3 +50,5 @@ the same; the loop stored an empty final assistant message, the answer
 checker returned `ok`, and the thread went idle.
 
 - 2026-11-16 (round three, Phase 0): quantisation and server version of round two's two models are unknown. The relay's `/v1/models` exposes neither, and by 2026-11-16 `default-model` served a different model (self-reports MiniCPM) while `default-model-2` was marked `failed`, so they could not be read from the model server.
+
+- 2026-11-16 (round three, Phase 1): the counted run (18:21–18:26 UTC) met a model-server outage: connect timeouts from 17:13 UTC, every connection refused (502 `ConnectError: All connection attempts failed`) from 17:31 to about 18:36, after which `default-model` self-reported Qwen instead of MiniCPM. 126 of 126 rows failed; recorded in RESULTS.md AMENDMENTS, files in `logs/outage-20261116/`. Not caused by this host: the relay listed every endpoint `failed` while it lasted.
