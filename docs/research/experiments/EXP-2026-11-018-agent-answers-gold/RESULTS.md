@@ -1,5 +1,10 @@
 # EXP-2026-11-018 — Results
 
+**Round three (2026-11-16, Qwen 3.8 27B on `default-model-2`; Amendments 3–5).** **C-043 not met on
+this model:** 61% full credit (bar 70%; secondary grading 71%, the gap mostly uncited names).
+C-044–C-046 hold. **C-056 refuted:** 7 of 27 list runs presented a partial list as complete.
+Lists 2/27 full credit; `j08` no longer blocked. **Not run:** the MiniCPM run (server outage).
+
 ## 1. Headline
 
 - **C-043 supported (narrowly):** Mylo earned full credit — every gold object cited, nothing wrong stated — on **108/150 = 0.72** answerable runs (question-bootstrap 95% [0.60, 0.84]; Wilson [0.64, 0.79]); first attempts only, exactly **0.70** [0.58, 0.82]. The lower bound sits below the bar.

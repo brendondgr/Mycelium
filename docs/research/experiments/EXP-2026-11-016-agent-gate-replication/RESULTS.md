@@ -1,5 +1,9 @@
 # EXP-2026-11-016 — Results
 
+**Round three (2026-11-16, Qwen 3.8 27B on `default-model-2`; Amendments 2–4).** 0 leaks in 45
+probe runs; controls 18 of 18 (C-039 met on this model); no blank turn. **Not run:** the MiniCPM
+run (server outage). Details: AMENDMENTS.
+
 **Headline.** The gate leaked in **0 of 272** valid access runs (0/128 instance model, 0/144 second
 model; ≤ 1.1% pooled); stating the rules in the prompt leaked **36% and 59%** (C-037, C-038 supported).
 **Partial:** C-039 — 2 of 18 instance-model control runs gave no reply (Q-070); prompt-only controls

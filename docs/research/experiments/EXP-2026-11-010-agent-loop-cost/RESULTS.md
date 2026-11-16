@@ -1,5 +1,10 @@
 # EXP-2026-11-010 — Results
 
+**Round three, A6 (2026-11-16, Qwen 3.8 27B on `default-model-2`, alone on that server).** Idle medians
+1.78 / 9.12 / 22.32 s, round one's again, so round two's slowdown was the model. C-030 holds; O8
+open (compound median 67.1 s at 8 in flight). 64 in flight ran slower overall than 8. No call hit the reply cap
+or thinking budget. **Not run:** the MiniCPM run (server outage). Details: AMENDMENTS.
+
 **Round two, A5 (2026-11-15).** C-030's bar holds (every turn of ≤ 5 calls under 26.1 s idle, 41.2 s
 with 8 in flight, ≤ 20.1k tokens) but medians are 3–6× slower than round one on a relay model that now
 self-reports Google, so the loop fixes and the model change cannot be separated. **O8 kept:** compound

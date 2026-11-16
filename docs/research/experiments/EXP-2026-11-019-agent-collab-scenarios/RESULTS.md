@@ -1,5 +1,11 @@
 # EXP-2026-11-019 — Results
 
+**Round three (2026-11-16, Qwen 3.8 27B on `default-model-2`; Amendments 4–6).** No blank turn in 243
+(C-055 supported) and no empty model call in 1490, repeated or fresh; C-050 met on all asks
+(83%–97% per scenario and mode). S10: one grader name collision, no disclosure. **Not run:** the
+second-endpoint arm (both endpoints serve the same model); the MiniCPM run failed on a server
+outage. Why round two's Gemma 4 31B went empty stays open. Details: AMENDMENTS.
+
 ## 1. Headline
 
 - **(b) C-051 supported:** with the gate, 0 of 206 valid runs in S3–S10 named anyone outside consent, audience, evidence tier or cap, at any of the three points (95% upper bound 1.4%; 0 of all 240 attempted, upper bound 1.2%).
