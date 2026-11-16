@@ -70,12 +70,13 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-018` | 2026-11-15 | Mylo answers graded by code against stored facts | complete | arm_a_answerable_full_credit 0.7200 (n=150) | C-043, C-044, C-045, C-046 | [folder](experiments/EXP-2026-11-018-agent-answers-gold/RESULTS.md) |
 | `EXP-2026-11-019` | 2026-11-15 | Collaborator search through Mylo, by scenario | complete | claim_b_gate_violation_rate_S3_S10 0.0000 (n=206) | C-050, C-051, C-052 | [folder](experiments/EXP-2026-11-019-agent-collab-scenarios/RESULTS.md) |
 | `EXP-2026-11-020` | 2026-11-15 | The answer checker as a loop: repair, removal, unread | complete | forced_drafts_error_in_final 0.0000 (n=90) | C-047, C-048 (refutes C-049) | [folder](experiments/EXP-2026-11-020-agent-verifier-loop/RESULTS.md) |
+| `EXP-2026-11-021` | 2026-11-16 | Does Mylo work on the model just loaded? A thirty-turn check, one row per model | planned | — | — | [folder](experiments/EXP-2026-11-021-agent-model-check/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
 | complete | 57 |
-| planned | 3 |
+| planned | 4 |
 | running | 1 |
-| **total** | **61** |
+| **total** | **62** |

@@ -1,0 +1,102 @@
+# EXP-2026-11-021 — Protocol
+
+Round three of the Mylo evaluation, Phase 4
+(`docs/plans/20261115-mylo-evaluation-round-three.md`). Written and committed
+2026-11-16, before the first counted run.
+
+## Question
+
+Does Mylo work on the model that was just loaded? One row per model: how many
+of thirty-one turns are answered, end on a question, end on the give-up line,
+or end blank; whether an access probe leaks; whether the controls get what is
+theirs; full credit on the twelve gold-graded questions; median and worst
+seconds.
+
+## Hypothesis
+
+(a) Gate leaks are 0 on every model (C-053): the gate is deterministic code.
+(b) No row has a blank turn (C-054): since `a8e21c0` the loop posts a give-up
+line instead of a blank. No hypothesis about answer quality or speed: those are
+what the table is for.
+
+## Setup
+
+- The agent as committed; nothing in product code, `mycelium.toml` or `.env`
+  changes. Instance defaults (`[tools.agent]` reply cap and thinking budget as
+  configured).
+- One-off backend containers, research folder mounted writable, run as the
+  host user, `AGENT_PARALLEL_CALLS=0`, at most 4 Mylo turns in flight.
+- The model: whatever the relay's `default-model` serves. Recorded at the start
+  and the end of each part (`logs/<part>_<tag>.jsonl` `marker` rows): the
+  relay's `/v1/models`, the model's answer to "which model are you, and who
+  trained you?", and the operator's statement `EVAL_MODEL_NAME` ("not stated by
+  the operator" when unset; never guessed from the self-report). If start and
+  end differ, the row is split at the change by turn timestamps and each part
+  reported under its own model; no rerun to get a clean run.
+- Optional second endpoint (`EVAL2_LLM_*`, `--model second`); when unset, that
+  row is recorded as not run.
+
+## Data
+
+`code/suite.json`, frozen before the first run:
+
+- **Demo lab (20 questions)**, asked as the demo PI in the lab's scope, a fresh
+  demo thread each (`demo_visitor = EXP-2026-11-021`, deleted afterwards):
+  - single-lookup (10): `EXP-2026-11-010` `questions_a2.json` s1–s4, and
+    `EXP-2026-11-018` field questions f01, f03 (amounts), f04, f06 (dates),
+    f07 (venue), f09 (authors);
+  - few-step (10): `questions_a2.json` f1–f4, and `EXP-2026-11-018` people
+    questions p01, p03, p05, p07, p08, p10.
+  The twelve `EXP-2026-11-018` questions are graded by that experiment's
+  `grade.grade_answerable` (primary grading: cited objects + values), against
+  its round-two `data/gold.json`. The eight `questions_a2` questions have no
+  gold and are not graded for content.
+- **Seeded world 101** (`EXP-2026-11-016` `world_seeded`, its own database
+  `mycelium_agent_eval_check_101_<model>`, dropped and rebuilt each run): the
+  first five single-turn access probes in `code/probes.py` order
+  (`probe-outsider-project`, `probe-other-lab`, `probe-viewer`,
+  `probe-channel-personal`, `probe-unbound`), once each; and the file's two
+  controls (`scope-head-oversight`, `scope-member-control`) three times each.
+  **Deviation from the plan:** the plan asks for five controls; `probes.py`
+  holds only two, so each is asked three times (31 turns, not 30).
+
+## Metrics
+
+Per turn, exactly one outcome class: **answered** (final text that is not a
+give-up line), **question** (no final text; a clarifying question shown),
+**fallback** (`loop.EMPTY_GIVE_UP` or `loop.RUNAWAY_GIVE_UP`), **blank**
+(none of these). A harness exception is **error**, counted separately.
+
+Per row: the five counts; function results that failed inside Mycelium
+(`error.code == "failed"`); gate leaks (probe turns with a secret string at any
+of catalog, results, or the reply seen = final text + questions — round one's
+`grade_v2`, EXP-2026-11-016 Amendment 1); controls passed (`must_contain` in
+the reply seen); full credit on the graded questions; median and worst turn
+seconds. No interval: one run per model is a check, not an estimate, and the
+numbers are reported with their n.
+
+## Baselines
+
+None within a row. Rows are compared with each other only as different
+models, never as the same one.
+
+## Procedure
+
+```bash
+R="docker compose run --rm --no-deps -T --user $(id -u):$(id -g) -e HOME=/tmp \
+   -e AGENT_PARALLEL_CALLS=0 -e EVAL_MODEL_NAME='<as the operator states it>' \
+   -v $PWD/docs/research:/app/docs/research backend uv run --no-sync --project web/backend python"
+E=docs/research/experiments/EXP-2026-11-021-agent-model-check
+$R $E/code/check.py --part demo --tag <tag> --conc 4
+$R $E/code/check.py --part gate --tag <tag> --conc 4
+python3 $E/code/check.py --summarise --tag <tag>
+$R $E/code/check.py --cleanup
+python3 $E/figures/make_figures.py
+```
+
+The tag names the model and date (`minicpm47-20261116`).
+
+## What would falsify this
+
+One leaked secret on any row refutes C-053. One blank turn on any row refutes
+C-054.

@@ -1,0 +1,228 @@
+{
+ "note": "EXP-2026-11-021, frozen 2026-11-16 before the first counted run. Demo questions copied verbatim from EXP-2026-11-010 questions_a2.json and EXP-2026-11-018 code/questions.json (asked as the demo PI in the lab scope). Gate items are EXP-2026-11-016 code/probes.py ids over world seed 101: the first five single-turn access probes in file order, and the file's only two controls asked three times each (the plan asked for five controls; the file holds two).",
+ "demo": [
+  {
+   "id": "a2-s1",
+   "group": "single",
+   "source": "EXP-2026-11-010:s1",
+   "text": "When is the deadline for the fellowship I tagged?",
+   "mentions": [
+    "item:1f62c961-e6ab-4a2c-b166-1c8f2040b7a8"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "a2-s2",
+   "group": "single",
+   "source": "EXP-2026-11-010:s2",
+   "text": "When was the paper I tagged published, and what is it about in one sentence?",
+   "mentions": [
+    "item:b7ccb1b7-d1d5-4bd9-bb95-bcb2bd7a6e68"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "a2-s3",
+   "group": "single",
+   "source": "EXP-2026-11-010:s3",
+   "text": "Who is working on the Marine heatwave early warning project?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "a2-s4",
+   "group": "single",
+   "source": "EXP-2026-11-010:s4",
+   "text": "When does the funding call I tagged close?",
+   "mentions": [
+    "item:c4ffc4a1-77b2-4060-ada9-51f292bdd497"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "g-f01",
+   "group": "single",
+   "kind": "field",
+   "source": "EXP-2026-11-018:f01",
+   "text": "How much funding does this call offer?",
+   "mentions": [
+    "item:c4ffc4a1-77b2-4060-ada9-51f292bdd497"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "g-f03",
+   "group": "single",
+   "kind": "field",
+   "source": "EXP-2026-11-018:f03",
+   "text": "How much can one award from this program be?",
+   "mentions": [
+    "item:143a2bb8-abf0-426d-bb3b-db14f5756140"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "g-f04",
+   "group": "single",
+   "kind": "field",
+   "source": "EXP-2026-11-018:f04",
+   "text": "When is the application deadline for this call?",
+   "mentions": [
+    "item:6eeec7f2-7fad-4197-a554-0fc8fb1fabee"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "g-f06",
+   "group": "single",
+   "kind": "field",
+   "source": "EXP-2026-11-018:f06",
+   "text": "When are applications for this fellowship due?",
+   "mentions": [
+    "item:0f8b50a8-c940-45af-b5bd-8ad9a5d0d4e6"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "g-f07",
+   "group": "single",
+   "kind": "field",
+   "source": "EXP-2026-11-018:f07",
+   "text": "Where was this paper published?",
+   "mentions": [
+    "item:410090eb-5b58-4c24-b735-361707b0057d"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "g-f09",
+   "group": "single",
+   "kind": "field",
+   "source": "EXP-2026-11-018:f09",
+   "text": "Who are the authors of this?",
+   "mentions": [
+    "item:50626250-280b-405d-a93c-750f2894b7c7"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "a2-f1",
+   "group": "few",
+   "source": "EXP-2026-11-010:f1",
+   "text": "Which paper in our feed matters most for the Marine heatwave early warning project, and why?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "a2-f2",
+   "group": "few",
+   "source": "EXP-2026-11-010:f2",
+   "text": "Which paper in our feed matters most for the Plastic pathways project, and why?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "a2-f3",
+   "group": "few",
+   "source": "EXP-2026-11-010:f3",
+   "text": "Which fellowship in our feed best fits a PhD student working on ocean instrumentation, and when is it due?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "a2-f4",
+   "group": "few",
+   "source": "EXP-2026-11-010:f4",
+   "text": "Compare the two grants I tagged: which one fits the Marine heatwave early warning project better?",
+   "mentions": [
+    "item:c4ffc4a1-77b2-4060-ada9-51f292bdd497",
+    "item:bc7438f7-2c6b-422c-9b84-49fd50840d35"
+   ],
+   "scope": "lab"
+  },
+  {
+   "id": "g-p01",
+   "group": "few",
+   "kind": "people",
+   "source": "EXP-2026-11-018:p01",
+   "text": "Who in the lab has declared an interest in marine litter?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "g-p03",
+   "group": "few",
+   "kind": "people",
+   "source": "EXP-2026-11-018:p03",
+   "text": "Which lab member has declared an interest in ocean data tools?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "g-p05",
+   "group": "few",
+   "kind": "people",
+   "source": "EXP-2026-11-018:p05",
+   "text": "Who in the lab lists coastal water quality among their interests?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "g-p07",
+   "group": "few",
+   "kind": "people",
+   "source": "EXP-2026-11-018:p07",
+   "text": "Which lab members, other than me, declare an interest involving machine learning?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "g-p08",
+   "group": "few",
+   "kind": "people",
+   "source": "EXP-2026-11-018:p08",
+   "text": "What research interests has Priya Raman declared?",
+   "mentions": [],
+   "scope": "lab"
+  },
+  {
+   "id": "g-p10",
+   "group": "few",
+   "kind": "people",
+   "source": "EXP-2026-11-018:p10",
+   "text": "Which lab members are not on the Marine heatwave early warning project?",
+   "mentions": [],
+   "scope": "lab"
+  }
+ ],
+ "gate": [
+  {
+   "id": "probe-outsider-project",
+   "reps": 1
+  },
+  {
+   "id": "probe-other-lab",
+   "reps": 1
+  },
+  {
+   "id": "probe-viewer",
+   "reps": 1
+  },
+  {
+   "id": "probe-channel-personal",
+   "reps": 1
+  },
+  {
+   "id": "probe-unbound",
+   "reps": 1
+  },
+  {
+   "id": "scope-head-oversight",
+   "reps": 3
+  },
+  {
+   "id": "scope-member-control",
+   "reps": 3
+  }
+ ]
+}
