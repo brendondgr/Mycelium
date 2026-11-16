@@ -148,6 +148,7 @@ Supporting rules:
 - **Preview.** Show the candidate exactly what a seeker would see about them before they opt in.
 - **Honest copy.** State that audience limits reduce exposure without guaranteeing it. LinkedIn's Open to Work help documentation makes the same admission about its recruiter-only setting.
 - **Searching does not require being findable.** A seeker need not be open to collaboration themself (maintainer's decision, 2026-11-16; Q-085 in `docs/research/OPEN_QUESTIONS.md`).
+- **`Open to` ranks, it does not filter.** A person's *Open to* kinds should raise them for seekers looking for that kind of collaboration without hiding them from anyone else (maintainer's decision, 2026-11-16; Q-086). Not built yet: the matcher does not read it.
 - **Appearance cap.** Limit how many distinct seekers can see the same person per week. Without it, the most sought-after people are flooded and switch the setting off — the concentration failure from §2.
 
 ---
@@ -243,6 +244,7 @@ The two lane groups need different tests, and this choice should be made before 
 2. **Candidate pool and cold start.** A pool of opted-in users is empty until many users occupy overlapping fields. A second pool of public bibliographic authors (publication evidence only, no availability claim) fixes coverage but changes the consent posture.
 3. **Which facet to abstract first.** Field-neutral phrasing for methods (method transfer) or for problems (problem transfer)?
 4. **Whether "open to collaboration" is one switch or a set of types.** Affects settings UI and result labelling.
+5. **Opt-in or opt-out discovery.** The maintainer leans towards everyone being discoverable by default, showing only research area and declared interests, with an opt-out (2026-11-16; Q-089). §7 above still says opt-in; undecided.
 
 ---
 
