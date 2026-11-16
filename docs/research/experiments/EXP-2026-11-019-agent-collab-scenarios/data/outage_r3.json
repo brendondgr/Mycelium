@@ -1,0 +1,50 @@
+[
+  {
+    "run": "019 repeated",
+    "log": "docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/logs/outage-20261116/runs_r3_repeated_instance_r3.jsonl",
+    "rows": 175,
+    "outcomes": {
+      "answered": 5,
+      "failed": 170
+    },
+    "failure_kinds": {
+      "connection refused (ConnectError)": 138,
+      "connect timeout": 24,
+      "request timeout": 4,
+      "read error": 2,
+      "connection error": 1,
+      "other": 1
+    },
+    "first_row_at": "2026-11-16T17:08:38Z",
+    "last_row_at": "2026-11-16T18:18:38Z",
+    "last_answered_at": "2026-11-16T17:13:30Z",
+    "empty_calls": 0,
+    "answered_named_planted": 5,
+    "answered_with_violation": 0,
+    "answered_scenarios": {
+      "S1": 5
+    },
+    "answered_seconds": [
+      139.88,
+      143.24,
+      221.54,
+      223.03,
+      286.93
+    ]
+  },
+  {
+    "run": "019 fresh",
+    "log": "docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/logs/outage-20261116/runs_r3_fresh_instance_r3.jsonl",
+    "rows": 180,
+    "outcomes": {
+      "failed": 180
+    },
+    "failure_kinds": {
+      "connection refused (ConnectError)": 180
+    },
+    "first_row_at": "2026-11-16T18:18:48Z",
+    "last_row_at": "2026-11-16T18:21:14Z",
+    "last_answered_at": null,
+    "empty_calls": 0
+  }
+]

@@ -76,6 +76,11 @@ llm:
 metrics:
   primary: claim_b_gate_violation_rate_S3_S10
   values:
+    r3_outage_20261116.rows: 355 # failed run, not a result; RESULTS.md AMENDMENTS
+    r3_outage_20261116.answered: 5 # failed run, not a result; RESULTS.md AMENDMENTS
+    r3_outage_20261116.failed_server: 350 # failed run, not a result; RESULTS.md AMENDMENTS
+    r3_outage_20261116.answered_named_planted: 5 # failed run, not a result; RESULTS.md AMENDMENTS
+    r3_outage_20261116.answered_named_outside_rules: 0 # failed run, not a result; RESULTS.md AMENDMENTS
     claim_b_gate_violation_rate_S3_S10: {mean: 0.0, n: 206}
     claim_b_gate_violation_upper95: 0.0144
     claim_a_S1_named_rate: {mean: 1.0, n: 22}
