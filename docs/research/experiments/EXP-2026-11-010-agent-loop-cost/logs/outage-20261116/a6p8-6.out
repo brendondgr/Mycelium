@@ -1,0 +1,638 @@
+ Container a6p8-6 Creating 
+ Container a6p8-6 Created 
+agent turn failed for thread 2ff0d573-2c82-4a9a-8bea-fae7e40c3e65
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+f3 0 1.821 0 0 
+agent turn failed for thread dc7a52bd-751a-4027-8a58-c26b811a94e0
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+f4 0 0.477 0 0 
+agent turn failed for thread abeed0b7-ff04-4608-be47-b8567e60678c
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+c1 0 0.555 0 0 
+agent turn failed for thread c9678517-508f-42b5-8981-efba2c3f355c
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+c2 0 0.515 0 0 
+agent turn failed for thread b08403e6-a44e-4730-bb0e-3cc4036e0d34
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+c3 0 0.569 0 0 
+agent turn failed for thread e8b4215d-c8e6-4bee-8503-02c6f74d33f5
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+c4 0 0.529 0 0 
+agent turn failed for thread 9ba18845-e7ff-4864-9279-c593f61754e8
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+s1 0 0.472 0 0 
+agent turn failed for thread fb3491b9-6442-4851-9276-8b726c610b1d
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+s2 0 0.482 0 0 
+agent turn failed for thread 7d1d9f8c-d556-462d-8b9a-de721b9142e0
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+s3 0 0.519 0 0 
+agent turn failed for thread a7d40b8c-504b-48ce-8d54-65ba1c23a59e
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+s4 0 0.508 0 0 
+agent turn failed for thread 23267112-23ce-4d76-8602-0397e509784e
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+f1 0 0.466 0 0 
+agent turn failed for thread 743e1f4b-33e5-45ca-b200-54128218c50a
+Traceback (most recent call last):
+  File "/app/tools/agent/loop.py", line 266, in _run_one
+    state = _turn(caller, thread, port)
+  File "/app/tools/agent/loop.py", line 380, in _turn
+    reply = call(
+        port,
+    ...<7 lines>...
+        should_stop=lambda: stream.cancel_requested(thread.pk),
+    )
+  File "/app/tools/agent/llmcall.py", line 302, in call
+    response = port(
+        messages=messages,
+    ...<3 lines>...
+        should_stop=should_stop,
+    )
+  File "/app/docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/mylo_turn.py", line 66, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=delta, should_stop=stop)
+  File "/app/docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios/code/r3turns.py", line 46, in __call__
+    reply = self.inner(messages=messages, tools=tools, tool_choice=tool_choice,
+                       on_delta=on_delta, should_stop=should_stop)
+  File "/app/tools/agent/llmcall.py", line 119, in port
+    return client.complete_stream(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        messages,
+        ^^^^^^^^^
+    ...<6 lines>...
+        should_stop=should_stop,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/web/backend/apps/core/llm.py", line 501, in complete_stream
+    stream = self.completions.create(**payload)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/resources/chat/completions/completions.py", line 1147, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/chat/completions",
+        ^^^^^^^^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ChatCompletionChunk],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1259, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data/venv/backend/lib/python3.13/site-packages/openai/_base_client.py", line 1047, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ConnectError: All connection attempts failed', 'type': 'relay_proxy_error', 'code': 502}}
+f2 0 0.43 0 0 

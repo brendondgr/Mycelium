@@ -63,6 +63,9 @@ llm:
 metrics:
   primary: a2.a2idle.turns_with_up_to_5_function_calls.wall_s_max
   values:
+    r3_outage_20261116.rows: 132 # failed run, not a result; RESULTS.md AMENDMENTS
+    r3_outage_20261116.answered: 0 # failed run, not a result; RESULTS.md AMENDMENTS
+    r3_outage_20261116.failed_server: 132 # failed run, not a result; RESULTS.md AMENDMENTS
     a5.a5idle.single.wall_s_median: 14.4 # n=12
     a5.a5idle.few.wall_s_median: 28.08 # n=12
     a5.a5idle.compound.wall_s_median: 63.18 # n=12

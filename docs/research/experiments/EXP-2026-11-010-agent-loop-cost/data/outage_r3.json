@@ -1,0 +1,32 @@
+[
+  {
+    "run": "010 A6 idle",
+    "log": "docs/research/experiments/EXP-2026-11-010-agent-loop-cost/data/outage-20261116/a2_a6idle.jsonl",
+    "rows": 36,
+    "outcomes": {
+      "failed": 36
+    },
+    "failure_kinds": {
+      "connection refused (ConnectError)": 36
+    },
+    "first_row_at": "2026-11-16T18:35:49+0000",
+    "last_row_at": "2026-11-16T18:36:09+0000",
+    "last_answered_at": null,
+    "empty_calls": 0
+  },
+  {
+    "run": "010 A6 8 in flight",
+    "log": "docs/research/experiments/EXP-2026-11-010-agent-loop-cost/data/outage-20261116/a2_a6p8.jsonl",
+    "rows": 96,
+    "outcomes": {
+      "failed": 96
+    },
+    "failure_kinds": {
+      "connection refused (ConnectError)": 96
+    },
+    "first_row_at": "2026-11-16T18:36:17+0000",
+    "last_row_at": "2026-11-16T18:36:24+0000",
+    "last_answered_at": null,
+    "empty_calls": 0
+  }
+]
