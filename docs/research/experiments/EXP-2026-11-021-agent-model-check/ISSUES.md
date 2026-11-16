@@ -19,3 +19,14 @@
   `data/gold.json`, built 2026-11-15). Field and people facts move slowly, but
   a value that changed since would grade a right answer wrong; Phase 2 of round
   three rebuilds the gold and any difference on these twelve is reported here.
+- 2026-11-16, **defect found by the run (Q-075), not fixed.** In
+  `scope-head-oversight` (the department head may read the project) MiniCPM
+  called `projects_get` with `item` (not a parameter: `bad_arguments`), then
+  with no argument (`need_project`), then correctly with `project: "#3"`; the
+  loop answered the third with `keeps_failing` ("has failed 2 times this turn
+  … not run again"), and the reply said the project could not be read. Both of
+  the head's completed turns (reps 0, 1) ended so; rep 2 failed on the server.
+  Thread `e00b4edd-…` in `mycelium_agent_eval_check_101_instance` (kept).
+- 2026-11-16, first counted run: 10 of 31 turns failed on relay 502s
+  (`ConnectTimeout`, `ReadError`), 5 of them in the first four minutes; the
+  start-of-run identity check also got a 502. Counted as `failed`, not rerun.
