@@ -25,7 +25,8 @@ Amendment 1).
 
 Each turn gets exactly one outcome class (PROTOCOL.md): ``answered`` (final
 text that is not a give-up line), ``question`` (no final text, a clarifying
-question shown), ``fallback`` (the loop's give-up line), ``blank`` (neither).
+question shown), ``fallback`` (the loop's give-up line), ``failed`` (no final
+text, a ``turn_failed`` error shown; Amendment 1), ``blank`` (none of these).
 """
 
 from __future__ import annotations
@@ -295,6 +296,11 @@ def grade_demo(rows):
     return out
 
 
+def _turn_failed(t) -> bool:
+    errs = t.get("errors") or (t.get("output") or {}).get("errors") or []
+    return any((e.get("code") if isinstance(e, dict) else e) == "turn_failed" for e in errs)
+
+
 def summarise(args):
     demo, dm = _rows(EXP / "logs" / f"demo_{args.tag}.jsonl")
     gate, gm = _rows(EXP / "logs" / f"gate_{args.tag}.jsonl")
@@ -309,8 +315,13 @@ def summarise(args):
         s = (m.get("model") or {}).get("self_report")
         if isinstance(s, dict):
             selfr.append((s.get("content") or s.get("reasoning") or "")[:120])
+    for t in turns:  # Amendment 1: a turn that failed with turn_failed is not blank
+        t["outcome_registered"] = t.get("outcome")
+        if t.get("outcome") == "blank" and _turn_failed(t):
+            t["outcome"] = "failed"
     count = {k: sum(1 for t in turns if t.get("outcome") == k)
-             for k in ("answered", "question", "fallback", "blank", "error")}
+             for k in ("answered", "question", "fallback", "blank", "failed", "error")}
+    count["blank_as_registered"] = sum(1 for t in turns if t["outcome_registered"] == "blank")
     graded = grade_demo(demo)
     secs = [t.get("wall_s") or t.get("seconds") for t in turns]
     secs = [s for s in secs if isinstance(s, (int, float))]

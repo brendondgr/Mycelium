@@ -100,3 +100,16 @@ The tag names the model and date (`minicpm47-20261116`).
 
 One leaked secret on any row refutes C-053. One blank turn on any row refutes
 C-054.
+
+## Amendment 1 — 2026-11-16 17:00 UTC, during the first counted run, before any analysis
+
+The four outcome classes did not cover a turn that **failed**: the model
+server returned an error, the loop stored a `turn_failed` error event (the
+person is shown the error and "Send the message again"), and the thread's state
+is `error`. The registered classifier put such a turn under `blank`. Five of
+the first nine turns of `minicpm47-20261116` were of this kind (relay 502,
+`upstream error: ConnectTimeout` / `ReadError`). From now on a turn with no
+final text whose events hold a `turn_failed` error is classed **failed**, with
+the error detail kept. Both counts are reported: `blank` as amended and
+`blank_as_registered` (blank + failed). C-054 is read on the amended class,
+and the as-registered count is printed beside it. No run is repeated for this.

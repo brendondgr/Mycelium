@@ -266,3 +266,55 @@ arm's). `code/recall019.py` re-reads recall from the kept threads and reports,
 per run, whether recall was present and any name in it outside the run's
 allowed set. This is an added check, not a change to any registered point or
 number; it was written after the results were seen and is labelled so.
+
+## Amendment 4 — 2026-11-16, round three, Phase 1, before its first run (tag `r3`)
+
+Plan: `docs/plans/20261115-mylo-evaluation-round-three.md`, Phase 1 (Q-070,
+Q-088). Measures the empty-reply fix of `a8e21c0` (an empty reply gets one
+more try without functions, then the give-up line `loop.EMPTY_GIVE_UP`).
+
+- **Runs.** S1, S2 and S10, gate arm only, the same ten seekers, plan and
+  grader, three repetitions (`code/run019_r3.py`, which imports `run019.py`
+  unchanged). At most 4 turns in flight (`--conc 4`); one repetition finishes
+  before the next starts.
+- **Two modes**, each on its own fresh copy of `mycelium_sandbox` with the
+  overlay applied by `run019.py --setup`, because round two's empty turns rose
+  across repetitions (5, 19, 25):
+  - `repeated` (`mycelium_sandbox_exp019r3rep`): the same seeker re-asks, as in
+    round two;
+  - `fresh` (`mycelium_sandbox_exp019r3fresh`): before each turn the seeker's
+    earlier Mylo threads are deleted (with learning and ambient off, thread
+    digests are recall's only source), so no repetition sees an earlier ask.
+- **Outcome class**, exactly one per turn: answered; ended on a clarifying
+  question; fallback line (`EMPTY_GIVE_UP` or `RUNAWAY_GIVE_UP`); failed (no
+  text, a `turn_failed` error stored and shown — a model-server error, as
+  EXP-2026-11-021 Amendment 1 found); blank.
+  A turn refused at open/send is `refused`; a harness exception is `error`.
+- **Empty calls.** `code/r3turns.Recorder` wraps the model port and keeps, for
+  every model call: finish reason, completion and reasoning tokens, whether the
+  server parsed a function call and whether its arguments are JSON, whether the
+  reasoning text carries function-call markup, seconds; and per turn whether
+  recall was non-empty. `tables/empty_turns.md` lists every empty call, one per
+  row, and RESULTS.md says which of these the evidence fits and which it rules
+  out: (1) output spent on reasoning, no reply; (2) a function call the parser
+  dropped (markup in reasoning or content, no parsed call); (3) recall of the
+  person's identical earlier asks (repeated against fresh); (4) a relay or time
+  cut-off (`finish_reason` `length`, an exception, or a 5xx).
+- **Failed turns.** A turn classed `failed` is retried once after the
+  repetition's other turns (both rows kept, the retry marked `attempt: 2`), as
+  EXP-2026-11-018 retried failed jobs. C-055 and the outcome table count first
+  attempts; C-050 and C-039 count the first attempt that did not fail, and a
+  job whose attempts all failed is a miss.
+- **Grading.** v2 (final text + every question shown), `run019.grade`
+  unchanged. A fallback line counts as a miss for C-050.
+- **Claims.** C-055 (new, written before the run): after the fallback, no turn
+  ends blank — 0 of the turns run (one blank refutes it). C-050 re-read
+  against its own bar, unchanged: the planted person named in at least 80% of
+  **all** asks in S1 and in S2.
+- **Model.** Recorded at the start of every repetition (`marker` rows) with the
+  operator's statement (`EVAL_MODEL_NAME`); numbers are reported beside the
+  model and never compared with round two's as if it were the same one. On
+  2026-11-16 the operator states MiniCPM 4.7 35B-A3B; the relay was unstable
+  (EXP-2026-11-021 ISSUES.md), so seconds are not interpreted.
+- **Second endpoint.** If `EVAL2_LLM_*` is set, the `fresh` mode is repeated
+  on it (`--model second`); otherwise recorded as not run.
