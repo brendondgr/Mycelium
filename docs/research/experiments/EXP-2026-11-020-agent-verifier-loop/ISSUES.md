@@ -46,3 +46,8 @@
   `EXP-2026-11-018/code/cleanup.py`; audit rows counted there.
 
 - 2026-11-16 (round three, Phase 0): quantisation and server version of round two's two models are unknown. The relay's `/v1/models` exposes neither, and by 2026-11-16 `default-model` served a different model (self-reports MiniCPM) while `default-model-2` was marked `failed`, so they could not be read from the model server.
+- 2026-11-16 (round three, Phase 5): the calibration sheet was put on a scoring
+  page for the maintainer, who did not mark it: the answers carry too many
+  details drawn from long function results to attribute each one reliably.
+  Their impression that the answers looked grounded is not a measurement and
+  is not used. Q-081 stays open; a shorter sheet is suggested there.

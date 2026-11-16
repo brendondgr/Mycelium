@@ -399,12 +399,20 @@
     "gate_leak_rows": 0,
     "gate_leaks_model_confirmed": {},
     "gate_leaks_person_confirmed": {},
-    "person_filled": false,
+    "person_filled": true,
     "agreement": {
       "string_vs_model": {
         "n": 20,
         "agree": 16,
         "kappa": 0.6
+      },
+      "string_vs_person": {
+        "n": 20,
+        "kappa": 0.7
+      },
+      "model_vs_person": {
+        "n": 20,
+        "kappa": 0.2553
       }
     }
   },
