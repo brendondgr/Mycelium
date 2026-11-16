@@ -120,3 +120,11 @@ and the as-registered count is printed beside it. No run is repeated for this.
 - **8 in flight, not 4.** The operator asked for about 8 Mylo turns in flight (16 at most). The harness limit is raised from 4 to 8 and the check (both parts) runs with `--conc 8`, one part at a time.
 - **Other load on the server.** The operator is running 8 concurrent sequences of their own against the same server for the whole run, so the server carries about 16 streams. Seconds measured here are under that load and are not compared with earlier rounds' idle seconds. Outcome classes and grades are read as registered; a server failure or timeout may be more likely, and is counted, not rerun beyond the registered single retry.
 - Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.
+
+## Amendment 3 — 2026-11-16 20:50 UTC, before any run on the second server (round three)
+
+- **The server.** The operator moved the run to a second server, the relay's `default-model-2`, which serves **Qwen 3.8 27B** (the operator: both endpoints serve Qwen 3.8 27B) and carries nothing else. Every one-off container runs with `LLM_MODEL=default-model-2`, so the instance's own model route answers from that server; the harness code is unchanged apart from the limit below, and every log records the model name `default-model-2`. Preflight 20:41–20:42 UTC: endpoint healthy, self-reports Qwen (Alibaba / Tongyi Lab) without a version, server `vllm-0.31.1rc1.dev344+g5b0b8f251-98b23dce`; 64 requests sent at once all returned 200 in 4.3–6.2 s.
+- **Up to 64 in flight.** The operator said the second server takes 64 concurrent requests. The harness limit is raised to 64. No Mylo function calls the decision server (only the nightly opportunities pipeline does), so only `default-model-2` carries this load; the host's Postgres (100 connections) and CPU are shared with the live instance as before.
+- **The run on `default-model` was stopped** at 20:41 UTC, three minutes into Phase 1, when the operator moved the work; it is not counted (ISSUES.md).
+- **A third row** (`qwen38-m2-20261116`): the check on the second server, `--conc 32` (all 20 demo turns at once, then all 11 gate turns). It is the same model as the second row, on a server with no other load.
+- Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.

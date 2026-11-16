@@ -411,7 +411,7 @@ def main() -> int:
             fh.write(json.dumps({"label": args.label, **rec}, default=str) + "\n")
         print(json.dumps(rec, default=str)[:600])
         return 0
-    assert args.conc <= 8, "at most 8 Mylo turns in flight (Amendment 2)"
+    assert args.conc <= 64, "at most 64 Mylo turns in flight (Amendment 3, second server)"
     if args.cleanup:
         cleanup()
         return 0

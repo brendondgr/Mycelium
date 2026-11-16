@@ -59,7 +59,7 @@ def main() -> int:
     ap.add_argument("--conc", type=int, default=4)
     ap.add_argument("--tag", default="r3")
     args = ap.parse_args()
-    assert args.conc <= 8  # Amendment 5 (019) / Amendment 3 (016): at most 8 in flight
+    assert args.conc <= 64  # 019 Amendment 6 / 016 Amendment 4: at most 64 in flight on the second server
     spec = world_seeded.spec(args.seed)
     tasks = [t for t in P.probes(spec) if t["id"] in TASKS]
     assert len(tasks) == len(TASKS)
