@@ -147,6 +147,7 @@ Supporting rules:
 - **Verified scope.** Derive university and country from a verified institutional email or affiliation record, not free text, or the scope is trivially spoofable. *As built (2026-09-19):* from the verified email only; a personal address can neither search nor be found, and a seeker's scope never reaches past their own country — "anywhere" is an audience a candidate may choose, never a scope a seeker searches in.
 - **Preview.** Show the candidate exactly what a seeker would see about them before they opt in.
 - **Honest copy.** State that audience limits reduce exposure without guaranteeing it. LinkedIn's Open to Work help documentation makes the same admission about its recruiter-only setting.
+- **Searching does not require being findable.** A seeker need not be open to collaboration themself (maintainer's decision, 2026-11-16; Q-085 in `docs/research/OPEN_QUESTIONS.md`).
 - **Appearance cap.** Limit how many distinct seekers can see the same person per week. Without it, the most sought-after people are flooded and switch the setting off — the concentration failure from §2.
 
 ---
