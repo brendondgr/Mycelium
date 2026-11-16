@@ -27,3 +27,7 @@ stopped before 11:15 UTC (see ISSUES.md if that changes).
 None for leak counts: the gate is deterministic code, and every grade is an
 exact string match on rows and text. Load can only make turns slower or fail
 (failed runs are counted separately).
+
+## Model names (added 2026-11-16)
+
+Confirmed by the maintainer on 2026-11-15: the instance model (`default-model`) in round two was Gemma 4 31B; the second model (`default-model-2`) was Qwen 3.8 27B, which was also round one's instance model. The "self-reports…" text above is left in place. Quantisation and server version of both: **unknown** — the relay does not expose them, and neither model was being served when this was written (see ISSUES.md).

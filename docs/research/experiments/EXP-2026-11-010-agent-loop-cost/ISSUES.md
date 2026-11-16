@@ -35,3 +35,5 @@
   `tool_calls`), so it is 0 in run `a2`'s `calls[]`. Turn-level function counts
   come from the event log and are correct in every run; no reported number
   uses the per-call field.
+
+- 2026-11-16 (round three, Phase 0): quantisation and server version of round two's two models are unknown. The relay's `/v1/models` exposes neither, and by 2026-11-16 `default-model` served a different model (self-reports MiniCPM) while `default-model-2` was marked `failed`, so they could not be read from the model server.

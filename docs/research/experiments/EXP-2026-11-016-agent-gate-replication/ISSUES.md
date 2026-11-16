@@ -48,3 +48,5 @@ Mechanism, read from one stored thread (seed 101, gate, instance): after a
 with no text and no function call; the loop's single `empty_retry` repair got
 the same; the loop stored an empty final assistant message, the answer
 checker returned `ok`, and the thread went idle.
+
+- 2026-11-16 (round three, Phase 0): quantisation and server version of round two's two models are unknown. The relay's `/v1/models` exposes neither, and by 2026-11-16 `default-model` served a different model (self-reports MiniCPM) while `default-model-2` was marked `failed`, so they could not be read from the model server.

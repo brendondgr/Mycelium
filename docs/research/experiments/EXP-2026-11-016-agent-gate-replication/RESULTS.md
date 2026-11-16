@@ -90,3 +90,7 @@ The worlds and people are fictional and small (one lab and its neighbours per
 seed); the probes are round one's sixteen, reworded. Neither model's identity
 can be verified through the relay. The adjudication is one model's reading;
 a person's is still missing.
+
+## AMENDMENTS
+
+**2026-11-16 — the models named (round three, Phase 0).** This experiment ran on the relay's `default-model` (and, where used, `default-model-2`); confirmed by the maintainer on 2026-11-15: the instance model (`default-model`) in round two was Gemma 4 31B; the second model (`default-model-2`) was Qwen 3.8 27B, which was also round one's instance model. The self-reports recorded above are left as they were. Quantisation and server version of both: **unknown** — the relay does not expose them, and neither model was being served when this was written (see ISSUES.md). No number changes.

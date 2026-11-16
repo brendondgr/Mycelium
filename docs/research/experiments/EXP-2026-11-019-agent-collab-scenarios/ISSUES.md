@@ -70,3 +70,5 @@
    in `3a77aef3`; the baseline arm also used `baseline019.py` as fixed in
    `1b953eae`. Later commits touched only drivers and analysis. No product
    code changed during the night.
+
+- 2026-11-16 (round three, Phase 0): quantisation and server version of round two's two models are unknown. The relay's `/v1/models` exposes neither, and by 2026-11-16 `default-model` served a different model (self-reports MiniCPM) while `default-model-2` was marked `failed`, so they could not be read from the model server.

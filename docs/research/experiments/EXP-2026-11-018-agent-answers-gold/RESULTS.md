@@ -150,3 +150,5 @@ Amendment 1 (PROTOCOL.md, during the run): turns that end on a clarifying
 question are counted and a first-attempt grading is reported. Amendment 2
 (after the run): the decline pattern accepts "not visible"; both gradings
 reported, claims decided on the pre-registered one.
+
+**2026-11-16 — the models named (round three, Phase 0).** This experiment ran on the relay's `default-model` (and, where used, `default-model-2`); confirmed by the maintainer on 2026-11-15: the instance model (`default-model`) in round two was Gemma 4 31B; the second model (`default-model-2`) was Qwen 3.8 27B, which was also round one's instance model. The self-reports recorded above are left as they were. Quantisation and server version of both: **unknown** — the relay does not expose them, and neither model was being served when this was written (see ISSUES.md). No number changes.

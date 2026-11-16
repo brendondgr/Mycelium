@@ -206,3 +206,5 @@ Amendment 1 (PROTOCOL.md, before the run): container runtime and the A2 arm.
 Amendment 2 and its addendum (before their runs): the A3 concurrency arm, in
 threads and then in separate processes. Amendment 3 (before its run): A4,
 `max_steps` 10.
+
+**2026-11-16 — the models named (round three, Phase 0).** Arm A5 (round two, 2026-11-15) ran on the relay's `default-model` (and, where used, `default-model-2`); confirmed by the maintainer on 2026-11-15: the instance model (`default-model`) in round two was Gemma 4 31B; the second model (`default-model-2`) was Qwen 3.8 27B, which was also round one's instance model. The self-reports recorded above are left as they were. Quantisation and server version of both: **unknown** — the relay does not expose them, and neither model was being served when this was written (see ISSUES.md). No number changes.

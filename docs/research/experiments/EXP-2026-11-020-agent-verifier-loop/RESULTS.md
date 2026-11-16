@@ -151,3 +151,5 @@ Amendment 1 (PROTOCOL.md, during 5c): answers whose reader reply was cut at
 the 6,000-token cap were re-read once with 16,000; both 5c gradings reported.
 The exploratory 5a length measure was added to `analyse.py` after the 5a run
 and is in no claim.
+
+**2026-11-16 — the models named (round three, Phase 0).** This experiment ran on the relay's `default-model` (and, where used, `default-model-2`); confirmed by the maintainer on 2026-11-15: the instance model (`default-model`) in round two was Gemma 4 31B; the second model (`default-model-2`) was Qwen 3.8 27B, which was also round one's instance model. The self-reports recorded above are left as they were. Quantisation and server version of both: **unknown** — the relay does not expose them, and neither model was being served when this was written (see ISSUES.md). No number changes.

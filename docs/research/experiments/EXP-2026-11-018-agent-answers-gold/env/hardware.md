@@ -38,3 +38,7 @@ overlap: every model run of this experiment finished before 11:15 UTC.
 Latency depends on the shared server's load and is reported only as context.
 Correctness grading is unaffected by load except through turns that hit the
 900 s deadline (counted as failed).
+
+## Model names (added 2026-11-16)
+
+Confirmed by the maintainer on 2026-11-15: the instance model (`default-model`) in round two was Gemma 4 31B; the second model (`default-model-2`) was Qwen 3.8 27B, which was also round one's instance model. The "self-reports…" text above is left in place. Quantisation and server version of both: **unknown** — the relay does not expose them, and neither model was being served when this was written (see ISSUES.md).

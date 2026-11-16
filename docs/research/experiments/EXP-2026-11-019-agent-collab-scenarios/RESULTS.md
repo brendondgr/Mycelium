@@ -220,3 +220,5 @@ gate 1 07:28–08:12, baseline 1 08:12–09:01, gate 2 09:01–09:25, baseline 2
    key, so recall was not part of the results point. `code/recall019.py`
    re-read it from the kept threads: no recall named anyone outside consent
    (0/309 per arm). The registered points and their numbers are unchanged.
+
+**2026-11-16 — the models named (round three, Phase 0).** This experiment ran on the relay's `default-model` (and, where used, `default-model-2`); confirmed by the maintainer on 2026-11-15: the instance model (`default-model`) in round two was Gemma 4 31B; the second model (`default-model-2`) was Qwen 3.8 27B, which was also round one's instance model. The self-reports recorded above are left as they were. Quantisation and server version of both: **unknown** — the relay does not expose them, and neither model was being served when this was written (see ISSUES.md). No number changes.

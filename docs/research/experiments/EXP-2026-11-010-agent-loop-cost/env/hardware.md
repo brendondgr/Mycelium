@@ -24,3 +24,7 @@ tenants of that GPU, if any, are not visible from here.
 
 Latency is the model server's and the network's; a turn's time is dominated
 by model calls. Token counts are unaffected by load.
+
+## Model names (added 2026-11-16)
+
+For arm A5 only: Confirmed by the maintainer on 2026-11-15: the instance model (`default-model`) in round two was Gemma 4 31B; the second model (`default-model-2`) was Qwen 3.8 27B, which was also round one's instance model. The "self-reports…" text above is left in place. Quantisation and server version of both: **unknown** — the relay does not expose them, and neither model was being served when this was written (see ISSUES.md).

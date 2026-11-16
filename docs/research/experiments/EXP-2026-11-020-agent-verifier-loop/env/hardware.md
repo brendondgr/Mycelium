@@ -52,3 +52,7 @@ Repair seconds depend on the shared server's load and are context only;
 requests in flight; it slowed from ~40 s to ~100 s per answer as the shared
 server's load rose. No model run of this experiment overlapped the nightly
 run (12:00 UTC).
+
+## Model names (added 2026-11-16)
+
+Confirmed by the maintainer on 2026-11-15: the instance model (`default-model`) in round two was Gemma 4 31B; the second model (`default-model-2`) was Qwen 3.8 27B, which was also round one's instance model. The "self-reports…" text above is left in place. Quantisation and server version of both: **unknown** — the relay does not expose them, and neither model was being served when this was written (see ISSUES.md).
