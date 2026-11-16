@@ -171,3 +171,37 @@ and `analyse.py` reports a second 5c (`5c_amend1`) in which a failed row is
 replaced by its re-read when that parsed. Both are reported; nothing else in
 the prompt, matching rule or sample changes. The calibration sheet is
 unaffected.
+
+## Amendment 2 — 2026-11-16, before any row of the short sheet was marked
+
+The person did not mark `calibration.csv` (ISSUES.md): an answer can carry
+dozens of details drawn from long function results, and listing every
+unsupported one by hand from the full evidence was not reliable. The
+calibration is replaced by a **per-detail sheet** built from the reader's own
+detail lists, so the person judges one detail at a time instead of finding
+them.
+
+- **Rows** (`code/make_detail_sheet.py`, seed 20261116): every detail the 5c
+  reader marked unsupported in the 30 calibration answers (33), plus as many
+  reader-supported details drawn at random from the other 293 (33): 66 rows,
+  shuffled. One answer (`RD71FF3D1`) has no reader list (the reader failed on
+  it twice) and contributes no row. The person sees the detail, the answer it
+  comes from, and the evidence; never the reader's mark or the stratum
+  (`calibration_details_key.csv`).
+- **Marks**: `supported`, `unsupported` (including "cannot tell from the
+  evidence", as the original instructions said), or `not_a_detail` (an
+  evaluative word, advice, or the question's own words — the reader is known to
+  list these, Q-081).
+- **To help find the evidence**, each row shows the answer's sentence holding
+  the detail and the evidence passages that share the most words with it,
+  with the full evidence one click away; the passages are an aid, not a
+  boundary: a detail supported anywhere in the evidence is supported.
+- **Measures** (`code/score_details.py`, written now): the share of `not_a_detail`
+  per stratum; the reader's precision (flagged rows the person also marks
+  unsupported) and false-support rate (sampled supported rows the person marks
+  unsupported), each with Wilson 95%, and from the latter an estimate of the
+  unsupported details the reader missed among its 293 supported ones; Cohen's
+  kappa on this equal-stratum sample. The answer-level agreement of the
+  original protocol is not computed (the sheet does not list every detail).
+- **Claims**: C-035's model-judged 5c figure is reported beside this; no claim
+  changes status from this sheet alone. Q-081 is answered at the detail level.
