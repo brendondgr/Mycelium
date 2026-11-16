@@ -32,7 +32,10 @@ def main() -> int:
         (stage / "data").mkdir()
         (stage / "tables").mkdir()
         shutil.copy(EXP / "data" / "gold_r3.json", stage / "data" / "gold.json")
-        shutil.copy(EXP / "data" / "runs_r3.jsonl", stage / "data" / "runs_r3.jsonl")
+        runs = EXP / "data" / "runs_r3.jsonl"
+        if not runs.exists():  # stored compressed (> 10 MB as text); grade.py reads the .gz
+            runs = runs.with_name("runs_r3.jsonl.gz")
+        shutil.copy(runs, stage / "data" / runs.name)
         grade.EXP = stage
         sys.argv = ["grade.py", "--runs", "data/runs_r3.jsonl", "--suffix", suffix, *extra]
         rc = grade.main()

@@ -49,3 +49,16 @@
 - 2026-11-16 (round three, Phase 0): quantisation and server version of round two's two models are unknown. The relay's `/v1/models` exposes neither, and by 2026-11-16 `default-model` served a different model (self-reports MiniCPM) while `default-model-2` was marked `failed`, so they could not be read from the model server.
 
 - 2026-11-16 (round three, Phase 2): the counted run (18:26–18:35 UTC) met a model-server outage: connect timeouts from 17:13 UTC, every connection refused (502 `ConnectError: All connection attempts failed`) from 17:31 to about 18:36, after which `default-model` self-reported Qwen instead of MiniCPM. 1062 of 1062 rows failed; recorded in RESULTS.md AMENDMENTS, files in `data/outage-20261116/ and logs/outage-20261116/`. Not caused by this host: the relay listed every endpoint `failed` while it lasted.
+
+- 2026-11-16 (round three on Qwen 3.8 27B, 64 in flight): failed attempts —
+  arm (c) 18 ended on a clarifying question (`no_final_text`), 7 hit the 900 s
+  harness deadline (the corpus-only agent reads item after item), 1 relay 502;
+  arm (a) 4 ended `context_full` (the conversation outgrew the model's window;
+  see RESULTS.md). Each failed attempt was retried once as registered. Seconds
+  are under load and not interpreted.
+- 2026-11-16: the partial-list pattern (measure 3) misses "I checked the top
+  25 in rank order. The remaining 11 weren't visible" — counted as presented
+  complete as registered; the hand reading is in RESULTS.md.
+- 2026-11-16: 531 demo threads from this run are deleted after Phase 3 (the
+  speed test was running on the same host when grading finished).
+- 2026-11-16: `data/runs_r3.jsonl` is stored compressed as `data/runs_r3.jsonl.gz` (13 MB as text, over the record's 10 MB limit), as round two stored `runs.jsonl`; `grade_r3.py` and `partial_r3.py` read the `.gz`, and regrading from it reproduces every output byte for byte.

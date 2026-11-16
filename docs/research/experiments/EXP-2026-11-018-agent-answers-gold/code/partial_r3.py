@@ -12,6 +12,7 @@ and ``tables/partial_r3.md``; reports ``j08`` on its own in
 
 from __future__ import annotations
 
+import gzip
 import json
 import math
 import re
@@ -60,7 +61,10 @@ def classify(row):
 
 
 def main() -> int:
-    rows = [json.loads(x) for x in (EXP / "data" / "runs_r3.jsonl").read_text().splitlines() if x.strip()]
+    path = EXP / "data" / "runs_r3.jsonl"
+    text = path.read_text() if path.exists() else \
+        gzip.decompress(path.with_name("runs_r3.jsonl.gz").read_bytes()).decode()  # stored compressed (> 10 MB)
+    rows = [json.loads(x) for x in text.splitlines() if x.strip()]
     jobs = {}
     for r in rows:
         jobs.setdefault((r["arm"], r["rep"], r["id"]), []).append(r)
