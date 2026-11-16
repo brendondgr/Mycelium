@@ -318,3 +318,12 @@ more try without functions, then the give-up line `loop.EMPTY_GIVE_UP`).
   (EXP-2026-11-021 ISSUES.md), so seconds are not interpreted.
 - **Second endpoint.** If `EVAL2_LLM_*` is set, the `fresh` mode is repeated
   on it (`--model second`); otherwise recorded as not run.
+
+## Amendment 5 — 2026-11-16 20:40 UTC, before the rerun on Qwen 3.8 27B (round three)
+
+- **The model.** The operator stated **Qwen 3.8 27B** on the relay's `default-model`. Preflight (`EXP-2026-11-021-agent-model-check/logs/preflight_qwen38.jsonl`, 20:33 UTC): endpoint healthy; self-reports Qwen, Alibaba / Tongyi Lab, and is instructed not to give a version, so the version rests on the operator's statement. Recorded at the start and end of every part, as registered.
+- **The earlier counted run failed.** Amendment 4's first run (MiniCPM 4.7 35B-A3B, 2026-11-16 17:06–18:36 UTC) met a server outage and is recorded as a failed run (RESULTS.md AMENDMENTS); its files are in `outage-20261116/`. This run uses the registered file names.
+- **8 in flight, not 4.** The operator asked for about 8 Mylo turns in flight (16 at most). The harness limit is raised from 4 to 8 and Phase 1 (both modes) runs with `--conc 8`, one part at a time.
+- **Other load on the server.** The operator is running 8 concurrent sequences of their own against the same server for the whole run, so the server carries about 16 streams. Seconds measured here are under that load and are not compared with earlier rounds' idle seconds. Outcome classes and grades are read as registered; a server failure or timeout may be more likely, and is counted, not rerun beyond the registered single retry.
+- **The sandbox copies start empty of threads.** The failed run left Mylo threads in both copies (including five answered S1 turns in the repeated copy), which repeated mode would recall. Every `AgentThread` in `mycelium_sandbox_exp019r3rep` and `mycelium_sandbox_exp019r3fresh` is deleted before repetition 0 (counts in ISSUES.md); the world and its preflight are unchanged.
+- Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.

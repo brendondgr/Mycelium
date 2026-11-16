@@ -260,3 +260,11 @@ of runs (measure 3, (iii) over all arm-a list runs).
 **Model.** Recorded with the operator's statement at the start and end of the
 run; numbers reported beside it. A failed turn (relay error) is a failed
 attempt as before.
+
+## Amendment 4 — 2026-11-16 20:40 UTC, before the rerun on Qwen 3.8 27B (round three)
+
+- **The model.** The operator stated **Qwen 3.8 27B** on the relay's `default-model`. Preflight (`EXP-2026-11-021-agent-model-check/logs/preflight_qwen38.jsonl`, 20:33 UTC): endpoint healthy; self-reports Qwen, Alibaba / Tongyi Lab, and is instructed not to give a version, so the version rests on the operator's statement. Recorded at the start and end of every part, as registered.
+- **The earlier counted run failed.** Amendment 3's first run (MiniCPM 4.7 35B-A3B, 2026-11-16 17:06–18:36 UTC) met a server outage and is recorded as a failed run (RESULTS.md AMENDMENTS); its files are in `outage-20261116/`. This run uses the registered file names.
+- **8 in flight, not 4.** The operator asked for about 8 Mylo turns in flight (16 at most). The harness limit is raised from 4 to 8 and Phase 2 (`run.py --conc 8`) runs with `--conc 8`, one part at a time.
+- **Other load on the server.** The operator is running 8 concurrent sequences of their own against the same server for the whole run, so the server carries about 16 streams. Seconds measured here are under that load and are not compared with earlier rounds' idle seconds. Outcome classes and grades are read as registered; a server failure or timeout may be more likely, and is counted, not rerun beyond the registered single retry.
+- Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.

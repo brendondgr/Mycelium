@@ -56,7 +56,7 @@ def main() -> int:
     ap.add_argument("--tag", default="r3")
     ap.add_argument("--model", choices=["instance", "second"], default="instance")
     args = ap.parse_args()
-    assert args.conc <= 4
+    assert args.conc <= 8  # Amendment 5 (019) / Amendment 3 (016): at most 8 in flight
     assert os.environ.get("SANDBOX_DB") == DBS[args.mode], "SANDBOX_DB must name this mode's copy"
     run019.EXP_DB = DBS[args.mode]
     env = run019.setup_django()

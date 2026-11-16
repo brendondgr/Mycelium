@@ -181,3 +181,11 @@ the end with the operator's statement.
 measured while it is unstable measure the relay's connection, not the model;
 the relay's health is logged before and after each run (`logs/a2_<tag>_health.json`)
 and failed turns are counted, not dropped.
+
+## Amendment 7 — 2026-11-16 20:40 UTC, before the rerun on Qwen 3.8 27B (round three)
+
+- **The model.** The operator stated **Qwen 3.8 27B** on the relay's `default-model`. Preflight (`EXP-2026-11-021-agent-model-check/logs/preflight_qwen38.jsonl`, 20:33 UTC): endpoint healthy; self-reports Qwen, Alibaba / Tongyi Lab, and is instructed not to give a version, so the version rests on the operator's statement. Recorded at the start and end of every part, as registered.
+- **The earlier counted run failed.** Amendment 6's first run (MiniCPM 4.7 35B-A3B, 2026-11-16 17:06–18:36 UTC) met a server outage and is recorded as a failed run (RESULTS.md AMENDMENTS); its files are in `outage-20261116/`. This run uses the registered file names.
+- **Other load on the server.** The operator is running 8 concurrent sequences of their own against the same server for the whole run, so the server carries about 16 streams. Seconds measured here are under that load and are not compared with earlier rounds' idle seconds. Outcome classes and grades are read as registered; a server failure or timeout may be more likely, and is counted, not rerun beyond the registered single retry.
+- **A6's arms keep their registered concurrency** (idle: one turn at a time; process arm: 8 containers). Because of the operator's load, A6 idle is not idle: it is one Mylo turn beside 8 other streams, and the process arm is 8 beside 8. C-030 and O8 are read as *under load*; A6 rows are not pooled with A2/A5 idle rows.
+- Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.

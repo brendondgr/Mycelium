@@ -113,3 +113,10 @@ final text whose events hold a `turn_failed` error is classed **failed**, with
 the error detail kept. Both counts are reported: `blank` as amended and
 `blank_as_registered` (blank + failed). C-054 is read on the amended class,
 and the as-registered count is printed beside it. No run is repeated for this.
+
+## Amendment 2 — 2026-11-16 20:40 UTC, before the rerun on Qwen 3.8 27B (round three)
+
+- **The model.** The operator stated **Qwen 3.8 27B** on the relay's `default-model`. Preflight (`EXP-2026-11-021-agent-model-check/logs/preflight_qwen38.jsonl`, 20:33 UTC): endpoint healthy; self-reports Qwen, Alibaba / Tongyi Lab, and is instructed not to give a version, so the version rests on the operator's statement. Recorded at the start and end of every part, as registered.
+- **8 in flight, not 4.** The operator asked for about 8 Mylo turns in flight (16 at most). The harness limit is raised from 4 to 8 and the check (both parts) runs with `--conc 8`, one part at a time.
+- **Other load on the server.** The operator is running 8 concurrent sequences of their own against the same server for the whole run, so the server carries about 16 streams. Seconds measured here are under that load and are not compared with earlier rounds' idle seconds. Outcome classes and grades are read as registered; a server failure or timeout may be more likely, and is counted, not rerun beyond the registered single retry.
+- Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.
