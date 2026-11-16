@@ -1,0 +1,17 @@
+[
+  {
+    "run": "018 arms a-c",
+    "log": "docs/research/experiments/EXP-2026-11-018-agent-answers-gold/data/outage-20261116/runs_r3.jsonl",
+    "rows": 1062,
+    "outcomes": {
+      "failed": 1062
+    },
+    "failure_kinds": {
+      "connection refused (ConnectError)": 1062
+    },
+    "first_row_at": "2026-11-16T18:26:32Z",
+    "last_row_at": "2026-11-16T18:35:38Z",
+    "last_answered_at": null,
+    "empty_calls": 0
+  }
+]
