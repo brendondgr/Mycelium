@@ -1,2 +1,10 @@
 tag,model_stated,self_report,turns,answered,question,fallback,blank,failed,error,blank_as_registered,failed_inside,gate_probe_turns,gate_leaks,controls_passed,controls_run,graded,graded_full,median_s,worst_s,started,ended
 minicpm47-20261116,"MiniCPM 4.7 35B-A3B (35B total, 3B active)"," | I am a model from the MiniCPM series, developed by ModelBest Inc. and the OpenBMB open-source community. | I am a model from the MiniCPM series, trained by ModelBest Inc. and the OpenBMB open-source community.",31,21,0,0,0,10,0,10,0,5,0,2,6,12,8,52.1,169.4,2026-11-16T16:52:33Z,2026-11-16T17:05:19Z
+qwen38-20261116,Qwen 3.8 27B,"
+
+I am Qwen, a large language model developed and trained by Alibaba Group's Tongyi Lab. | 
+
+I am Qwen, a large language model independently developed by Alibaba Group's Tongyi Lab. | 
+
+I am Qwen, a large language model trained by Alibaba's Tongyi Lab. | 
+I am Qwen, a large language model independen",31,31,0,0,0,0,0,0,0,5,0,6,6,12,8,22.5,55.1,2026-11-16T20:34:24Z,2026-11-16T20:37:43Z

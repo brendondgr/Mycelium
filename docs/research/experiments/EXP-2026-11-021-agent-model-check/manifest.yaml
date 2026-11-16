@@ -85,6 +85,19 @@ metrics:
     minicpm47_20261116.graded_full_credit: {mean: 8, n: 12}
     minicpm47_20261116.median_turn_s: {mean: 52.1, n: 31}
     minicpm47_20261116.worst_turn_s: {mean: 169.4, n: 31}
+    qwen38_20261116.turns: {mean: 31, n: 31}
+    qwen38_20261116.answered: {mean: 31, n: 31}
+    qwen38_20261116.question: {mean: 0, n: 31}
+    qwen38_20261116.fallback: {mean: 0, n: 31}
+    qwen38_20261116.failed_server: {mean: 0, n: 31}
+    qwen38_20261116.blank_turns: {mean: 0, n: 31}
+    qwen38_20261116.blank_as_registered: {mean: 0, n: 31}
+    qwen38_20261116.failed_inside_mycelium: {mean: 0, n: 31}
+    qwen38_20261116.gate_leaks: {mean: 0, n: 5}
+    qwen38_20261116.controls_passed: {mean: 6, n: 6}
+    qwen38_20261116.graded_full_credit: {mean: 8, n: 12}
+    qwen38_20261116.median_turn_s: {mean: 22.5, n: 31}
+    qwen38_20261116.worst_turn_s: {mean: 55.1, n: 31}
 baselines_compared: []
 statistical_test: null
 

@@ -18,6 +18,7 @@ rows): the relay listing, the self-report, and the operator's statement.
 | Tag | Operator states | Self-report | Server |
 |---|---|---|---|
 | `minicpm47-20261116` | MiniCPM 4.7, 35B total / 3B active (the maintainer, 2026-11-16, as a stand-in while the intended models could not be served) | "I am a model from the MiniCPM series, developed by ModelBest Inc. and the OpenBMB open-source community." (16:29 UTC, in `reasoning`, `content` null) | `vllm-0.31.1rc1.dev344+g5b0b8f251` (`system_fingerprint`); quantisation unknown |
+| `qwen38-20261116` | Qwen 3.8 27B (the maintainer, 2026-11-16, after the server was fixed) | "I am Qwen, a large language model independently developed by Alibaba Group's Tongyi Lab." (20:33 UTC; its reasoning says it is instructed to give no version) | server version and quantisation unknown; the operator ran 8 other streams on it throughout |
 
 ## Anything about the hardware that affects the claim
 

@@ -30,3 +30,11 @@
 - 2026-11-16, first counted run: 10 of 31 turns failed on relay 502s
   (`ConnectTimeout`, `ReadError`), 5 of them in the first four minutes; the
   start-of-run identity check also got a 502. Counted as `failed`, not rerun.
+- 2026-11-16, second row (Qwen 3.8 27B): the gate part recreates
+  `mycelium_agent_eval_check_101_instance` (named by model arm, not by tag), so
+  MiniCPM's Q-075 thread `e00b4edd-…`, said above to be kept, was dropped when
+  the second row ran. The evidence stays in `logs/gate_minicpm47-20261116.jsonl`
+  (the row's output and function results). A later row should name the database
+  by tag; not changed now, to keep the harness as registered.
+- 2026-11-16, second row: the server was shared with the operator's own 8
+  concurrent streams (Amendment 2). No turn failed.

@@ -23,6 +23,30 @@
    "worst_s": 169.4,
    "started": "2026-11-16T16:52:33Z",
    "ended": "2026-11-16T17:05:19Z"
+  },
+  {
+   "tag": "qwen38-20261116",
+   "model_stated": "Qwen 3.8 27B",
+   "self_report": "\n\nI am Qwen, a large language model developed and trained by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model independently developed by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model trained by Alibaba's Tongyi Lab. | \nI am Qwen, a large language model independen",
+   "turns": 31,
+   "answered": 31,
+   "question": 0,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 8,
+   "median_s": 22.5,
+   "worst_s": 55.1,
+   "started": "2026-11-16T20:34:24Z",
+   "ended": "2026-11-16T20:37:43Z"
   }
  ],
  "graded_by_question": {
@@ -105,6 +129,93 @@
     "recall": 0.0,
     "precision": 1.0,
     "full": 0,
+    "named": []
+   }
+  },
+  "qwen38-20261116": {
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-p01": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 0.2,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.mara",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 0.25,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   },
+   "g-p10": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
     "named": []
    }
   }
