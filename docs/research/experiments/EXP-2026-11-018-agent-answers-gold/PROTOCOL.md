@@ -336,3 +336,30 @@ sent 24 calls at once with such references, all were denied, the limit was
 used up, the corrected batch was refused, and the turn ended `context_full`.
 **The frozen copy every run of this amendment mounts is `55cfdb1c`**, not
 `62c9fa17`.
+
+## Amendment 7 — 2026-11-17 08:50 UTC, before any answer on Gemma 4 31B (tag `r4g`)
+
+Not asked for by the plan, which measures on the instance model. Added because
+the second server is free once `EXP-2026-11-019`'s runs have ended, and round
+two's rows (the only earlier rows on Gemma 4 31B: full credit 0.72, list 0/30)
+then have a row on the same model after the fixes.
+
+- **Runs.** Amendment 6's design unchanged: the same 531 jobs
+  (`code/jobs_r4g.txt` = `jobs_r4.txt`), `code/run.py` unchanged, the gold of
+  Amendment 6 (`data/gold_r4.json`, computed 05:24 UTC), `--out
+  data/runs_r4g.jsonl`, `code/drive_r4.sh` with `TAG=r4g`,
+  `LLM=default-model-2`. `--conc 16` (the plan's limit of 8 is for the instance
+  model; this server carries nothing else).
+- **Code under test:** a frozen copy of `127428f3` — the commit Amendment 6's
+  run reads (`55cfdb1c`) plus the lost-call retry that `EXP-2026-11-019`
+  Amendment 8 found Gemma needs. The two models' rows therefore differ by that
+  one commit as well as by the model; the retry fires only on an empty reply
+  whose finish reason is `tool_calls`.
+- **Grading and the partial-list measure:** `R4_TAG=r4g code/r4.py grade`
+  (and `--first-attempt`), `R4_TAG=r4g code/r4.py partial`, unchanged code.
+- **Read as:** C-043 to C-046 and C-056 on their own bars for this model,
+  beside round two's Gemma row; never pooled with Qwen's.
+- **Model:** the operator states Gemma 4 31B on `default-model-2`; recorded at
+  the start and end (`logs/model_r4g.jsonl`). No new turn after 11:40 UTC. Both
+  runs ask in the demo lab at the same time (at most 24 turns in the live
+  database); threads are deleted after both have ended (`code/cleanup.py`).

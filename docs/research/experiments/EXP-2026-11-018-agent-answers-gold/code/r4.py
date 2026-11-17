@@ -18,6 +18,7 @@ copied or changed.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -25,7 +26,11 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 EXP = HERE.parent
-TAG = "r4"
+#: The gold is tonight's (``gold_r4.json``) for every run graded here; ``R4_TAG``
+#: names the run (``r4``: Qwen 3.8 27B, Amendment 6; ``r4g``: Gemma 4 31B,
+#: Amendment 7).
+GOLD = "r4"
+TAG = os.environ.get("R4_TAG", "r4")
 sys.path.insert(0, str(HERE))
 
 
@@ -47,7 +52,7 @@ def gold() -> int:
     stage = _stage()
     B.EXP = stage
     rc = B.main()
-    out = EXP / "data" / f"gold_{TAG}.json"
+    out = EXP / "data" / f"gold_{GOLD}.json"
     shutil.copy(stage / "data" / "gold_r3.json", out)
     doc = json.loads(out.read_text())
     print(json.dumps({"wrote": str(out.relative_to(EXP)), "kept": len(doc["questions"]),
@@ -56,7 +61,7 @@ def gold() -> int:
 
 
 def jobs() -> int:
-    doc = json.loads((EXP / "data" / f"gold_{TAG}.json").read_text())
+    doc = json.loads((EXP / "data" / f"gold_{GOLD}.json").read_text())
     kept = doc["questions"]
     ids = [q["id"] for q in kept] if isinstance(kept, list) else list(kept)
     order = [q["id"] for q in json.loads((HERE / "questions.json").read_text())["questions"]]
@@ -70,7 +75,7 @@ def grade_(extra: list[str]) -> int:
 
     suffix = f"_{TAG}" + ("_first_attempt" if "--first-attempt" in extra else "")
     stage = _stage()
-    shutil.copy(EXP / "data" / f"gold_{TAG}.json", stage / "data" / "gold.json")
+    shutil.copy(EXP / "data" / f"gold_{GOLD}.json", stage / "data" / "gold.json")
     runs = _runs()
     shutil.copy(runs, stage / "data" / runs.name)
     grade.EXP = stage
