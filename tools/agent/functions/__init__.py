@@ -551,7 +551,7 @@ KNOWLEDGE = (
     _f(
         "knowledge_people_for_call",
         "Finding who could go after {call}",
-        "Who in the lab could go after a grant or call.",
+        "Who in the lab could go after a grant or call, or has the expertise it needs.",
         "For a call, which of its requirement slots each lab member covers and with "
         "what evidence (declared, demonstrated, confirmed in conversation — lab-mates "
         "on their declared profile only), the gaps, and who the nightly ranking "
@@ -568,10 +568,12 @@ KNOWLEDGE = (
     _f(
         "knowledge_people_beyond_lab",
         "Looking beyond the lab for {call}",
-        "People beyond the lab who could join a call.",
+        "People beyond the lab for a call (after knowledge_people_for_call).",
         "Search people outside the person's lab who are open to collaborating with "
         "them and fill a call's gaps or share its expertise, from their declared "
-        "profile and papers. Counts against the person's daily collaborator searches.",
+        "profile and papers. It never lists lab-mates: call "
+        "knowledge_people_for_call first to see who in the lab already covers the "
+        "call. Counts against the person's daily collaborator searches.",
         f"{H}.knowledge:knowledge_people_beyond_lab",
         output="person",
         feature="features.collab_search",

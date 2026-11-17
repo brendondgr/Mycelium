@@ -618,6 +618,16 @@ def test_people_beyond_lab_lists_lanes(world, call, settings, monkeypatch):
     assert out["status"] == "ok"
     assert "Fills a gap:\n- Far Away (@far, Elsewhere U)" in out["content"]
     assert "[demonstrated by their papers: exposure science]" in out["content"]
+    # EXP-2026-11-019 S1: asked first, the outside search read as the whole
+    # answer and the lab-mate who covers the call was never looked for.
+    last = out["content"].splitlines()[-1]
+    assert "only people outside the lab" in last
+    assert f"knowledge_people_for_call(call='#{out['refs'][0]}')" in last
+    alone = run(
+        world.outsider, "knowledge_people_beyond_lab", {"call": f"item:{call.pk}"}
+    )
+    assert alone["status"] == "ok"  # in no lab: no lab-mates to point to
+    assert "knowledge_people_for_call" not in alone["content"]
     assert (
         lab_run(
             world.member,

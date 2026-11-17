@@ -398,4 +398,13 @@ def knowledge_people_beyond_lab(caller, call):
         "To meet someone, the person uses “Who can introduce me?” in the app's "
         "collaborator search."
     )
+    if common.member_lab_ids(caller):
+        # Asked first, this search read as the whole answer: a lab-mate who
+        # covers the call was never looked for (EXP-2026-11-019, S1).
+        lab_first = f"knowledge_people_for_call(call='{{ref:{head.ref}}}')"
+        lines.append(
+            "This list is only people outside the lab. Who in the person's own lab "
+            f"covers this call is in {lab_first}: read that too before you answer, "
+            "and name a lab-mate who covers it first."
+        )
     return Result(content="\n".join(lines), refs=[head])
