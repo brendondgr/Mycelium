@@ -110,6 +110,97 @@ def test_a_function_that_keeps_failing_is_not_run_again(person, scripted):
     assert "not run again" in results[-1]["error"]["detail"]
 
 
+def _results(thread):
+    return [e.payload for e in store.events(thread) if e.type == "tool_result"]
+
+
+def _paper(title="A paper to read"):
+    from tools.retrieval.read import ContentItem
+
+    return ContentItem.objects.create(
+        type="paper",
+        source="test",
+        external_id=title[:20],
+        metadata={"title": title, "abstract": "An abstract."},
+    )
+
+
+def test_two_malformed_calls_do_not_block_the_correct_one(person, scripted):
+    # Q-075: a wrong argument name, then none, used up the failure limit and
+    # the corrected call was refused.
+    paper = _paper()
+    thread = thread_for(person)
+    _send(thread, "what is this paper?")
+    model = scripted(
+        [("corpus_item", {"paper": f"item:{paper.pk}"})],
+        [("corpus_item", {})],
+        [("corpus_item", {"item": f"item:{paper.pk}"})],
+        "It is a paper.",
+    )
+    loop.run_turn(thread.pk, port=model)
+    results = _results(thread)
+    assert [r["status"] for r in results] == ["error", "error", "ok"]
+    assert [r["error"]["code"] for r in results[:2]] == ["bad_arguments"] * 2
+    # The error names what the function does and does not take.
+    assert "does not take: paper" in results[0]["error"]["detail"]
+    assert "needs: item" in results[1]["error"]["detail"]
+    assert results[0]["error"]["fix"] == "corpus_item accepts: item (required)."
+    assert "A paper to read" in results[2]["content"]
+
+
+def test_a_real_failure_still_counts_toward_the_limit(person, scripted):
+    thread = thread_for(person)
+    _send(thread, "read these")
+    gone = "item:00000000-0000-0000-0000-00000000000"
+    model = scripted(
+        [("corpus_item", {"item": gone + "1"})],
+        [("corpus_item", {"item": gone + "2"})],
+        [("corpus_item", {"item": gone + "3"})],
+        "I could not read them.",
+    )
+    loop.run_turn(thread.pk, port=model)
+    results = _results(thread)
+    assert [r["status"] for r in results[:2]] == ["denied", "denied"]
+    assert results[2]["error"]["code"] == "keeps_failing"
+
+
+def test_malformed_calls_have_a_ceiling_of_their_own(person, scripted):
+    thread = thread_for(person)
+    _send(thread, "keep trying")
+    good = [("me_profile", {}), ("me_interests", {}), ("me_understanding", {})]
+    steps = [
+        [("corpus_item", {"guess": n}), good[n % 3]]
+        for n in range(loop.MALFORMED_LIMIT)
+    ]
+    model = scripted(*steps, [("corpus_item", {"guess": 99})], "I give up.")
+    loop.run_turn(thread.pk, port=model)
+    mine = [r for r in _results(thread) if r["name"] == "corpus_item"]
+    assert [r["error"]["code"] for r in mine] == [
+        *["bad_arguments"] * loop.MALFORMED_LIMIT,
+        "keeps_malformed",
+    ]
+    assert "not run again" in mine[-1]["error"]["detail"]
+    assert "corpus_item accepts: item (required)." in mine[-1]["error"]["fix"]
+
+
+def test_a_handler_asking_for_a_missing_argument_is_malformed_too(person):
+    from tools.agent import dispatch
+    from tools.agent.caller import for_thread
+
+    thread = thread_for(person)
+    thread.settings = {**(thread.settings or {}), "loaded": ["projects_get"]}
+    thread.save(update_fields=["settings"])
+    out = dispatch.run(
+        for_thread(thread), thread, name="projects_get", args={}, call_id="c1"
+    )
+    assert out["error"]["code"] == "need_project" and dispatch.malformed(out)
+    assert out["error"]["fix"].endswith("projects_get accepts: project.")
+    denied = dispatch.run(
+        for_thread(thread), thread, name="no_such_fn", args={}, call_id="c2"
+    )
+    assert not dispatch.malformed(denied)
+
+
 def test_thrashing_wraps_up(person, scripted):
     thread = thread_for(person)
     _send(thread, "break")

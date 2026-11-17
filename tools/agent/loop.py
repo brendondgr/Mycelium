@@ -47,6 +47,14 @@ THRASH_STEPS = 3
 #: the arguments (EXP-2026-11-013: one answer called an introduction-path
 #: lookup eight times on people it cannot reach).
 FAILURE_LIMIT = 2
+#: A call rejected because its arguments were malformed (a name the function
+#: does not take, a required one left out, a value in the wrong form) is the
+#: model's slip, not the function failing: it does not count toward
+#: FAILURE_LIMIT, so the corrected call still runs (Q-075: two malformed calls
+#: used up the limit and the correct third was refused). Malformed calls have
+#: this ceiling of their own, per function and turn, so a model cannot loop on
+#: them for ever.
+MALFORMED_LIMIT = 4
 #: Told to the model when its answer got stuck repeating itself.
 RUNAWAY_RETRY = (
     "Your last answer got stuck repeating the same words, so it was thrown "
@@ -304,6 +312,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
     steps = 0
     seen: dict[str, int] = {}
     failures: dict[str, list[str]] = {}
+    malformed: dict[str, int] = {}
     failed_steps = 0
     overflowed = False
     repaired = False
@@ -575,7 +584,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                 )
             if not thread.shared and _drain_queue(thread):
                 steps, failed_steps, repaired, force_final, seen = 0, 0, False, "", {}
-                failures = {}
+                failures, malformed = {}, {}
                 continue
             return AgentThread.State.IDLE
 
@@ -621,6 +630,25 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                         },
                     }
                 )
+            elif malformed.get(c["name"], 0) >= MALFORMED_LIMIT:
+                results.append(
+                    {
+                        "call_id": c["call_id"],
+                        "name": c["name"],
+                        "status": "error",
+                        "error": {
+                            "code": "keeps_malformed",
+                            "detail": f"{c['name']} was called {MALFORMED_LIMIT} "
+                            "times this turn with arguments it does not take, so "
+                            "it is not run again.",
+                            "fix": (
+                                f"{dispatch.accepts_by_name(c['name'])} Use another "
+                                "function, or answer with what you have and say "
+                                "what you could not find."
+                            ).strip(),
+                        },
+                    }
+                )
             elif c["repeat"] >= REPEAT_LIMIT:
                 results.append(
                     {
@@ -645,9 +673,18 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             store.append(thread, "tool_result", result)
         for result in results:
             error = result.get("error") or {}
-            refused_here = error.get("code") in ("repeated_call", "keeps_failing")
-            if result.get("status") in ("error", "denied") and not refused_here:
-                failures.setdefault(result.get("name") or "", []).append(
+            refused_here = error.get("code") in (
+                "repeated_call",
+                "keeps_failing",
+                "keeps_malformed",
+            )
+            if result.get("status") not in ("error", "denied") or refused_here:
+                continue
+            name = result.get("name") or ""
+            if dispatch.malformed(result):
+                malformed[name] = malformed.get(name, 0) + 1
+            else:
+                failures.setdefault(name, []).append(
                     str(error.get("detail") or error.get("code") or "error")
                 )
         if results and all(r.get("status") != "ok" for r in results):

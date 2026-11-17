@@ -49,6 +49,13 @@ the API, a developer CLI, the web chat panel and Discord.
   is removed and the person told. A reply that loops (`runaway_cut`) is
   thrown away and retried once, then replaced by a plain "I got stuck" line. Everything is an `AgentEvent`; streaming is Redis pub/sub
   (`stream.py`, SSE at `threads/<id>/stream/`).
+- **Malformed calls are not failures.** A function that fails twice in a turn
+  is not run a third time (`FAILURE_LIMIT`). A call whose arguments were
+  malformed — a name the function does not take, a required one left out, a
+  value in the wrong form (`bad_arguments`, `need_*`) — is counted apart, up to
+  `MALFORMED_LIMIT` per function and turn, so the corrected call still runs.
+  `dispatch.py` checks a call's arguments against the function's schema after
+  the gate has allowed it, and the error names what the function accepts.
 - **What a person sees.** `activity.py` projects the log into the activity
   view: no thinking text, each call shown only as its function's `activity`
   label (every `AgentFunction` declares one; a framework test fails one that

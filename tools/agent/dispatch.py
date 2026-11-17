@@ -34,6 +34,55 @@ def _canonical_args(caller, fn, args: dict) -> dict:
     return out
 
 
+#: Error codes that mean the call itself was put together wrongly — an
+#: argument the function does not take, one it needs left out, a value in the
+#: wrong form — rather than that the function ran and failed. The loop counts
+#: these apart from real failures (Q-075). ``need_*`` is a handler asking for an
+#: argument that was left out (``need_project``, ``need_lab``).
+MALFORMED_CODES = ("bad_arguments",)
+MALFORMED_PREFIX = "need_"
+
+
+def malformed(result: dict) -> bool:
+    """True when a call's result says its arguments were malformed."""
+    code = str((result.get("error") or {}).get("code") or "")
+    return code in MALFORMED_CODES or code.startswith(MALFORMED_PREFIX)
+
+
+def accepts(fn) -> str:
+    """``projects_get accepts: project.`` — what a malformed call is told."""
+    schema = fn.parameters or {}
+    props = list(schema.get("properties") or {})
+    if not props:
+        return f"{fn.name} takes no arguments."
+    required = set(schema.get("required") or [])
+    names = [f"{k} (required)" if k in required else k for k in props]
+    return f"{fn.name} accepts: {', '.join(names)}."
+
+
+def accepts_by_name(name: str) -> str:
+    fn = registry().get(name)
+    return accepts(fn) if fn is not None else ""
+
+
+def _shape_error(fn, args) -> str:
+    """Why these arguments do not fit the function's schema, or ``""``."""
+    if not isinstance(args, dict):
+        return "The arguments must be a JSON object."
+    schema = fn.parameters or {}
+    props = schema.get("properties") or {}
+    unknown = [k for k in args if k not in props]
+    missing = [
+        k for k in schema.get("required") or [] if k not in args or args[k] is None
+    ]
+    parts = []
+    if unknown:
+        parts.append(f"{fn.name} does not take: {', '.join(map(str, unknown))}.")
+    if missing:
+        parts.append(f"{fn.name} needs: {', '.join(missing)}.")
+    return " ".join(parts)
+
+
 def run(
     caller,
     thread,
@@ -64,7 +113,7 @@ def run(
             "error": {
                 "code": "bad_arguments",
                 "detail": arg_error or "Arguments were not valid JSON.",
-                "fix": "Send the arguments as a JSON object matching the schema.",
+                "fix": "Send the arguments as a JSON object. " + accepts(fn),
             },
         }
     decision = permissions.decide(caller, fn, args, mode=mode)
@@ -79,15 +128,29 @@ def run(
                 "fix": decision.fix,
             },
         }
-    try:
-        handler = resolve_ref(fn.handler)
-        result = handler(caller, **_canonical_args(caller, fn, args))
-    except FunctionError as exc:
+    # Checked after the gate, so a function the caller may not use never
+    # describes itself; before the handler, so the model is told which
+    # arguments exist instead of a Python error.
+    shape = _shape_error(fn, args)
+    if shape:
         return {
             **base,
             "status": "error",
             "decision": decision.as_dict(),
-            "error": exc.as_dict(),
+            "error": {"code": "bad_arguments", "detail": shape, "fix": accepts(fn)},
+        }
+    try:
+        handler = resolve_ref(fn.handler)
+        result = handler(caller, **_canonical_args(caller, fn, args))
+    except FunctionError as exc:
+        error = exc.as_dict()
+        if malformed({"error": error}):
+            error["fix"] = f"{error.get('fix') or ''} {accepts(fn)}".strip()
+        return {
+            **base,
+            "status": "error",
+            "decision": decision.as_dict(),
+            "error": error,
         }
     except TypeError as exc:
         return {
@@ -97,7 +160,7 @@ def run(
             "error": {
                 "code": "bad_arguments",
                 "detail": str(exc),
-                "fix": "Check the parameter names against the schema.",
+                "fix": accepts(fn),
             },
         }
     except Exception:
