@@ -276,3 +276,52 @@ attempt as before.
 - **The run on `default-model` was stopped** at 20:41 UTC, three minutes into Phase 1, when the operator moved the work; it is not counted (ISSUES.md).
 - **Concurrency.** `code/drive_r3_s2.sh`: `run.py --conc 64`, the 531 registered jobs, alone on the second server.
 - Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.
+
+## Amendment 6 — 2026-11-17 05:30 UTC, after three product fixes, before the first answer (tag `r4`)
+
+Plan: `docs/plans/20261116-mylo-overnight-fixes.md`, Phase 4. Measures three
+fixes committed tonight, on the instance model (the operator: **Qwen 3.8 27B**
+on the relay's `default-model`, shared with the operator's own work):
+
+- `f81d2837` — feed lists take a deadline filter applied before any cut, page
+  with `offset`, and end by saying whether they are complete (Q-079, C-056);
+- `035c9066` — a malformed call no longer uses up a function's failure limit
+  (Q-075; `j08`);
+- `3ea9c144` — every person and project a function returns carries a
+  reference, and the prompt says to cite each one named and only those (C-043);
+- `62c9fa17` — the slate reader keeps its old name, because `build_gold.py`
+  imports it (no behaviour change).
+
+1. **Gold recomputed before any answer** (2026-11-17 05:24 UTC):
+   `code/r4.py gold` runs `build_gold_r3.py` unchanged and writes
+   `data/gold_r4.json`. Kept 59; `l02` dropped again (gold size 12 > 8). No
+   question's gold objects differ from `gold_r3.json`.
+2. **Runs.** `code/run.py` unchanged: three arms, three repetitions, the 59
+   kept questions (`code/jobs_r4.txt`, 531 jobs), `--conc 8` (the plan's limit
+   on the instance model), `--out data/runs_r4.jsonl`, a failed job retried
+   once at the end as before (`code/drive_r4.sh`).
+3. **Grading and the partial-list measure, unchanged.** `code/r4.py grade`
+   (primary and secondary; `--first-attempt`) runs `grade.py` against
+   `gold_r4.json`; `code/r4.py partial` runs `partial_r3.py` with its
+   registered patterns and classes. `r4.py` only stages file names; it holds
+   no grading code.
+   - The fix changed how a cut list reads. A cut result still says
+     `only the first <n> of <m>` (now in its last line), so the registered
+     marker still finds it; a complete result says `all <n> of <n>` and carries
+     no marker, as before.
+4. **`j08`** reported on its own, as in Amendment 3.
+5. **A frozen copy of the code.** The run's containers mount
+   `git archive 62c9fa17` of `tools/` and `web/backend/` read-only over the
+   checkout's, so every job reads that commit while the checkout is edited.
+
+**Claims, read against their own bars, beside (never pooled with) round two's
+and round three's rows:** C-043 (full credit ≥ 70% of answerable runs), C-044,
+C-045, C-046, C-056 (a partial list presented as complete in ≤ 10% of arm-(a)
+list runs). **What would count against a fix** (the plan's words): fix 1 —
+C-056's bar missed again; fix 2 — `j08`'s corrected call refused again; fix 3 —
+the gap between the primary and the secondary grading not narrower than round
+three's (0.61 against 0.71 on this model).
+
+**Model and load.** Recorded at the start and end (`logs/model_r4.jsonl`). The
+server is shared, so seconds are not compared with any earlier round. No new
+turn after 11:40 UTC (the nightly run starts 12:01 UTC and moves the feeds).

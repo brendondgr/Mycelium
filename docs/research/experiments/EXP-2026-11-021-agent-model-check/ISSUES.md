@@ -38,3 +38,18 @@
   by tag; not changed now, to keep the harness as registered.
 - 2026-11-16, second row: the server was shared with the operator's own 8
   concurrent streams (Amendment 2). No turn failed.
+
+## 2026-11-17 — the Gemma "before" row's gate part crashed: two gate parts shared one database
+
+Amendment 4 started the Qwen and the Gemma "before" rows side by side. The gate
+part names its seeded database after `--model` (`…_check_101_instance`), not
+after the relay endpoint, and both rows ran as `--model instance` with a
+different `LLM_MODEL`. Gemma's gate part started at 04:58:06 UTC and built the
+database; Qwen's started at 04:58:37 and dropped and rebuilt it, and Gemma's
+part died (`database "mycelium_agent_eval_check_101_instance" does not exist`).
+Qwen's part was not disturbed (it owned the database from then on) and is
+counted. Gemma's demo part (20 turns) had finished and is counted; its gate
+part was run again on its own at 05:13 UTC from the same frozen copy of the
+code, and that run is the one counted. From now on two gate parts never run at
+the same time. The crashed part wrote no log (it died before its first turn
+ended).

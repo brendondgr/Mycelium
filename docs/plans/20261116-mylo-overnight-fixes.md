@@ -1,6 +1,6 @@
 # Mylo overnight — fix what three rounds found, then measure again
 
-**Status (2026-11-17 05:30 UTC):** in progress. Run by an agent on the live
+**Status (2026-11-17 05:25 UTC):** in progress — fixes 1 to 3 committed (`f81d2837`, `035c9066`, `3ea9c144`), not yet live. Run by an agent on the live
 host in one night, without a person present. Delete this file once every
 phase is recorded; the evidence stays in `docs/research/` and the open list in
 `docs/plans/20261113-mylo-evaluation-follow-ups.md`.
@@ -22,33 +22,39 @@ Preflight 2026-11-17 04:44 UTC: both healthy; the first self-reports Qwen
 (vLLM 0.31.1rc1), the second "trained by Google" (vLLM 0.21.0)
 (`EXP-2026-11-021-agent-model-check/logs/preflight_overnight_20261117.jsonl`).
 
-| When (UTC) | What | Where it runs |
+| Step | What | Where it runs |
 |---|---|---|
-| 05:30 | Phase 0: clone equals `origin/main` (`4f81ca2e`); baseline suite; the "before" row of the model check | Qwen, 8 in flight; a second "before" row on Gemma |
-| 05:45–07:45 | Phases 1, 2, 3: one commit each, with tests and docs | no model |
-| 07:45–08:05 | Whole suite on the three fixes, `make restart`, one demo question | — |
-| 08:05–10:45 | Phase 4: `EXP-2026-11-018` (all arms), then `-021` "after" row, then `-010` arm A7 | Qwen, at most 8 turns in flight |
-| 08:05–10:00 | Phase 7: `EXP-2026-11-019` S1, S2, S10, both modes, three repetitions; and a Gemma "after" row of the model check | Gemma, alone on `default-model-2` |
-| during phase 4 | Phase 8: built in a separate worktree, merged and restarted only when no run is in flight; then S4's `open_to` variant | Qwen |
-| 10:45–11:30 | Record | — |
-| **11:40** | **Hard stop for every run** (the nightly starts 12:01 UTC) | — |
+| Phase 0 (04:42–05:17 UTC) | Clone equals `origin/main` (`4f81ca2e`); baseline suite; the "before" row of the model check | Qwen, 8 in flight; a second "before" row on Gemma |
+| Phases 1, 2, 3 | One commit each, with tests and docs | no model |
+| Go-live | Whole suite on the commit that holds the three fixes, `make restart`, one demo question | — |
+| Phase 4 | `EXP-2026-11-018` (all arms), then `-021` "after" row, then `-010` arm A7 | Qwen, at most 8 turns in flight |
+| Phase 7, beside phase 4 | A Gemma "after" row of the model check, then `EXP-2026-11-019` S1, S2, S10, both modes, three repetitions | Gemma, alone on `default-model-2` |
+| Phase 8, beside phase 4 | Built in a separate worktree, merged and restarted only when no run is in flight; then S4's `open_to` variant | Qwen |
+| Record | Follow-ups plan, ledgers, changelog, index, validation, push | — |
+| **11:40 UTC** | **Hard stop for every run** (the nightly starts 12:01 UTC) | — |
 
 How the rules are met tonight:
 
 - **Fetch and push go over HTTPS with the host's `gh` login.** The SSH key is
   not available to an unattended session (`Permission denied (publickey)`); the
   `origin` remote itself is not changed.
-- **`make test` takes over an hour serially** (5,055 tests). The untouched
-  tree is run once with `make test` as the baseline. Before each go-live the
-  same collection is run as eight processes, each on its own test database
-  (the files `make test` collects, split by file); the tool suites named in
-  the rules are also run on their own after every fix.
-- **A measurement never reads a tree that is being edited.** The live backend
-  mounts the checkout, and so would a one-off container. Each measurement's
-  containers therefore mount a `git archive` of the commit under test over
-  `tools/` and `web/backend/`, with `docs/research` writable from the
-  checkout. Product edits made while a run is in flight happen in a separate
-  worktree.
+- **The suite is red before any change: 4 tests** (`make test`, 5,055 tests,
+  12 minutes): `apps/accounts/tests/test_synthesize_api.py::test_site_and_resume_merge`
+  and three in `tools/delivery/tests/test_opportunity_clusters.py`. None is in
+  a file a phase touches; they are not tonight's. "Green" below means "these
+  four and no other".
+- **A whole-suite run never reads a tree that is being edited.** Each one runs
+  `make test`'s command in a `git worktree` of the commit under test, on its
+  own test database. From a worktree six more tests error at setup
+  (`apps/integrations/tests/test_setup_bindings.py`), on the untouched commit
+  as well; they pass in the checkout. The tool suites named in the rules run in
+  the checkout after every fix.
+- **A measurement never reads a tree that is being edited either.** The live
+  backend mounts the checkout, and so would a one-off container. Each
+  measurement's containers therefore mount a `git archive` of the commit under
+  test over `tools/` and `web/backend/`, with `docs/research` writable from
+  the checkout. Product edits made while a run is in flight happen in a
+  separate worktree.
 - **One restart for fixes 1–3**, after the whole suite is green on the commit
   that holds all three, and before any phase-4 run starts (a restart would
   take the database and the model tunnel away from a running measurement).

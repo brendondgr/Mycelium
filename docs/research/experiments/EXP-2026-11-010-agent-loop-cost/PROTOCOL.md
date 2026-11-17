@@ -198,3 +198,28 @@ and failed turns are counted, not dropped.
 - **A6 on the second server, alone.** `code/drive_a6_s2.sh` runs last, after every other phase has stopped, so A6 idle is idle on the model server again (Amendment 7's load caveat no longer applies; the host is shared with the live instance as in every arm).
 - **A new arm, A6x64.** Eight containers, each asking the twelve questions with `--conc 8` and a different `--rotate`: at most 64 turns in flight. Rows are stamped `conc: 64` by `stamp_process_arm.py` so the analysis measures the batch from timestamps; the real in-flight count is read from those timestamps and reported. No claim is attached; it describes how the second server behaves at the concurrency the operator named.
 - Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.
+
+## Amendment 9 — 2026-11-17 05:30 UTC, before arm A7 (after the overnight fixes)
+
+**A7 — the same questions after three fixes** (plan
+`docs/plans/20261116-mylo-overnight-fixes.md`, Phase 4.3; commits `f81d2837`,
+`035c9066`, `3ea9c144`, `62c9fa17`). Feed lists now filter and page, which may
+cost more calls per turn; A7 says whether it does. Repeats A6 through
+`code/run_a6.py`, unchanged:
+
+- **A7 idle** — the twelve A2 questions, three repetitions, one at a time
+  (`--reps 3 --tag a7idle`);
+- **A7 with 8 processes** — eight one-off containers started together, each
+  asking all twelve once with `--rotate k` (`--reps 1 --tag a7p8`), then
+  `code/stamp_process_arm.py a7p8 8`.
+
+`code/drive_a7.sh`; the containers mount a frozen copy of `62c9fa17`
+(`tools/`, `web/backend/`). Model: the operator states **Qwen 3.8 27B** on
+`default-model`, shared with the operator's own work, so "idle" is one Mylo
+turn beside the operator's streams, as in Amendment 7; rows are read beside
+A6's rows on the same model (`a6idle`, `a6p8` ran on the second server with
+nothing else on it, so seconds are not compared — model calls and tokens per
+turn are). A7 runs after `EXP-2026-11-018`'s run has stopped, so at most 8
+Mylo turns are in flight. No new turn after 11:40 UTC. No new bar; C-030 and
+O8 are re-read. Reported by `code/a7_table.py` (A6's table with A7's rows
+beside it; written after the run, reading only the recorded files).
