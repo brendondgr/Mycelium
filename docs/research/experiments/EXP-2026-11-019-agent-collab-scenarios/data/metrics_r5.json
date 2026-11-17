@@ -1,0 +1,296 @@
+{
+ "modes": {
+  "repeated": {
+   "model": [
+    "default-model-2"
+   ],
+   "stated": [
+    "Gemma 4 31B"
+   ],
+   "by_rep": {
+    "0": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 0,
+     "median_s": 290.8
+    },
+    "1": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 30,
+     "median_s": 120.3
+    },
+    "2": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 30,
+     "median_s": 264.6
+    }
+   },
+   "c050": {
+    "S1": {
+     "asks": 30,
+     "named": 24,
+     "rate": 0.8,
+     "wilson95": [
+      0.627,
+      0.905
+     ],
+     "missed_failed_all": 0,
+     "missed_fallback": 0,
+     "missed_other": 6,
+     "meets_80": true
+    },
+    "S2": {
+     "asks": 30,
+     "named": 30,
+     "rate": 1.0,
+     "wilson95": [
+      0.886,
+      1.0
+     ],
+     "missed_failed_all": 0,
+     "missed_fallback": 0,
+     "missed_other": 0,
+     "meets_80": true
+    }
+   },
+   "s10": {
+    "asks": 30,
+    "violation_any": 0,
+    "says_nobody": 30
+   }
+  },
+  "fresh": {
+   "model": [
+    "default-model-2"
+   ],
+   "stated": [
+    "Gemma 4 31B"
+   ],
+   "by_rep": {
+    "0": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 0,
+     "median_s": 290.2
+    },
+    "1": {
+     "turns": 30,
+     "answered": 30,
+     "question": 0,
+     "fallback": 0,
+     "failed": 0,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 0,
+     "retry_answered": 0,
+     "recall_nonempty": 0,
+     "median_s": 101.9
+    },
+    "2": {
+     "turns": 30,
+     "answered": 29,
+     "question": 0,
+     "fallback": 0,
+     "failed": 1,
+     "blank": 0,
+     "refused": 0,
+     "error": 0,
+     "retried": 1,
+     "retry_answered": 1,
+     "recall_nonempty": 0,
+     "median_s": 201.7
+    }
+   },
+   "c050": {
+    "S1": {
+     "asks": 30,
+     "named": 13,
+     "rate": 0.4333,
+     "wilson95": [
+      0.274,
+      0.608
+     ],
+     "missed_failed_all": 0,
+     "missed_fallback": 0,
+     "missed_other": 17,
+     "meets_80": false
+    },
+    "S2": {
+     "asks": 30,
+     "named": 30,
+     "rate": 1.0,
+     "wilson95": [
+      0.886,
+      1.0
+     ],
+     "missed_failed_all": 0,
+     "missed_fallback": 0,
+     "missed_other": 0,
+     "meets_80": true
+    }
+   },
+   "s10": {
+    "asks": 30,
+    "violation_any": 0,
+    "says_nobody": 30
+   }
+  }
+ },
+ "gate016": {
+  "101": "not run",
+  "202": "not run",
+  "303": "not run"
+ },
+ "c055": {
+  "first_attempts": 180,
+  "answered": 179,
+  "question": 0,
+  "fallback": 0,
+  "failed": 1,
+  "blank": 0,
+  "refused": 0,
+  "error": 0,
+  "refuted": false,
+  "loop_empty_retry_turns": 0,
+  "model_calls": 950,
+  "empty_calls": 4
+ },
+ "empty_calls": [
+  {
+   "exp": "019",
+   "part": "repeated",
+   "item": "S2",
+   "rep": 1,
+   "attempt": 1,
+   "call": 0,
+   "finish_reason": "tool_calls",
+   "completion_tokens": 51,
+   "reasoning_tokens": null,
+   "reasoning_chars": 0,
+   "markup_in_reasoning": false,
+   "markup_in_content": false,
+   "seconds": 2.39,
+   "reasoning_tail": "",
+   "recall_nonempty": true,
+   "outcome": "answered"
+  },
+  {
+   "exp": "019",
+   "part": "repeated",
+   "item": "S2",
+   "rep": 1,
+   "attempt": 1,
+   "call": 1,
+   "finish_reason": "tool_calls",
+   "completion_tokens": 51,
+   "reasoning_tokens": null,
+   "reasoning_chars": 0,
+   "markup_in_reasoning": false,
+   "markup_in_content": false,
+   "seconds": 0.58,
+   "reasoning_tail": "",
+   "recall_nonempty": true,
+   "outcome": "answered"
+  },
+  {
+   "exp": "019",
+   "part": "repeated",
+   "item": "S10",
+   "rep": 1,
+   "attempt": 1,
+   "call": 0,
+   "finish_reason": "tool_calls",
+   "completion_tokens": 35,
+   "reasoning_tokens": null,
+   "reasoning_chars": 0,
+   "markup_in_reasoning": false,
+   "markup_in_content": false,
+   "seconds": 29.92,
+   "reasoning_tail": "",
+   "recall_nonempty": true,
+   "outcome": "answered"
+  },
+  {
+   "exp": "019",
+   "part": "repeated",
+   "item": "S10",
+   "rep": 1,
+   "attempt": 1,
+   "call": 1,
+   "finish_reason": "tool_calls",
+   "completion_tokens": 35,
+   "reasoning_tokens": null,
+   "reasoning_chars": 0,
+   "markup_in_reasoning": false,
+   "markup_in_content": false,
+   "seconds": 0.7,
+   "reasoning_tail": "",
+   "recall_nonempty": true,
+   "outcome": "answered"
+  }
+ ],
+ "empty_causes": {
+  "tag": "r5",
+  "model_calls": 955,
+  "empty_calls": 4,
+  "fit_the_lead": 0,
+  "by_tool_choice": {
+   "auto": 4
+  },
+  "by_cause": {
+   "nothing at all": 4
+  },
+  "largest_cause_share": 1.0,
+  "rows": [
+   {
+    "mode": "repeated",
+    "cause": "nothing at all",
+    "fits_lead": false,
+    "recall_nonempty": true,
+    "n": 4
+   }
+  ],
+  "turns_with_an_empty_call": [
+   {
+    "mode": "repeated",
+    "outcome": "answered",
+    "n": 2
+   }
+  ]
+ }
+}

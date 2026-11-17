@@ -1,0 +1,33 @@
+ Container r5-019-repeated-1 Creating 
+ Container r5-019-repeated-1 Created 
+collab rerank unavailable (Error code: 502 - {'error': {'message': 'upstream error: ConnectTimeout: ', 'type': 'relay_proxy_error', 'code': 502}})
+S1 p0337 repeated 1 1 answered True 233.9
+S1 p0528 repeated 1 1 answered True 265.23
+S1 p0052 repeated 1 1 answered True 268.09
+S1 p0295 repeated 1 1 answered True 295.67
+S1 p0240 repeated 1 1 answered True 296.69
+S1 p0002 repeated 1 1 answered True 295.71
+S1 p0530 repeated 1 1 answered True 326.84
+S1 p0483 repeated 1 1 answered True 326.71
+S2 p0204 repeated 1 1 answered True 57.89
+S2 p0111 repeated 1 1 answered True 58.8
+S1 p0053 repeated 1 1 answered True 150.42
+S2 p0106 repeated 1 1 answered True 116.37
+S2 p0152 repeated 1 1 answered True 71.04
+S2 p0399 repeated 1 1 answered True 58.9
+S1 p0340 repeated 1 1 answered True 139.25
+S2 p0009 repeated 1 1 answered True 97.52
+S2 p0061 repeated 1 1 answered True 65.67
+S2 p0541 repeated 1 1 answered True 66.06
+S10 p0430 repeated 1 1 answered None 51.03
+S2 p0011 repeated 1 1 answered True 56.84
+S2 p0298 repeated 1 1 answered True 53.19
+S10 p0280 repeated 1 1 answered None 68.47
+S10 p0095 repeated 1 1 answered None 104.58
+S10 p0329 repeated 1 1 answered None 105.84
+S10 p0570 repeated 1 1 answered None 124.18
+S10 p0090 repeated 1 1 answered None 106.85
+S10 p0520 repeated 1 1 answered None 125.48
+S10 p0189 repeated 1 1 answered None 155.22
+S10 p0046 repeated 1 1 answered None 155.77
+S10 p0333 repeated 1 1 answered None 185.03

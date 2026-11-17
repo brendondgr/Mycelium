@@ -1,0 +1,46 @@
+ Container r5-019-fresh-2 Creating 
+ Container r5-019-fresh-2 Created 
+S1 p0295 fresh 2 1 answered False 195.96
+S1 p0002 fresh 2 1 answered False 197.25
+S1 p0337 fresh 2 1 answered True 200.26
+S1 p0530 fresh 2 1 answered False 200.0
+S1 p0528 fresh 2 1 answered False 199.26
+S1 p0052 fresh 2 1 answered True 200.53
+S1 p0240 fresh 2 1 answered True 201.39
+S1 p0483 fresh 2 1 answered False 201.97
+agent turn failed for thread b491f3b1-fb70-4b1a-9e67-350ae9b8ee0c
+Traceback (most recent call last):
+httpcore.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+httpx.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+openai.APIConnectionError: Connection error.
+S2 p0152 fresh 2 1 failed False 52.48
+S2 p0111 fresh 2 1 answered True 170.54
+S2 p0106 fresh 2 1 answered True 174.28
+S2 p0399 fresh 2 1 answered True 173.9
+S1 p0053 fresh 2 1 answered True 185.33
+S1 p0340 fresh 2 1 answered True 177.07
+S2 p0204 fresh 2 1 answered True 174.3
+S2 p0009 fresh 2 1 answered True 173.23
+S2 p0541 fresh 2 1 answered True 300.95
+S2 p0061 fresh 2 1 answered True 273.83
+S10 p0280 fresh 2 1 answered None 264.2
+S10 p0570 fresh 2 1 answered None 263.61
+S10 p0430 fresh 2 1 answered None 264.62
+S10 p0095 fresh 2 1 answered None 264.69
+S2 p0011 fresh 2 1 answered True 264.62
+S2 p0298 fresh 2 1 answered True 264.7
+S10 p0090 fresh 2 1 answered None 243.91
+S10 p0329 fresh 2 1 answered None 335.41
+S10 p0189 fresh 2 1 answered None 353.64
+S10 p0046 fresh 2 1 answered None 353.64
+S10 p0333 fresh 2 1 answered None 353.64
+S10 p0520 fresh 2 1 answered None 386.99
+S2 p0152 fresh 2 2 answered True 88.22
