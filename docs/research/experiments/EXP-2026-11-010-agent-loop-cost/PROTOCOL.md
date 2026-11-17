@@ -223,3 +223,14 @@ turn are). A7 runs after `EXP-2026-11-018`'s run has stopped, so at most 8
 Mylo turns are in flight. No new turn after 11:40 UTC. No new bar; C-030 and
 O8 are re-read. Reported by `code/a7_table.py` (A6's table with A7's rows
 beside it; written after the run, reading only the recorded files).
+
+**Added 2026-11-17 05:56 UTC, still before the first answer.** The go-live check
+(one question to the public demo after the restart) found two things, fixed
+before any run: `ce976d2f` — a deadline-filtered slate keeps "who should look",
+as the rank-order view has it; `55cfdb1c` — calls sent together in one step
+with the same slip count once toward the failure limit, and a reference passed
+with its title after it (`#7 Some title`) is read as `#7`. In that check Mylo
+sent 24 calls at once with such references, all were denied, the limit was
+used up, the corrected batch was refused, and the turn ended `context_full`.
+**The frozen copy every run of this amendment mounts is `55cfdb1c`**, not
+`62c9fa17`.

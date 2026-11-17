@@ -137,3 +137,10 @@ and the as-registered count is printed beside it. No run is repeated for this.
 - **A frozen copy of the code.** Each row's containers mount `git archive <commit>` of `tools/` and `web/backend/` read-only over the checkout's (`code/drive_row.sh`), so a row reads exactly one commit while the checkout is being edited: the "before" rows read `4f81ca2e`; the "after" rows read the commit that holds the three fixes (named in RESULTS.md).
 - **Gold.** The twelve graded questions are still graded against `EXP-2026-11-018`'s round-two `data/gold.json`, as registered, so the rows stay comparable with each other; the feeds have moved since, which lowers every row alike.
 - Nothing else changes: questions, probes, controls, classes and hypotheses are as registered.
+
+**Added 2026-11-17 05:56 UTC, before any "after" row.** The "after" rows read a
+frozen copy of `55cfdb1c`: the three fixes (`f81d2837`, `035c9066`,
+`3ea9c144`), the slate reader's old name (`62c9fa17`), and two follow-ups the
+go-live check asked for (`ce976d2f`, `55cfdb1c`: a deadline-filtered slate
+keeps "who should look"; calls sent together with the same slip count once
+toward the failure limit, and `#7 Some title` is read as `#7`).

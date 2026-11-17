@@ -325,3 +325,14 @@ three's (0.61 against 0.71 on this model).
 **Model and load.** Recorded at the start and end (`logs/model_r4.jsonl`). The
 server is shared, so seconds are not compared with any earlier round. No new
 turn after 11:40 UTC (the nightly run starts 12:01 UTC and moves the feeds).
+
+**Added 2026-11-17 05:56 UTC, still before the first answer.** The go-live check
+(one question to the public demo after the restart) found two things, fixed
+before any run: `ce976d2f` — a deadline-filtered slate keeps "who should look",
+as the rank-order view has it; `55cfdb1c` — calls sent together in one step
+with the same slip count once toward the failure limit, and a reference passed
+with its title after it (`#7 Some title`) is read as `#7`. In that check Mylo
+sent 24 calls at once with such references, all were denied, the limit was
+used up, the corrected batch was refused, and the turn ended `context_full`.
+**The frozen copy every run of this amendment mounts is `55cfdb1c`**, not
+`62c9fa17`.
