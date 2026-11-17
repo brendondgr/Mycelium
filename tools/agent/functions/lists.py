@@ -432,8 +432,14 @@ def _filtered_view(
         due = due_in_window([s.content_id for s in ranked], lo, hi, kinds)
         matched = [s for s in matched if s.content_id in due]
         asked.append(f"{kinds_text(kinds)} {window_text(lo, hi)}")
+    elsewhere: dict[str, int] = {}
     if wanted is not None:
-        unstated = sum(1 for s in ranked if common.item_amount(s.content)[0] is None)
+        for s in ranked:
+            most, stated_in, _ = common.item_amount(s.content)
+            if most is None:
+                unstated += 1
+            elif wanted[2] and stated_in and stated_in != wanted[2]:
+                elsewhere[stated_in] = elsewhere.get(stated_in, 0) + 1
         matched = [s for s in matched if amount_matches(s.content, wanted)]
         asked.append(amount_text(wanted))
     noun = _joined([_plural(t) for t in kept])
@@ -443,6 +449,17 @@ def _filtered_view(
         if unstated
         else ""
     )
+    if elsewhere:
+        # Amounts are not converted: say what was left out for its currency,
+        # so the next call is this list in that currency, not every item read.
+        codes = _joined(
+            [f"{n} in {code}" for code, n in sorted(elsewhere.items())]
+        )
+        silent += (
+            f" {sum(elsewhere.values())} state theirs in another currency ({codes}) "
+            "and were not compared: amounts are not converted. Call again with "
+            "that currency and the amount in it to list them."
+        )
     if not matched:
         return Result(
             content=f"None of the {len(ranked)} {noun} in the current slate of "

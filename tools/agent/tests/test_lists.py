@@ -310,9 +310,10 @@ def test_an_amount_filter_returns_every_match_and_says_it_is_complete(world):
     assert all("€2,000,000–€5,000,000" in x for x in listed)
     assert "checked all 30" in out["content"]
     assert "a highest amount of at least 4,000,000 EUR" in out["content"]
-    assert last(out) == (
+    assert last(out).startswith(
         "This is the complete list: all 3 of 3 matching items. 1 of the 30 state "
-        "no amount, so they cannot match."
+        "no amount, so they cannot match. 1 state theirs in another currency "
+        "(1 in USD) and were not compared"
     )
     assert len(out["refs"]) == 4  # the lab and the three grants
 
@@ -326,6 +327,13 @@ def test_a_currency_alone_and_a_ceiling_are_filters_too(world):
         "- #2 Grant 11 [grant] — $5,000,000"
     ]
     assert "an amount stated in USD" in usd["content"]
+    # Asked in dollars, the euro grants are not compared: the result says so,
+    # so the next call is this list in euros and not every grant read in turn.
+    assert last(usd).endswith(
+        "28 state theirs in another currency (28 in EUR) and were not compared: "
+        "amounts are not converted. Call again with that currency and the amount "
+        "in it to list them."
+    )
     small = run(
         world.member,
         "feeds_slate",
