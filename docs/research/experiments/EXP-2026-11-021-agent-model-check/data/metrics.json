@@ -191,6 +191,30 @@
    "worst_s": 354.6,
    "started": "2026-11-17T18:38:31Z",
    "ended": "2026-11-17T18:48:14Z"
+  },
+  {
+   "tag": "gemma4-after2-20261117",
+   "model_stated": "Gemma 4 31B",
+   "self_report": "I am a large language model, trained by Google.",
+   "turns": 31,
+   "answered": 29,
+   "question": 2,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 12,
+   "median_s": 36.7,
+   "worst_s": 67.2,
+   "started": "2026-11-17T22:46:39Z",
+   "ended": "2026-11-17T22:49:42Z"
   }
  ],
  "graded_by_question": {
@@ -874,6 +898,91 @@
      "person:demo.priya",
      "person:demo.sunhee",
      "person:demo.tomas"
+    ]
+   }
+  },
+  "gemma4-after2-20261117": {
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah"
+    ]
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.sunhee"
+    ]
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.tomas"
+    ]
+   },
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p10": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya"
     ]
    }
   }

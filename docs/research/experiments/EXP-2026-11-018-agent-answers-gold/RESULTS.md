@@ -397,4 +397,83 @@ other gold objects than then, because the feeds moved.
   them, except where a count names its mechanism (the amount filter: `l08`,
   `l09`; the name numbering: the two gradings agreeing). The call-markup fix
   and the search-beyond-the-lab fix are not touched by this run on this model.
-  **`r5g` (Gemma 4 31B) has not run: `default-model-2` was down throughout.**
+  `r5g` (Gemma 4 31B) had not run when this was written (`default-model-2`
+  was down all afternoon); it ran in the evening and is the next entry.
+
+**2026-11-17 (evening) — the same run on Gemma 4 31B (Amendment 8, tag `r5g`).**
+Run 2026-11-17T22:05:50Z–2026-11-17T22:46:35Z, 32 in flight, the 531
+registered jobs, 570 rows with retries, from the frozen copy of `640d7fe0`.
+The server is not the one the amendment named: `default-model-2` never came
+back, the maintainer restarted the first server with Gemma on it, and the run
+used `default-model` (PROTOCOL, note of 22:05 UTC; operator-stated Gemma 4
+31B, self-reporting "trained by Google" at the start and the end,
+`logs/model_r5g.jsonl`). That endpoint is also the instance model. Graded by
+`R4_GOLD=r5 R4_TAG=r5g code/r4.py grade` against the same `data/gold_r5.json`
+as `r5` (`tables/summary_r5g.md`, `data/metrics_r5g.json`; first attempts in
+`*_r5g_first_attempt*`), `code/r4.py partial` (`tables/partial_r5g.md`,
+`tables/j08_r5g.md`), `code/r5_counts.py r5g r5 r4g r4` (`tables/counts.md`,
+`data/counts_r5g.json`). The row to read it beside is Amendment 7's (`r4g`),
+the same model sixteen hours earlier on the other server.
+
+- **C-043 met, and not moved by the afternoon's fixes on this model:** arm (a)
+  full credit on 132/147 answerable runs, 90% (question bootstrap 0.82–0.98;
+  the bar is 70%); `r4g` 133/147. By kind (`r4g` in brackets): field 30/30
+  (30/30), list 15/27 (16/27), project 30/30 (30/30), people 30/30 (30/30),
+  join 27/30 (27/30). The primary and the secondary grading agree on every
+  run.
+- **Lists did not improve on Gemma: the amount filter works and is asked the
+  wrong feed.** `l08` and `l09` are 0/3 each, as in `r4g`, for another reason
+  than then. In all six runs Gemma answers "which grants in the lab's feed …"
+  by listing the lab's two projects and calling `projects_feed` on each with
+  the amount filter; each call checks all 10 grants of that project's slate
+  and says so, and the answer is the union of two project feeds, not the
+  lab's feed (`l08` recall 0.75, `l09` recall 0). Qwen calls `feeds_slate`
+  for the same questions and is 3/3 on both. `l07` is 0/3: Gemma now calls
+  `feeds_deadlines` (in `r4g` it called `feeds_slate`), whose rows say "from
+  Coastal Ocean Intelligence Lab's feed" or "from your feed"; one conference
+  that is in both is labelled "from your feed" only, and the answer leaves it
+  out (recall 0.75, precision 1.0) (Q-095). `l04` 0/3 as on Qwen (it asks for
+  *confirmed* deadlines and one anticipated one is listed, marked as such).
+  `l01`, `l03`, `l05`, `l06`, `l10` 3/3.
+- **C-056: 3/27 by the registered marker (11%, Wilson 0.04–0.28; the bar is at
+  most 10%; `r4g` 6/27), 0/27 read by hand.** The six of `r4g` (`l08`, `l09`,
+  the first 8 of 32 grants read as the whole feed) are gone: no list call in
+  this run was cut. The three counted are the `l07` runs: `feeds_deadlines`
+  returned "the complete list: all 6 of 6" for the ten days asked and then
+  "33 more deadlines fall after 2026-11-27", which the marker registered in
+  round three reads as a partial list. Counted as the marker counts it.
+- **No call markup in any final answer** (0 of 177 arm-(a) jobs; `r4g` 1,
+  Q-093), and no arm-(a) job failed on either attempt. The run rows do not
+  say whether `llmcall` read a call from Gemma's own markup in any step, so
+  this run shows the defect did not recur, not how often the fix acted.
+- **`j08`: full credit 3/3**, no refused call (`tables/j08_r5g.md`). `j10`
+  0/3 as before: it names the earliest grant and then, "for comparison", the
+  other two. Every other join question 3/3.
+- **Denied calls (Q-094): 29 of 177 arm-(a) rows (`r4g` 39 of 177).** 28 of
+  the 29 are one shape — `corpus_item` called first and denied, then
+  `corpus_search`, then `corpus_item` again — on field (17) and unanswerable
+  (11) questions (the run rows do not keep the denied call's argument). Full credit on answerable jobs with a
+  denied call 18/18, with none 114/129. Most function calls in one job 7
+  (`r4g` 11); the step limit refused nothing and no turn ended by answering
+  from what fits.
+- **C-044 holds:** +0.50 per question (paired 95% +0.32 to +0.66, 59
+  questions). **C-045 holds:** +0.97 (paired 95% +0.90 to +1.00), positive in
+  each kind.
+- **C-046: 5/30 by the registered pattern (17%, Wilson 0.07–0.34; the bar is
+  at most 10%; `r4g` 2/30), 0/30 read by hand.** Two are `u04` as in `r4g`
+  (the digits in the paper's title). Three are new and are all of `u10`: "I
+  don't have access to Jonah Whitcombe's (#3) h-index." The `(#3)` is added
+  by the name-numbering fix (`0ebaed72`), and the pattern reads a cited
+  object in a declining answer as a stated fact — the same thing as Qwen's
+  one `u10` run. So the fix costs this bar as the pattern counts it; no
+  answer states a fact the record does not hold.
+- **Unanswerable full credit 16/30 (`r4g` 18/30) is again the decline
+  pattern:** the 14 misses are `u07`, `u08`, `u09` ("… is not visible to
+  me", 9 runs) and the five above; each one declines.
+- Failed attempts, by arm and cause: a none; b none; c no_final_text 70 (31
+  arm-(c) runs failed both attempts; `r4g` 11). Arm (a) took a median of
+  152 s a turn at 32 in flight on a server shared with the instance.
+- **What this run cannot say:** one run on one model; the server, its load
+  and the number in flight differ from `r4g`'s, so seconds and arm (c)'s
+  failures are not compared. On this model the afternoon's fixes changed two
+  things that can be named (no cut list, no markup answer) and no score.

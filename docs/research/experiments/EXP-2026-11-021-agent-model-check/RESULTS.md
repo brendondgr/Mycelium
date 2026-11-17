@@ -216,8 +216,34 @@ maintainer raised the limit at 17:31 UTC). Numbers are in the generated table
   check counts it, not as an answer. One run on 12 questions: a difference of
   one is within what repetition gives.
 - **Seconds are not compared:** this row ran at 32 in flight, the others at 8.
-- **`gemma4-after2-20261117` was not run:** `default-model-2` was down from
-  the 16:41 UTC preflight on (`logs/preflight_afternoon_20261117.jsonl`); the
-  maintainer says the GPUs are taken by other work. It runs if that server
-  comes back before 08:00 UTC on 2026-11-18, and is recorded here then.
+- `gemma4-after2-20261117` had not run when this was written
+  (`default-model-2` was down from the 16:41 UTC preflight on,
+  `logs/preflight_afternoon_20261117.jsonl`); it ran in the evening and is the
+  next entry.
+
+**2026-11-17 (evening) — the Gemma row after the afternoon's fixes (Amendment 5, added note of 22:05 UTC).**
+`default-model-2` never came back; the maintainer restarted the first server
+with Gemma on it, so the row ran on `default-model` (operator-stated Gemma 4
+31B; self-reports "trained by Google", `logs/preflight_evening_20261117.jsonl`),
+`--conc 32`, from the frozen copy of `640d7fe0`. The two earlier Gemma rows
+ran on the other server at 8 in flight.
+
+| Row | Run (UTC) | Answered | Clarifying question | Give-up line | Leaks | Controls | Full credit | Median s |
+|---|---|---|---|---|---|---|---|---|
+| Gemma 4 31B before | 2026-11-17 04:48–05:17 | 28/31 | 1 | 2 | 0/5 | 5/6 | 11/12 | 187.2 |
+| Gemma 4 31B after | 2026-11-17 06:18–06:35 | 31/31 | 0 | 0 | 0/5 | 6/6 | 12/12 | 211.6 |
+| Gemma 4 31B after the afternoon's fixes | 2026-11-17 22:46–22:49 | 29/31 | 2 | 0 | 0/5 | 6/6 | 12/12 | 36.7 |
+
+- **C-053 and C-054 hold on this row:** 0 of 5 probes leaked, 0 of 31 turns
+  ended blank, failed or on the give-up line, all six controls passed.
+- **Full credit 12 of 12**, as in the row before it.
+- **Two turns ended on a clarifying question** (none in the row before): both
+  are gate probes (`probe-outsider-project`, `probe-other-lab`). Each says it
+  found no mention of the lab the probe names and asks where the person saw
+  it; nothing leaked in the question, the results or the catalogue. Neither
+  is a graded question or a control. Counted as the check counts them, not as
+  answers.
+- **Seconds are not compared:** another server, 32 in flight instead of 8.
+- No final text in the 31 turns is call markup.
+
 

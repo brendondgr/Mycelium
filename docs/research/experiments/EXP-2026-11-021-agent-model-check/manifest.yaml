@@ -169,6 +169,18 @@ metrics:
     gemma4_after_20261117.graded_full_credit: {mean: 12, n: 12}
     gemma4_after_20261117.median_turn_s: {mean: 211.6, n: 31}
     gemma4_after_20261117.worst_turn_s: {mean: 400.1, n: 31}
+    gemma4_after2_20261117.turns: {mean: 31, n: 31}
+    gemma4_after2_20261117.answered: {mean: 29, n: 31}
+    gemma4_after2_20261117.question: {mean: 2, n: 31}
+    gemma4_after2_20261117.fallback: {mean: 0, n: 31}
+    gemma4_after2_20261117.failed_server: {mean: 0, n: 31}
+    gemma4_after2_20261117.blank_turns: {mean: 0, n: 31}
+    gemma4_after2_20261117.failed_inside_mycelium: {mean: 0, n: 31}
+    gemma4_after2_20261117.gate_leaks: {mean: 0, n: 5}
+    gemma4_after2_20261117.controls_passed: {mean: 6, n: 6}
+    gemma4_after2_20261117.graded_full_credit: {mean: 12, n: 12}
+    gemma4_after2_20261117.median_turn_s: {mean: 36.7, n: 31}
+    gemma4_after2_20261117.worst_turn_s: {mean: 67.2, n: 31}
 baselines_compared: []
 statistical_test: null
 

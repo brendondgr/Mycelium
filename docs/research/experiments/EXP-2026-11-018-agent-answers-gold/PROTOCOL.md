@@ -465,7 +465,7 @@ copy and 05:00 UTC limit). The same watcher then starts EXP-2026-11-021's
 Gemma row and EXP-2026-11-019's `r6` as their protocols register them.
 
 
-**Added 2026-11-17 22:08 UTC, before any `r5g` answer.** The second server did
+**Added 2026-11-17 22:05 UTC, before any `r5g` answer.** The second server did
 not come back. The maintainer restarted the first one instead, and it now
 serves Gemma: at 22:04 UTC `default-model` is healthy and answers "I am a large
 language model, trained by Google" (vLLM 0.21.0), while `default-model-2` is
