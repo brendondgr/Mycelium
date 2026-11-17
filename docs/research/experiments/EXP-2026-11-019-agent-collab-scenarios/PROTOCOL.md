@@ -390,3 +390,11 @@ sent 24 calls at once with such references, all were denied, the limit was
 used up, the corrected batch was refused, and the turn ended `context_full`.
 **The frozen copy every run of this amendment mounts is `55cfdb1c`**, not
 `62c9fa17`.
+
+## Amendment 8 — 2026-11-17 07:52 UTC, after Amendment 7's run, before the run after the fix (tag `r5`)
+
+- **What Amendment 7's run found** (180 turns on Gemma 4 31B, `tables/r4_outcomes.md`, `tables/r4_empty_causes.md`): 179 answered, 1 give-up line, 0 blank; 3 empty model calls of 939, in 2 turns. All 3 have `finish_reason: tool_calls`, 47 to 51 completion tokens, no text, no reasoning and **no parsed call**: the server says the model stopped to call a function and returns none. None fits the A6 lead (all three were made with functions on). In the turn that ended on the give-up line, the model call's own identical retry returned the same, and the loop's no-functions retry returned two function calls, which a no-functions step discards — so the person got the give-up line from a model that was trying to look something up.
+- **Reading against the rule fixed in Amendment 7.** One cause accounts for all 3 empty calls (more than half) and its mechanism can be read from the kept calls. The registered classifier put the three under "nothing at all" because the call text never reaches the harness; the finish reason is what shows it. So a fix is made. **n is 3 calls in 2 turns**: this run can show that the fix does no harm and whether the path fires, not that a rate fell.
+- **The fix** (`127428f3`): an empty reply whose finish reason is `tool_calls`, at a step where functions were allowed, is a lost call; the loop asks for it once more with functions still on (`loop.LOST_CALL_RETRY`, verdict `lost_call_retry`), before the existing no-functions retry and give-up line.
+- **The run again, unchanged**, under the tag `r5`: `code/drive_r4.sh` with `TAG=r5` (two new copies of the sandbox, `…exp019r5rep` and `…r5fresh`; `run019_r4.py` now takes the pair's name from `EXP019_COPY`, default `r4`), `--conc 8` per mode, `LLM_MODEL=default-model-2`, a frozen copy of `127428f3`. Analysis: `code/analyse_r4.py r5`. Reported beside r4: outcome classes, empty calls, how many turns used `lost_call_retry` and how each ended, C-055 and C-050 on their own bars.
+- No new turn after 11:40 UTC.

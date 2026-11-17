@@ -12,13 +12,18 @@ script's; the tag is ``r4``).
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run019_r3 as R  # noqa: E402
 
-R.DBS = {"repeated": "mycelium_sandbox_exp019r4rep", "fresh": "mycelium_sandbox_exp019r4fresh"}
+#: ``EXP019_COPY`` names the pair of copies (``r4`` for Amendment 7's run, ``r5``
+#: for the run after the lost-call fix), so a later run never asks in a copy an
+#: earlier run already asked in.
+COPY = os.environ.get("EXP019_COPY", "r4")
+R.DBS = {"repeated": f"mycelium_sandbox_exp019{COPY}rep", "fresh": f"mycelium_sandbox_exp019{COPY}fresh"}
 
 if __name__ == "__main__":
     sys.exit(R.main())

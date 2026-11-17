@@ -8,14 +8,15 @@ E=docs/research/experiments/EXP-2026-11-019-agent-collab-scenarios
 LLM=${LLM:-default-model-2}
 TAG=${TAG:-r4}
 STOP=$(date -u -d "${STOP_AT:-today 11:40}" +%s)
-declare -A DB=( [repeated]=mycelium_sandbox_exp019r4rep [fresh]=mycelium_sandbox_exp019r4fresh )
+COPY=${COPY:-$TAG}   # which pair of sandbox copies: one pair per run
+declare -A DB=( [repeated]=mycelium_sandbox_exp019${COPY}rep [fresh]=mycelium_sandbox_exp019${COPY}fresh )
 run() {  # name db args...
   local name=$1 db=$2; shift 2
   local left=$(( STOP - $(date -u +%s) ))
   if [ "$left" -le 60 ]; then echo "hard stop: $name not started"; return 1; fi
   echo "$(date -u +%FT%TZ) start $name"
   timeout --signal=TERM "$left" docker compose run --rm --no-deps -T --name "$name" \
-    --user "$(id -u):$(id -g)" -e HOME=/tmp -e SANDBOX_DB="$db" -e LLM_MODEL="$LLM" \
+    --user "$(id -u):$(id -g)" -e HOME=/tmp -e SANDBOX_DB="$db" -e EXP019_COPY="$COPY" -e LLM_MODEL="$LLM" \
     -e AGENT_PARALLEL_CALLS=0 -e EVAL_MODEL_NAME="${EVAL_MODEL_NAME:-not stated by the operator}" \
     -v "$SNAP/tools:/app/tools:ro" -v "$SNAP/web/backend:/app/web/backend:ro" \
     -v "$PWD/web/backend/media:/app/web/backend/media" \
