@@ -2,9 +2,11 @@
 database before anything is cut; paging; and the closing line that says
 whether a list is the whole of it (Q-079).
 
-A person asks "which grants in the feed are due in March?". Answered from a
-view cut to the first few rows, the answer is wrong and reads as complete. So
-a list function here takes the filter, returns every match that fits the
+A person asks "which grants in the feed are due in March?" or "which pay at
+least a million euros?". Answered from a view cut to the first few rows, the
+answer is wrong and reads as complete; answered by reading every item one
+call at a time, it may never come (Q-091). So a list function here takes the
+filter (a deadline window, an amount), returns every match that fits the
 result budget, and always ends by saying either that this is all of it or how
 to get the rest. Nothing here ranks: a slate is read in the order the nightly
 run gave it.
@@ -12,6 +14,7 @@ run gave it.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from tools._framework.agentspec import FunctionError, Result
@@ -25,6 +28,18 @@ DEADLINES = ("application", "abstract", "manuscript", "event", "other")
 #: What "a deadline" means when none is named: a date to apply or submit by,
 #: not the dates an event is held on.
 SUBMISSION = ("application", "abstract", "manuscript", "other")
+#: The types that state what they pay.
+FUNDED = ("grant", "fellowship")
+#: How people and models write a currency, beside its three-letter code.
+CURRENCIES = {
+    "$": "USD", "US$": "USD", "DOLLAR": "USD", "DOLLARS": "USD",
+    "US DOLLAR": "USD", "US DOLLARS": "USD",
+    "€": "EUR", "EURO": "EUR", "EUROS": "EUR",
+    "£": "GBP", "POUND": "GBP", "POUNDS": "GBP",
+    "¥": "JPY", "YEN": "JPY",
+}  # fmt: skip
+_SCALE = {"k": 1e3, "thousand": 1e3, "m": 1e6, "million": 1e6, "b": 1e9, "billion": 1e9}
+_NUMBER = re.compile(r"^(\d+(?:\.\d+)?)\s*([a-z]*)$")
 #: Room kept under the result cap for the heading and the closing line.
 RESERVE = 600
 
@@ -85,6 +100,77 @@ def kinds_arg(deadline, default=SUBMISSION) -> tuple[str, ...]:
             "Leave it out for any date to apply or submit by.",
         )
     return (kind,)
+
+
+def number_arg(value, name: str) -> float | None:
+    """A number of money: ``40000000``, ``"40,000,000"``, ``"40 million"``."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    text = re.sub(r"[,_\s$€£¥]", "", str(value).lower())
+    match = _NUMBER.match(text)
+    if match and match.group(2) in ("", *_SCALE):
+        return float(match.group(1)) * _SCALE.get(match.group(2), 1)
+    raise FunctionError(
+        "bad_arguments",
+        f"{name} must be a number, without a currency.",
+        f"Pass {name}=40000000, and the currency as currency='EUR'.",
+    )
+
+
+def currency_arg(value) -> str:
+    if value in (None, ""):
+        return ""
+    text = " ".join(str(value).upper().split())
+    code = CURRENCIES.get(text, text)
+    if len(code) != 3 or not code.isalpha():
+        raise FunctionError(
+            "bad_arguments",
+            "currency must be a three-letter code.",
+            "Pass currency='EUR' or currency='USD', for example.",
+        )
+    return code
+
+
+def amount_arg(amount_min, amount_max, currency):
+    """``(least, most, currency)`` when an amount filter was asked for, else
+    ``None``. Each part may be missing."""
+    low = number_arg(amount_min, "amount_min")
+    top = number_arg(amount_max, "amount_max")
+    code = currency_arg(currency)
+    if low is None and top is None and not code:
+        return None
+    if low is not None and top is not None and top < low:
+        raise FunctionError(
+            "bad_arguments",
+            f"amount_max ({top:,.0f}) is below amount_min ({low:,.0f}).",
+            "Pass the smaller number as amount_min.",
+        )
+    return low, top, code
+
+
+def amount_matches(item, wanted) -> bool:
+    """Whether the most ``item`` pays is inside the filter. An item that
+    states no number never matches; amounts are not converted, so one stated
+    in another currency than the one asked for does not match either."""
+    low, top, code = wanted
+    most, stated_in, _ = common.item_amount(item)
+    if most is None or (code and stated_in != code):
+        return False
+    return (low is None or most >= low) and (top is None or most <= top)
+
+
+def amount_text(wanted) -> str:
+    low, top, code = wanted
+    unit = f" {code}" if code else ""
+    if low is not None and top is not None:
+        return f"a highest amount between {low:,.0f} and {top:,.0f}{unit}"
+    if low is not None:
+        return f"a highest amount of at least {low:,.0f}{unit}"
+    if top is not None:
+        return f"a highest amount of at most {top:,.0f}{unit}"
+    return f"an amount stated in {code}"
 
 
 def budget() -> int:
@@ -158,8 +244,11 @@ def slate_lines(rows, *, since_label: str = ""):
         new = " (new)" if sig.get("entered_top_on") and sig.get("is_new_top") else ""
         entered = sig.get("entered_top_on")
         when = f", in slate since {entered}" if entered else ""
+        pays = common.item_amount(item)[2]
+        pays = f", {pays}" if pays else ""
         lines.append(
-            f"- {{ref:{info.ref}}} {common.item_title(item)} [{item.type}{when}]{new}"
+            f"- {{ref:{info.ref}}} {common.item_title(item)} "
+            f"[{item.type}{pays}{when}]{new}"
             + (f" — {common.clip(why, 200)}" if why else "")
         )
     return refs, lines
@@ -218,12 +307,15 @@ def slate_view(
     due_from=None,
     due_to=None,
     deadline=None,
+    amount_min=None,
+    amount_max=None,
+    currency=None,
     default_limit: int = 8,
     decorate=None,
     more_refs=None,
 ) -> Result:
     """One target's slate as a result: in rank order, or — when a deadline
-    window is asked for — every slate item with a deadline inside it.
+    window or an amount is asked for — every slate item that matches.
 
     ``decorate(lines, rows)`` may add to each rank-order line (who in a lab
     should look) and fill ``more_refs`` with what it referred to; ``title`` is
@@ -232,9 +324,10 @@ def slate_view(
     types = types_arg(types)
     start = int_arg(offset, 0, 0, 10**6)
     window = window_arg(due_from, due_to, deadline)
+    wanted = amount_arg(amount_min, amount_max, currency)
     refs = [head] if head else []
-    if window is not None:
-        return _due_view(
+    if window is not None or wanted is not None:
+        return _filtered_view(
             target_kwargs,
             title,
             refs,
@@ -243,6 +336,7 @@ def slate_view(
             start,
             window,
             deadline,
+            wanted,
             decorate,
             more_refs,
         )
@@ -291,8 +385,10 @@ def slate_view(
         nxt = start + limit
         last = (
             f"This is not the complete slate: {'; '.join(cut)}. Pass offset={nxt} "
-            "for the next ones (limit: at most 25 per category), or due_from and "
-            "due_to to list only the items with a deadline between two dates."
+            "for the next ones (limit: at most 25 per category). To list only "
+            "the items with a deadline between two dates pass due_from and due_to; "
+            "to list only those that pay a given amount pass amount_min, amount_max "
+            "or currency."
         )
     elif start:
         last = (
@@ -307,7 +403,7 @@ def slate_view(
     )
 
 
-def _due_view(
+def _filtered_view(
     target_kwargs,
     title,
     refs,
@@ -316,21 +412,42 @@ def _due_view(
     start,
     window,
     deadline,
+    wanted,
     decorate=None,
     more_refs=None,
 ):
-    lo, hi = window
-    kinds = kinds_arg(deadline)
-    dated = [t for t in types if t in DATED] or list(DATED)
-    ranked = [s for t in dated for s in slate(target_kwargs, [t])]
-    due = due_in_window([s.content_id for s in ranked], lo, hi, kinds)
-    matched = [s for s in ranked if s.content_id in due]
-    noun = _joined([_plural(t) for t in dated])
-    asked = f"{kinds_text(kinds)} {window_text(lo, hi)}"
+    """Every slate item with a deadline in ``window``, an amount inside
+    ``wanted``, or both: filtered over the whole slate, before any cut."""
+    allowed = [
+        t
+        for t in TYPES
+        if (window is None or t in DATED) and (wanted is None or t in FUNDED)
+    ]
+    kept = [t for t in types if t in allowed] or allowed
+    ranked = [s for t in kept for s in slate(target_kwargs, [t])]
+    matched, asked, due, unstated = ranked, [], {}, 0
+    if window is not None:
+        lo, hi = window
+        kinds = kinds_arg(deadline)
+        due = due_in_window([s.content_id for s in ranked], lo, hi, kinds)
+        matched = [s for s in matched if s.content_id in due]
+        asked.append(f"{kinds_text(kinds)} {window_text(lo, hi)}")
+    if wanted is not None:
+        unstated = sum(1 for s in ranked if common.item_amount(s.content)[0] is None)
+        matched = [s for s in matched if amount_matches(s.content, wanted)]
+        asked.append(amount_text(wanted))
+    noun = _joined([_plural(t) for t in kept])
+    asked = " and ".join(asked)
+    silent = (
+        f" {unstated} of the {len(ranked)} state no amount, so they cannot match."
+        if unstated
+        else ""
+    )
     if not matched:
         return Result(
             content=f"None of the {len(ranked)} {noun} in the current slate of "
-            f"{title} has {asked}. This is the complete list: 0 matching items.",
+            f"{title} has {asked}.{silent} This is the complete list: 0 matching "
+            "items.",
             refs=refs,
         )
     page = (
@@ -341,9 +458,12 @@ def _due_view(
     lines = []
     for s in page:
         info = common.item_info(s.content)
+        facts = [deadline_text(d) for d in due.get(s.content_id, [])]
+        if wanted is not None:
+            facts.insert(0, common.item_amount(s.content)[2])
         lines.append(
             f"- {{ref:{info.ref}}} {common.item_title(s.content)} [{s.content.type}] — "
-            + "; ".join(deadline_text(d) for d in due[s.content_id])
+            + "; ".join(facts)
         )
     keep = fit(lines)
     if decorate is not None:  # who should look, as the rank-order view has it
@@ -356,6 +476,7 @@ def _due_view(
         f"(checked all {len(ranked)}; slate rank order):\n"
         + "\n".join(lines[:keep])
         + "\n"
-        + closing(start, keep, len(matched), "matching items"),
+        + closing(start, keep, len(matched), "matching items")
+        + silent,
         refs=refs,
     )

@@ -14,6 +14,31 @@ def item_title(item) -> str:
     ]
 
 
+def item_amount(item) -> tuple[float | None, str, str]:
+    """``(the most it pays, currency code, the amount as its source states
+    it)`` for a grant or fellowship. The number is ``None`` when the source
+    states none ("Varies", "Stipend + tuition"); all three are empty for an
+    item that states no amount at all."""
+    meta = item.metadata or {}
+    if item.type == "fellowship":
+        low, top = meta.get("amount_min"), meta.get("amount_max")
+        code, text = meta.get("amount_currency"), meta.get("amount_raw")
+    elif item.type == "grant":
+        low, top = meta.get("award_floor"), meta.get("award_ceiling")
+        code, text = meta.get("currency"), meta.get("amount")
+    else:
+        return None, "", ""
+    most = top if top is not None else low
+    try:
+        most = None if most is None else float(most)
+    except (TypeError, ValueError):
+        most = None
+    text = clip(text or "", 60)
+    if most is None and not text:
+        return None, "", ""
+    return most, str(code or "").upper() if most is not None else "", text
+
+
 def item_info(item) -> RefInfo:
     meta = item.metadata or {}
     bits = [item.type]

@@ -229,6 +229,22 @@ DEADLINE = {
     "fellowships), abstract or manuscript (a conference's submission rounds), "
     "event (the dates a conference is held)",
 }
+AMOUNT_MIN = {
+    "type": "number",
+    "description": "only grants and fellowships whose highest stated amount is at "
+    "least this much, as a plain number (40000000); pass currency with it, "
+    "amounts are not converted",
+}
+AMOUNT_MAX = {
+    "type": "number",
+    "description": "only grants and fellowships whose highest stated amount is at "
+    "most this much",
+}
+CURRENCY = {
+    "type": "string",
+    "description": "three-letter code (EUR, USD, GBP): only items whose amount is "
+    "stated in this currency",
+}
 
 PROJECTS = (
     _f(
@@ -256,12 +272,15 @@ PROJECTS = (
     _f(
         "projects_feed",
         "Looking at the project's feed",
-        "A project's current slate, in rank order or filtered by deadline.",
+        "A project's current slate, in rank order or filtered by deadline or amount.",
         "The project's current per-category slate from the nightly ranking, in rank "
-        "order, with why each item fits and when it entered. With due_from, due_to "
-        "or deadline it lists instead every grant, fellowship or conference in the "
-        "slate that has such a deadline in that window, checked over the whole "
-        "slate. The last line of the result says whether the list is complete.",
+        "order, with why each item fits, what it pays and when it entered. With "
+        "due_from, due_to or deadline it lists instead every grant, fellowship or "
+        "conference in the slate that has such a deadline in that window; with "
+        "amount_min, amount_max or currency, every grant or fellowship that pays "
+        "such an amount. Either is checked over the whole slate, so there is no "
+        "need to read the items one by one. The last line of the result says "
+        "whether the list is complete.",
         f"{H}.projects:projects_feed",
         output="public",
         params={
@@ -278,6 +297,9 @@ PROJECTS = (
             "due_from": DUE_FROM,
             "due_to": DUE_TO,
             "deadline": DEADLINE,
+            "amount_min": AMOUNT_MIN,
+            "amount_max": AMOUNT_MAX,
+            "currency": CURRENCY,
         },
         guest="no_people",
     ),
@@ -397,14 +419,17 @@ FEEDS = (
     _f(
         "feeds_slate",
         "Looking at the current feed",
-        "The current slate of the person, a lab, a project; filter by deadline.",
+        "The current slate of a person, lab or project; filter by deadline or amount.",
         "The current Top-25 slate per category from the nightly ranking, in rank "
         "order, with why each item fits: the person's own (in a personal thread), or a "
         "lab's or project's (named, or this conversation's). To answer which grants, "
         "fellowships or conferences in a feed have a deadline between two dates, pass "
         "due_from, due_to and (for one kind of deadline) deadline: every slate item "
-        "with such a deadline is then listed, checked over the whole slate. The last "
-        "line of the result says whether the list is complete.",
+        "with such a deadline is then listed, checked over the whole slate. To answer "
+        "which grants or fellowships pay at least or at most an amount, or state it "
+        "in one currency, pass amount_min, amount_max or currency the same way: there "
+        "is no need to read the items one by one. The last line of the result says "
+        "whether the list is complete.",
         f"{H}.feeds:feeds_slate",
         output="lab",
         params={
@@ -416,6 +441,9 @@ FEEDS = (
             "due_from": DUE_FROM,
             "due_to": DUE_TO,
             "deadline": DEADLINE,
+            "amount_min": AMOUNT_MIN,
+            "amount_max": AMOUNT_MAX,
+            "currency": CURRENCY,
         },
         guest="no_people",
     ),

@@ -134,6 +134,9 @@ def projects_feed(
     due_from=None,
     due_to=None,
     deadline=None,
+    amount_min=None,
+    amount_max=None,
+    currency=None,
 ):
     p = _project(caller, project)
     _check_audience(caller, p)
@@ -148,5 +151,8 @@ def projects_feed(
         due_from=due_from,
         due_to=due_to,
         deadline=deadline,
+        amount_min=amount_min,
+        amount_max=amount_max,
+        currency=currency,
         default_limit=10,
     )

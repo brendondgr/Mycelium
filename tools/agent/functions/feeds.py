@@ -123,6 +123,9 @@ def feeds_slate(
     due_from=None,
     due_to=None,
     deadline=None,
+    amount_min=None,
+    amount_max=None,
+    currency=None,
 ):
     kwargs, label, head = _target(caller, lab, project)
 
@@ -142,6 +145,9 @@ def feeds_slate(
         due_from=due_from,
         due_to=due_to,
         deadline=deadline,
+        amount_min=amount_min,
+        amount_max=amount_max,
+        currency=currency,
         default_limit=8,
         decorate=None if "target_user" in kwargs else who,
         more_refs=people,

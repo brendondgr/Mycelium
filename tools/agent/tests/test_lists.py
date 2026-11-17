@@ -269,3 +269,126 @@ def test_a_feed_the_caller_may_not_see_is_refused_as_before(world):
         obj=None,
     )
     assert "My conference" not in str(out)
+
+
+def _slate_of_grants(world, n=30):
+    """``n`` grants in the lab's slate. Those ranked 7, 19 and 28 pay up to
+    EUR 5,000,000; rank 11 pays USD 5,000,000; rank 3 states no amount; every
+    other one pays up to EUR 100,000 + its rank."""
+    for rank in range(1, n + 1):
+        if rank == 3:
+            meta = {"currency": "USD"}  # the source's default, with no amount
+        elif rank == 11:
+            meta = {"amount": "$5,000,000", "award_ceiling": 5e6, "currency": "USD"}
+        elif rank in (7, 19, 28):
+            meta = {
+                "amount": "€2,000,000–€5,000,000",
+                "award_floor": 2e6,
+                "award_ceiling": 5e6,
+                "currency": "EUR",
+            }
+        else:
+            top = 100_000 + rank
+            meta = {"amount": f"€{top:,}", "award_ceiling": top, "currency": "EUR"}
+        score(item(f"Grant {rank:02d}", "grant", **meta), rank, target_lab=world.lab)
+
+
+def test_an_amount_filter_returns_every_match_and_says_it_is_complete(world):
+    # Q-091: with no such filter Mylo read all 32 grants one call at a time,
+    # and three of six such turns never answered.
+    _slate_of_grants(world)
+    out = run(
+        world.member,
+        "feeds_slate",
+        {"types": ["grant"], "amount_min": 4_000_000, "currency": "EUR"},
+        kind="lab",
+        obj=world.lab,
+    )
+    assert out["status"] == "ok"
+    listed = [x for x in out["content"].splitlines() if x.startswith("- ")]
+    assert [x.split("Grant ")[1][:2] for x in listed] == ["07", "19", "28"]
+    assert all("€2,000,000–€5,000,000" in x for x in listed)
+    assert "checked all 30" in out["content"]
+    assert "a highest amount of at least 4,000,000 EUR" in out["content"]
+    assert last(out) == (
+        "This is the complete list: all 3 of 3 matching items. 1 of the 30 state "
+        "no amount, so they cannot match."
+    )
+    assert len(out["refs"]) == 4  # the lab and the three grants
+
+
+def test_a_currency_alone_and_a_ceiling_are_filters_too(world):
+    _slate_of_grants(world)
+    usd = run(
+        world.member, "feeds_slate", {"currency": "$"}, kind="lab", obj=world.lab
+    )
+    assert [x for x in usd["content"].splitlines() if x.startswith("- ")] == [
+        "- #2 Grant 11 [grant] — $5,000,000"
+    ]
+    assert "an amount stated in USD" in usd["content"]
+    small = run(
+        world.member,
+        "feeds_slate",
+        {"amount_max": "100,005", "currency": "eur"},
+        kind="lab",
+        obj=world.lab,
+    )
+    # ranks 1, 2, 4 and 5: rank 3 states no amount
+    assert last(small).startswith("This is the complete list: all 4 of 4 matching")
+    none = run(
+        world.member,
+        "feeds_slate",
+        {"amount_min": "1 billion"},
+        kind="lab",
+        obj=world.lab,
+    )
+    assert "None of the 30 grants" in none["content"]
+    assert "0 matching items" in last(none)
+
+
+def test_an_amount_and_a_deadline_window_are_both_applied(world):
+    rich_soon = item("Rich soon", "grant", amount="€9,000,000", award_ceiling=9e6,
+                     currency="EUR")  # fmt: skip
+    rich_late = item("Rich late", "grant", amount="€9,000,000", award_ceiling=9e6,
+                     currency="EUR")  # fmt: skip
+    poor_soon = item("Poor soon", "grant", amount="€9,000", award_ceiling=9e3,
+                     currency="EUR")  # fmt: skip
+    for rank, (grant, days) in enumerate(
+        ((rich_soon, 10), (rich_late, 200), (poor_soon, 10)), start=1
+    ):
+        score(grant, rank, target_project=world.lab_project)
+        due(grant, days)
+    out = run(
+        world.member,
+        "projects_feed",
+        {"due_to": day(30), "amount_min": 1e6},
+        kind="project",
+        obj=world.lab_project,
+    )
+    listed = [x for x in out["content"].splitlines() if x.startswith("- ")]
+    assert len(listed) == 1 and "Rich soon" in listed[0]
+    assert "€9,000,000; application deadline" in listed[0]
+    assert last(out) == "This is the complete list: all 1 of 1 matching items."
+
+
+def test_a_slate_row_says_what_the_item_pays(world):
+    _slate_of_grants(world, n=4)
+    fellowship = item(
+        "A fellowship", "fellowship", amount_raw="up to $28,000", amount_max=28000,
+        amount_currency="USD", amount_kind="up_to",
+    )  # fmt: skip
+    score(fellowship, 1, target_lab=world.lab)
+    out = run(world.member, "feeds_slate", {}, kind="lab", obj=world.lab)
+    assert "Grant 01 [grant, €100,001]" in out["content"]
+    assert "Grant 03 [grant]" in out["content"]  # no amount stated: none shown
+    assert "A fellowship [fellowship, up to $28,000]" in out["content"]
+
+
+def test_a_malformed_amount_is_a_malformed_call(world):
+    out = run(world.member, "feeds_slate", {"amount_min": "a lot"})
+    assert out["error"]["code"] == "bad_arguments"
+    assert "amount_min must be a number" in out["error"]["detail"]
+    out = run(world.member, "feeds_slate", {"currency": "European money"})
+    assert out["error"]["code"] == "bad_arguments"
+    out = run(world.member, "feeds_slate", {"amount_min": 9, "amount_max": 3})
+    assert out["error"]["code"] == "bad_arguments"
