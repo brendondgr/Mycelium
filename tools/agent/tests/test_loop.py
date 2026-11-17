@@ -417,3 +417,75 @@ def test_learning_notice_is_given_once(person, scripted):
         e for e in store.events(thread) if e.payload.get("kind") == "learning_notice"
     ]
     assert len(notices) == 1
+
+
+def _statuses(thread):
+    return [
+        (e.payload["status"], (e.payload.get("error") or {}).get("code"))
+        for e in store.events(thread)
+        if e.type == "tool_result"
+    ]
+
+
+def test_a_step_runs_only_so_many_calls_and_the_rest_may_come_again(
+    person, scripted, settings
+):
+    # Q-091: a model sent 24 calls in one step, and nothing limited them.
+    settings.AGENT_STEP_CALLS = 2
+    thread = thread_for(person)
+    _send(thread, "what can you do?")
+    asks = [("find_functions", {"query": q}) for q in ("feed", "lab", "paper", "grant")]
+    model = scripted(asks, asks[2:], asks[2:], "That is what I can do.")
+    loop.run_turn(thread.pk, port=model)
+    late = ("error", "too_many_calls")
+    assert _statuses(thread)[:4] == [late, late, ("ok", None), ("ok", None)]
+    # A call that was not run is not held against the model: sent again it
+    # runs, and it does not count as a repeat or as the function failing.
+    assert _statuses(thread)[4:] == [("ok", None)] * 4
+    refused = next(
+        e.payload["error"]
+        for e in store.events(thread)
+        if e.type == "tool_result" and e.payload["status"] == "error"
+    )
+    assert "Only 2 function calls run in one step" in refused["detail"]
+    assert _final(thread) == "That is what I can do."
+
+
+def test_a_turn_that_read_more_than_fits_answers_from_what_is_left(
+    person, scripted, settings
+):
+    # Q-091: results that overflowed the window ended the turn with an error
+    # ("context_full") and no answer.
+    settings.AGENT_CONTEXT_WINDOW = 6000
+    thread = thread_for(person)
+    _send(thread, "read everything in the feed")
+    for i in range(3):
+        store.append(
+            thread,
+            "assistant",
+            {
+                "text": "",
+                "tool_calls": [{"id": f"r{i}", "name": "me_profile", "arguments": "{}"}],
+            },
+        )
+        store.append(
+            thread,
+            "tool_result",
+            {
+                "call_id": f"r{i}",
+                "name": "me_profile",
+                "status": "ok",
+                "content": "data " * 2400,
+            },
+        )
+    model = scripted("Here is the part I could read.")
+    assert loop.run_turn(thread.pk, port=model) == "idle"
+    assert _final(thread) == "Here is the part I could read."
+    assert "error" not in _types(thread)
+    verdicts = [e.payload["action"] for e in store.events(thread) if e.type == "verdict"]
+    assert verdicts[0] == "fit_final"
+    asked = model.requests[0]
+    assert asked["tool_choice"] == "none"
+    assert any(loop.FIT_FINAL in str(m.get("content")) for m in asked["messages"])
+    thread.refresh_from_db()
+    assert "r0" in thread.settings["cleared"]

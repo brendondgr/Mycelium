@@ -4,7 +4,10 @@
   stay in the log; the model sees a pointer to ``read_result``.
 * Over 85 %: summarize everything before the latest user message into a
   ``compact`` event; the summary moves into the system prompt.
-* Still over the window: the turn stops with ``context_full``.
+* Still over the window in the middle of a turn (one question read more
+  than fits): the oldest results are put away until the rest fits and the
+  turn answers from what is left, saying it is partial (Q-091).
+* Nothing left to put away: the turn stops with ``context_full``.
 """
 
 from __future__ import annotations
@@ -55,6 +58,35 @@ def clear_old_results(thread: AgentThread, events) -> bool:
         thread,
         "cleared",
         lambda now: sorted({c for c in [*(now or []), *cleared] if c}),
+    )
+    return True
+
+
+def clear_to_fit(thread: AgentThread, events, over: int) -> bool:
+    """Put results away, oldest first, until about ``over`` tokens are freed.
+    False when nothing was left to put away."""
+    from . import rebuild
+
+    cleared = set((thread.settings or {}).get("cleared", []))
+    pointer = len(rebuild.result_text({"call_id": "x" * 24}, cleared=True))
+    put_away, freed = [], 0
+    for e in events:
+        call_id = e.payload.get("call_id")
+        if e.type != "tool_result" or not call_id or call_id in cleared:
+            continue
+        if freed >= over:
+            break
+        size = len(rebuild.result_text(e.payload))
+        if size <= pointer:
+            continue  # an error or a short result: the pointer is no shorter
+        put_away.append(call_id)
+        freed += (size - pointer) // rebuild.CHARS_PER_TOKEN
+    if not put_away:
+        return False
+    store.save_setting(
+        thread,
+        "cleared",
+        lambda now: sorted({c for c in [*(now or []), *put_away] if c}),
     )
     return True
 

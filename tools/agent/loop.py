@@ -97,6 +97,20 @@ LENGTH_RETRY = (
     "thrown away and nobody saw it. Answer again, much shorter: the main "
     "points only."
 )
+#: Told to the model when what one turn read no longer fits the window and
+#: the oldest results were put away so the turn can still end with an answer.
+FIT_FINAL = (
+    "What you have read in this turn no longer fits in your memory, so the "
+    "oldest results were put away. Stop calling functions and answer now from "
+    "what you can still see. Say plainly that the answer covers only part of "
+    "what was asked, and say what you could not check."
+)
+#: What a call past the step's limit is told.
+TOO_MANY_CALLS_FIX = (
+    "Send it in your next step if you still need it. To check every item of a "
+    "list against one condition, pass the condition to the list function "
+    "instead of reading the items one by one."
+)
 #: Shown to the person when unbacked details were taken out of an answer.
 CLAIMS_REMOVED = (
     "Mylo removed details from this answer that it could not find in what it "
@@ -338,7 +352,9 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
     runaway_retried = False
     empty_retried = False
     lost_call_retried = False
+    fitted = False
     force_final = ""
+    step_calls = int(config.get("step_calls") or 0)
     while True:
         if stream.cancel_requested(thread.pk):
             _cancel_pending(thread)
@@ -395,6 +411,16 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                     summary=compaction.latest_summary(events),
                 )
                 size = rebuild.estimate_tokens(system, msgs, tools)
+        if size > window and not fitted:
+            # One question read more than the window holds. Rather than end
+            # with an error, put the oldest results away and answer from what
+            # is left, saying so (Q-091).
+            fitted = True
+            over = size - int(window * compaction.CLEAR_AT)
+            if compaction.clear_to_fit(thread, events, over):
+                store.append(thread, "verdict", {"ok": False, "action": "fit_final"})
+                force_final = FIT_FINAL
+                continue
         if size > window:
             store.append(
                 thread,
@@ -467,6 +493,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             seen[key] = seen.get(key, 0) + 1
             calls.append(
                 {
+                    "key": key,
                     "call_id": c.id,
                     "name": c.name,
                     "args": c.args,
@@ -625,7 +652,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             if not thread.shared and _drain_queue(thread):
                 steps, failed_steps, repaired, force_final, seen = 0, 0, False, "", {}
                 failures, malformed = {}, {}
-                lost_call_retried = False
+                lost_call_retried = fitted = False
                 continue
             return AgentThread.State.IDLE
 
@@ -704,6 +731,24 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                         },
                     }
                 )
+            elif step_calls and len(runnable) >= step_calls:
+                # Not run and not held against it: the same call may come
+                # again in a later step.
+                seen[c["key"]] -= 1
+                results.append(
+                    {
+                        "call_id": c["call_id"],
+                        "name": c["name"],
+                        "status": "error",
+                        "error": {
+                            "code": "too_many_calls",
+                            "detail": f"Only {step_calls} function calls run in "
+                            f"one step and this step made {len(calls)}, so this "
+                            "one was not run.",
+                            "fix": TOO_MANY_CALLS_FIX,
+                        },
+                    }
+                )
             else:
                 runnable.append(c)
         results += _run_calls(caller, thread, runnable)
@@ -719,6 +764,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                 "repeated_call",
                 "keeps_failing",
                 "keeps_malformed",
+                "too_many_calls",
             )
             if result.get("status") not in ("error", "denied") or refused_here:
                 continue

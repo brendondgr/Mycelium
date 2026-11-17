@@ -145,7 +145,7 @@ tools/agent/
 ├── llmcall.py         one model call: system prompt + rebuild + repairs (§5)
 ├── prompt.py          system prompt sections (below)
 ├── rebuild.py         events → messages, result caps, untrusted wrapping, defusing
-├── compaction.py      clear at 70 %, summarize at 85 %, context_full
+├── compaction.py      clear at 70 %, summarize at 85 %, answer from what fits, context_full
 ├── registry.py        agent functions from every LOADED tool + the agent's own
 ├── caller.py          Caller(user, surface, scope, audience): who is asking, from where
 ├── permissions.py     decide(caller, function, args): the one gate (permissions.md)
@@ -561,6 +561,7 @@ The first five:
 | `max_output_tokens` | `0` (no limit) | Per model call in chat (D-6) |
 | `context_window` | `32768` | Tokens; used by the meter and compaction |
 | `max_steps` | `25` | Model calls per turn |
+| `step_calls` | `12` | Function calls run in one step; the rest are refused and may be sent again |
 | `result_cap_tokens` | `4000` | Shown per result; the full result is kept |
 | `daily_turns` | `0` (no limit) | Per person; a tier may set its own |
 | `learning` | `true` | Whether the `agent_chat` learning pass runs at all. It is an instance switch, and each person can opt out (D-3) |

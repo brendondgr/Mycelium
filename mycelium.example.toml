@@ -291,6 +291,7 @@ enabled = true
 # thinking_budget = 512                  # env AGENT_THINKING_BUDGET
 # context_window = 0                     # env AGENT_CONTEXT_WINDOW
 # max_steps = 25                         # env AGENT_MAX_STEPS
+# step_calls = 12                        # env AGENT_STEP_CALLS
 # result_cap_tokens = 4000               # env AGENT_RESULT_CAP_TOKENS
 # daily_turns = 0                        # env AGENT_DAILY_TURNS
 # learning = true                        # env AGENT_LEARNING

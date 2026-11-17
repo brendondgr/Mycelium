@@ -49,6 +49,14 @@ class AgentTool(Tool):
         ),
         _s("max_steps", "int", 25, "Model calls per turn."),
         _s(
+            "step_calls",
+            "int",
+            12,
+            "Function calls run in one step. A model that sends more is told "
+            "the rest were not run and may send them in its next step. "
+            "0 = no limit.",
+        ),
+        _s(
             "result_cap_tokens",
             "int",
             4000,
