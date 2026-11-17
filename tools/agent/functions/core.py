@@ -16,7 +16,6 @@ def ask_user(caller, **_):
 
 def update_todos(caller, items):
     from .. import store
-    from ..models import AgentThread
 
     thread = common.need_thread(caller)
     clean = [
@@ -24,9 +23,7 @@ def update_todos(caller, items):
         for i in (items or [])
         if isinstance(i, dict) and i.get("text")
     ][:20]
-    data = dict(thread.settings or {})
-    data["todos"] = clean
-    AgentThread.objects.filter(pk=thread.pk).update(settings=data)
+    common.save_setting(thread, "todos", lambda _: clean)
     store.append(thread, "todos", {"items": clean})
     left = sum(1 for i in clean if not i["done"])
     return Result(content=f"Plan saved: {len(clean)} steps, {left} left.")
@@ -63,15 +60,12 @@ def find_functions(caller, query):
 
 def load_functions(caller, names):
     from .. import permissions
-    from ..models import AgentThread
 
     thread = common.need_thread(caller)
     allowed = {
         fn.name: fn for fn in permissions.allowed_functions(caller, mode=thread.mode)
     }
-    data = dict(thread.settings or {})
-    loaded = list(data.get("loaded", []))
-    added, refused = [], []
+    refused = []
     # A function comes with the rest of its group (projects_*, feeds_*, …):
     # EXP-2026-11-013 saw one answer spend 16 of its 25 steps loading one
     # function at a time. Groups are small (at most six functions).
@@ -84,13 +78,15 @@ def load_functions(caller, names):
         wanted += [name] + [
             n for n, fn in allowed.items() if group and fn.group == group and n != name
         ]
-    for name in dict.fromkeys(wanted):
-        if name not in loaded:
-            loaded.append(name)
-        added.append(name)
-    data["loaded"] = loaded
-    AgentThread.objects.filter(pk=thread.pk).update(settings=data)
-    thread.settings = data
+    added = list(dict.fromkeys(wanted))
+
+    def with_added(loaded):
+        loaded = list(loaded or [])
+        return loaded + [name for name in added if name not in loaded]
+
+    # Merged into the row as it is now, not written back from this call's
+    # copy: a list call of the same step may have numbered references since.
+    common.save_setting(thread, "loaded", with_added)
     out = []
     if added:
         out.append(

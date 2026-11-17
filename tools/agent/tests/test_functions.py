@@ -157,6 +157,34 @@ def test_read_result_pages_through_a_long_result(world, settings):
     assert "offset=40" in out["content"]
 
 
+def test_load_functions_keeps_what_another_call_of_the_step_wrote(world, monkeypatch):
+    # EXP-2026-11-010 arm A7: `projects_list` and `load_functions` ran side by
+    # side in one step; load_functions wrote the settings back from the copy
+    # it had read, the references the list had just numbered were gone, and
+    # the next call on "#2" was refused as not visible.
+    from tools.agent import refs
+    from tools.agent.functions import common
+    from tools.agent.models import AgentThread
+
+    thread = thread_for(world.member)
+    c = Caller(user=world.member, surface="web", thread_id=thread.pk)
+    read_before = AgentThread.objects.get(pk=thread.pk)
+    lab = refs.resolve(c, f"lab:{world.lab.slug}")
+    assert refs.number(thread, lab) == 1  # the other call numbers its result
+    monkeypatch.setattr(common, "need_thread", lambda caller: read_before)
+
+    for call_id, name, args in (
+        ("c1", "load_functions", {"names": ["projects_feed"]}),
+        ("c2", "update_todos", {"items": [{"text": "look"}]}),
+    ):
+        dispatch.run(c, thread, name=name, args=args, call_id=call_id)
+
+    thread.refresh_from_db()
+    assert [entry["n"] for entry in thread.settings["refs"]] == [1]
+    assert "projects_feed" in thread.settings["loaded"]
+    assert thread.settings["todos"] == [{"text": "look", "done": False}]
+
+
 def test_load_functions_adds_only_allowed_names(world):
     thread = thread_for(world.member)
     c = Caller(user=world.member, surface="web", thread_id=thread.pk)
