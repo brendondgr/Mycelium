@@ -336,3 +336,46 @@ more try without functions, then the give-up line `loop.EMPTY_GIVE_UP`).
 - **Order and concurrency.** `code/drive_r3_s2.sh`: repeated and fresh modes side by side, each repetition's 30 turns at once (`--conc 32`, 60 in flight), repetitions in order within a mode; then EXP-2026-11-016's three seeds side by side. Seekers are distinct within a repetition, so fresh mode's thread deletion cannot touch another turn's thread.
 - **The sandbox copies were cleared again** after the stopped run (ISSUES.md).
 - Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.
+
+## Amendment 7 — 2026-11-17 05:35 UTC, before the first run on Gemma 4 31B (tag `r4`)
+
+Plan: `docs/plans/20261116-mylo-overnight-fixes.md`, Phase 7 (Q-070, Q-088).
+Round two's blank turns were on Gemma 4 31B; round three's models never went
+empty, so the four candidate causes could not be tested. The operator states
+that **Gemma 4 31B** is served on the relay's `default-model-2` tonight
+(preflight 04:44 UTC: healthy, self-reports "trained by Google", server
+`vllm-0.21.0`; the instance model on `default-model` is Qwen 3.8 27B).
+
+- **Runs: Amendment 4's design, unchanged.** S1, S2 and S10, gate arm, the
+  same ten seekers, plan and grader, three repetitions, `repeated` and `fresh`
+  mode, every turn classed answered / question / fallback / failed / blank,
+  every model call kept by `r3turns.Recorder`. `code/run019_r4.py` is
+  `run019_r3.py` with two new copies of the sandbox
+  (`mycelium_sandbox_exp019r4rep`, `…r4fresh`, made from `mycelium_sandbox`
+  and set up by `--setup`), so round three's copies are untouched;
+  `code/drive_r4.sh`. Every container runs with `LLM_MODEL=default-model-2`.
+- **In flight.** `--conc 8` per mode, the two modes side by side: at most 16
+  turns on `default-model-2`, which carries nothing else. The plan's limit of 8
+  is for the instance model; `EXP-2026-11-018`'s run uses that on
+  `default-model` at the same time.
+- **The code under test** is a frozen copy of `62c9fa17` (`git archive` of
+  `tools/` and `web/backend/` mounted read-only): the loop after tonight's
+  three fixes, which do not touch the empty-reply path (`loop.EMPTY_RETRY`,
+  `EMPTY_GIVE_UP`, `llmcall`'s own retry).
+- **The lead from EXP-2026-11-010 arm A6, fixed now.** An empty model call
+  *fits the lead* when it was made with functions disallowed
+  (`tool_choice == "none"`), returned no text and no call, and still spent
+  completion tokens (`completion_tokens > 0`). Reported: how many of this
+  model's empty calls fit it, out of all empty calls; and the same split by the
+  four causes of Amendment 4 (reasoning with no reply; a call the parser
+  dropped; recall, by mode; a cut-off or server error).
+- **A fix only if one cause accounts for most of the empty calls** — more
+  than half, and a mechanism that can be read from the kept calls. Then: the
+  fix, its tests, and this run again under the tag `r5`. Otherwise the table is
+  recorded and nothing is changed.
+- **Claims.** C-055 re-read on this model (after the fallback, no turn ends
+  blank: one blank refutes it). C-050 re-read against its own bar. Never pooled
+  with another model's rows. Analysis: `code/analyse_r4.py` stages these logs
+  under the names `analyse_r3.py` expects and runs it unchanged, without
+  EXP-2026-11-016's gate rows (not run tonight), writing `_r4` outputs.
+- No new turn after 11:40 UTC.
