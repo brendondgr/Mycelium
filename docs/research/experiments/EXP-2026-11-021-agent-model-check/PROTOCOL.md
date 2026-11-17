@@ -128,3 +128,12 @@ and the as-registered count is printed beside it. No run is repeated for this.
 - **The run on `default-model` was stopped** at 20:41 UTC, three minutes into Phase 1, when the operator moved the work; it is not counted (ISSUES.md).
 - **A third row** (`qwen38-m2-20261116`): the check on the second server, `--conc 32` (all 20 demo turns at once, then all 11 gate turns). It is the same model as the second row, on a server with no other load.
 - Nothing else changes: questions, gold, graders, classes and hypotheses are as registered.
+
+## Amendment 4 — 2026-11-17 05:35 UTC, before the overnight fixes (plan `docs/plans/20261116-mylo-overnight-fixes.md`)
+
+- **Why.** Three product fixes are made tonight (complete feed lists, malformed calls no longer use up the failure limit, references for people and projects). The check is run before them and after them, a row each, on the same model.
+- **Models, as the operator stated them on 2026-11-16 (evening):** `default-model` serves **Qwen 3.8 27B** (the instance model, shared with the operator's own work) and `default-model-2` serves **Gemma 4 31B**. Preflight 04:44 UTC (`logs/preflight_overnight_20261117.jsonl`): both healthy; the first self-reports Qwen (server `vllm-0.31.1rc1…`), the second "trained by Google" (server `vllm-0.21.0`). Recorded again at the start and end of every part.
+- **Rows.** `qwen38-before-20261117` and `qwen38-after-20261117` on `default-model`, `--conc 8` (the plan's limit on the instance model). The same pair on `default-model-2` (`gemma4-before-20261117`, `gemma4-after-20261117`, `LLM_MODEL=default-model-2`, `--conc 8`): not asked for by the plan, added because the defect the department head's control found (Q-075) needs a model that gets arguments wrong, and Qwen passed that control 6 of 6 before any fix.
+- **A frozen copy of the code.** Each row's containers mount `git archive <commit>` of `tools/` and `web/backend/` read-only over the checkout's (`code/drive_row.sh`), so a row reads exactly one commit while the checkout is being edited: the "before" rows read `4f81ca2e`; the "after" rows read the commit that holds the three fixes (named in RESULTS.md).
+- **Gold.** The twelve graded questions are still graded against `EXP-2026-11-018`'s round-two `data/gold.json`, as registered, so the rows stay comparable with each other; the feeds have moved since, which lowers every row alike.
+- Nothing else changes: questions, probes, controls, classes and hypotheses are as registered.
