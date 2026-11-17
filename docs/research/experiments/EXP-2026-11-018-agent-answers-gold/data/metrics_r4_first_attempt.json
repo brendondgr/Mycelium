@@ -1,0 +1,941 @@
+{
+ "n_jobs": 531,
+ "n_rows": 569,
+ "snapshot": "2026-11-17T05:23:26.136666+00:00",
+ "arms": {
+  "primary": {
+   "a": {
+    "runs": 177,
+    "failed_jobs": 4,
+    "asked_jobs": 0,
+    "asked_attempts": 0,
+    "failed_attempts": 4,
+    "answerable_full": {
+     "k": 106,
+     "n": 147,
+     "rate": 0.7211,
+     "wilson95": [
+      0.6437,
+      0.7872
+     ],
+     "boot95_questions": [
+      0.5986,
+      0.8367
+     ]
+    },
+    "all_full": {
+     "rate": 0.7684,
+     "n_questions": 59
+    },
+    "recall_mean": 0.9175,
+    "precision_mean": 0.8679,
+    "by_kind": {
+     "field": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "list": {
+      "k": 12,
+      "n": 27,
+      "rate": 0.4444,
+      "wilson95": [
+       0.2759,
+       0.6269
+      ]
+     },
+     "project": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "people": {
+      "k": 16,
+      "n": 30,
+      "rate": 0.5333,
+      "wilson95": [
+       0.3614,
+       0.6977
+      ]
+     },
+     "join": {
+      "k": 18,
+      "n": 30,
+      "rate": 0.6,
+      "wilson95": [
+       0.4232,
+       0.7541
+      ]
+     },
+     "unanswerable": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 0,
+     "n": 30,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.1135
+     ]
+    },
+    "cost": {
+     "wall_s_median": 154.57,
+     "wall_s_mean": 172.12,
+     "tokens_mean": 11651,
+     "repairs": 0
+    }
+   },
+   "b": {
+    "runs": 177,
+    "failed_jobs": 0,
+    "asked_jobs": 0,
+    "asked_attempts": 0,
+    "failed_attempts": 0,
+    "answerable_full": {
+     "k": 30,
+     "n": 147,
+     "rate": 0.2041,
+     "wilson95": [
+      0.1469,
+      0.2764
+     ],
+     "boot95_questions": [
+      0.102,
+      0.3265
+     ]
+    },
+    "all_full": {
+     "rate": 0.339,
+     "n_questions": 59
+    },
+    "recall_mean": 0.2296,
+    "precision_mean": 0.7527,
+    "by_kind": {
+     "field": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "list": {
+      "k": 0,
+      "n": 27,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1246
+      ]
+     },
+     "project": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "people": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "join": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "unanswerable": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 0,
+     "n": 30,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.1135
+     ]
+    },
+    "cost": {
+     "wall_s_median": 56.33,
+     "wall_s_mean": 45.73,
+     "tokens_mean": 8265,
+     "repairs": 0
+    }
+   },
+   "c": {
+    "runs": 177,
+    "failed_jobs": 34,
+    "asked_jobs": 12,
+    "asked_attempts": 12,
+    "failed_attempts": 34,
+    "answerable_full": {
+     "k": 30,
+     "n": 147,
+     "rate": 0.2041,
+     "wilson95": [
+      0.1469,
+      0.2764
+     ],
+     "boot95_questions": [
+      0.102,
+      0.3265
+     ]
+    },
+    "all_full": {
+     "rate": 0.339,
+     "n_questions": 59
+    },
+    "recall_mean": 0.22,
+    "precision_mean": 0.5028,
+    "by_kind": {
+     "field": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "list": {
+      "k": 0,
+      "n": 27,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1246
+      ]
+     },
+     "project": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "people": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "join": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "unanswerable": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 0,
+     "n": 30,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.1135
+     ]
+    },
+    "cost": {
+     "wall_s_median": 148.44,
+     "wall_s_mean": 221.6,
+     "tokens_mean": 19442,
+     "repairs": 3
+    }
+   }
+  },
+  "secondary": {
+   "a": {
+    "runs": 177,
+    "failed_jobs": 4,
+    "asked_jobs": 0,
+    "asked_attempts": 0,
+    "failed_attempts": 4,
+    "answerable_full": {
+     "k": 112,
+     "n": 147,
+     "rate": 0.7619,
+     "wilson95": [
+      0.6869,
+      0.8235
+     ],
+     "boot95_questions": [
+      0.6463,
+      0.8639
+     ]
+    },
+    "all_full": {
+     "rate": 0.8023,
+     "n_questions": 59
+    },
+    "recall_mean": 0.9583,
+    "precision_mean": 0.8679,
+    "by_kind": {
+     "field": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "list": {
+      "k": 12,
+      "n": 27,
+      "rate": 0.4444,
+      "wilson95": [
+       0.2759,
+       0.6269
+      ]
+     },
+     "project": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "people": {
+      "k": 22,
+      "n": 30,
+      "rate": 0.7333,
+      "wilson95": [
+       0.5555,
+       0.8582
+      ]
+     },
+     "join": {
+      "k": 18,
+      "n": 30,
+      "rate": 0.6,
+      "wilson95": [
+       0.4232,
+       0.7541
+      ]
+     },
+     "unanswerable": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 0,
+     "n": 30,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.1135
+     ]
+    }
+   },
+   "b": {
+    "runs": 177,
+    "failed_jobs": 0,
+    "asked_jobs": 0,
+    "asked_attempts": 0,
+    "failed_attempts": 0,
+    "answerable_full": {
+     "k": 30,
+     "n": 147,
+     "rate": 0.2041,
+     "wilson95": [
+      0.1469,
+      0.2764
+     ],
+     "boot95_questions": [
+      0.102,
+      0.3265
+     ]
+    },
+    "all_full": {
+     "rate": 0.339,
+     "n_questions": 59
+    },
+    "recall_mean": 0.2296,
+    "precision_mean": 0.7527,
+    "by_kind": {
+     "field": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "list": {
+      "k": 0,
+      "n": 27,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1246
+      ]
+     },
+     "project": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "people": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "join": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "unanswerable": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 0,
+     "n": 30,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.1135
+     ]
+    }
+   },
+   "c": {
+    "runs": 177,
+    "failed_jobs": 34,
+    "asked_jobs": 12,
+    "asked_attempts": 12,
+    "failed_attempts": 34,
+    "answerable_full": {
+     "k": 30,
+     "n": 147,
+     "rate": 0.2041,
+     "wilson95": [
+      0.1469,
+      0.2764
+     ],
+     "boot95_questions": [
+      0.102,
+      0.3265
+     ]
+    },
+    "all_full": {
+     "rate": 0.339,
+     "n_questions": 59
+    },
+    "recall_mean": 0.237,
+    "precision_mean": 0.5147,
+    "by_kind": {
+     "field": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "list": {
+      "k": 0,
+      "n": 27,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1246
+      ]
+     },
+     "project": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "people": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "join": {
+      "k": 0,
+      "n": 30,
+      "rate": 0.0,
+      "wilson95": [
+       0.0,
+       0.1135
+      ]
+     },
+     "unanswerable": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 0,
+     "n": 30,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.1135
+     ]
+    }
+   }
+  }
+ },
+ "comparisons": {
+  "primary": {
+   "a_minus_b_all": {
+    "diff": 0.4294,
+    "boot95": [
+     0.3051,
+     0.548
+    ],
+    "n_questions": 59,
+    "a": 0.7684,
+    "b": 0.339
+   },
+   "a_minus_b_answerable": {
+    "diff": 0.517,
+    "boot95": [
+     0.381,
+     0.6463
+    ],
+    "n_questions": 49,
+    "a": 0.7211,
+    "b": 0.2041
+   },
+   "a_minus_b_field": {
+    "diff": 0,
+    "boot95": [
+     0.0,
+     0.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 1
+   },
+   "a_minus_b_list": {
+    "diff": 0.4444,
+    "boot95": [
+     0.1111,
+     0.7778
+    ],
+    "n_questions": 9,
+    "a": 0.4444,
+    "b": 0
+   },
+   "a_minus_b_project": {
+    "diff": 1,
+    "boot95": [
+     1.0,
+     1.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 0
+   },
+   "a_minus_b_people": {
+    "diff": 0.5333,
+    "boot95": [
+     0.2667,
+     0.8
+    ],
+    "n_questions": 10,
+    "a": 0.5333,
+    "b": 0
+   },
+   "a_minus_b_join": {
+    "diff": 0.6,
+    "boot95": [
+     0.3333,
+     0.8333
+    ],
+    "n_questions": 10,
+    "a": 0.6,
+    "b": 0
+   },
+   "a_minus_b_unanswerable": {
+    "diff": 0,
+    "boot95": [
+     0.0,
+     0.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 1
+   },
+   "a_minus_c_project_people_join": {
+    "diff": 0.7111,
+    "boot95": [
+     0.5556,
+     0.8444
+    ],
+    "n_questions": 30,
+    "a": 0.7111,
+    "b": 0
+   },
+   "a_minus_c_field": {
+    "diff": 0,
+    "boot95": [
+     0.0,
+     0.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 1
+   },
+   "a_minus_c_list": {
+    "diff": 0.4444,
+    "boot95": [
+     0.1111,
+     0.7778
+    ],
+    "n_questions": 9,
+    "a": 0.4444,
+    "b": 0
+   },
+   "a_minus_c_project": {
+    "diff": 1,
+    "boot95": [
+     1.0,
+     1.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 0
+   },
+   "a_minus_c_people": {
+    "diff": 0.5333,
+    "boot95": [
+     0.2667,
+     0.8
+    ],
+    "n_questions": 10,
+    "a": 0.5333,
+    "b": 0
+   },
+   "a_minus_c_join": {
+    "diff": 0.6,
+    "boot95": [
+     0.3333,
+     0.8333
+    ],
+    "n_questions": 10,
+    "a": 0.6,
+    "b": 0
+   },
+   "a_minus_c_unanswerable": {
+    "diff": 0,
+    "boot95": [
+     0.0,
+     0.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 1
+   },
+   "a_minus_c_all": {
+    "diff": 0.4294,
+    "boot95": [
+     0.3051,
+     0.548
+    ],
+    "n_questions": 59,
+    "a": 0.7684,
+    "b": 0.339
+   }
+  },
+  "secondary": {
+   "a_minus_b_all": {
+    "diff": 0.4633,
+    "boot95": [
+     0.339,
+     0.5876
+    ],
+    "n_questions": 59,
+    "a": 0.8023,
+    "b": 0.339
+   },
+   "a_minus_b_answerable": {
+    "diff": 0.5578,
+    "boot95": [
+     0.4218,
+     0.6871
+    ],
+    "n_questions": 49,
+    "a": 0.7619,
+    "b": 0.2041
+   },
+   "a_minus_b_field": {
+    "diff": 0,
+    "boot95": [
+     0.0,
+     0.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 1
+   },
+   "a_minus_b_list": {
+    "diff": 0.4444,
+    "boot95": [
+     0.1111,
+     0.7778
+    ],
+    "n_questions": 9,
+    "a": 0.4444,
+    "b": 0
+   },
+   "a_minus_b_project": {
+    "diff": 1,
+    "boot95": [
+     1.0,
+     1.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 0
+   },
+   "a_minus_b_people": {
+    "diff": 0.7333,
+    "boot95": [
+     0.5,
+     0.9333
+    ],
+    "n_questions": 10,
+    "a": 0.7333,
+    "b": 0
+   },
+   "a_minus_b_join": {
+    "diff": 0.6,
+    "boot95": [
+     0.3333,
+     0.8333
+    ],
+    "n_questions": 10,
+    "a": 0.6,
+    "b": 0
+   },
+   "a_minus_b_unanswerable": {
+    "diff": 0,
+    "boot95": [
+     0.0,
+     0.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 1
+   },
+   "a_minus_c_project_people_join": {
+    "diff": 0.7778,
+    "boot95": [
+     0.6444,
+     0.9
+    ],
+    "n_questions": 30,
+    "a": 0.7778,
+    "b": 0
+   },
+   "a_minus_c_field": {
+    "diff": 0,
+    "boot95": [
+     0.0,
+     0.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 1
+   },
+   "a_minus_c_list": {
+    "diff": 0.4444,
+    "boot95": [
+     0.1111,
+     0.7778
+    ],
+    "n_questions": 9,
+    "a": 0.4444,
+    "b": 0
+   },
+   "a_minus_c_project": {
+    "diff": 1,
+    "boot95": [
+     1.0,
+     1.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 0
+   },
+   "a_minus_c_people": {
+    "diff": 0.7333,
+    "boot95": [
+     0.5,
+     0.9333
+    ],
+    "n_questions": 10,
+    "a": 0.7333,
+    "b": 0
+   },
+   "a_minus_c_join": {
+    "diff": 0.6,
+    "boot95": [
+     0.3333,
+     0.8333
+    ],
+    "n_questions": 10,
+    "a": 0.6,
+    "b": 0
+   },
+   "a_minus_c_unanswerable": {
+    "diff": 0,
+    "boot95": [
+     0.0,
+     0.0
+    ],
+    "n_questions": 10,
+    "a": 1,
+    "b": 1
+   },
+   "a_minus_c_all": {
+    "diff": 0.4633,
+    "boot95": [
+     0.339,
+     0.5876
+    ],
+    "n_questions": 59,
+    "a": 0.8023,
+    "b": 0.339
+   }
+  }
+ },
+ "claims": {
+  "a_full_credit_ge_70": {
+   "value": 0.7211,
+   "ci": [
+    0.5986,
+    0.8367
+   ],
+   "n": 147,
+   "pass": true
+  },
+  "d_states_fact_le_10": {
+   "value": 0.0,
+   "ci": [
+    0.0,
+    0.1135
+   ],
+   "n": 30,
+   "pass": true
+  },
+  "b_a_beats_b": {
+   "value": 0.4294,
+   "ci": [
+    0.3051,
+    0.548
+   ],
+   "n": 59,
+   "pass": true
+  },
+  "c_a_beats_c": {
+   "value": 0.7111,
+   "ci": [
+    0.5556,
+    0.8444
+   ],
+   "n": 30,
+   "each_kind_positive": true,
+   "pass": true,
+   "partial": false
+  }
+ }
+}

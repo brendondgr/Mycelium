@@ -82,6 +82,17 @@ metrics:
     r3_qwen38_m2.a_minus_c_project_people_join: {mean: 0.6444, n: 30, ci95: [0.4889, 0.7889]}
     r3_qwen38_m2.unanswerable_states_fact: {mean: 0.0, n: 30}
     r3_qwen38_m2.list_presented_complete: {mean: 0.2593, n: 27, ci95: [0.1317, 0.4468]}
+    r4_qwen38.arm_a_answerable_full_credit: {mean: 0.7211, n: 147, ci95_question_bootstrap: [0.5986, 0.8367]}
+    r4_qwen38.arm_a_answerable_full_credit_secondary: {mean: 0.7619, n: 147, ci95_question_bootstrap: [0.6463, 0.8639]}
+    r4_qwen38.arm_a_list_full_credit: {mean: 0.4444, n: 27}
+    r4_qwen38.arm_a_people_full_credit: {mean: 0.5333, n: 30}
+    r4_qwen38.arm_a_project_full_credit: {mean: 1.0, n: 30}
+    r4_qwen38.arm_a_join_full_credit: {mean: 0.6, n: 30}
+    r4_qwen38.a_minus_b: {mean: 0.4294, n: 59, ci95: [0.3051, 0.548]}
+    r4_qwen38.a_minus_c_project_people_join: {mean: 0.7111, n: 30, ci95: [0.5556, 0.8444]}
+    r4_qwen38.unanswerable_states_fact: {mean: 0.0, n: 30, ci95_wilson: [0.0, 0.1135]}
+    r4_qwen38.list_presented_complete: {mean: 0.0741, n: 27, ci95: [0.0206, 0.2337]}
+    r4_qwen38.arm_a_runs_failed_both_attempts: {mean: 3, n: 177}
     r3_outage_20261116.rows: 1062 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.answered: 0 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.failed_server: 1062 # failed run, not a result; RESULTS.md AMENDMENTS

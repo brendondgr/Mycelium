@@ -1,0 +1,51 @@
+{
+ "a": {
+  "runs": 27,
+  "saw_partial": 3,
+  "no_partial": 21,
+  "failed": 3,
+  "said_partial": 1,
+  "presented_complete": 2,
+  "presented_complete_rate_all": {
+   "k": 2,
+   "n": 27,
+   "rate": 0.0741,
+   "wilson95": [
+    0.0206,
+    0.2337
+   ]
+  },
+  "presented_complete_rate_saw": {
+   "k": 2,
+   "n": 3,
+   "rate": 0.6667,
+   "wilson95": [
+    0.2077,
+    0.9385
+   ]
+  }
+ },
+ "c": {
+  "runs": 27,
+  "saw_partial": 0,
+  "no_partial": 27,
+  "presented_complete_rate_all": {
+   "k": 0,
+   "n": 27,
+   "rate": 0.0,
+   "wilson95": [
+    0.0,
+    0.1246
+   ]
+  },
+  "presented_complete_rate_saw": {
+   "k": 0,
+   "n": 0,
+   "rate": null,
+   "wilson95": [
+    null,
+    null
+   ]
+  }
+ }
+}

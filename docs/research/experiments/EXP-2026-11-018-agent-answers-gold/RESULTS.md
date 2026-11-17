@@ -197,3 +197,68 @@ Numbers are this model's, beside round two's (Gemma 4 31B), never pooled.
 - Failed attempts, by arm and cause: a context_full 4, c no_final_text 18, c timed_out 7, c turn_failed 1.
   A turn the 900 s harness deadline cut off is `timed_out`; at 64 in flight a
   turn took a median of 185 s, so deadline cuts are partly load.
+
+**2026-11-17 — after three product fixes, on Qwen 3.8 27B (Amendment 6, tag `r4`).**
+Run 2026-11-17T06:20:03Z–2026-11-17T10:32:48Z on the instance model
+(`default-model`, operator-stated Qwen 3.8 27B at start and end,
+`logs/model_r4.jsonl`), the 531 registered jobs, 8 in flight on a server shared
+with the operator's own work, 569 rows with retries. Every job read a frozen
+copy of the code at `55cfdb1c`. Graded by `code/r4.py grade` against
+`data/gold_r4.json` (`tables/summary_r4.md`, `data/metrics_r4.json`;
+first-attempt grading in `*_r4_first_attempt*`, which changes no number below);
+partial lists by `code/r4.py partial` (`tables/partial_r4.md`,
+`tables/j08_r4.md`). The row to read it beside is round three's on the same
+model (Amendments 3–5); that run was on the second server at 64 in flight, so
+seconds are not compared. Gold objects are the same in both.
+
+- **C-043 met on this model:** arm (a) full credit on 106/147 answerable runs,
+  72% (question bootstrap 0.60–0.84); the bar is 70%; round three 61%
+  (0.48–0.73). The lower bound is under the bar. By kind (round three in
+  brackets): field 30/30 (30/30), list 12/27 (2/27), project 30/30 (24/30),
+  people 16/30 (15/30), join 18/30 (19/30).
+- **Fix 3 (citing people and projects):** the gap between the two gradings
+  narrowed from 0.10 (0.61 against 0.71) to 0.04 (0.72 against 0.76,
+  112/147 on the secondary grading). Project questions closed it entirely
+  (30/30 on both). People did not: 16/30 primary against 22/30 secondary.
+  `p01` names the right person without a reference in all three runs; `p10`,
+  `j07` and two of three `p07` runs give the right answer and cite the
+  people they ruled out as well, which the primary grading counts as naming them.
+- **Fix 1 (lists):** list questions with full credit rose from 2/27 to 12/27.
+  The four that ask for a deadline inside a window (`l01`, `l03`, `l05`,
+  `l10`) are right in all three runs each, from one filtered call. The five
+  still at 0/3: `l04` asks for *confirmed* deadlines and the filter has no
+  such argument, so an anticipated one is listed (and said to be
+  anticipated); `l06` and `l07` (a conference's paper deadline) name every
+  gold item in 5 of 6 runs and at least one item too many in all 6; `l08` and `l09` ask about
+  the amount a grant offers, which no list filter covers.
+- **C-056 met at its point estimate:** of 27 arm-(a) list runs, 3 saw a
+  partial list; 1 said so and **2 presented it as complete** (7% of all list
+  runs, Wilson 0.02–0.23; the bar is at most 10%; round three 26%). The
+  interval reaches past the bar, and three more list runs failed before
+  answering. Read by hand afterwards (not a regrade): one of the two (`l09`
+  rep 3) does say it checked only the top 8 of 32, in words the fixed pattern
+  does not catch.
+- **The amount questions fan out and three runs died of it:** on `l08` and
+  `l09` Mylo lists the slate and then reads each grant with `corpus_item`,
+  several dozen calls in a turn. Of the 6 runs, 3 never answered on either
+  attempt: the context filled (`context_full`) or the 900 s harness deadline
+  cut the turn. This is Q-091, seen at go-live, not fixed tonight.
+- **Fix 2 (`j08`, Q-075):** all three arm-(a) runs answered from both feeds
+  with no refused call and no error (`tables/j08_r4.md`); each names the two
+  right grants. None earns full credit (round three 2/3): each also cites the
+  two third-place grants it says do *not* overlap, and the primary grading
+  counts a cited item as named (precision 0.5). `j10` loses credit the same
+  way in all three runs (round three 1/3).
+- **C-044 holds:** (a) beats one search plus one call by +0.43 per question
+  (paired 95% +0.31 to +0.55, 59 questions).
+- **C-045 holds:** (a) beats the corpus-only agent on project, people and join
+  questions by +0.71 (paired 95% +0.56 to +0.84), positive in each kind.
+- **C-046 holds:** (a) states a fact the record does not hold in 0/30
+  unanswerable runs (Wilson upper 0.11).
+- Failed attempts, by arm and cause: a context_full 4, a deadline 3
+  (3 arm-(a) runs failed both attempts, all `l08` or `l09`); c deadline 30,
+  c no_final_text 20 (16 arm-(c) runs failed both attempts). Arm (a) took a
+  median of 155 s a turn at 8 in flight.
+- **What this run cannot say:** one run per model, one fictional lab, one
+  night's slates; citing an item one rules out is counted as naming it, which
+  the graders were registered to do and which this run did not change.
