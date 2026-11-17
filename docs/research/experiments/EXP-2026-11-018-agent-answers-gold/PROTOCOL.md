@@ -442,3 +442,13 @@ recorded as not run. The model is recorded at the start and end of each run
 on 2026-11-18 (the nightly run starts 12:01 UTC). Demo-lab threads named
 `EXP-` are deleted after the runs (`code/cleanup.py`).
 
+**Added 2026-11-17 17:31 UTC, during the run.** The maintainer raised the limit
+on the instance model from 8 to 32 turns in flight ("You can do 32
+concurrently"). The run was stopped after 64 of 531 jobs had been recorded
+at `--conc 8` and started again with `--conc 32`; `run.py` skips the jobs
+already in `data/runs_r5.jsonl`, and the jobs in flight when it was stopped are
+asked again. Nothing else changes. Seconds were already not compared with any
+earlier round; within this run they now come from two loads, so they are not
+compared with each other either. A job that hits `run.py`'s deadline under the
+higher load is retried once at the end as registered, and counted as failed if
+it fails again: the count of such jobs is reported beside Amendment 6's.

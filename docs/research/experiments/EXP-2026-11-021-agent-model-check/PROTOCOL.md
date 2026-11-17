@@ -152,3 +152,4 @@ toward the failure limit, and `#7 Some title` is read as `#7`).
 - **Gold.** As registered: the twelve graded questions against `EXP-2026-11-018`'s round-two `data/gold.json`; the feeds have moved again since (the 12:01 UTC nightly run), which lowers every row alike.
 - Nothing else changes: questions, probes, controls, classes and hypotheses are as registered. No new turn after 11:40 UTC on 2026-11-18.
 
+**Added 2026-11-17 17:31 UTC, before the row.** The maintainer raised the limit on the instance model to 32 turns in flight. `qwen38-after2-20261117` runs with `--conc 32` (the earlier Qwen rows ran with `--conc 8`); the check has 31 turns, and nothing it counts depends on seconds.

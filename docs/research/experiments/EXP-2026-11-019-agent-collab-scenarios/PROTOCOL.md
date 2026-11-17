@@ -408,3 +408,4 @@ used up, the corrected batch was refused, and the turn ended `context_full`.
 - **Read as.** C-050 on its own bar (the planted person named in at least 80% of S1 asks and of S2 asks), fresh and repeated apart, beside the earlier rows on the same model; S1's `outside_first` reported; S10 unchanged (nobody named: one name refutes C-051's row). What would count against the fixes: S1 fresh below the same model's earlier row.
 - No new turn after 11:40 UTC on 2026-11-18.
 
+**Added 2026-11-17 17:31 UTC, before the run.** The maintainer raised the limit on the instance model to 32 turns in flight. If `r6` runs on `default-model`, it runs with `--conc 16` per mode (32 in flight), not 4.

@@ -273,3 +273,6 @@ Mylo turns are in flight. No new bar; C-030 and O8 are re-read. Reported by
 `code/a7_table.py` with A8's rows added to its lists (it reads only the
 recorded files).
 
+**Added 2026-11-17 17:31 UTC, before any A8 turn.** The maintainer raised the
+limit on the instance model to 32 turns in flight. A8's design does not change
+(one at a time, then 8 processes): it is the same arm as A6 and A7.

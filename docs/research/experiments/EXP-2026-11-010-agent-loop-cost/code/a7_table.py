@@ -1,4 +1,4 @@
-"""EXP-2026-11-010 A7: the rows after the overnight fixes beside A6's, from
+"""EXP-2026-11-010 A7 and A8 (Amendment 10): the rows after the fixes beside A6's, from
 data/metrics.json (analyse.py) and the A7 run files. Standard library only.
 
     python3 docs/research/experiments/EXP-2026-11-010-agent-loop-cost/code/a7_table.py
@@ -16,7 +16,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 RUNS = [("a6idle", "before the fixes, second server"), ("a7idle", "after the fixes, shared server"),
-        ("a6p8", "before the fixes, second server"), ("a7p8", "after the fixes, shared server")]
+        ("a8idle", "after the afternoon's fixes, shared server"),
+        ("a6p8", "before the fixes, second server"), ("a7p8", "after the fixes, shared server"),
+        ("a8p8", "after the afternoon's fixes, shared server")]
 GROUPS = ("single", "few", "compound")
 
 
@@ -52,7 +54,7 @@ def main() -> int:
                          f"{s['wall_s_median']} | {s['wall_s_max']} |")
     lines += ["", "| Run | Turns | With text | Turn errors (codes) | Hit the step limit | Function results (ok) | Calls denied | Turns with a denied call | Empty model calls | Calls at the reply cap |",
               "|---|---:|---:|---|---:|---:|---:|---:|---:|---:|"]
-    for tag in ("a6idle", "a6p8", "a7idle", "a7p8"):
+    for tag in ("a6idle", "a6p8", "a7idle", "a7p8", "a8idle", "a8p8"):
         rs = rows(tag)
         if not rs:
             continue
