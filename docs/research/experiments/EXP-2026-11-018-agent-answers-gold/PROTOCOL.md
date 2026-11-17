@@ -457,3 +457,9 @@ it fails again: the count of such jobs is reported beside Amendment 6's.
 starting the second server again for Gemma 4 31B and asked for 32 turns in
 flight on it. `r5g` runs with `--conc 32` (not 16) once `default-model-2` is
 healthy and self-reports as Gemma; the watcher asks every two minutes.
+
+**Added 2026-11-17 20:36 UTC, before any `r5g` answer.** The maintainer is
+restarting the second server now. The watcher asks every 30 seconds instead of
+every two minutes; nothing else changes (`--conc 32`, the same gold, frozen
+copy and 05:00 UTC limit). The same watcher then starts EXP-2026-11-021's
+Gemma row and EXP-2026-11-019's `r6` as their protocols register them.
