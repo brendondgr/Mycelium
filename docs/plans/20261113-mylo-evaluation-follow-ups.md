@@ -30,6 +30,42 @@ the last section):**
   it): the collaborator scenarios' tags `r4` and `r5`, the model check's two
   `gemma4-…-20261117` rows, the answers experiment's tag `r4g`. Never pooled.
 
+**Afternoon 2026-11-17 (correlation `20261117-mylo-afternoon-fixes`; the
+maintainer: "fix everything, run it"):**
+
+- **Live since the 17:02 UTC restart:** the loop reads the thread's settings
+  fresh each step, so a function loaded in one step is offered in the next
+  (it was not, until the turn after), and clearing old results no longer
+  undoes references (`90882479`); a step runs at most 12 calls and a turn
+  that read more than fits answers from what is left (`522d7eb7`); feed lists
+  filter by what a grant or fellowship pays and say what they left out for
+  its currency (`ed27c8b8`, `640d7fe0`); Gemma's call markup is read as a
+  call and never posted (`f9a784ee`); a person or project named without its
+  number gets it, and the prompt says not to list what was ruled out
+  (`0ebaed72`); the search beyond the lab points to who in the lab covers the
+  call (`29d1bd92`).
+- **Measured on Qwen 3.8 27B** (`EXP-2026-11-018` Amendment 8): 87% of
+  stored-data answers fully right (72% twelve hours earlier, 61% before any
+  fix); lists 24 of 27; people 25 of 30; no partial list presented as
+  complete; no Mylo turn failed twice; the most function calls in a turn 8
+  (was 72). The model check's third row: no leak, no blank turn, 10 of 12.
+- **Not measured:** anything on Gemma 4 31B — its server was down all
+  afternoon. That leaves the call-markup fix and the first-ask collaborator
+  fix covered by unit tests only, and Gemma's amount questions (6 of 27
+  partial lists presented as complete last night) unchecked. The loop-cost arm
+  was stopped after 9 turns when the maintainer asked for the Qwen server
+  back; compound questions with 8 in flight are still not re-measured.
+- **Still wrong:** a right answer that also names what it compared against
+  loses credit on six questions; no filter takes a deadline's confidence;
+  Mylo still looks people up by name where a reference belongs (denied calls
+  did not fall: 19 of 178 turns); in the go-live check the answer checker cut
+  converted currency figures out of one answer and left broken lines.
+- **Not built:** ranking by "Open to" (Q-086): it needs the maintainer's word
+  on where the kind of collaboration sought comes from, how far it outranks
+  match quality, and what an empty "Open to" means.
+- **Also added:** `make test-fast` (the whole suite in about five minutes) and
+  `make test-changed` (only the test directories a change touches).
+
 **Correlation ID:** `20261113-mylo-evaluation-fixes`
 
 The overnight evaluation, plus one bug found while re-checking a fix

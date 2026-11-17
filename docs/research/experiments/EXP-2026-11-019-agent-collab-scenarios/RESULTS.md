@@ -329,3 +329,15 @@ read `127428f3`, which adds the fix. Tables: `tables/r4_outcomes.md`,
 - **Seconds** (median per repetition 100 to 305 s) are under 16 turns in flight
   on a server whose speed is not otherwise known; not interpreted.
 
+**2026-11-17 (afternoon) — Amendment 9's run (`r6`) has not been run.**
+`default-model-2` (Gemma 4 31B last night) was down from the 16:41 UTC
+preflight on; the maintainer says its GPUs are taken by other work. The
+fallback the amendment allowed — the same run on Qwen 3.8 27B, which could
+only show that the fixes did no harm — was dropped at 18:59 UTC on the
+maintainer's instruction ("just leave them for Gemma"). So the two fixes that
+bear on S1 (`90882479`, `29d1bd92`) are live and covered by unit tests only:
+**C-050 on Gemma 4 31B stays not met in `fresh` mode for S1 (13 of 30) until
+`r6` runs.** A watcher starts `r6` on `default-model-2` if that server comes
+back as Gemma before 08:00 UTC on 2026-11-18; its result is recorded here
+then.
+

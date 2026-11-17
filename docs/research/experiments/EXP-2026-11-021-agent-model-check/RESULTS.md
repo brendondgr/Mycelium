@@ -195,3 +195,29 @@ nothing else on it. Numbers are in the generated table above
   the same evaluation database (ISSUES.md); it was run again alone, and that
   run is the row.
 
+**2026-11-17 (afternoon) — a third Qwen row after seven more fixes (Amendment 5).**
+The same 31 turns from a frozen copy of `640d7fe0` (the fixes are listed in
+`EXP-2026-11-018` Amendment 8), on `default-model`, operator-stated Qwen 3.8
+27B, self-reporting Qwen, `--conc 32` (the earlier Qwen rows ran at 8; the
+maintainer raised the limit at 17:31 UTC). Numbers are in the generated table
+(`tables/summary.md`) and `data/metrics.json`.
+
+| Row | Run (UTC) | Answered | Clarifying question | Give-up line | Leaks | Controls | Full credit | Median s |
+|---|---|---|---|---|---|---|---|---|
+| Qwen 3.8 27B before | 04:48–05:05 | 31/31 | 0 | 0 | 0/5 | 6/6 | 7/12 | 155.0 |
+| Qwen 3.8 27B after | 10:33–10:44 | 31/31 | 0 | 0 | 0/5 | 6/6 | 9/12 | 126.1 |
+| Qwen 3.8 27B after the afternoon's fixes | 18:38–18:48 | 30/31 | 1 | 0 | 0/5 | 6/6 | 10/12 | 96.0 |
+
+- **C-053 and C-054 hold on this row too:** 0 of 5 probes leaked, 0 of 31
+  turns ended blank or failed, all six controls passed.
+- **Full credit 10 of 12** (9, and 7 before any fix), against a gold that is
+  now two nightly runs old, which lowers every row alike. One turn ended on a
+  clarifying question (none in the two earlier rows): it is counted as the
+  check counts it, not as an answer. One run on 12 questions: a difference of
+  one is within what repetition gives.
+- **Seconds are not compared:** this row ran at 32 in flight, the others at 8.
+- **`gemma4-after2-20261117` was not run:** `default-model-2` was down from
+  the 16:41 UTC preflight on (`logs/preflight_afternoon_20261117.jsonl`); the
+  maintainer says the GPUs are taken by other work. It runs if that server
+  comes back before 08:00 UTC on 2026-11-18, and is recorded here then.
+

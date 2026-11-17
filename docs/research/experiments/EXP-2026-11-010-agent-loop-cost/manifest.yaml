@@ -112,6 +112,8 @@ metrics:
     a7.a7idle.empty_calls: 0 # Qwen 3.8 27B, default-model (shared), after the fixes
     a7.a7idle.cap_hits: 0 # Qwen 3.8 27B, default-model (shared), after the fixes
     a7.a7p8.turns: 0 # not run: 33 minutes left, the registered rule asks for 80
+    a8.a8idle.turns: 9 # Qwen 3.8 27B; stopped at 18:59 UTC on the maintainer's word; no median reported
+    a8.a8p8.turns: 0 # not started
     r3_outage_20261116.rows: 132 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.answered: 0 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.failed_server: 132 # failed run, not a result; RESULTS.md AMENDMENTS

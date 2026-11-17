@@ -298,3 +298,17 @@ A6's rows beside A7's.
 - **Seconds** are in the table and not compared: A6 ran on a server with
   nothing else on it, A7 beside the operator's work.
 
+**2026-11-17 (afternoon) — arm A8 stopped after 9 turns; nothing is claimed from it (Amendment 10).**
+A8 began at 18:48 UTC on Qwen 3.8 27B (`default-model`, `logs/model_a8.jsonl`),
+one turn at a time, from a frozen copy of `640d7fe0`. At 18:59 UTC the
+maintainer asked that nothing run on that server (its GPUs were taken by other
+work), and the run was stopped: 9 turns of the first repetition are in
+`data/a2_a8idle.jsonl` (the four single questions, the four with a few calls,
+one compound), all answered. The 8-process half did not start. Nine turns of
+one repetition are not a row of this experiment's table: no median is
+reported, `tables/a7.md` is not regenerated, and C-030 and O8 are not re-read.
+**O8 (compound questions with 8 in flight) is still not re-measured after any
+fix.** What bears on A8's question — do the fixes change what a turn costs —
+is in `EXP-2026-11-018` Amendment 8 instead, on other questions: the most
+function calls in one Mylo turn fell from 72 to 8.
+

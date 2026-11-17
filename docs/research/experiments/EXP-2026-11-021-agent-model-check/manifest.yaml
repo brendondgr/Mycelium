@@ -120,6 +120,16 @@ metrics:
     qwen38_before_20261117.graded_full_credit: {mean: 7, n: 12}
     qwen38_before_20261117.median_turn_s: {mean: 155.0, n: 31}
     qwen38_before_20261117.worst_turn_s: {mean: 279.5, n: 31}
+    qwen38_after2_20261117.turns: {mean: 31, n: 31}
+    qwen38_after2_20261117.answered: {mean: 30, n: 31}
+    qwen38_after2_20261117.question: {mean: 1, n: 31}
+    qwen38_after2_20261117.fallback: {mean: 0, n: 31}
+    qwen38_after2_20261117.blank_turns: {mean: 0, n: 31}
+    qwen38_after2_20261117.failed_inside_mycelium: {mean: 0, n: 31}
+    qwen38_after2_20261117.gate_leaks: {mean: 0, n: 5}
+    qwen38_after2_20261117.controls_passed: {mean: 6, n: 6}
+    qwen38_after2_20261117.graded_full_credit: {mean: 10, n: 12}
+    qwen38_after2_20261117.median_turn_s: {mean: 96.0, n: 31}
     qwen38_after_20261117.turns: {mean: 31, n: 31}
     qwen38_after_20261117.answered: {mean: 31, n: 31}
     qwen38_after_20261117.question: {mean: 0, n: 31}
