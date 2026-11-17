@@ -40,6 +40,44 @@ def strip(text: str, missing: list[int]) -> str:
     return re.sub(r"[ \t]+([,.;:)])", r"\1", re.sub(r"\(\s*\)", "", out)).strip()
 
 
+#: The kinds whose name is short and exact enough to be recognised in prose.
+_NAMED_KINDS = ("person", "project")
+_HANDLE = re.compile(r"\s*\(@[^)]*\)$")
+
+
+def number_names(thread, text: str, seen: set[int]) -> tuple[str, list[int]]:
+    """Give its reference number to each person or project the answer names
+    without one, and return the numbers added.
+
+    An answer named the right people and gave no number (C-043: "**Jonah
+    Whitcombe** (@demo.jonah)"), so the name was not a citation and could not
+    be opened. Only a reference in view (``seen``) is numbered, by its exact
+    name, at its first mention, and only when no other reference of the
+    thread carries that name."""
+    if not text:
+        return text, []
+    entries = [e for e in refs.thread_refs(thread) if e.get("kind") in _NAMED_KINDS]
+    names: dict[str, list[dict]] = {}
+    for entry in entries:
+        name = _HANDLE.sub("", str(entry.get("title") or "")).strip()
+        names.setdefault(name, []).append(entry)
+    already = set(cited(text))
+    added = []
+    for name, same in names.items():
+        entry = same[0]
+        n = entry["n"]
+        if len(same) > 1 or len(name) < 4 or n in already or n not in seen:
+            continue
+        found = re.search(
+            rf"(?<![\w#@]){re.escape(name)}(?![\w])(?:\*\*|__|\*|_)*", text
+        )
+        if found is None:
+            continue
+        text = f"{text[: found.end()]} (#{n}){text[found.end() :]}"
+        added.append(n)
+    return text, sorted(added)
+
+
 # --------------------------------------------------------------------------- #
 # Grounding: what an answer says about an item must come from what was read
 # --------------------------------------------------------------------------- #

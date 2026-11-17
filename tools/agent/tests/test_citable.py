@@ -8,8 +8,10 @@ import re
 
 import pytest
 
-from tools.agent import prompt, refs
+from tools.agent import prompt, refs, verify
+from tools.agent.caller import for_thread
 
+from .conftest import make_user
 from .test_kg_functions import item, lab_run, run, score
 
 pytestmark = pytest.mark.django_db
@@ -105,8 +107,82 @@ def test_who_should_look_is_not_referenced_for_someone_the_reply_cannot_show(wor
     assert "Othermember" in line and not re.search(r"#\d+ Othermember", line)
 
 
-def test_the_prompt_says_to_cite_people_and_projects_and_only_the_ones_meant():
+def test_the_prompt_says_to_cite_what_is_named_and_to_name_only_the_answer():
     rules = " ".join(prompt.BASE_RULES.split())
     assert "Cite every item, person and project you name" in rules
     assert "a name without its number is not a citation" in rules
-    assert "do not cite the rest of it for context" in rules
+    # EXP-2026-11-018 Amendment 6: the answer was right and then listed, with
+    # their numbers, the four members it had ruled out.
+    assert "Name only what answers the question" in rules
+    assert "Do not list the people, projects or items you looked at and ruled out" in (
+        rules
+    )
+
+
+def _thread_with(world, *people):
+    from tools.agent.functions import common
+
+    from .conftest import thread_for
+
+    thread = thread_for(world.member, "lab", world.lab)
+    c = for_thread(thread)
+    return thread, [
+        refs.number(thread, common.person_info(p, caller=c)) for p in people
+    ]
+
+
+def test_a_person_named_without_a_number_gets_it(world):
+    # C-043: "**Jonah Whitcombe** (@demo.jonah)" named the right person and
+    # cited nobody.
+    thread, (admin, owner) = _thread_with(world, world.admin, world.owner)
+    text, added = verify.number_names(
+        thread, "**Admin** (@admin) runs it. Nobody else does.", {admin, owner}
+    )
+    assert text == f"**Admin** (#{admin}) (@admin) runs it. Nobody else does."
+    assert added == [admin]
+    # Named twice: numbered where first named. Already cited: left alone.
+    text, added = verify.number_names(
+        thread, f"Owner and Admin (#{admin}). Owner again.", {admin, owner}
+    )
+    assert text == f"Owner (#{owner}) and Admin (#{admin}). Owner again."
+    assert added == [owner]
+
+
+def test_a_name_is_numbered_only_when_it_is_exact_in_view_and_one_of_a_kind(world):
+    thread, (admin, owner) = _thread_with(world, world.admin, world.owner)
+    both = {admin, owner}
+    for text in (
+        "The Administrator and the Owners decide.",  # part of a longer word
+        "Ask @admin or the admin of the lab.",  # a handle, another case
+        "Nothing about either of them.",
+    ):
+        assert verify.number_names(thread, text, both) == (text, [])
+    # Not in what the answer can see now: nothing to cite it from.
+    assert verify.number_names(thread, "Admin runs it.", {owner})[1] == []
+    # Two people of the same name: which one is meant cannot be told.
+    twin = make_user("admin2")
+    twin.first_name = "Admin"
+    twin.save(update_fields=["first_name"])
+    from tools.agent.functions import common
+
+    n = refs.number(thread, common.person_info(twin, caller=for_thread(thread)))
+    assert verify.number_names(thread, "Admin runs it.", both | {n})[1] == []
+
+
+def test_the_turn_posts_the_answer_with_the_number_added(world, scripted):
+    from tools.agent import loop, service, store
+
+    from .conftest import thread_for
+
+    thread = thread_for(world.member, "lab", world.lab)
+    service.send(for_thread(thread), thread, "who is here?", start=lambda t: None)
+    model = scripted([("org_lab_members", {})], "**Admin** (@admin) is one of them.")
+    loop.run_turn(thread.pk, port=model)
+    final = [
+        e.payload for e in store.events(thread)
+        if e.type == "assistant" and e.payload.get("final")
+    ][-1]  # fmt: skip
+    (n,) = final["numbered"]
+    assert final["text"] == f"**Admin** (#{n}) (@admin) is one of them."
+    thread.refresh_from_db()
+    assert refs.lookup(thread, n)["key"] == "admin"

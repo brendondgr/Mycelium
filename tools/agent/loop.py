@@ -559,17 +559,16 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                 EMPTY_GIVE_UP if empty else RUNAWAY_GIVE_UP if gave_up else reply.text
             )
             gave_up = gave_up or empty
-            missing, unread_refs, claims = [], [], []
+            missing, unread_refs, claims, numbered = [], [], [], []
             if not gave_up:
-                missing = verify.unmatched(thread, text)
                 results = rebuild.visible_results(thread, events, caller)
                 extra = _grounding_extra(caller, thread, events)
+                in_view = verify.seen_refs(results, extra)
+                # A person or project named without its number gets it.
+                text, numbered = verify.number_names(thread, text, in_view)
+                missing = verify.unmatched(thread, text)
                 unread_refs = [
-                    n
-                    for n in verify.unread(
-                        thread, text, verify.seen_refs(results, extra)
-                    )
-                    if n not in missing
+                    n for n in verify.unread(thread, text, in_view) if n not in missing
                 ]
                 claims = verify.unsupported(text, verify.source_text(results, extra))
             if (missing or unread_refs or claims) and not repaired:
@@ -614,6 +613,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                     "final": True,
                     **({"removed": missing} if missing else {}),
                     **({"removed_claims": claims} if claims else {}),
+                    **({"numbered": numbered} if numbered else {}),
                     **model,
                 },
             )
