@@ -235,7 +235,16 @@ def slate_view(
     refs = [head] if head else []
     if window is not None:
         return _due_view(
-            target_kwargs, title, refs, types, limit, start, window, deadline
+            target_kwargs,
+            title,
+            refs,
+            types,
+            limit,
+            start,
+            window,
+            deadline,
+            decorate,
+            more_refs,
         )
     limit = int_arg(limit, default_limit, 1, 25)
     sections, cut, shown_all, total_all = [], [], 0, 0
@@ -298,7 +307,18 @@ def slate_view(
     )
 
 
-def _due_view(target_kwargs, title, refs, types, limit, start, window, deadline):
+def _due_view(
+    target_kwargs,
+    title,
+    refs,
+    types,
+    limit,
+    start,
+    window,
+    deadline,
+    decorate=None,
+    more_refs=None,
+):
     lo, hi = window
     kinds = kinds_arg(deadline)
     dated = [t for t in types if t in DATED] or list(DATED)
@@ -326,7 +346,11 @@ def _due_view(target_kwargs, title, refs, types, limit, start, window, deadline)
             + "; ".join(deadline_text(d) for d in due[s.content_id])
         )
     keep = fit(lines)
+    if decorate is not None:  # who should look, as the rank-order view has it
+        lines = decorate(lines[:keep], page[:keep])
+        keep = fit(lines)
     refs = refs + [common.item_info(s.content) for s in page[:keep]]
+    refs += [info for info in (more_refs or []) if info not in refs]
     return Result(
         content=f"In the current slate of {title}, the {noun} with {asked} "
         f"(checked all {len(ranked)}; slate rank order):\n"

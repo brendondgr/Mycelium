@@ -85,6 +85,20 @@ def test_a_deadline_window_returns_every_match_and_says_it_is_complete(world):
     assert last(out) == "This is the complete list: all 36 of 36 matching items."
 
 
+def test_a_deadline_window_keeps_who_should_look(world):
+    conf = item("Named conference", "conference")
+    score(
+        conf, 1, target_lab=world.lab, signals={"member_fit": [{"username": "admin"}]}
+    )
+    due(conf, 20, "manuscript")
+    out = run(
+        world.member, "feeds_slate", {"due_to": day(30)}, kind="lab", obj=world.lab
+    )
+    row = next(x for x in out["content"].splitlines() if x.startswith("- "))
+    assert "manuscript deadline" in row and "who should look: #" in row
+    assert row.rstrip().endswith("Admin")
+
+
 def test_no_match_is_a_complete_answer_too(world):
     _slate_of_conferences(world, n=6, inside=())
     out = run(
