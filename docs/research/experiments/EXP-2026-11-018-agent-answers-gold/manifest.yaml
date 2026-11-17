@@ -93,6 +93,19 @@ metrics:
     r4_qwen38.unanswerable_states_fact: {mean: 0.0, n: 30, ci95_wilson: [0.0, 0.1135]}
     r4_qwen38.list_presented_complete: {mean: 0.0741, n: 27, ci95: [0.0206, 0.2337]}
     r4_qwen38.arm_a_runs_failed_both_attempts: {mean: 3, n: 177}
+    r5_qwen38.arm_a_answerable_full_credit: {mean: 0.8707, n: 147, ci95_question_bootstrap: [0.7755, 0.9524]}
+    r5_qwen38.arm_a_answerable_full_credit_secondary: {mean: 0.8707, n: 147, ci95_question_bootstrap: [0.7755, 0.9524]}
+    r5_qwen38.arm_a_list_full_credit: {mean: 0.8889, n: 27}
+    r5_qwen38.arm_a_people_full_credit: {mean: 0.8333, n: 30}
+    r5_qwen38.arm_a_project_full_credit: {mean: 1.0, n: 30}
+    r5_qwen38.arm_a_join_full_credit: {mean: 0.6333, n: 30}
+    r5_qwen38.a_minus_b: {mean: 0.548, n: 59, ci95: [0.4181, 0.6723]}
+    r5_qwen38.a_minus_c_project_people_join: {mean: 0.8222, n: 30, ci95: [0.6889, 0.9333]}
+    r5_qwen38.unanswerable_states_fact: {mean: 0.0333, n: 30, ci95_wilson: [0.0059, 0.1667]}
+    r5_qwen38.list_presented_complete: {mean: 0.0, n: 27, ci95: [0.0, 0.1246]}
+    r5_qwen38.arm_a_runs_failed_both_attempts: {mean: 0, n: 177}
+    r5_qwen38.arm_a_rows_with_a_denied_call: {mean: 19, n: 178}
+    r5_qwen38.arm_a_max_function_calls_in_a_job: {mean: 8, n: 177}
     r4g_gemma4.arm_a_answerable_full_credit: {mean: 0.9048, n: 147, ci95_question_bootstrap: [0.8163, 0.9796]}
     r4g_gemma4.arm_a_answerable_full_credit_secondary: {mean: 0.9048, n: 147, ci95_question_bootstrap: [0.8163, 0.9796]}
     r4g_gemma4.arm_a_list_full_credit: {mean: 0.5926, n: 27}

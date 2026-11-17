@@ -320,3 +320,81 @@ questions, before any of the fixes); not pooled with Qwen's.
   build then is not recorded, the feeds have moved, one question was dropped,
   and the loop gained retries); it is one run.
 
+**2026-11-17 (afternoon) — after seven more fixes, on Qwen 3.8 27B (Amendment 8, tag `r5`).**
+Run 2026-11-17T17:08:38Z–2026-11-17T18:38:22Z on the instance model
+(`default-model`, operator-stated Qwen 3.8 27B, self-reporting Qwen at the
+start, at the restart and at the end, `logs/model_r5.jsonl`), the 531
+registered jobs, 561 rows with retries. The first 64 jobs ran at 8 in flight;
+at 17:31 UTC the maintainer raised the limit and the rest ran at 32 in flight
+(PROTOCOL, Amendment 8, added notes). Every job read a frozen copy of the code
+at `640d7fe0`. Graded by `R4_GOLD=r5 R4_TAG=r5 code/r4.py grade` against
+`data/gold_r5.json`, computed 17:05 UTC after the nightly run moved the feeds
+(`tables/summary_r5.md`, `data/metrics_r5.json`; first-attempt grading in
+`*_r5_first_attempt*`); partial lists by `code/r4.py partial`
+(`tables/partial_r5.md`, `tables/j08_r5.md`); the counts Amendment 8 registered
+by `code/r5_counts.py` (`tables/counts.md`, `data/counts_r5.json`, with `r4`
+beside it). The row to read it beside is Amendment 6's on the same model,
+twelve hours earlier. Four list questions (`l04`, `l05`, `l07`, `l10`) have
+other gold objects than then, because the feeds moved.
+
+- **C-043 met on this model, with the interval above the bar:** arm (a) full
+  credit on 128/147 answerable runs, 87% (question bootstrap 0.78–0.95); the
+  bar is 70%; Amendment 6 72% (0.60–0.84), round three 61%. By kind
+  (Amendment 6 in brackets): field 30/30 (30/30), list 24/27 (12/27), project
+  30/30 (30/30), people 25/30 (16/30), join 19/30 (18/30).
+- **Lists, and the amount questions.** Every list question but `l04` is right
+  in all three runs. `l08` and `l09` (what a grant pays, and in which
+  currency) are 3/3 each, from one filtered call; in Amendment 6 they were 0/3
+  each and 3 of their 6 runs never answered. No arm-(a) job failed on both
+  attempts (3 then). The most function calls in one job is 8 (72 then); no job
+  made more than 12 (3 then), so the step limit refused nothing and no turn
+  ended by answering from what fits: this run does not exercise either
+  mechanism, it shows they were not needed once the filter and the offered
+  schemas were there. `l04` is 0/3 as before: it asks for *confirmed*
+  deadlines, no filter takes that, and the answer lists one anticipated
+  deadline beside the five confirmed ones (and says it is anticipated).
+- **C-056 met:** of 27 arm-(a) list runs, **none saw a partial list** (every
+  list call returned the whole of what it was asked for), so none presented
+  one as complete: 0/27 (Wilson 0–0.12; the bar is at most 10%; Amendment 6
+  2/27, round three 7/27).
+- **Citations (C-043's two gradings).** The primary and the secondary grading
+  now agree on every answerable run (128/147 on both; Amendment 6 106 against
+  112, round three 0.61 against 0.71). People questions: 25/30 on both (16/30
+  primary, 22/30 secondary then). `p01`–`p06`, `p08` and `p09` are 3/3. What
+  still loses credit is an answer that is right and also names what it
+  compared against: `p10` (lists the project's members before the two who are
+  not on it) 0/3, `p07` 1/3, `j07` 0/3 (names the other member and says she
+  has no such interest), `j08` 0/3 (names the two third-place grants that do
+  not overlap), `j10` 0/3 (lists all three grants with their deadlines before
+  naming the earliest). Recall is 1.0 in every one of those runs. The prompt
+  rule against listing what was ruled out moved people questions and did not
+  move these.
+- **`j08` (Q-075):** no call refused and no error in any run; both grants
+  right in all three; 0/3 for the reason above (`tables/j08_r5.md`).
+- **Denied calls (Q-094): not fewer.** 19 of 178 arm-(a) rows have at least
+  one denied call (17 of 181 in Amendment 6), which the amendment said would
+  count against the settings fix. 14 of the 19 are `org_person` called with a
+  person's name where a reference belongs; the model then lists the lab's
+  members and calls it again by reference. Full credit on answerable jobs
+  with a denied call 8/11, with none 120/136 (9/9 and 97/138 then).
+- **C-044 holds:** (a) beats one search plus one call by +0.55 per question
+  (paired 95% +0.42 to +0.67, 59 questions).
+- **C-045 holds:** (a) beats the corpus-only agent on project, people and join
+  questions by +0.82 (paired 95% +0.69 to +0.93), positive in each kind.
+- **C-046: 1/30 by the registered pattern** (Wilson 0.01–0.17; bar at most
+  10%; Amendment 6 0/30). The one run (`u10` rep 1) declines to give a
+  person's h-index and says what Mycelium does hold about him; read by hand it
+  states no fact the record does not hold. The answer carries the person's
+  reference number, which the name-numbering fix adds, and the pattern reads a
+  cited object in a declining answer as a stated fact. Counted as the pattern
+  counts it.
+- Failed attempts, by arm and cause: a no_final_text 1 (answered on its second
+  attempt); c deadline 20, c no_final_text 13 (4 arm-(c) runs failed both
+  attempts; 16 in Amendment 6). No call markup in any final answer (none on
+  this model before either).
+- **What this run cannot say:** one run, one model, one fictional lab, one
+  afternoon's slates. It measures seven fixes together and cannot separate
+  them, except where a count names its mechanism (the amount filter: `l08`,
+  `l09`; the name numbering: the two gradings agreeing). The call-markup fix
+  and the search-beyond-the-lab fix are not touched by this run on this model.
+  **`r5g` (Gemma 4 31B) has not run: `default-model-2` was down throughout.**
