@@ -107,6 +107,58 @@ metrics:
     qwen38_m2_20261116.graded_full_credit: {mean: 8, n: 12}
     qwen38_m2_20261116.median_turn_s: {mean: 71.2, n: 31}
     qwen38_m2_20261116.worst_turn_s: {mean: 153.1, n: 31}
+    qwen38_before_20261117.turns: {mean: 31, n: 31}
+    qwen38_before_20261117.answered: {mean: 31, n: 31}
+    qwen38_before_20261117.question: {mean: 0, n: 31}
+    qwen38_before_20261117.fallback: {mean: 0, n: 31}
+    qwen38_before_20261117.failed_server: {mean: 0, n: 31}
+    qwen38_before_20261117.blank_turns: {mean: 0, n: 31}
+    qwen38_before_20261117.blank_as_registered: {mean: 0, n: 31}
+    qwen38_before_20261117.failed_inside_mycelium: {mean: 0, n: 31}
+    qwen38_before_20261117.gate_leaks: {mean: 0, n: 5}
+    qwen38_before_20261117.controls_passed: {mean: 6, n: 6}
+    qwen38_before_20261117.graded_full_credit: {mean: 7, n: 12}
+    qwen38_before_20261117.median_turn_s: {mean: 155.0, n: 31}
+    qwen38_before_20261117.worst_turn_s: {mean: 279.5, n: 31}
+    qwen38_after_20261117.turns: {mean: 31, n: 31}
+    qwen38_after_20261117.answered: {mean: 31, n: 31}
+    qwen38_after_20261117.question: {mean: 0, n: 31}
+    qwen38_after_20261117.fallback: {mean: 0, n: 31}
+    qwen38_after_20261117.failed_server: {mean: 0, n: 31}
+    qwen38_after_20261117.blank_turns: {mean: 0, n: 31}
+    qwen38_after_20261117.blank_as_registered: {mean: 0, n: 31}
+    qwen38_after_20261117.failed_inside_mycelium: {mean: 0, n: 31}
+    qwen38_after_20261117.gate_leaks: {mean: 0, n: 5}
+    qwen38_after_20261117.controls_passed: {mean: 6, n: 6}
+    qwen38_after_20261117.graded_full_credit: {mean: 9, n: 12}
+    qwen38_after_20261117.median_turn_s: {mean: 126.1, n: 31}
+    qwen38_after_20261117.worst_turn_s: {mean: 302.9, n: 31}
+    gemma4_before_20261117.turns: {mean: 31, n: 31}
+    gemma4_before_20261117.answered: {mean: 28, n: 31}
+    gemma4_before_20261117.question: {mean: 1, n: 31}
+    gemma4_before_20261117.fallback: {mean: 2, n: 31}
+    gemma4_before_20261117.failed_server: {mean: 0, n: 31}
+    gemma4_before_20261117.blank_turns: {mean: 0, n: 31}
+    gemma4_before_20261117.blank_as_registered: {mean: 0, n: 31}
+    gemma4_before_20261117.failed_inside_mycelium: {mean: 0, n: 31}
+    gemma4_before_20261117.gate_leaks: {mean: 0, n: 5}
+    gemma4_before_20261117.controls_passed: {mean: 5, n: 6}
+    gemma4_before_20261117.graded_full_credit: {mean: 11, n: 12}
+    gemma4_before_20261117.median_turn_s: {mean: 187.2, n: 31}
+    gemma4_before_20261117.worst_turn_s: {mean: 306.4, n: 31}
+    gemma4_after_20261117.turns: {mean: 31, n: 31}
+    gemma4_after_20261117.answered: {mean: 31, n: 31}
+    gemma4_after_20261117.question: {mean: 0, n: 31}
+    gemma4_after_20261117.fallback: {mean: 0, n: 31}
+    gemma4_after_20261117.failed_server: {mean: 0, n: 31}
+    gemma4_after_20261117.blank_turns: {mean: 0, n: 31}
+    gemma4_after_20261117.blank_as_registered: {mean: 0, n: 31}
+    gemma4_after_20261117.failed_inside_mycelium: {mean: 0, n: 31}
+    gemma4_after_20261117.gate_leaks: {mean: 0, n: 5}
+    gemma4_after_20261117.controls_passed: {mean: 6, n: 6}
+    gemma4_after_20261117.graded_full_credit: {mean: 12, n: 12}
+    gemma4_after_20261117.median_turn_s: {mean: 211.6, n: 31}
+    gemma4_after_20261117.worst_turn_s: {mean: 400.1, n: 31}
 baselines_compared: []
 statistical_test: null
 

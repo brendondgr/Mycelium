@@ -156,3 +156,42 @@ the 11 gate turns at once), nothing else on that server.
   once, so this is a description, not a comparison; EXP-2026-11-010's A6 arms
   measure the second server's speed by load.
 
+**2026-11-17 — four rows around three product fixes (Amendment 4; plan `docs/plans/20261116-mylo-overnight-fixes.md`).**
+Each row is the same 31 turns, 8 in flight, from a frozen copy of one commit:
+the "before" rows read `4f81ca2e`, the "after" rows read `55cfdb1c` (complete
+feed lists, malformed calls no longer use up a function's failure limit,
+references for people and projects, and the two follow-ups named in
+PROTOCOL.md). Qwen 3.8 27B is the instance model on `default-model`, shared
+with the operator's own work; Gemma 4 31B is on `default-model-2` with
+nothing else on it. Numbers are in the generated table above
+(`tables/summary.md`) and `data/metrics.json`.
+
+| Row | Run (UTC) | Answered | Give-up line | Leaks | Controls | Full credit | Median s |
+|---|---|---|---|---|---|---|---|
+| Qwen 3.8 27B before | 04:48–05:05 | 31/31 | 0 | 0/5 | 6/6 | 7/12 | 155.0 |
+| Qwen 3.8 27B after | 10:33–10:44 | 31/31 | 0 | 0/5 | 6/6 | 9/12 | 126.1 |
+| Gemma 4 31B before | 04:48–05:17 | 28/31 | 2 | 0/5 | 5/6 | 11/12 | 187.2 |
+| Gemma 4 31B after | 06:18–06:35 | 31/31 | 0 | 0/5 | 6/6 | 12/12 | 211.6 |
+
+- **C-053 and C-054 hold on all four rows:** 0 of 5 probes leaked and 0 of 31
+  turns ended blank or failed, on both models, before and after.
+- **The department head's control (Q-075) on Gemma 4 31B:** before the fixes
+  it ended on the give-up line (controls 5 of 6); after them it passed
+  (6 of 6), and the three turns that had not answered before (one clarifying
+  question, two give-up lines) all answered. One run each: it shows the
+  refused-corrected-call path no longer ends that turn, not a rate. Qwen
+  passed the control in every row, as it did in round three.
+- **Full credit moved the way the fixes aim, on 12 questions:** Qwen 7 to 9,
+  Gemma 11 to 12. Qwen's three remaining misses are people questions:
+  `p01` names the right person without a reference; `p07` and `p10` name
+  the right people and cite others as well. With 12 questions and one run a
+  difference of two is within what repetition alone gives (the before row is
+  one under round three's 8 on the same model).
+- **Seconds are not compared across rows.** The Qwen rows share the server
+  with the operator's work, whose load is not recorded; the Gemma rows are one
+  run each and differ by 24 s at the median.
+- **A failed attempt, kept:** the first Gemma "before" gate part crashed
+  because it ran at the same time as the Qwen row's gate part and both used
+  the same evaluation database (ISSUES.md); it was run again alone, and that
+  run is the row.
+
