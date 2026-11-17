@@ -139,7 +139,7 @@ A person appears only when both allow it. If a candidate's audience is "my unive
 |---|---|---|
 | Open to collaboration | Off (default) / On | No one is discoverable without opting in |
 | Who can find me | My university / My country / Anywhere | Candidate controls exposure |
-| Open to | Co-authoring, grant partner, sharing data, mentoring | Screens out mismatched requests |
+| Open to | Co-authoring, grant partner, sharing data, mentoring | Helps seekers of that kind find the person; hides them from no one (see below) |
 | Expires | e.g. 6 months, with a renewal prompt | Stale availability flags are how these features rot |
 
 Supporting rules:

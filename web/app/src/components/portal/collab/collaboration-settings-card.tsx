@@ -93,6 +93,8 @@ function CollaborationForm({
           <p className="mt-1 max-w-[62ch] text-sm leading-relaxed text-[var(--text-secondary)]">
             Let researchers who are looking for a collaborator find you. Off
             unless you turn it on, and it switches itself off after six months.
+            You can search for collaborators yourself whether this is on or
+            off.
           </p>
         </div>
         {data ? (
@@ -180,6 +182,10 @@ function CollaborationForm({
                 </label>
               ))}
             </div>
+            <p className="mt-2 max-w-[62ch] text-[13px] leading-relaxed text-[var(--text-muted)]">
+              These help people looking for that kind of collaboration find
+              you. They never hide you from anyone else in your audience.
+            </p>
           </fieldset>
 
           <p className="rounded-lg border border-border bg-surface-alt/60 px-3 py-2 text-[13px] leading-relaxed text-[var(--text-secondary)]">
