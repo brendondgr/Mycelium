@@ -49,8 +49,8 @@ maintainer: "fix everything, run it"):**
   fix); lists 24 of 27; people 25 of 30; no partial list presented as
   complete; no Mylo turn failed twice; the most function calls in a turn 8
   (was 72). The model check's third row: no leak, no blank turn, 10 of 12.
-- **Not measured:** anything on Gemma 4 31B — its server was down all
-  afternoon. That leaves the call-markup fix and the first-ask collaborator
+- **Not measured in the afternoon** (measured in the evening, see below):
+  anything on Gemma 4 31B — its server was down all afternoon. That leaves the call-markup fix and the first-ask collaborator
   fix covered by unit tests only, and Gemma's amount questions (6 of 27
   partial lists presented as complete last night) unchecked. The loop-cost arm
   was stopped after 9 turns when the maintainer asked for the Qwen server
@@ -60,6 +60,18 @@ maintainer: "fix everything, run it"):**
   Mylo still looks people up by name where a reference belongs (denied calls
   did not fall: 19 of 178 turns); in the go-live check the answer checker cut
   converted currency figures out of one answer and left broken lines.
+- **Measured on Gemma 4 31B in the evening** (the maintainer restarted the
+  first server with Gemma on it; all three runs at 32 in flight on
+  `default-model`, 22:05–23:16 UTC): a first-time asker is now given the
+  lab-mate in 30 of 30 asks (13 of 30 before; `EXP-2026-11-019` `r6`), and
+  nobody outside consent is named in 60 asks; no call markup reached an answer
+  in 208 turns (`EXP-2026-11-018` `r5g`, `EXP-2026-11-021`); the model check
+  shows no leak, no blank turn and 12 of 12. Stored-data answers are 90%
+  fully right, the same as before the afternoon's fixes on this model: lists
+  stay at 15 of 27, now because Gemma asks the two project feeds, or reads a
+  feed label, where the question says the lab's feed (Q-095) — the amount
+  filter itself works and no list was cut. So the earlier "not measured" line
+  above is closed except for the loop-cost arm.
 - **Not built:** ranking by "Open to" (Q-086): it needs the maintainer's word
   on where the kind of collaboration sought comes from, how far it outranks
   match quality, and what an empty "Open to" means.

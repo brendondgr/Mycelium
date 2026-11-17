@@ -341,3 +341,61 @@ bear on S1 (`90882479`, `29d1bd92`) are live and covered by unit tests only:
 back as Gemma before 08:00 UTC on 2026-11-18; its result is recorded here
 then.
 
+**2026-11-17 (evening) — Amendment 9's run (`r6`) on Gemma 4 31B: a first-time asker is now given the lab-mate.**
+Run 22:52–23:16 UTC. `default-model-2` never came back; the maintainer
+restarted the first server with Gemma on it, so `r6` ran on `default-model`
+(operator-stated Gemma 4 31B, self-reporting "trained by Google";
+`EXP-2026-11-021/logs/preflight_evening_20261117.jsonl`; PROTOCOL, note of
+22:05 UTC), 16 turns in flight per mode, the two modes side by side, from the
+frozen copy of `640d7fe0`. S1, S2 and S10, ten seekers, three repetitions, 180
+first attempts, as registered. `code/analyse_r4.py r6`: `tables/r6_outcomes.md`,
+`tables/empty_turns_r6.md`, `tables/r6_empty_causes.md`, `data/metrics_r6.json`.
+The rows to read it beside are `r4` and `r5` above (the same model on the
+other server, 8 per mode).
+
+| | r5 (before the two fixes) | r6 (after them) |
+|---|---|---|
+| First attempts | 180 | 180 |
+| Answered | 179 | 180 |
+| Ended on the give-up line / failed / blank | 0 / 1 / 0 | 0 / 0 / 0 |
+| Model calls / empty model calls | 955 / 4 | 908 / 9 |
+| Turns with an empty call, and how they ended | 2: both answered | 5: all answered |
+| S1, planted person named, `fresh` | 13/30 = 43% [0.27, 0.61] | **30/30 = 100% [0.89, 1.0]** |
+| S1, planted person named, `repeated` | 24/30 = 80% [0.63, 0.91] | 30/30 = 100% [0.89, 1.0] |
+| S1 asks that searched beyond the lab first (`outside_first`), fresh / repeated | 17 / 6 | 0 / 0 |
+| S1 asks that called `knowledge_people_for_call`, fresh / repeated | 13 / 24 | 30 / 30 |
+| S2, planted person named (repeated / fresh) | 30/30 / 30/30 | 30/30 / 30/30 |
+| S10, named anyone outside consent | 0 of 60 | 0 of 60 |
+
+- **C-050 is now met on Gemma 4 31B in both modes** (bar: the planted person
+  named in at least 80% of S1 asks and of S2 asks): 30 of 30 in each of the
+  four cells, Wilson lower bound 0.89. `fresh` S1 was 13 of 30 in both earlier
+  runs.
+- **The mechanism is the one Amendment 9 named.** In `r5` the 17 fresh misses
+  all went `load_functions` → `knowledge_people_beyond_lab` →
+  `org_lab_members` → `knowledge_people_beyond_lab` and never asked who in the
+  lab covers the call. In `r6` every one of the 30 fresh S1 asks goes
+  `load_functions` → `knowledge_people_for_call` →
+  `knowledge_people_beyond_lab`; all 30 repeated ones call
+  `knowledge_people_for_call` too, and none searches beyond the lab first.
+  The run cannot say which of the two fixes did it (the loaded function's
+  description now offered in the same turn, `90882479`; the pointer in the
+  search beyond the lab, `29d1bd92`): they shipped together.
+- **C-051's row holds:** S10 named nobody outside consent in 60 asks and said
+  nobody fits in all 60.
+- **C-055 holds: no turn ended blank** (0 of 180), none on the give-up line,
+  none failed.
+- **Lost calls are still there and still recovered.** 9 of 908 model calls
+  were empty (4 of 955 in `r5`), all with `finish_reason: tool_calls`, 35 to
+  40 completion tokens and no call handed back, all at the first step of a
+  `repeated`-mode turn with a non-empty recall, none in `fresh` — the same
+  picture as `r4` and `r5`. The five turns all went on to call functions and
+  answer. None fits the lead from EXP-2026-11-010 A6. No final text is call
+  markup.
+- **What this run cannot say:** one run of 30 asks per cell with one planted
+  person per seeker; the server and the number in flight differ from `r5`'s,
+  so seconds (median 121 s fresh, 129 s repeated; 233 and 247 in `r5`) are not
+  compared. It was run on Gemma only: on Qwen 3.8 27B, where fresh S1 was
+  already 87% in round three, the two fixes are not measured in this
+  experiment.
+

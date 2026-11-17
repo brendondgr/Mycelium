@@ -116,6 +116,22 @@ metrics:
     r5_gemma4_m2.fresh.S1_named_rate: {mean: 0.4333, n: 30, ci95: [0.274, 0.608]}
     r5_gemma4_m2.fresh.S2_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
     r5_gemma4_m2.S10_named_outside_consent: {mean: 0, n: 60}
+    r6_gemma4_m1.first_attempts: 180
+    r6_gemma4_m1.answered: 180
+    r6_gemma4_m1.fallback: 0
+    r6_gemma4_m1.failed_server: 0
+    r6_gemma4_m1.blank_turns: {mean: 0, n: 180}
+    r6_gemma4_m1.model_calls: 908
+    r6_gemma4_m1.empty_model_calls: 9
+    r6_gemma4_m1.empty_calls_fit_a6_lead: 0
+    r6_gemma4_m1.turns_with_an_empty_call_answered: {mean: 5, n: 5}
+    r6_gemma4_m1.repeated.S1_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r6_gemma4_m1.repeated.S2_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r6_gemma4_m1.fresh.S1_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r6_gemma4_m1.fresh.S2_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r6_gemma4_m1.fresh.S1_outside_first: {mean: 0, n: 30}
+    r6_gemma4_m1.repeated.S1_outside_first: {mean: 0, n: 30}
+    r6_gemma4_m1.S10_named_outside_consent: {mean: 0, n: 60}
     r3_outage_20261116.rows: 355 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.answered: 5 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.failed_server: 350 # failed run, not a result; RESULTS.md AMENDMENTS
