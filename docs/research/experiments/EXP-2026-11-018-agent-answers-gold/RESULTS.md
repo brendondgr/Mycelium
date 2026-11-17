@@ -262,3 +262,61 @@ seconds are not compared. Gold objects are the same in both.
 - **What this run cannot say:** one run per model, one fictional lab, one
   night's slates; citing an item one rules out is counted as naming it, which
   the graders were registered to do and which this run did not change.
+
+**2026-11-17 — the same run on Gemma 4 31B (Amendment 7, tag `r4g`).**
+Run 2026-11-17T08:50:19Z–2026-11-17T11:01:38Z on the second server
+(`default-model-2`, operator-stated Gemma 4 31B at start and end,
+`logs/model_r4g.jsonl`; the relay's listing timed out at the end, the model's
+self-report did not), nothing else on that server, 16 in flight, 552 rows with
+retries, from a frozen copy of `127428f3`. Graded by
+`R4_TAG=r4g code/r4.py grade` and `partial` (`tables/summary_r4g.md`,
+`tables/partial_r4g.md`, `tables/j08_r4g.md`, `data/metrics_r4g.json`; the
+first-attempt grading changes no number below). The row to read it beside is
+round two's (2026-11-15, the same model as the operator states it, 60
+questions, before any of the fixes); not pooled with Qwen's.
+
+- **C-043 met, with the whole interval over the bar:** arm (a) full credit on
+  133/147 answerable runs, 90% (question bootstrap 0.82–0.98); round two 72%
+  (0.60–0.84). By kind (round two in brackets): field 30/30 (30/30), list
+  16/27 (0/30), project 30/30 (24/30), people 30/30 (30/30), join 27/30
+  (24/30). The secondary grading gives the same numbers: this model cites
+  what it names and only that.
+- **Lists:** five of nine list questions are right in all three runs (`l01`,
+  `l03`, `l05`, `l06`, `l10`) and `l04` in one. `l07` names one item too many
+  in each run; `l08` and `l09` (the amount a grant offers) read the first 8
+  grants of 32 and answer as if that were the feed.
+- **C-056 not met on this model:** 6 of 27 arm-(a) list runs presented a
+  partial list as complete (22%, Wilson 0.11–0.41; the bar is at most 10%) —
+  all six are `l08` and `l09`, the two questions no list filter covers. No
+  list run failed. The closing line says the list is not complete; on these
+  questions Gemma does not act on it.
+- **`j08`:** full credit in 3 of 3, no refused call (round two: the corrected
+  call was refused in rep 1, Q-075). `j10` names all three grants it compared
+  and loses credit in 3 of 3, as on Qwen.
+- **C-044 holds:** +0.51 per question (paired 95% +0.35 to +0.67, 59
+  questions). **C-045 holds:** +0.97 (paired 95% +0.90 to +1.00), positive
+  in each kind.
+- **C-046: 2/30 by the registered pattern (7%, Wilson 0.02–0.21; bar 10%),
+  0/30 read by hand.** Both are `u04` ("How many times has this paper been
+  cited?"): the answer is "The citation count for "Comment on
+  egusphere-2026-5844" (#1) is not visible…", and the pattern reads the
+  digits in the paper's title as a count. Round two: 0/30.
+- **Unanswerable full credit 18/30 (round two 27/30) is the decline pattern,
+  not the answers:** nine of the twelve misses (`u07`, `u08`, `u09`) say "…
+  is not visible to me", the wording Amendment 2 found the registered
+  pattern does not accept; two are the `u04` runs above and one is the
+  markup answer below.
+- **One answer was function-call markup:** `u02` rep 3 ended with
+  `<|tool_call>call:corpus_item{item:<|"|>#1<|"|>}<tool_call|>` as its final
+  text — a call in this model's own format that neither the server nor
+  `llmcall` parsed, shown to the person as the reply (1 of 177 arm-(a)
+  turns; 0 in tonight's other 455 Gemma turns; Q-093). The lost-call retry
+  did not fire in this run.
+- Failed attempts, by arm and cause: a none; b exception 1 (its retry
+  answered); c no_final_text 24, c deadline 7 (11 arm-(c) runs failed both
+  attempts). Arm (a) took a median of 191 s a turn at 16 in flight.
+- **What this run cannot say:** how much of the rise is the fixes and how much
+  is anything else that changed since round two on this model (the server
+  build then is not recorded, the feeds have moved, one question was dropped,
+  and the loop gained retries); it is one run.
+
