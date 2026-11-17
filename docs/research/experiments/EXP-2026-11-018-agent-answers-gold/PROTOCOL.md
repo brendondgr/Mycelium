@@ -363,3 +363,82 @@ then have a row on the same model after the fixes.
   the start and end (`logs/model_r4g.jsonl`). No new turn after 11:40 UTC. Both
   runs ask in the demo lab at the same time (at most 24 turns in the live
   database); threads are deleted after both have ended (`code/cleanup.py`).
+
+## Amendment 8 — 2026-11-17 17:10 UTC, after seven more fixes, before the first answer (tags `r5`, `r5g`)
+
+The maintainer's instruction of 2026-11-17 (afternoon): fix what Amendments 6
+and 7 left wrong, then measure again. The fixes, all committed before this
+amendment:
+
+- `14b758d2` — `load_functions` and `update_todos` no longer write the
+  thread's settings back whole (last night's fix, not yet measured);
+- `90882479` — the loop reads the thread's settings fresh each step and every
+  writer changes only its own key: a function the model had just loaded was
+  not offered, with its arguments, until the turn after (so the model called
+  it blind), and clearing old results could undo references numbered since
+  (Q-094);
+- `522d7eb7` — a step runs at most 12 calls (`tools.agent.step_calls`), and a
+  turn that read more than the window holds answers from what is left instead
+  of ending `context_full` (Q-091);
+- `ed27c8b8`, `640d7fe0` — a feed can be listed by what its grants and
+  fellowships pay (`amount_min`, `amount_max`, `currency`), checked over the
+  whole slate; every slate row states the amount; a filter says what it left
+  out for being in another currency (Q-091);
+- `f9a784ee` — Gemma's own call markup is read as a call, and call markup is
+  never posted as the answer (Q-093);
+- `0ebaed72` — a person or project named without its reference number gets
+  it, and the prompt says to name only what answers the question, not what
+  was ruled out (C-043);
+- `29d1bd92` — the search beyond the lab says it lists no lab-mates and points
+  to `knowledge_people_for_call` (EXP-2026-11-019, S1).
+
+1. **Gold recomputed before any answer** (2026-11-17 17:05 UTC, after the
+   12:01 UTC nightly run moved the feeds): `R4_GOLD=r5 code/r4.py gold` runs
+   `build_gold_r3.py` unchanged and writes `data/gold_r5.json` (`r4.py` now
+   takes the gold's name from `R4_GOLD`; nothing else in it changed). Kept 59;
+   `l02` dropped again (gold size 12 > 8). The gold objects of `l04`, `l05`,
+   `l07` and `l10` differ from `gold_r4.json`; the other 55 are the same.
+2. **Runs.** Amendment 6's design unchanged: `code/run.py` unchanged, three
+   arms, three repetitions, the 59 kept questions (`code/jobs_r5.txt`, 531
+   jobs), a failed job retried once at the end, `code/drive_r4.sh` with
+   `TAG=r5`, `--conc 8`, on the instance model.
+3. **Grading and the partial-list measure, unchanged:** `R4_GOLD=r5 R4_TAG=r5
+   code/r4.py grade` (and `--first-attempt`), `… code/r4.py partial`. The
+   partial-list marker is as registered: a cut result still says `only the
+   first <n> of <m>`; an amount-filtered result ends with the same closing
+   line as a deadline-filtered one.
+4. **`j08`** reported on its own, as before.
+5. **A frozen copy of the code:** every container mounts `git archive
+   640d7fe0` of `tools/` and `web/backend/` read-only.
+6. **Counted from the run rows, with no new grader:** arm-(a) runs that failed
+   on both attempts, by question; turns with at least one denied call, and
+   their full credit beside the turns with none (Q-094); turns whose step
+   limit refused a call (`too_many_calls`) and turns that ended through the
+   answer-from-what-fits path (verdict `fit_final`); final answers that are
+   call markup; final answers in which a name was numbered (`numbered`), if
+   the run rows carry it.
+
+**Claims, on their own bars, beside (never pooled with) the earlier rows on the
+same model:** C-043, C-044, C-045, C-046, C-056. **What would count against a
+fix:** the amount filter and the step limit — an arm-(a) run on `l08` or `l09`
+that ends with no answer on both attempts, or C-056's bar missed; the citation
+fix — full credit on the nine people questions not above Amendment 6's 16 of
+30 runs on this model, or the gap between the primary and the secondary
+grading wider than Amendment 6's; the settings fix — more turns with a denied
+call than Amendment 6's 17 of 181.
+
+**Model and load.** Preflight 16:41 UTC
+(`EXP-2026-11-021/logs/preflight_afternoon_20261117.jsonl`): `default-model`
+healthy and self-reports Qwen (the operator's statement of 2026-11-16: **Qwen
+3.8 27B**, shared with the operator's own work); **`default-model-2` (Gemma 4
+31B last night) is down** — the relay reports `failed`, "All connection
+attempts failed". So the run is `r5` on Qwen 3.8 27B. **`r5g`** is the same
+run on `default-model-2` (`code/jobs_r5g.txt` = `jobs_r5.txt`, `--conc 16`,
+the same gold and frozen copy), started only if that server is healthy again
+and self-reports as Gemma before 05:00 UTC on 2026-11-18 (local midnight:
+after it "today" in the questions is another day than the gold's); otherwise
+recorded as not run. The model is recorded at the start and end of each run
+(`logs/model_r5.jsonl`, `logs/model_r5g.jsonl`). No new turn after 11:40 UTC
+on 2026-11-18 (the nightly run starts 12:01 UTC). Demo-lab threads named
+`EXP-` are deleted after the runs (`code/cleanup.py`).
+

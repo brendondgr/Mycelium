@@ -144,3 +144,11 @@ frozen copy of `55cfdb1c`: the three fixes (`f81d2837`, `035c9066`,
 go-live check asked for (`ce976d2f`, `55cfdb1c`: a deadline-filtered slate
 keeps "who should look"; calls sent together with the same slip count once
 toward the failure limit, and `#7 Some title` is read as `#7`).
+
+## Amendment 5 — 2026-11-17 17:10 UTC, before a third row after seven more fixes
+
+- **Why.** Seven more fixes were made on 2026-11-17 (afternoon); they are listed in `EXP-2026-11-018` Amendment 8. The check gets one more row per model that is up, read beside the two rows of Amendment 4 on the same model.
+- **Rows.** `qwen38-after2-20261117` on `default-model` (`--conc 8`), from a frozen copy of `640d7fe0` (`code/drive_row.sh`). `gemma4-after2-20261117` on `default-model-2` only if that server is healthy again and self-reports as Gemma before the hard stop: at the preflight of 16:41 UTC (`logs/preflight_afternoon_20261117.jsonl`) the relay reports it `failed` ("All connection attempts failed"), and `default-model` healthy, self-reporting Qwen (the operator's statement of 2026-11-16: Qwen 3.8 27B).
+- **Gold.** As registered: the twelve graded questions against `EXP-2026-11-018`'s round-two `data/gold.json`; the feeds have moved again since (the 12:01 UTC nightly run), which lowers every row alike.
+- Nothing else changes: questions, probes, controls, classes and hypotheses are as registered. No new turn after 11:40 UTC on 2026-11-18.
+

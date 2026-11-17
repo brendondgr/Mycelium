@@ -246,3 +246,30 @@ none otherwise); the 8-process arm runs only if at least 80 minutes are left
 after the idle arm, and is otherwise recorded as not run. Model calls,
 function calls and tokens per turn do not depend on how many turns are in
 flight, so the idle arm alone answers what A7 asks.
+
+## Amendment 10 — 2026-11-17 17:10 UTC, before arm A8 (after seven more fixes)
+
+**A8 — the same questions after the fixes of 2026-11-17 (afternoon)**, listed
+in `EXP-2026-11-018` Amendment 8. Three of them can change what a turn costs:
+a function loaded in one step is now offered in the next (fewer blind calls),
+a step runs at most 12 calls, and a slate row carries the amount. A8 repeats
+A7 through `code/run_a6.py`, unchanged, and this time runs both halves (A7's
+8-process half was not run: 33 minutes were left and its rule asked for 80):
+
+- **A8 idle** — the twelve A2 questions, three repetitions, one at a time
+  (`--reps 3 --tag a8idle`);
+- **A8 with 8 processes** — eight one-off containers started together, each
+  asking all twelve once with `--rotate k` (`--reps 1 --tag a8p8`), then
+  `code/stamp_process_arm.py a8p8 8`.
+
+`code/drive_a8.sh` (A7's script with the tags changed and no rule about the
+time left: the hard stop is 11:40 UTC on 2026-11-18, more than twelve hours
+away). The containers mount a frozen copy of `640d7fe0`. Model: Qwen 3.8 27B
+on `default-model` (the operator's statement of 2026-11-16; preflight 16:41
+UTC self-reports Qwen), shared with the operator's own work, so seconds are
+read only beside A7's on the same server and not beside A6's. A8 runs after
+`EXP-2026-11-018`'s run and the model check's row have ended, so at most 8
+Mylo turns are in flight. No new bar; C-030 and O8 are re-read. Reported by
+`code/a7_table.py` with A8's rows added to its lists (it reads only the
+recorded files).
+

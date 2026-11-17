@@ -29,7 +29,7 @@ EXP = HERE.parent
 #: The gold is tonight's (``gold_r4.json``) for every run graded here; ``R4_TAG``
 #: names the run (``r4``: Qwen 3.8 27B, Amendment 6; ``r4g``: Gemma 4 31B,
 #: Amendment 7).
-GOLD = "r4"
+GOLD = os.environ.get("R4_GOLD", "r4")  # Amendment 8: ``r5``, computed again
 TAG = os.environ.get("R4_TAG", "r4")
 sys.path.insert(0, str(HERE))
 
