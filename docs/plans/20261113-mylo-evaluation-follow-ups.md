@@ -282,8 +282,8 @@ Found on the way, and where each stands:
   person counts as named even when the answer rules it out, and the
   "states a fact" pattern reads digits in a paper's title as a citation count
   (both of Gemma's 2/30 on C-046).
-- **The whole suite** (`make test`, 11:02 UTC, on the code that was live at
-  11:07): 5,076 passed, 4 failed — the four that were red before any change.
+- **The whole suite** (`make test`, finished 10:50 UTC, on the code that went
+  live at 11:07): 5,076 passed, 4 failed — the four that were red before any change.
   The same at `14b758d2`, run from a worktree.
 - **`mylo-bot.service` was not restarted** (it needs `sudo`). It holds no
   agent code — it calls the backend — so the fixes reach Discord as well.
