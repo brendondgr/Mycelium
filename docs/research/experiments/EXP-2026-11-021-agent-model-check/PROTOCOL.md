@@ -153,3 +153,5 @@ toward the failure limit, and `#7 Some title` is read as `#7`).
 - Nothing else changes: questions, probes, controls, classes and hypotheses are as registered. No new turn after 11:40 UTC on 2026-11-18.
 
 **Added 2026-11-17 17:31 UTC, before the row.** The maintainer raised the limit on the instance model to 32 turns in flight. `qwen38-after2-20261117` runs with `--conc 32` (the earlier Qwen rows ran with `--conc 8`); the check has 31 turns, and nothing it counts depends on seconds.
+
+**Added 2026-11-17 17:34 UTC, before the row.** The maintainer is starting the second server again for Gemma 4 31B and asked for 32 turns in flight on it: `gemma4-after2-20261117` runs with `--conc 32` once that server is healthy and self-reports as Gemma.

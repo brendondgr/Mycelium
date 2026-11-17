@@ -409,3 +409,5 @@ used up, the corrected batch was refused, and the turn ended `context_full`.
 - No new turn after 11:40 UTC on 2026-11-18.
 
 **Added 2026-11-17 17:31 UTC, before the run.** The maintainer raised the limit on the instance model to 32 turns in flight. If `r6` runs on `default-model`, it runs with `--conc 16` per mode (32 in flight), not 4.
+
+**Added 2026-11-17 17:34 UTC, before the run.** The maintainer is starting the second server again for Gemma 4 31B and asked for 32 turns in flight on it. On `default-model-2`, `r6` runs with `--conc 16` per mode (32 in flight), not 8.

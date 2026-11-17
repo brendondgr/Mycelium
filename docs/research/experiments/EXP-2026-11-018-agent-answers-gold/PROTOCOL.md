@@ -452,3 +452,8 @@ earlier round; within this run they now come from two loads, so they are not
 compared with each other either. A job that hits `run.py`'s deadline under the
 higher load is retried once at the end as registered, and counted as failed if
 it fails again: the count of such jobs is reported beside Amendment 6's.
+
+**Added 2026-11-17 17:34 UTC, before any `r5g` answer.** The maintainer is
+starting the second server again for Gemma 4 31B and asked for 32 turns in
+flight on it. `r5g` runs with `--conc 32` (not 16) once `default-model-2` is
+healthy and self-reports as Gemma; the watcher asks every two minutes.
