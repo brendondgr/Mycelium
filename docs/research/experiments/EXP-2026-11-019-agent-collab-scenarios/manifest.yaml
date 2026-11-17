@@ -88,6 +88,34 @@ metrics:
     r3_qwen38_m2.fresh.S1_named_rate: {mean: 0.8667, n: 30, ci95: [0.703, 0.947]}
     r3_qwen38_m2.fresh.S2_named_rate: {mean: 0.9667, n: 30, ci95: [0.833, 0.994]}
     r3_qwen38_m2.fresh.S10_answer_flags: 0
+    r4_gemma4_m2.first_attempts: 180
+    r4_gemma4_m2.answered: 179
+    r4_gemma4_m2.fallback: 1
+    r4_gemma4_m2.failed_server: 0
+    r4_gemma4_m2.blank_turns: {mean: 0, n: 180}
+    r4_gemma4_m2.model_calls: 939
+    r4_gemma4_m2.empty_model_calls: 3
+    r4_gemma4_m2.empty_calls_fit_a6_lead: 0
+    r4_gemma4_m2.repeated.S1_named_rate: {mean: 0.8333, n: 30, ci95: [0.664, 0.927]}
+    r4_gemma4_m2.repeated.S2_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r4_gemma4_m2.fresh.S1_named_rate: {mean: 0.4333, n: 30, ci95: [0.274, 0.608]}
+    r4_gemma4_m2.fresh.S2_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r4_gemma4_m2.S10_named_outside_consent: {mean: 0, n: 60}
+    r5_gemma4_m2.first_attempts: 180
+    r5_gemma4_m2.answered: 179
+    r5_gemma4_m2.fallback: 0
+    r5_gemma4_m2.failed_server: 1
+    r5_gemma4_m2.blank_turns: {mean: 0, n: 180}
+    r5_gemma4_m2.model_calls: 955
+    r5_gemma4_m2.empty_model_calls: 4
+    r5_gemma4_m2.empty_calls_fit_a6_lead: 0
+    r5_gemma4_m2.lost_call_retry_turns: 2
+    r5_gemma4_m2.lost_call_retry_turns_answered: 2
+    r5_gemma4_m2.repeated.S1_named_rate: {mean: 0.8, n: 30, ci95: [0.627, 0.905]}
+    r5_gemma4_m2.repeated.S2_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r5_gemma4_m2.fresh.S1_named_rate: {mean: 0.4333, n: 30, ci95: [0.274, 0.608]}
+    r5_gemma4_m2.fresh.S2_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r5_gemma4_m2.S10_named_outside_consent: {mean: 0, n: 60}
     r3_outage_20261116.rows: 355 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.answered: 5 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.failed_server: 350 # failed run, not a result; RESULTS.md AMENDMENTS

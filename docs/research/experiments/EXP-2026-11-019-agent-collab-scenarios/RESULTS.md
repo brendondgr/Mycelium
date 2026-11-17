@@ -259,3 +259,73 @@ turns in flight. Tables: `tables/r3_outcomes.md`, `tables/empty_turns.md`
   grader, not a disclosure (ISSUES.md). The registered number is 1.
 - Seconds are under 60 turns in flight (median about 7 minutes a turn) and are
   not interpreted.
+
+**2026-11-17 — Gemma 4 31B, before and after a fix for lost function calls (Amendments 7 and 8; plan `docs/plans/20261116-mylo-overnight-fixes.md`, Phase 7).**
+Both runs on the relay's `default-model-2`, which the operator states serves
+Gemma 4 31B (self-reports "trained by Google", server `vllm-0.21.0`), with
+nothing else on that server; 8 turns in flight per mode, the two modes side by
+side; S1, S2 and S10, ten seekers, three repetitions, 180 first attempts each.
+`r4` (06:38–07:43 UTC) read a frozen copy of `55cfdb1c`; `r5` (07:52–08:47 UTC)
+read `127428f3`, which adds the fix. Tables: `tables/r4_outcomes.md`,
+`tables/r5_outcomes.md`, `tables/empty_turns_r4.md`, `tables/empty_turns_r5.md`,
+`tables/r4_empty_causes.md`, `tables/r5_empty_causes.md`; numbers in
+`data/metrics_r4.json`, `data/metrics_r5.json`.
+
+| | r4 (before the fix) | r5 (after the fix) |
+|---|---|---|
+| First attempts | 180 | 180 |
+| Answered | 179 | 179 |
+| Ended on the give-up line | 1 | 0 |
+| Failed on the model server (shown as an error) | 0 | 1 (a connection error; its retry answered) |
+| Blank | 0 | 0 |
+| Model calls / empty model calls | 939 / 3 | 955 / 4 |
+| Turns with an empty call, and how they ended | 2: one answered, one give-up line | 2: both answered |
+| Empty calls that fit the A6 lead (functions off, tokens spent) | 0 of 3 | 0 of 4 |
+| S1, planted person named (repeated / fresh) | 25/30 = 83% [0.66, 0.93] / 13/30 = 43% [0.27, 0.61] | 24/30 = 80% [0.63, 0.91] / 13/30 = 43% [0.27, 0.61] |
+| S2, planted person named (repeated / fresh) | 30/30 [0.89, 1.0] / 30/30 | 30/30 / 30/30 |
+| S10, named anyone outside consent | 0 of 60 | 0 of 60 |
+
+- **C-055 holds on this model: no turn ended blank** (0 of 180 in each run;
+  Wilson 95% upper bound 0.021 per run). The give-up line was needed once in
+  r4 and not in r5.
+- **Why Gemma goes empty, as far as 7 calls show.** Every empty model call in
+  both runs (3 and 4) has `finish_reason: tool_calls`, 35 to 51 completion
+  tokens, no text, no reasoning and no parsed call: the server reports that the
+  model stopped to call a function and hands back none. All 7 are at the first
+  step of a turn (4 first calls and 3 of their retries), in `repeated` mode
+  with a non-empty recall, with functions on. The model call's own retry sends
+  the identical request and got the identical empty reply in 3 of the 4 turns
+  (in under a second). **None of the 7
+  fits the lead from EXP-2026-11-010 A6** (empty with functions off): that
+  lead is not this model's cause. Of Amendment 4's four causes this is the
+  second (a call the server's parser dropped), seen through the finish reason
+  rather than through leaked markup; the registered classifier files it under
+  "nothing at all" because no call text reaches the harness. Reasoning with no
+  reply, and a cut-off or server error, account for none.
+- **Recall.** All 7 empty calls are in `repeated` mode and none in `fresh`
+  (0 of 469 and 0 of 473 model calls). That is the direction round two saw
+  (blank turns rose with repetition), on 7 events; it is not a test.
+- **The fix** (`127428f3`: an empty reply whose finish reason is `tool_calls`
+  is asked for again with functions still on). In r5 the path fired in 2 turns
+  and both went on to call functions and answer; in r4 the same situation
+  ended once on the give-up line, after the no-functions retry returned two
+  function calls that a no-functions step has to discard. **n is 2 turns
+  against 2 turns**: the run shows the path fires and recovers, and that
+  nothing else moved; it does not show a rate falling.
+- **Round two's 16% is not reproduced.** Round two (2026-11-15, the same model
+  as operator-stated, on `default-model`) ended 49 of 309 gate turns blank;
+  tonight 3 and 4 model calls of about 950 were empty. Nothing recorded says
+  what differs (the server build then is not known; tonight's is `vllm-0.21.0`;
+  the loop has since gained the model call's retry and the give-up line, and
+  recall and the prompt changed). So the fix addresses the only cause seen
+  tonight, and Q-070 / Q-088 stay open for the round-two rate.
+- **C-050 on this model: met in `repeated` mode, not met in `fresh` mode for
+  S1** (13 of 30 in both runs; bar 80%). In S1 a seeker asking for the first
+  time is answered without the planted person more often than not; with their
+  own earlier asks in recall the person is named 80 to 83% of the time. S2 is
+  30 of 30 in every cell. Qwen 3.8 27B named the person in 87% of fresh S1 asks
+  in round three. Not investigated tonight (the plan's phase is about empty
+  replies); recorded for Q-088's neighbour, C-050.
+- **Seconds** (median per repetition 100 to 305 s) are under 16 turns in flight
+  on a server whose speed is not otherwise known; not interpreted.
+
