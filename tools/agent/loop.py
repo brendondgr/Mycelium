@@ -346,6 +346,11 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             return AgentThread.State.IDLE
         if not _resolve_pending(caller, thread):
             return AgentThread.State.WAITING
+        # What the last step's calls wrote (functions loaded, references
+        # numbered) is read from the row, not from this turn's first copy: a
+        # function the model was told is "available from your next step" was
+        # otherwise not offered until the turn after.
+        thread.refresh_from_db(fields=["settings"])
         recall.ensure(caller, thread)
         if steps >= max_steps and not force_final:
             force_final = (

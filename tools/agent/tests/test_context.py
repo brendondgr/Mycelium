@@ -175,3 +175,51 @@ def test_recall_is_stored_with_the_message(world, scripted):
     )
     user_msg = model.requests[0]["messages"][1]["content"]
     assert user_msg.startswith("<memory note=")
+
+
+def test_a_function_loaded_in_one_step_is_offered_in_the_next(world, scripted):
+    # The result says "available from your next step"; the loop read the list
+    # of loaded functions from the copy of the thread it began the turn with,
+    # so the model was sent no schema for them until the turn after.
+    thread = thread_for(world.member)
+    _send(thread, "what does the graph hold about me?")
+    model = scripted(
+        [("load_functions", {"names": ["knowledge_my_concepts"]})], "Loaded."
+    )
+    loop.run_turn(thread.pk, port=model)
+
+    def offered(request):
+        return {t["function"]["name"] for t in request["tools"] or []}
+
+    assert "knowledge_my_concepts" not in offered(model.requests[0])
+    assert "knowledge_my_concepts" in offered(model.requests[1])
+
+
+def test_putting_results_away_keeps_what_the_calls_wrote_meanwhile(world):
+    # Clearing old results wrote the whole settings back from the loop's copy:
+    # references numbered and functions loaded since that copy was read were
+    # undone, and the next call on one of those references was refused.
+    from tools._framework.agentspec import RefInfo
+
+    from tools.agent import compaction, refs
+    from tools.agent.models import AgentThread
+
+    thread = thread_for(world.member)
+    stale = AgentThread.objects.get(pk=thread.pk)  # the turn's first copy
+    lab = RefInfo(kind="lab", key=str(world.lab.pk), title="Imaging Lab", output="lab")
+    assert refs.number(thread, lab) == 1
+    store.save_setting(thread, "loaded", lambda _: ["projects_feed"])
+    for i in range(4):
+        store.append(
+            stale,
+            "assistant",
+            {"text": "", "tool_calls": [{"id": f"r{i}", "name": "x", "arguments": "{}"}]},
+        )
+        store.append(
+            stale, "tool_result", {"call_id": f"r{i}", "name": "x", "status": "ok"}
+        )
+    assert compaction.clear_old_results(stale, store.events(stale))
+    kept = AgentThread.objects.get(pk=thread.pk).settings
+    assert kept["cleared"] == ["r0", "r1"]
+    assert [e["n"] for e in kept["refs"]] == [1]
+    assert kept["loaded"] == ["projects_feed"]

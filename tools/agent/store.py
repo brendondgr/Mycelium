@@ -60,6 +60,26 @@ def set_state(thread: AgentThread, state: str, *, detail: str = "") -> None:
     append(thread, "state", {"state": state, "detail": detail})
 
 
+def save_setting(thread: AgentThread, key: str, change):
+    """Set one key of the thread's settings to ``change(current value)``,
+    under the row's lock, and return the new value.
+
+    Several things write a thread's settings while a turn runs: the calls of
+    one step run side by side, the loop puts results away to save room, the
+    request that started the turn records its task. Whoever wrote the whole
+    settings back from the copy it read would undo what another wrote
+    meanwhile: the references a list had just numbered were lost this way, and
+    the next call on ``#2`` was refused as not visible. So every writer changes
+    its own key here, and nothing else."""
+    with transaction.atomic():
+        row = AgentThread.objects.select_for_update().get(pk=thread.pk)
+        data = dict(row.settings or {})
+        data[key] = change(data.get(key))
+        AgentThread.objects.filter(pk=row.pk).update(settings=data)
+    thread.settings = data
+    return data[key]
+
+
 def pending_calls(thread: AgentThread) -> list[AgentEvent]:
     """``tool_call`` events with no ``tool_result`` yet (a crash mid-step)."""
     evs = events(thread)

@@ -42,17 +42,20 @@ def clear_old_results(thread: AgentThread, events) -> bool:
     keep_ids = set()
     for e in steps[-2:]:
         keep_ids |= {c["id"] for c in e.payload.get("tool_calls", [])}
-    settings = dict(thread.settings or {})
-    cleared = set(settings.get("cleared", []))
+    cleared = set((thread.settings or {}).get("cleared", []))
     before = len(cleared)
     for e in events:
         if e.type == "tool_result" and e.payload.get("call_id") not in keep_ids:
             cleared.add(e.payload.get("call_id"))
     if len(cleared) == before:
         return False
-    settings["cleared"] = sorted(c for c in cleared if c)
-    thread.settings = settings
-    AgentThread.objects.filter(pk=thread.pk).update(settings=settings)
+    # Only this key: the references and loaded functions the turn's calls
+    # wrote meanwhile stay as they are.
+    store.save_setting(
+        thread,
+        "cleared",
+        lambda now: sorted({c for c in [*(now or []), *cleared] if c}),
+    )
     return True
 
 

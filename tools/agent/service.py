@@ -469,9 +469,8 @@ def start_turn(thread: AgentThread) -> None:
         # turn" behind a turn nobody is running, until the stuck-turn sweep.
         store.set_state(thread, AgentThread.State.ERROR)
         raise
-    data = dict(thread.settings or {})
-    data["task_id"] = getattr(result, "id", "") or ""
-    AgentThread.objects.filter(pk=thread.pk).update(settings=data)
+    task_id = getattr(result, "id", "") or ""
+    store.save_setting(thread, "task_id", lambda _: task_id)
 
 
 def check_view(caller: Caller, view: str) -> str:
