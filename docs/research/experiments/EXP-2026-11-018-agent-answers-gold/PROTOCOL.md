@@ -463,3 +463,17 @@ restarting the second server now. The watcher asks every 30 seconds instead of
 every two minutes; nothing else changes (`--conc 32`, the same gold, frozen
 copy and 05:00 UTC limit). The same watcher then starts EXP-2026-11-021's
 Gemma row and EXP-2026-11-019's `r6` as their protocols register them.
+
+
+**Added 2026-11-17 22:08 UTC, before any `r5g` answer.** The second server did
+not come back. The maintainer restarted the first one instead, and it now
+serves Gemma: at 22:04 UTC `default-model` is healthy and answers "I am a large
+language model, trained by Google" (vLLM 0.21.0), while `default-model-2` is
+still `failed` (`EXP-2026-11-021/logs/preflight_evening_20261117.jsonl`). The
+watcher was asking the wrong endpoint. The maintainer states the model is
+Gemma 4 31B and that it takes 32 in flight. So `r5g` runs on `default-model`
+(`LLM=default-model`), `--conc 32`; everything else is as registered (the same
+jobs, gold, frozen copy of `640d7fe0`, graders and 05:00 UTC limit). The model
+is recorded at the start and end of the run in `logs/model_r5g.jsonl`. This
+endpoint is also the instance model, so the instance's own use shares the
+server with the run; seconds are not compared with any other run.
