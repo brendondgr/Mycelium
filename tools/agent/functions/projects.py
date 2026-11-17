@@ -114,6 +114,17 @@ def projects_get(caller, project=None):
     return Result(content=f"{{ref:{info.ref}}} {p.name}\n{text}", refs=[info, *people])
 
 
+def _slate(target_kwargs: dict, types, limit=None):
+    """A target's slate in rank order, cut to ``limit``. The reader itself is
+    :func:`lists.slate`; this name stays because the evaluation harnesses
+    build their gold answers with it (``EXP-2026-11-018``)."""
+    return lists.slate(target_kwargs, types)[:limit]
+
+
+#: Kept importable from here for the same reason.
+slate_lines = lists.slate_lines
+
+
 def projects_feed(
     caller,
     project=None,
