@@ -54,6 +54,8 @@ See [`docs/evaluation.md`](docs/evaluation.md).
 | `make validate-research` | The research record: manifests, figures, pointers, claims, index |
 | `make research-ci` | The full check — validation plus index and figure staleness |
 | `make test` | Backend and tool tests (strict: a tool that fails to load fails the run) |
+| `make test-fast` | The same tests split over several processes: a few minutes instead of the whole wait |
+| `make test-changed` | Only the test directories your change touches (since `origin/main`, or uncommitted) |
 | `make tools-matrix` | Removes and breaks each tool in turn and checks the rest |
 | `npm run lint` / `npm run build` | Frontend, from the repository root |
 

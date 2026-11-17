@@ -12,7 +12,7 @@ SCRIPTS := ops/research
 
 .DEFAULT_GOAL := help
 .PHONY: help setup config up dev down restart build status doctor logs migrate admin \
-	backup restore gpu-up test test-mylo lint nightly \
+	backup restore gpu-up test test-fast test-changed test-mylo lint nightly \
 	new-experiment validate-research research-index figures figures-check research-ci
 
 help: ## Show these targets
@@ -76,6 +76,12 @@ gpu-up: ## Start the stack with CUDA embedding (needs nvidia-container-toolkit)
 
 test: ## Backend test suite
 	uv run --directory web/backend pytest
+
+test-fast: ## The same tests split over several processes (a few minutes); SHARDS=8
+	@ops/test-fast.sh
+
+test-changed: ## Only the test directories a change touches (since origin/main, or uncommitted)
+	@ops/test-fast.sh --changed
 
 test-mylo: ## Mylo bot and daily-run tests
 	uv run python -m unittest discover -s mylo/tests -t .

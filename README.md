@@ -216,6 +216,7 @@ Every root command is a `make` target. `make help` lists them all.
 | `make backup` / `make restore FILE=…` | Database, uploaded files and `mycelium.toml`, into `data/backups/` |
 | `make nightly` | Run the nightly research pipeline once, now (the first collection, too) |
 | `make test` / `make test-mylo` | The backend and the Mylo test suites |
+| `make test-fast` / `make test-changed` | The backend suite in parallel, or only what a change touches |
 | `make lint` | Astro check, Next.js eslint, backend ruff |
 | `make gpu-up` | Start with CUDA embeddings (needs the nvidia-container-toolkit) |
 

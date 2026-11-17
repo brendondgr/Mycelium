@@ -18,6 +18,12 @@ and `LLM_MODEL` in the environment (and `PROFILE=…`, default `lab`). `make hel
 lists every other command; `make test` runs the backend suite and every tool's
 tests; `make tools-check` shows which tools loaded.
 
+`make test` takes the longest: one process, every test. While working, run
+`make test-changed` (only the test directories your change touches) or
+`ops/test-fast.sh <path>…` for named ones; before finishing, `make test-fast`
+runs the whole suite split over several processes in a few minutes. All three
+run the same tests with the same settings.
+
 Operator policy — sign-up, email, billing, limits, optional features, the
 nightly budget — lives in `mycelium.toml`, not in code or `.env.example`. Change
 it with `ops/mycelium config` and follow `docs/skills/configure.md` when a user
