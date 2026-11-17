@@ -43,9 +43,11 @@ ASK_USER = "ask_user"
 REPEAT_LIMIT = 3
 #: Wrap up after this many steps in a row whose calls all failed.
 THRASH_STEPS = 3
-#: Refuse a function after it failed this many times in one turn, whatever
+#: Refuse a function after it failed in this many steps of one turn, whatever
 #: the arguments (EXP-2026-11-013: one answer called an introduction-path
-#: lookup eight times on people it cannot reach).
+#: lookup eight times on people it cannot reach). Counted per step, not per
+#: call: a model that sends twenty calls at once with the same slip made one
+#: mistake, and its corrected batch must still run.
 FAILURE_LIMIT = 2
 #: A call rejected because its arguments were malformed (a name the function
 #: does not take, a required one left out, a value in the wrong form) is the
@@ -89,6 +91,12 @@ CLAIMS_REMOVED = (
     "Mylo removed details from this answer that it could not find in what it "
     "read."
 )
+
+
+def common_clip(text: str, n: int = 240) -> str:
+    """One line of at most ``n`` characters, for an error a model reads."""
+    text = " ".join(str(text or "").split())
+    return text if len(text) <= n else text[: n - 1] + "…"
 
 
 def _grounding_extra(caller, thread, events) -> list[str]:
@@ -623,7 +631,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                         "error": {
                             "code": "keeps_failing",
                             "detail": f"{c['name']} has failed {FAILURE_LIMIT} times "
-                            f"this turn ({said}), so it is not run again.",
+                            f"this turn ({common_clip(said)}), so it is not run again.",
                             "fix": "It does not cover this. Use another function, "
                             "or answer with what you have and say what you could "
                             "not find.",
@@ -671,6 +679,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                 thread, "progress", name=result.get("name"), status=result.get("status")
             )
             store.append(thread, "tool_result", result)
+        counted: set[tuple[str, str]] = set()
         for result in results:
             error = result.get("error") or {}
             refused_here = error.get("code") in (
@@ -681,7 +690,11 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             if result.get("status") not in ("error", "denied") or refused_here:
                 continue
             name = result.get("name") or ""
-            if dispatch.malformed(result):
+            kind = "malformed" if dispatch.malformed(result) else "failed"
+            if (kind, name) in counted:
+                continue  # the same slip, sent several times at once
+            counted.add((kind, name))
+            if kind == "malformed":
                 malformed[name] = malformed.get(name, 0) + 1
             else:
                 failures.setdefault(name, []).append(

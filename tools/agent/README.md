@@ -57,8 +57,11 @@ the API, a developer CLI, the web chat panel and Discord.
   caller may open and the reply's audience may be shown; a guest gets names
   only). The prompt tells Mylo to cite each item, person or project it names,
   and only the ones the answer is about — not a whole roster for context.
-- **Malformed calls are not failures.** A function that fails twice in a turn
-  is not run a third time (`FAILURE_LIMIT`). A call whose arguments were
+- **Malformed calls are not failures.** A function that fails in two steps of
+  a turn is not run a third time (`FAILURE_LIMIT`; calls sent together in one
+  step with the same slip count once, so the corrected batch still runs). A
+  reference passed with its title after it (`#7 Some title`) is read as `#7`
+  (`refs.py`). A call whose arguments were
   malformed — a name the function does not take, a required one left out, a
   value in the wrong form (`bad_arguments`, `need_*`) — is counted apart, up to
   `MALFORMED_LIMIT` per function and turn, so the corrected call still runs.

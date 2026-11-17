@@ -28,6 +28,10 @@ ALIASES = {
     "user": "person",
 }
 _NUM = re.compile(r"^#(\d+)$")
+#: ``#7 12th International Conference on …``: the number as a result line
+#: shows it, with the title copied after it. Models pass this where ``#7``
+#: belongs; it names #7 as long as it names no second number.
+_NUM_WITH_TITLE = re.compile(r"^\[?#(\d+)\]?(?:[\s:,.)\]—–-]+[^#]*)?$")
 _TAG = re.compile(r"^@?([a-z_]+):(.+)$")
 #: Kept in the system prompt; older ones remain usable by number.
 PROMPT_REFS = 40
@@ -90,7 +94,7 @@ def resolve(caller, token: str, *, expect_kind: str | None = None) -> RefInfo | 
     """Resolve ``#n``, ``kind:key`` or (with ``expect_kind``) a bare key."""
     token = (token or "").strip()
     kind = key = None
-    num = _NUM.match(token)
+    num = _NUM.match(token) or _NUM_WITH_TITLE.match(token)
     if num:
         thread = caller.thread
         entry = lookup(thread, int(num.group(1))) if thread is not None else None

@@ -164,6 +164,51 @@ def test_a_real_failure_still_counts_toward_the_limit(person, scripted):
     assert results[2]["error"]["code"] == "keeps_failing"
 
 
+def test_one_slip_sent_many_times_at_once_counts_once(person, scripted):
+    # Go-live check, 2026-11-17: 24 calls in one step with the same wrong
+    # reference used up the limit twelve times over, and the corrected batch
+    # was refused.
+    papers = [_paper(f"Paper number {n}") for n in range(3)]
+    thread = thread_for(person)
+    _send(thread, "read these three")
+    gone = "item:00000000-0000-0000-0000-00000000000"
+    model = scripted(
+        [("corpus_item", {"item": gone + str(n)}) for n in range(3)],
+        [("corpus_item", {"item": f"item:{p.pk}"}) for p in papers],
+        "They are papers.",
+    )
+    loop.run_turn(thread.pk, port=model)
+    results = _results(thread)
+    assert [r["status"] for r in results] == ["denied"] * 3 + ["ok"] * 3
+
+
+def test_a_reference_with_its_title_after_it_is_that_reference(person):
+    from tools.agent import dispatch, refs
+    from tools.agent.caller import for_thread
+
+    one, two = _paper("First paper"), _paper("Second paper")
+    thread = thread_for(person)
+    caller = for_thread(thread)
+    for paper in (one, two):
+        dispatch.run(
+            caller, thread, name="corpus_item", args={"item": f"item:{paper.pk}"},
+            call_id="c",
+        )
+    def key(token):
+        return refs.resolve(caller, token, expect_kind="item").key
+
+    assert key("#1 First paper") == str(one.pk)
+    assert key("#2: Second paper") == str(two.pk)
+    assert key("[#2]") == str(two.pk)
+    # Two numbers name nothing: a title never picks between objects.
+    assert refs.resolve(caller, "#1 and #2", expect_kind="item") is None
+    assert refs.resolve(caller, "#9 No such reference", expect_kind="item") is None
+    out = dispatch.run(
+        caller, thread, name="corpus_item", args={"item": "#1 First paper"}, call_id="d"
+    )
+    assert out["status"] == "ok" and "First paper" in out["content"]
+
+
 def test_malformed_calls_have_a_ceiling_of_their_own(person, scripted):
     thread = thread_for(person)
     _send(thread, "keep trying")
