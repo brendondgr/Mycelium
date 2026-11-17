@@ -465,7 +465,9 @@ def test_a_turn_that_read_more_than_fits_answers_from_what_is_left(
             "assistant",
             {
                 "text": "",
-                "tool_calls": [{"id": f"r{i}", "name": "me_profile", "arguments": "{}"}],
+                "tool_calls": [
+                    {"id": f"r{i}", "name": "me_profile", "arguments": "{}"}
+                ],
             },
         )
         store.append(
@@ -482,8 +484,8 @@ def test_a_turn_that_read_more_than_fits_answers_from_what_is_left(
     assert loop.run_turn(thread.pk, port=model) == "idle"
     assert _final(thread) == "Here is the part I could read."
     assert "error" not in _types(thread)
-    verdicts = [e.payload["action"] for e in store.events(thread) if e.type == "verdict"]
-    assert verdicts[0] == "fit_final"
+    verdict = next(e for e in store.events(thread) if e.type == "verdict")
+    assert verdict.payload["action"] == "fit_final"
     asked = model.requests[0]
     assert asked["tool_choice"] == "none"
     assert any(loop.FIT_FINAL in str(m.get("content")) for m in asked["messages"])

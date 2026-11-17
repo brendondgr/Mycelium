@@ -200,7 +200,6 @@ def test_putting_results_away_keeps_what_the_calls_wrote_meanwhile(world):
     # references numbered and functions loaded since that copy was read were
     # undone, and the next call on one of those references was refused.
     from tools._framework.agentspec import RefInfo
-
     from tools.agent import compaction, refs
     from tools.agent.models import AgentThread
 
@@ -213,7 +212,10 @@ def test_putting_results_away_keeps_what_the_calls_wrote_meanwhile(world):
         store.append(
             stale,
             "assistant",
-            {"text": "", "tool_calls": [{"id": f"r{i}", "name": "x", "arguments": "{}"}]},
+            {
+                "text": "",
+                "tool_calls": [{"id": f"r{i}", "name": "x", "arguments": "{}"}],
+            },
         )
         store.append(
             stale, "tool_result", {"call_id": f"r{i}", "name": "x", "status": "ok"}
