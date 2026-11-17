@@ -251,3 +251,50 @@ Qwen 3.8 27B at start and end), after every other phase had stopped. Table:
   made with functions disallowed (`tool_choice: none`) and produced 121–230
   completion tokens with no reasoning and no text, which fits a function call
   the server dropped because functions were off (Q-088's second explanation).
+
+**2026-11-17 — arm A7: the same questions after the overnight fixes, Qwen 3.8 27B, idle (Amendment 9).**
+Run 2026-11-17T10:45:37Z–2026-11-17T11:06:40Z on the instance model
+(`default-model`, operator-stated Qwen 3.8 27B at start and end,
+`logs/model_a7.jsonl`), one turn at a time on a server shared with the
+operator's own work, from a frozen copy of `55cfdb1c`. Two repetitions of the
+twelve questions (24 turns): 54 minutes were left when it started, and the
+rule fixed at 07:05 UTC gives two. **The 8-process arm was not run** (33
+minutes left when the idle arm ended; the rule asks for 80), so O8 is not
+re-measured. Table: `tables/a7.md` (`code/a7_table.py`, `data/metrics_a7.json`),
+A6's rows beside A7's.
+
+- **What A7 asks — do the fixes cost more calls per turn — on 8 turns per
+  group against A6's 12:** function calls / model calls / tokens at the
+  median are 1 / 2 / 6.0k on single-lookup questions (A6: 1 / 2 / 5.9k),
+  6.5 / 5 / 27.6k on questions needing a few (5 / 5.5 / 21.4k), and
+  17 / 8 / 74.4k on compound ones (20.5 / 8.5 / 63.5k). Model calls did not
+  rise; tokens per turn are higher by 6k and 11k in the two larger groups,
+  which is what longer list results would do, on samples too small to
+  separate from run-to-run spread (A6's compound turns ranged to 311k).
+- **Every turn answered:** 24 of 24 with text, no turn error, no step limit, no
+  empty model call, none at the reply cap.
+- **C-030 on this run:** the 11 turns of up to five function calls took at
+  most 23.2k tokens; the slowest took 61.5 s, over the claim's 60 s by 1.5 s,
+  on a server whose other load is not recorded (the same turns took at most
+  11.55 s in A6 on a server with nothing else on it). Median model-call
+  latency 1.08 s (A6: 0.87 s). Read as load, not as the loop; the claim's
+  status is not changed on one such turn.
+- **A defect found in the rows, older than tonight's fixes.** In `f2` rep 0
+  Mylo called `projects_list` and `load_functions` in one step, then
+  `projects_get` and `projects_feed` on `#2` — a project the list had just
+  numbered — and both were denied `not_visible`, twice, after which the
+  failure limit refused them for the rest of the turn (4 denied calls; the
+  answer says it could not open the project). Cause: the calls of one step
+  run side by side, and `load_functions` wrote the thread's settings back
+  from the copy it had read, undoing the references `projects_list` had
+  numbered meanwhile. Denied calls are as common before the fixes (A6: 5
+  in 2 of 36 turns idle, 14 in 4 of 96 with 8 in flight; A7: 7 in 2 of 24),
+  so the fixes did not bring it. Fixed in `14b758d2` with a test that fails
+  on the old code; **not measured** — no run after it. The other A7 turn
+  with denied calls (`c2` rep 0: `corpus_item` on `#15`–`#17`) was not
+  traced. The first version of `tables/a7.md` showed 0 denied calls because
+  it counted statuses in a field that holds only the results that came back;
+  `a7_table.py` now reads the per-turn count.
+- **Seconds** are in the table and not compared: A6 ran on a server with
+  nothing else on it, A7 beside the operator's work.
+

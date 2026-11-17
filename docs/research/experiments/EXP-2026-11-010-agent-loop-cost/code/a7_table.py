@@ -50,7 +50,7 @@ def main() -> int:
             lines.append(f"| {tag} ({label}) | {v['in_flight']} | {g} | {s['n']} | {fcs} | "
                          f"{s['model_calls_median']:g}/{s['model_calls_max']} | {s['tokens_median'] / 1000:.1f}k | "
                          f"{s['wall_s_median']} | {s['wall_s_max']} |")
-    lines += ["", "| Run | Turns | With text | Turn errors (codes) | Hit the step limit | Function results | of them denied | of them error | Empty model calls | Calls at the reply cap |",
+    lines += ["", "| Run | Turns | With text | Turn errors (codes) | Hit the step limit | Function results (ok) | Calls denied | Turns with a denied call | Empty model calls | Calls at the reply cap |",
               "|---|---:|---:|---|---:|---:|---:|---:|---:|---:|"]
     for tag in ("a6idle", "a6p8", "a7idle", "a7p8"):
         rs = rows(tag)
@@ -63,13 +63,17 @@ def main() -> int:
              "turns_with_text": sum(1 for r in rs if (r.get("final_text") or "").strip()),
              "turn_error_codes": {c: codes.count(c) for c in dict.fromkeys(codes)},
              "hit_max_steps": sum(bool(r.get("hit_max_steps")) for r in rs),
-             "function_results": len(status), "denied": status.count("denied"), "error": status.count("error"),
+             # A row's `results` holds the results that came back ok; the
+             # denied ones are counted in its `denied` field.
+             "function_results_ok": status.count("ok"),
+             "denied": sum(int(r.get("denied") or 0) for r in rs),
+             "turns_with_denied": sum(1 for r in rs if r.get("denied")),
              "empty_calls": sum(r.get("empty_calls") or 0 for r in rs),
              "cap_hits": sum(r.get("cap_hits") or 0 for r in rs)}
         out["a7"][tag] = a
         shown = ", ".join(f"{c} {n}" for c, n in a["turn_error_codes"].items()) or "none"
         lines.append(f"| {tag} | {a['turns']} | {a['turns_with_text']} | {shown} | {a['hit_max_steps']} | "
-                     f"{a['function_results']} | {a['denied']} | {a['error']} | {a['empty_calls']} | {a['cap_hits']} |")
+                     f"{a['function_results_ok']} | {a['denied']} | {a['turns_with_denied']} | {a['empty_calls']} | {a['cap_hits']} |")
     (HERE / "data" / "metrics_a7.json").write_text(json.dumps(out, indent=1) + "\n")
     (HERE / "tables" / "a7.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))

@@ -90,6 +90,28 @@ metrics:
     a6.a6x64.cap_hits: 0 # Qwen 3.8 27B, default-model-2
     a6.a6x64.thinking_budget_hits: 0 # Qwen 3.8 27B, default-model-2
     a6.a6x64.empty_calls: 4 # Qwen 3.8 27B, default-model-2
+    a7.a7idle.turns: 24 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.turns_with_text: 24 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.single.function_calls_median: 1 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.single.model_calls_median: 2 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.single.tokens_median: 6009 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.single.wall_s_median: 1.7 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.few.function_calls_median: 6.5 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.few.model_calls_median: 5 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.few.tokens_median: 27650 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.few.wall_s_median: 17.96 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.compound.function_calls_median: 17 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.compound.model_calls_median: 8 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.compound.tokens_median: 74397.5 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.compound.wall_s_median: 29.91 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.up_to_5_calls.wall_s_max: 61.53 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.up_to_5_calls.tokens_max: 23186 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.model_call_latency_median_s: 1.08 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.calls_denied: 7 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.turns_with_denied_call: 2 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.empty_calls: 0 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7idle.cap_hits: 0 # Qwen 3.8 27B, default-model (shared), after the fixes
+    a7.a7p8.turns: 0 # not run: 33 minutes left, the registered rule asks for 80
     r3_outage_20261116.rows: 132 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.answered: 0 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.failed_server: 132 # failed run, not a result; RESULTS.md AMENDMENTS
