@@ -5,6 +5,31 @@ live stack. Everything under "Still open" is untouched and waits for a
 decision or for the human ratings. Delete this file once the open items are
 done or moved to their own plans; the evidence stays in `docs/research/`.
 
+**Overnight 2026-11-17 (correlation `20261116-mylo-overnight-fixes`; details in
+the last section):**
+
+- **Live:** feed lists that filter before any cut, page, and say whether they
+  are complete (`f81d2837`, `ce976d2f`); a slip in a function call no longer
+  uses up the function's failure limit (`035c9066`, `55cfdb1c`); every person
+  and project carries a reference and the prompt says to cite each one named
+  (`3ea9c144`); two sentences in the collaboration settings (`2c5abce8`);
+  a function call the server reports and does not return is asked for again
+  with functions on (`127428f3`, live since the 11:07 UTC restart);
+  `load_functions` and `update_todos` no longer undo the references another
+  call of the same step numbered (`14b758d2`, live since the 11:32 UTC
+  restart, not measured by a run).
+- **Reverted:** none.
+- **Not run:** the public-demo collaborator search and the answer-checker work
+  (phases 5 and 6, left out by the maintainer's instruction); ranking by
+  "Open to" in phase 8 (stopped: the search carries no kind of collaboration,
+  and adding one is a ranking change the plan excluded; Q-086); the 8-process half of the loop-cost arm A7 (33 minutes were left; its rule asked for 80).
+- **Which model each number is on:** Qwen 3.8 27B is the instance model
+  (relay `default-model`, shared with the maintainer's own work): the answers
+  experiment's tag `r4`, the model check's two `qwen38-…-20261117` rows, the
+  loop-cost arm A7. Gemma 4 31B (relay `default-model-2`, nothing else on
+  it): the collaborator scenarios' tags `r4` and `r5`, the model check's two
+  `gemma4-…-20261117` rows, the answers experiment's tag `r4g`. Never pooled.
+
 **Correlation ID:** `20261113-mylo-evaluation-fixes`
 
 The overnight evaluation, plus one bug found while re-checking a fix
@@ -209,3 +234,60 @@ this table is open.
 | D3 | The demo PI's account page says her email isn't at a recognised institution. | No change: she is fictional. |
 | D4 | **The SBIR grant source returned HTTP 403** every night. SBIR.gov's API page says its APIs are "currently undergoing maintenance". | When the API refuses with 403, the adapter reads the public topic listing (`www.sbir.gov/topics?status=Open`, fresh each run) and each topic's page (cached), shaped like the API's rows, so parsing is unchanged. Tests: `tools/retrieval/tests/collect/grants/test_sbir_site.py`. |
 | D5 | **Beat stalled twice and nobody knows why** (2026-08-04, 2026-11-14). The leading suspect was its `dbm.sqlite3` schedule file. | Beat now runs `config.beat:HeartbeatScheduler`: the schedule in memory, no file, and a heartbeat file touched on every tick that the healthcheck reads. If it ever stalls again the file was not the cause; take a `py-spy dump` before the healthcheck (900 s) kills it. |
+
+## Overnight 2026-11-17 — three defects fixed, each measured by the experiment that found it
+
+One defect, one commit, then the same questions, probes and graders as
+before, under a numbered amendment registered before the first run. The suite
+was green at each fix apart from four tests that were already red before any
+change (`apps/accounts/tests/test_synthesize_api.py::test_site_and_resume_merge`
+and three in `tools/delivery/tests/test_opportunity_clusters.py`).
+
+| Item | Done | Measured | Still open |
+|---|---|---|---|
+| Truncated feed lists (Q-079, C-056) | `feeds_slate`, `feeds_saved`, `feeds_deadlines` and `projects_feed` take `due_from`, `due_to`, `deadline` and `offset`; the filter runs in the database over the whole slate; every list ends "This is the complete list…" or "This is not the complete list… pass offset=N". | `EXP-2026-11-018` Amendment 6, Qwen 3.8 27B: list questions fully right in 12/27 runs (was 2/27); a partial list presented as complete in 2/27 (was 7/27; bar 10%, interval 0.02–0.23). Amendment 7, Gemma 4 31B: 16/27 (round two 0/30); presented as complete in 6/27, all on the two amount questions, so the bar is missed on that model. | A *confirmed* deadline cannot be asked for (`l04`); conference paper deadlines come back with one item too many (`l06`, `l07`); nothing filters by amount, so Mylo reads every grant one call at a time and 3 of 6 such runs never answered (`l08`, `l09`; Q-091). |
+| A slip in a call used up the failure limit (Q-069, Q-075) | Unknown or missing arguments are caught before the handler and answered with what the function accepts; they have their own ceiling of 4 and do not count toward the limit of 2; calls sent together in one step with the same slip count once; `#7 Some title` is read as `#7`. | `EXP-2026-11-021` Amendment 4: the department head's control on Gemma 4 31B ended on the give-up line before and passed after (controls 5/6 to 6/6; answered 28/31 to 31/31). `j08` on Qwen 3.8 27B: no refused call in 3 of 3. | A project *name* where a reference belongs is still denied. `j08` names the two right grants and earns no full credit, because it also cites the two it rules out. |
+| People and projects named without a citation (C-043) | Every function that returns a person or a project gives it a `#n` reference; the prompt says to cite every item, person and project named, and only the ones the answer is about. | `EXP-2026-11-018` Amendment 6, Qwen 3.8 27B: full credit 72% of answerable runs (was 61%; bar 70%, interval 0.60–0.84); the gap to the name-matching grading fell from 0.10 to 0.04; project questions 30/30 (was 24/30); people 16/30 (was 15/30). `EXP-2026-11-021`: Qwen 7/12 to 9/12, Gemma 11/12 to 12/12. Amendment 7, Gemma 4 31B: 90% (round two 72%; interval 0.82–0.98), people and project 30/30 each. | People questions: Mylo cites the people it rules out (`p07`, `p10`, `j07`), or names the one right person with no number (`p01`). The graders count a cited person as named; that was not changed. |
+| Empty replies (O7, Q-070, Q-088) | Measured first on Gemma 4 31B, then fixed: when the server says the model stopped to call a function and returns no call, the loop asks again with functions still on (once), instead of asking for an answer without functions. | `EXP-2026-11-019` Amendments 7 and 8, Gemma 4 31B, 180 asks each: 0 blank turns in both; 3 of 939 and 4 of 955 model calls empty, every one a call the server did not return; after the fix the path fired in 2 turns and both answered (before: one of two ended on the give-up line). | Round two's 16% blank on this model is not reproduced and nothing recorded says what differs. On Gemma, a seeker asking for the first time is answered without the planted lab-mate in 17 of 30 asks (C-050 not met in that cell); not investigated. |
+| "Open to" and the collaboration settings (Q-085, Q-086) | The settings card now says that anyone may search whether or not they are findable, and that the "Open to" kinds help matching seekers find you and never hide you. | Not a measured change. | Ranking by "Open to" was not built: `matcher.Query` carries no kind of collaboration, so it would be a ranking change, which the plan excluded. The scenario that would measure it (S4) was not rerun. |
+| O8, compound questions under load | No change. | `EXP-2026-11-010` arm A7, Qwen 3.8 27B, one turn at a time, 24 turns: the fixes did not raise model calls per turn (2 / 5 / 8 at the median by group, as before); tokens per turn are 6k to 11k higher on the larger questions, within run-to-run spread. | The 8-in-flight half was not run, so O8 itself is not re-measured. |
+
+Found on the way, and where each stands:
+
+- **The first go-live question failed.** After the first restart Mylo was asked
+  one question on the public demo; it sent 24 calls in one step with
+  references written as `#7 Some title`, all were denied, the failure limit
+  was used up, the corrected batch was refused, and the turn ended
+  `context_full` after 393 s. Fixed before any measurement (`ce976d2f`,
+  `55cfdb1c`); the same question then got a full, cited answer (257 s).
+- **References numbered in a step could be lost in the same step.**
+  `load_functions` (and `update_todos`) wrote the thread's settings back from
+  a copy read before another call of the step had numbered its results, so the
+  next call on `#2` was refused as not visible and the failure limit then
+  blocked it for the turn. Older than tonight's fixes (denied calls are as
+  common in round three's rows). Fixed in `14b758d2`, with a test that fails
+  on the old code; live since 11:32 UTC. Not measured by a run. Asked the
+  question that had hit it, the demo opened the project and its feed and
+  answered with citations; the first ask after the restart failed on the
+  model server (relay 502) and was shown as an error, the second answered.
+- **Nothing limits how many calls one step may make (Q-091).** A complete list
+  invites a call per row. Seen again in the answers run. Not fixed.
+- **A guest in a lab whose audience hides people still sees member names**
+  in a project's member list (Q-092). Not changed: who may see whom is a
+  permission question the plan put out of bounds.
+- **Gemma's own call markup reached a person as the answer once (Q-093):**
+  one of 177 turns ended with `<|tool_call>call:corpus_item{…}<tool_call|>` as
+  its reply. Not fixed.
+- **Two grader seams, not changed** (no new graders tonight): a cited item or
+  person counts as named even when the answer rules it out, and the
+  "states a fact" pattern reads digits in a paper's title as a citation count
+  (both of Gemma's 2/30 on C-046).
+- **The whole suite** (`make test`, 11:02 UTC, on the code that was live at
+  11:07): 5,076 passed, 4 failed — the four that were red before any change.
+  The same at `14b758d2`, run from a worktree.
+- **`mylo-bot.service` was not restarted** (it needs `sudo`). It holds no
+  agent code — it calls the backend — so the fixes reach Discord as well.
+- **Left on the database:** the four sandbox copies of tonight's scenario runs
+  (`mycelium_sandbox_exp019r4rep`, `…r4fresh`, `…r5rep`, `…r5fresh`, about
+  80 MB each), kept as round three's were.
+
