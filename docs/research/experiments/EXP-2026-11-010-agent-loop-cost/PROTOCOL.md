@@ -234,3 +234,15 @@ sent 24 calls at once with such references, all were denied, the limit was
 used up, the corrected batch was refused, and the turn ended `context_full`.
 **The frozen copy every run of this amendment mounts is `55cfdb1c`**, not
 `62c9fa17`.
+
+**Added 2026-11-17 07:05 UTC, before any A7 turn.** `EXP-2026-11-018`'s run is
+going at about 150 jobs an hour on the shared server (a model call takes 60 to
+90 s with 8 Mylo turns in flight), so it will end near 10:00 UTC and the model
+check's "after" row near 10:20, leaving about 80 minutes before the hard stop
+at 11:40. The plan drops this arm first. Fixed now, in `code/drive_a7.sh`: the
+idle arm runs first with as many repetitions as the time left allows (3 if at
+least 70 minutes are left when it starts, 2 if at least 50, 1 if at least 25,
+none otherwise); the 8-process arm runs only if at least 80 minutes are left
+after the idle arm, and is otherwise recorded as not run. Model calls,
+function calls and tokens per turn do not depend on how many turns are in
+flight, so the idle arm alone answers what A7 asks.
