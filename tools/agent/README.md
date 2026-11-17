@@ -30,6 +30,15 @@ the API, a developer CLI, the web chat panel and Discord.
 - **Functions come from tools.** Any loaded tool contributes functions and
   reference kinds through `Tool.agent` (`tools/_framework/agentspec.py`); the
   agent's own are in `functions/`. Only `read` functions load.
+- **Lists say whether they are complete.** The feed functions (`feeds_slate`,
+  `feeds_saved`, `feeds_deadlines`, `projects_feed`) share `functions/lists.py`:
+  a deadline filter (`due_from`, `due_to`, `deadline`, `types`) is applied in
+  the database to the whole slate before anything is cut, a long result pages
+  with `offset`, rows fit the `result_cap_tokens` budget, and the last line of
+  every result says either that the list is complete ("all 4 of 4") or how to
+  get the rest ("only the first 20 of 36 …; pass offset=20"). With no first
+  day a window opens today, and a conference's own dates are a deadline only
+  when asked for (`deadline="event"`). Nothing here ranks.
 - **The turn.** `loop.py`: resolve pending calls, step cap, compaction
   (`compaction.py`), thrash guard, one model call (`llmcall.py`, with the
   local-model repairs), then the checks on a final answer (`verify.py`):

@@ -251,9 +251,13 @@ def test_a_cut_list_says_it_is_cut(world):
     for rank in range(1, 6):
         score(item(f"Paper {rank}"), rank, target_user=world.member)
     out = run(world.member, "feeds_slate", {"types": ["paper"], "limit": 3})
-    assert "only the first 3 of 5; pass limit (at most 25) for more" in out["content"]
+    assert "papers only the first 3 of 5" in out["content"]
+    assert "Pass offset=3" in out["content"].splitlines()[-1]
     whole = run(world.member, "feeds_slate", {"types": ["paper"], "limit": 5})
     assert "only the first" not in whole["content"]
+    assert whole["content"].splitlines()[-1] == (
+        "This is the complete slate: all 5 of 5 items."
+    )
 
 
 def test_feeds_slate_in_a_lab_channel_never_shows_the_persons_own(world):

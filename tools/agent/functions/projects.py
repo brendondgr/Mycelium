@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from tools._framework.agentspec import FunctionError, Result
 
-from . import common
+from . import common, lists
 
 
 def _visible_projects(caller):
@@ -106,52 +106,28 @@ def projects_get(caller, project=None):
     return Result(content=f"{{ref:{info.ref}}}\n{text}", refs=[info])
 
 
-def _slate(target_kwargs: dict, types, limit: int):
-    from tools.recommendation.read import RelevanceScore, order_by_slate
-
-    rows = RelevanceScore.objects.filter(
-        **target_kwargs, content__type__in=types
-    ).select_related("content")
-    return order_by_slate(rows)[:limit]
-
-
-def slate_lines(rows, *, since_label: str = ""):
-    refs, lines = [], []
-    for score in rows:
-        item = score.content
-        info = common.item_info(item)
-        refs.append(info)
-        sig = score.signals or {}
-        why = sig.get("headline") or sig.get("reason") or sig.get("verdict") or ""
-        new = " (new)" if sig.get("entered_top_on") and sig.get("is_new_top") else ""
-        entered = sig.get("entered_top_on")
-        when = f", in slate since {entered}" if entered else ""
-        lines.append(
-            f"- {{ref:{info.ref}}} {common.item_title(item)} [{item.type}{when}]{new}"
-            + (f" — {common.clip(why, 200)}" if why else "")
-        )
-    return refs, lines
-
-
-def projects_feed(caller, project=None, types=None, limit=10):
+def projects_feed(
+    caller,
+    project=None,
+    types=None,
+    limit=None,
+    offset=None,
+    due_from=None,
+    due_to=None,
+    deadline=None,
+):
     p = _project(caller, project)
     _check_audience(caller, p)
-    types = [
-        t
-        for t in (types or ["paper", "grant", "fellowship", "conference"])
-        if t in ("paper", "grant", "fellowship", "conference")
-    ]
-    limit = max(1, min(int(limit or 10), 25))
-    rows = _slate({"target_project": p}, types, limit)
-    if not rows:
-        return Result(
-            content=f"{p.name} has nothing in its current slate yet "
-            "(the nightly run fills it)."
-        )
-    refs, lines = slate_lines(rows)
     head = common.project_info(p)
-    return Result(
-        content=f"Current slate of {{ref:{head.ref}}} {p.name}, in rank order:\n"
-        + "\n".join(lines),
-        refs=[head, *refs],
+    return lists.slate_view(
+        {"target_project": p},
+        title=f"{{ref:{head.ref}}} {p.name}",
+        head=head,
+        types=types,
+        limit=limit,
+        offset=offset,
+        due_from=due_from,
+        due_to=due_to,
+        deadline=deadline,
+        default_limit=10,
     )

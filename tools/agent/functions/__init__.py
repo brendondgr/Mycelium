@@ -205,6 +205,31 @@ ME = (
     ),
 )
 
+#: The list filters every feed function takes. They are applied to the whole
+#: list before anything is cut, so one call answers "which … are due between
+#: two dates" completely (functions/lists.py).
+OFFSET = {
+    "type": "integer",
+    "description": "skip this many rows: pass the offset a result's last line "
+    "names to get the rest of a list",
+}
+DUE_FROM = {
+    "type": "string",
+    "description": "YYYY-MM-DD: only items with a deadline on or after this day "
+    "(default: today, when due_to or deadline is given)",
+}
+DUE_TO = {
+    "type": "string",
+    "description": "YYYY-MM-DD: only items with a deadline on or before this day",
+}
+DEADLINE = {
+    "type": "string",
+    "enum": ["application", "abstract", "manuscript", "event", "other", "any"],
+    "description": "which deadline the dates are about: application (grants, "
+    "fellowships), abstract or manuscript (a conference's submission rounds), "
+    "event (the dates a conference is held)",
+}
+
 PROJECTS = (
     _f(
         "projects_list",
@@ -231,9 +256,12 @@ PROJECTS = (
     _f(
         "projects_feed",
         "Looking at the project's feed",
-        "A project's current slate of papers and calls, in rank order.",
+        "A project's current slate, in rank order or filtered by deadline.",
         "The project's current per-category slate from the nightly ranking, in rank "
-        "order, with why each item fits and when it entered.",
+        "order, with why each item fits and when it entered. With due_from, due_to "
+        "or deadline it lists instead every grant, fellowship or conference in the "
+        "slate that has such a deadline in that window, checked over the whole "
+        "slate. The last line of the result says whether the list is complete.",
         f"{H}.projects:projects_feed",
         output="public",
         params={
@@ -245,7 +273,11 @@ PROJECTS = (
                     "enum": ["paper", "grant", "fellowship", "conference"],
                 },
             },
-            "limit": {"type": "integer"},
+            "limit": {"type": "integer", "description": "per category, at most 25"},
+            "offset": OFFSET,
+            "due_from": DUE_FROM,
+            "due_to": DUE_TO,
+            "deadline": DEADLINE,
         },
         guest="no_people",
     ),
@@ -301,7 +333,6 @@ KINDS = {
     "type": "array",
     "items": {"type": "string", "enum": ["paper", "grant", "fellowship", "conference"]},
 }
-
 ORG = (
     _f(
         "org_labs",
@@ -366,10 +397,14 @@ FEEDS = (
     _f(
         "feeds_slate",
         "Looking at the current feed",
-        "The current per-category slate of the person, a lab, a project.",
+        "The current slate of the person, a lab, a project; filter by deadline.",
         "The current Top-25 slate per category from the nightly ranking, in rank "
         "order, with why each item fits: the person's own (in a personal thread), or a "
-        "lab's or project's (named, or this conversation's).",
+        "lab's or project's (named, or this conversation's). To answer which grants, "
+        "fellowships or conferences in a feed have a deadline between two dates, pass "
+        "due_from, due_to and (for one kind of deadline) deadline: every slate item "
+        "with such a deadline is then listed, checked over the whole slate. The last "
+        "line of the result says whether the list is complete.",
         f"{H}.feeds:feeds_slate",
         output="lab",
         params={
@@ -377,6 +412,10 @@ FEEDS = (
             "project": PROJECT,
             "types": KINDS,
             "limit": {"type": "integer", "description": "per category, at most 25"},
+            "offset": OFFSET,
+            "due_from": DUE_FROM,
+            "due_to": DUE_TO,
+            "deadline": DEADLINE,
         },
         guest="no_people",
     ),
@@ -396,20 +435,45 @@ FEEDS = (
         "Looking at saved items",
         "The person's saved items (and this lab's saves).",
         "The items the person saved, with their deadlines and notes; in a lab or "
-        "project conversation also the lab's saves.",
+        "project conversation also the lab's saves. due_from and due_to keep only "
+        "saves due in that window. The last line of each list says whether it is "
+        "complete.",
         f"{H}.feeds:feeds_saved",
         output="person",
-        params={"types": KINDS, "limit": {"type": "integer"}},
+        params={
+            "types": KINDS,
+            "limit": {"type": "integer", "description": "at most 50"},
+            "offset": OFFSET,
+            "due_from": DUE_FROM,
+            "due_to": DUE_TO,
+        },
     ),
     _f(
         "feeds_deadlines",
         "Checking upcoming deadlines",
         "Upcoming deadlines among saved and slate items.",
-        "Deadlines in the coming days (default 60) of the grants, fellowships and "
-        "conferences the person or this lab saved or has in its current slate.",
+        "Deadlines in the coming days (default 60), or between due_from and due_to, "
+        "of the grants, fellowships and conferences the person or this lab saved or "
+        "has in its current slate, earliest first; types and deadline narrow it. "
+        "Every deadline in the window is listed; the last line says whether the "
+        "list is complete.",
         f"{H}.feeds:feeds_deadlines",
         output="lab",
-        params={"days": {"type": "integer"}, "limit": {"type": "integer"}},
+        params={
+            "days": {"type": "integer", "description": "at most 366"},
+            "limit": {"type": "integer"},
+            "offset": OFFSET,
+            "types": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["grant", "fellowship", "conference"],
+                },
+            },
+            "due_from": DUE_FROM,
+            "due_to": DUE_TO,
+            "deadline": DEADLINE,
+        },
         guest="no_people",
     ),
 )

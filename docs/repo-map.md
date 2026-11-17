@@ -433,6 +433,7 @@ A task index across the three tools; each tool also has its own section below.
 | The system prompt, rebuild of the log into messages, compaction, the citation check | `tools/agent/prompt.py`, `tools/agent/rebuild.py`, `tools/agent/compaction.py`, `tools/agent/verify.py` |
 | `@` references and `#n` numbers | `tools/agent/refs.py`; the agent's own kinds in `tools/agent/functions/kinds.py` |
 | Mylo's own functions (agent, me, projects, corpus, org, feeds, knowledge) and skills | `tools/agent/functions/`, `tools/agent/skills/` |
+| Feed lists: deadline filters, paging and the closing "complete / not complete" line | `tools/agent/functions/lists.py` |
 | Memory: profile and scope blocks, recall, titles and digests, the learning pass | `tools/agent/memory.py`, `tools/agent/recall.py`, `tools/agent/memory_after.py`, `tools/agent/learning.py`; ambient's side in `web/backend/apps/ambient/adapters/agent_chat.py` |
 | Live streaming (Redis pub/sub, SSE) and cancel | `tools/agent/stream.py` |
 | What a surface may show of a turn (the activity view: labels, no thinking) | `tools/agent/activity.py`; labels are `AgentFunction.activity`, checked by `tools/_framework/tests/test_agent_activity.py` |
