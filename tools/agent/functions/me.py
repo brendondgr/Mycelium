@@ -9,6 +9,9 @@ from . import common
 
 
 def me_profile(caller):
+    from apps.accounts.models import LabMembership
+    from apps.research.models import Project
+
     from .. import memory
 
     user = caller.user
@@ -23,7 +26,32 @@ def me_profile(caller):
             lines.append(f"{attr.replace('_', ' ').title()}: {value}")
     lines += memory._org_lines(user)
     lines += memory._project_lines(user)
-    return Result(content="\n".join(lines))
+    # The same labs and projects once more, one to a line with a reference, so
+    # an answer that names one can cite it.
+    refs = []
+    labs = (
+        LabMembership.objects.filter(user=user)
+        .select_related("lab")
+        .order_by("lab__name")
+    )
+    if labs:
+        lines.append("Your labs, by reference:")
+        for m in labs:
+            info = common.lab_info(m.lab)
+            refs.append(info)
+            lines.append(f"- {{ref:{info.ref}}} {m.lab.name}")
+    projects = list(
+        Project.objects.visible_to(user)
+        .filter(is_archived=False, members=user)
+        .order_by("name")[:12]
+    )
+    if projects:
+        lines.append("Your projects, by reference:")
+        for project in projects:
+            info = common.project_info(project)
+            refs.append(info)
+            lines.append(f"- {{ref:{info.ref}}} {project.name}")
+    return Result(content="\n".join(lines), refs=refs)
 
 
 def me_interests(caller):

@@ -49,6 +49,14 @@ the API, a developer CLI, the web chat panel and Discord.
   is removed and the person told. A reply that loops (`runaway_cut`) is
   thrown away and retried once, then replaced by a plain "I got stuck" line. Everything is an `AgentEvent`; streaming is Redis pub/sub
   (`stream.py`, SSE at `threads/<id>/stream/`).
+- **Whatever is named can be cited.** Every person and project a function
+  returns sits on a line of its own with its reference number: lab members
+  (`org_lab_members`), a project's members (`projects_get`), the person's own
+  labs and projects (`me_profile`), and the members a slate names under "who
+  should look" (`common.people_lines` gives a reference only for someone the
+  caller may open and the reply's audience may be shown; a guest gets names
+  only). The prompt tells Mylo to cite each item, person or project it names,
+  and only the ones the answer is about — not a whole roster for context.
 - **Malformed calls are not failures.** A function that fails twice in a turn
   is not run a third time (`FAILURE_LIMIT`). A call whose arguments were
   malformed — a name the function does not take, a required one left out, a

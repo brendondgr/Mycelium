@@ -57,7 +57,7 @@ def test_projects_get_visible_numbers_the_project(world):
     )
     assert out["status"] == "ok"
     assert "Segmentation" in out["content"] and "IMG-seg" in out["content"]
-    assert out["refs"] == [1] and "#1" in out["content"]
+    assert out["refs"][0] == 1 and out["content"].startswith("#1 Segmentation")
     thread.refresh_from_db()
     assert thread.settings["refs"][0]["ref"] == f"project:{world.lab_project.pk}"
 

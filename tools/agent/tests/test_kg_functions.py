@@ -238,7 +238,10 @@ def test_feeds_slate_personal_lab_and_project(world):
     assert out["status"] == "ok" and "Mine paper" in out["content"]
     assert "Not ranked" not in out["content"] and "Lab grant" not in out["content"]
     out = run(world.member, "feeds_slate", {}, kind="lab", obj=world.lab)
-    assert "Lab grant" in out["content"] and "who should look: Admin" in out["content"]
+    assert "Lab grant" in out["content"]
+    # The member the ranking named carries a reference, so an answer can cite them.
+    n = out["refs"][-1]
+    assert f"who should look: #{n} Admin" in out["content"]
     assert "Mine paper" not in out["content"]
     denied = run(
         world.member, "feeds_slate", {"project": f"project:{world.other_project.pk}"}

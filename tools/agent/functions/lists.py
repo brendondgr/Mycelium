@@ -220,12 +220,14 @@ def slate_view(
     deadline=None,
     default_limit: int = 8,
     decorate=None,
+    more_refs=None,
 ) -> Result:
     """One target's slate as a result: in rank order, or — when a deadline
     window is asked for — every slate item with a deadline inside it.
 
     ``decorate(lines, rows)`` may add to each rank-order line (who in a lab
-    should look); ``title`` is how the slate's owner reads in the heading.
+    should look) and fill ``more_refs`` with what it referred to; ``title`` is
+    how the slate's owner reads in the heading.
     """
     types = types_arg(types)
     start = int_arg(offset, 0, 0, 10**6)
@@ -275,6 +277,7 @@ def slate_view(
             "slate yet (the nightly run fills it). This is the complete list: 0 items.",
             refs=refs,
         )
+    refs += [info for info in (more_refs or []) if info not in refs]
     if cut:
         nxt = start + limit
         last = (

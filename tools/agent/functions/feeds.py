@@ -82,21 +82,35 @@ def _fit_usernames(score) -> list[str]:
     return [f["username"] for f in fits if isinstance(f, dict) and f.get("username")]
 
 
-def _display_names(rows) -> dict[str, str]:
-    """Full names for the members named in these rows' ``member_fit``. Mylo
-    repeats what it reads, so a bare ``@demo.tomas`` here reached answers."""
+def _who_should_look(caller, rows, people: list) -> list[str]:
+    """Per row, ``" · who should look: #4 Ana Ruiz, …"`` for the members the
+    nightly ranking named, each with a reference where the caller may open
+    them (appended to ``people``), so an answer that names one can cite them.
+    Mylo repeats what it reads, so a bare ``@demo.tomas`` here reached answers."""
     from django.contrib.auth import get_user_model
 
     usernames = {u for s in rows for u in _fit_usernames(s)}
     if not usernames:
-        return {}
-    users = get_user_model().objects.filter(username__in=usernames)
-    return {u.username: u.get_full_name() or f"@{u.username}" for u in users}
-
-
-def _who_should_look(score, names: dict[str, str]) -> str:
-    shown = [names.get(u, f"@{u}") for u in _fit_usernames(score)]
-    return f" · who should look: {', '.join(shown[:4])}" if shown else ""
+        return ["" for _ in rows]
+    users = {
+        u.username: u for u in get_user_model().objects.filter(username__in=usernames)
+    }
+    refs, lines = common.people_lines(caller, users.values())
+    shown = {}
+    for user, line in zip(users.values(), lines, strict=True):
+        # In a slate line the name is enough; the username stays in the card.
+        shown[user.username] = line.rsplit(" (@", 1)[0]
+    used = set()
+    out = []
+    for s in rows:
+        names = _fit_usernames(s)[:4]
+        used.update(names)
+        text = ", ".join(shown.get(u, f"@{u}") for u in names)
+        out.append(f" · who should look: {text}" if text else "")
+    for info in refs:
+        if info.key in used and info not in people:
+            people.append(info)
+    return out
 
 
 def feeds_slate(
@@ -112,12 +126,11 @@ def feeds_slate(
 ):
     kwargs, label, head = _target(caller, lab, project)
 
+    people: list = []
+
     def who(lines, rows):
-        names = _display_names(rows)
-        return [
-            line + _who_should_look(s, names)
-            for line, s in zip(lines, rows, strict=True)
-        ]
+        tails = _who_should_look(caller, rows, people)
+        return [line + tail for line, tail in zip(lines, tails, strict=True)]
 
     return lists.slate_view(
         kwargs,
@@ -131,6 +144,7 @@ def feeds_slate(
         deadline=deadline,
         default_limit=8,
         decorate=None if "target_user" in kwargs else who,
+        more_refs=people,
     )
 
 

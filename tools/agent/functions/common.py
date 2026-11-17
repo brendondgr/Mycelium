@@ -125,6 +125,36 @@ def person_info(user, *, caller) -> RefInfo:
     )
 
 
+def people_lines(caller, users) -> tuple[list, list[str]]:
+    """``(refs, lines)``: one line per person, carrying their reference number
+    wherever the caller may open that person (so a name in an answer can be
+    cited), and the bare name otherwise. A guest gets names only, as before."""
+    from .kinds import visible_people_for
+
+    users = list(users)
+    if not users:
+        return [], []
+    seen = set()
+    if not getattr(caller, "is_guest", False):
+        seen = set(
+            visible_people_for(caller)
+            .filter(pk__in=[u.pk for u in users])
+            .values_list("pk", flat=True)
+        )
+        if caller.user is not None:
+            seen.add(caller.user.pk)
+    refs, lines = [], []
+    for user in users:
+        name = user.get_full_name() or user.username
+        info = person_info(user, caller=caller) if user.pk in seen else None
+        if info is not None and audience_allows(caller, info.output):
+            refs.append(info)
+            lines.append(f"{{ref:{info.ref}}} {name} (@{user.username})")
+        else:
+            lines.append(name)
+    return refs, lines
+
+
 def ref_key(token: str) -> str:
     """``kind:key`` (as dispatch passes cleared references) → ``key``."""
     return str(token).split(":", 1)[1] if ":" in str(token) else str(token)

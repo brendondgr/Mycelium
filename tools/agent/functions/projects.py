@@ -103,7 +103,15 @@ def projects_get(caller, project=None):
                 f"{d.change}: {d.topic}" for d in lab_only[:8]
             )
     info = common.project_info(p)
-    return Result(content=f"{{ref:{info.ref}}}\n{text}", refs=[info])
+    # Members one to a line, each with a reference, so an answer that names a
+    # member can cite them; the block's own line gives names only.
+    people, member_lines = common.people_lines(caller, p.members.all()[:12])
+    if member_lines:
+        text = "\n".join(
+            line for line in text.splitlines() if not line.startswith("Members: ")
+        )
+        text += "\nMembers:\n" + "\n".join(f"- {line}" for line in member_lines)
+    return Result(content=f"{{ref:{info.ref}}} {p.name}\n{text}", refs=[info, *people])
 
 
 def projects_feed(
