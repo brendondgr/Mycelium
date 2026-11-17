@@ -75,6 +75,17 @@ EMPTY_RETRY = (
     "few sentences with what you found. If you found nothing useful, say so "
     "plainly and say what they could ask instead."
 )
+#: Told to the model when its reply was empty although the server says it
+#: stopped to call a function: the call was lost on the way (the server could
+#: not read it), so nothing ran. It is asked for again with functions still
+#: on — answering "with what you found" is no use to a model that was about to
+#: look something up (EXP-2026-11-019 Amendment 7: every empty call of Gemma
+#: 4 31B was of this kind, and the no-functions retry then lost its call too).
+LOST_CALL_RETRY = (
+    "Your last step was a function call that could not be read, so nothing "
+    "ran. Send it again: one function at a time, its arguments as one JSON "
+    "object."
+)
 #: Posted when that chance is empty too, so the person never sees a blank.
 EMPTY_GIVE_UP = (
     "I couldn't put together an answer to that. Try asking again, or ask in a "
@@ -326,6 +337,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
     repaired = False
     runaway_retried = False
     empty_retried = False
+    lost_call_retried = False
     force_final = ""
     while True:
         if stream.cancel_requested(thread.pk):
@@ -487,6 +499,21 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                     continue
                 gave_up = True
             empty = not gave_up and not (reply.text or "").strip()
+            if (
+                empty
+                and reply.finish == "tool_calls"
+                and not force_final
+                and not lost_call_retried
+            ):
+                # A call was made and lost: ask for it again, functions on.
+                lost_call_retried = True
+                store.append(
+                    thread, "verdict", {"ok": False, "action": "lost_call_retry"}
+                )
+                store.append(
+                    thread, "note", {"text": LOST_CALL_RETRY, "to_model": True}
+                )
+                continue
             if empty and not empty_retried:
                 # Never post a blank: one more try, without functions (Q-070).
                 empty_retried = True
@@ -593,6 +620,7 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             if not thread.shared and _drain_queue(thread):
                 steps, failed_steps, repaired, force_final, seen = 0, 0, False, "", {}
                 failures, malformed = {}, {}
+                lost_call_retried = False
                 continue
             return AgentThread.State.IDLE
 

@@ -49,6 +49,42 @@ def test_an_empty_reply_gets_one_more_chance_without_functions(scripted, db):
     assert any(loop.EMPTY_RETRY in text for text in sent)
 
 
+def _lost_call():
+    """What the server returns when it could not read the model's call."""
+    usage = {"total_tokens": 9}
+    return LLMResponse(content="", finish_reason="tool_calls", usage=usage)
+
+
+def test_a_lost_function_call_is_asked_for_again_with_functions_on(scripted, db):
+    # EXP-2026-11-019 Amendment 7: the server said the model stopped to call a
+    # function and returned no call; the no-functions retry could not help.
+    thread = thread_for(make_user("ada"))
+    _send(thread, "who am I?")
+    model = scripted(_lost_call(), _lost_call(), [("me_profile", {})], "You are Ada.")
+    loop.run_turn(thread.pk, port=model)
+    assert _final(thread) == "You are Ada."
+    assert _events(thread, "verdict")[0]["action"] == "lost_call_retry"
+    again = model.requests[2]
+    assert again["tool_choice"] == "auto" and again["tools"]
+    sent = [str(m.get("content")) for m in again["messages"]]
+    assert any(loop.LOST_CALL_RETRY in text for text in sent)
+    results = _events(thread, "tool_result")
+    assert [r["status"] for r in results] == ["ok"]
+
+
+def test_a_call_lost_twice_falls_back_to_the_empty_reply_path(scripted, db):
+    thread = thread_for(make_user("ada"))
+    _send(thread, "who am I?")
+    model = scripted(
+        _lost_call(), _lost_call(), _lost_call(), _lost_call(), "I could not look."
+    )
+    loop.run_turn(thread.pk, port=model)
+    actions = [v["action"] for v in _events(thread, "verdict")]
+    assert actions[:2] == ["lost_call_retry", "empty_retry"]
+    assert _final(thread) == "I could not look."
+    assert model.requests[-1]["tool_choice"] in ("none", None)
+
+
 def test_a_second_empty_reply_posts_an_honest_line(scripted, db):
     thread = thread_for(make_user("ada"))
     _send(thread, "what is new?")

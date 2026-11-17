@@ -46,7 +46,7 @@ the API, a developer CLI, the web chat panel and Discord.
   in view must be read, and every concrete detail (an `Authors:`/`Venue:`/
   `DOI:`/date/amount line, a DOI, a measured figure) must appear in what was
   read. One repair is asked for with functions still on; what stays unbacked
-  is removed and the person told. A reply that loops (`runaway_cut`) is
+  is removed and the person told. An empty reply that the server says stopped to call a function (a call it could not read) is asked for again with functions still on (`LOST_CALL_RETRY`); any other empty reply gets one more try without functions, then a plain line. A reply that loops (`runaway_cut`) is
   thrown away and retried once, then replaced by a plain "I got stuck" line. Everything is an `AgentEvent`; streaming is Redis pub/sub
   (`stream.py`, SSE at `threads/<id>/stream/`).
 - **Whatever is named can be cited.** Every person and project a function
