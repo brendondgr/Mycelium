@@ -51,3 +51,15 @@
   details drawn from long function results to attribute each one reliably.
   Their impression that the answers looked grounded is not a measurement and
   is not used. Q-081 stays open; a shorter sheet is suggested there.
+- 2026-11-16 (Amendment 2, short sheet marked): how the sheet was read, from
+  the maintainer's notes (summarised; the notes are not copied here).
+  - The helper passages (evidence lines sharing the most words with the detail)
+    often pointed at the wrong place, and a row judged from them alone could
+    look unsupported when the full evidence supported it. The marks rest on
+    the full evidence, as the instructions asked.
+  - The five rows marked `not_a_detail` are evaluative phrases ("most relevant
+    new papers", "also highly relevant", "precise match", "is the strongest
+    candidate to lead this effort") and one count echoed from the question
+    ("three").
+  - A future sheet should show the evidence the reader cited, not a
+    word-overlap guess, and should give the reader's detail in its sentence.

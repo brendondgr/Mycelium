@@ -41,7 +41,7 @@ data:
   version: "live corpus on 2026-11-15"
   split: test
   n_examples: 250
-  qrels: "5a/5b labels by construction; 5c judged by a second model (not people)"
+  qrels: "5a/5b labels by construction; 5c judged by a second model, its detail marks checked by one person on 66 details (Amendment 2)"
   hash: null
   card: null # docs/research/datasets/cards/<name>.md
 seeds: [20261115]
@@ -89,6 +89,10 @@ metrics:
     checker_recall_model_judged_single_call_amend1: {mean: 0.0, k: 0, n: 23, ci95_wilson: [0.0, 0.1431]}
     reader_unsupported_per_answer_mylo_preregistered: {mean: 0.208, n: 24}
     reader_failed_at_6000_tokens: {mean: 0.48, k: 48, n: 100}
+    reader_precision_vs_person_details: {mean: 0.0, k: 0, n: 28, ci95_wilson: [0.0, 0.121]} # Amendment 2
+    reader_false_support_vs_person_details: {mean: 0.0, k: 0, n: 33, ci95_wilson: [0.0, 0.104]} # Amendment 2
+    reader_flagged_not_a_detail_person: {mean: 0.1515, k: 5, n: 33} # Amendment 2
+    reader_kappa_vs_person_details: {mean: 0.0, n: 61} # Amendment 2, equal-stratum sample; the person marked no detail unsupported
 baselines_compared: ["5b read-reference controls", "5c single-call answers (never checked)"]
 statistical_test: "Wilson 95%; exact one-sided 95% upper bound for zero counts"
 

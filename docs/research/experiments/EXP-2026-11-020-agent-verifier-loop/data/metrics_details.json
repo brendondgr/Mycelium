@@ -1,0 +1,41 @@
+{
+ "items": 66,
+ "marked": 66,
+ "reader_unsupported": {
+  "marked": 33,
+  "not_a_detail": 5,
+  "person_unsupported": 0,
+  "person_supported": 28
+ },
+ "reader_supported_sample": {
+  "marked": 33,
+  "not_a_detail": 0,
+  "person_unsupported": 0,
+  "person_supported": 33
+ },
+ "reader_precision": {
+  "k": 0,
+  "n": 28,
+  "rate": 0.0,
+  "wilson95": [
+   0.0,
+   0.121
+  ]
+ },
+ "reader_false_support": {
+  "k": 0,
+  "n": 33,
+  "rate": 0.0,
+  "wilson95": [
+   0.0,
+   0.104
+  ],
+  "reader_supported_total": 293,
+  "estimated_missed": 0.0
+ },
+ "kappa": {
+  "n": 61,
+  "agree": 33,
+  "kappa": 0.0
+ }
+}
