@@ -155,6 +155,13 @@ class Reply:
 _THINK = re.compile(r"<think>(.*?)(</think>|$)", re.S)
 _HERMES = re.compile(r"<tool_call>\s*(\{.*?\})\s*(</tool_call>|$)", re.S)
 _TOOL_CODE = re.compile(r"```(?:tool_code|python)?\s*\n?(.*?)```", re.S)
+#: Gemma's own call markup, when the server hands it back as text instead of
+#: a call: ``<|tool_call>call:name{key:<|"|>text<|"|>,n:3}<tool_call|>``.
+_GEMMA = re.compile(
+    r"<\|tool_call>\s*call:\s*([\w.-]+)\s*(\{.*?\})\s*(?:<tool_call\|>|$)", re.S
+)
+_GEMMA_STRING = re.compile(r"<\|\"\|>(.*?)<\|\"\|>", re.S)
+_BARE_KEY = re.compile(r"([{,]\s*)([A-Za-z_]\w*)\s*:")
 
 
 def repair_json(text: str) -> dict | None:
@@ -208,9 +215,32 @@ def _json_candidates(text: str):
     yield re.sub(r",\s*([}\]])", r"\1", closed)
 
 
+def _gemma_args(body: str) -> dict | None:
+    """``{item:<|"|>#1<|"|>,limit:5}`` as a dict: its strings are quoted with
+    a token of their own and its keys are bare."""
+    strings: list[str] = []
+
+    def keep(match):
+        strings.append(match.group(1))
+        return f"\x00{len(strings) - 1}\x00"
+
+    body = _BARE_KEY.sub(r'\1"\2":', _GEMMA_STRING.sub(keep, body))
+    body = re.sub(
+        r"\x00(\d+)\x00", lambda m: json.dumps(strings[int(m.group(1))]), body
+    )
+    return repair_json(body)
+
+
 def _leaked_calls(text: str, known: set[str]) -> tuple[list[Call], str]:
     calls: list[Call] = []
     rest = text
+    for match in list(_GEMMA.finditer(text)):
+        # Markup no person writes: a call whatever its name, so an unknown
+        # function is answered as one instead of being posted as the reply.
+        args = _gemma_args(match.group(2))
+        if args is not None:
+            calls.append(_call(match.group(1), args))
+            rest = rest.replace(match.group(0), "")
     for match in list(_HERMES.finditer(text)):
         data = repair_json(match.group(1)) or {}
         name = data.get("name")
@@ -359,11 +389,17 @@ def parse(
                 error=error,
             )
         )
-    if not calls and allow_calls:
+    if not calls:
         leaked, rest = _leaked_calls(text, known)
-        if leaked:
+        if leaked and allow_calls:
             calls, text = leaked, rest
             repairs.append("leaked_call")
+        elif leaked:
+            # Asked to answer without functions and it wrote a call: the
+            # markup is never the answer (Q-093). What is left may be empty,
+            # and the loop then asks again or says so.
+            text = rest
+            repairs.append("leaked_call_dropped")
     text, cut = cut_runaway(text)
     if cut:
         repairs.append("runaway_cut")

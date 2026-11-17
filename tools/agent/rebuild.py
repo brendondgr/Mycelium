@@ -28,7 +28,7 @@ CHARS_PER_TOKEN = 4
 
 _UNTRUSTED_CLOSE = re.compile(r"</\s*untrusted", re.I)
 _CALL_TAGS = re.compile(
-    r"<\s*/?\s*(tool_call|tool_code|function_call|\|tool_call\|)\s*>", re.I
+    r"<\s*/?\s*\|?\s*(tool_call|tool_code|function_call)\s*\|?\s*>", re.I
 )
 
 

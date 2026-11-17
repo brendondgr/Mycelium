@@ -136,3 +136,24 @@ def test_a_turn_the_queue_refuses_does_not_leave_the_thread_running(
     out = service.send(for_thread(thread), thread, "are you there?")
     assert out["status"] != "queued"
     assert not AgentQueuedMessage.objects.filter(thread=thread).exists()
+
+
+GEMMA_CALL = "<|tool_call>call:me_profile{}<tool_call|>"
+
+
+def test_call_markup_the_server_did_not_read_runs_as_the_call(scripted, db):
+    # Q-093: the markup was stored as the final answer and shown.
+    thread = thread_for(make_user("ada"))
+    _send(thread, "who am I?")
+    loop.run_turn(thread.pk, port=scripted(GEMMA_CALL, "You are Ada."))
+    assert [r["status"] for r in _events(thread, "tool_result")] == ["ok"]
+    assert _final(thread) == "You are Ada."
+    said = [p.get("text", "") for p in _events(thread, "assistant")]
+    assert all("tool_call" not in text for text in said)
+
+
+def test_call_markup_in_place_of_the_last_answer_posts_an_honest_line(scripted, db):
+    thread = thread_for(make_user("ada"))
+    _send(thread, "who am I?")
+    loop.run_turn(thread.pk, port=scripted("", "", GEMMA_CALL))
+    assert _final(thread) == loop.EMPTY_GIVE_UP
