@@ -272,7 +272,8 @@ PROJECTS = (
     _f(
         "projects_feed",
         "Looking at the project's feed",
-        "A project's current slate, in rank order or filtered by deadline or amount.",
+        "One project's own feed (not the lab's feed: that is feeds_slate), in rank "
+        "order or filtered by deadline or amount.",
         "The project's current per-category slate from the nightly ranking, in rank "
         "order, with why each item fits, what it pays and when it entered. With "
         "due_from, due_to or deadline it lists instead every grant, fellowship or "
@@ -280,7 +281,9 @@ PROJECTS = (
         "amount_min, amount_max or currency, every grant or fellowship that pays "
         "such an amount. Either is checked over the whole slate, so there is no "
         "need to read the items one by one. The last line of the result says "
-        "whether the list is complete.",
+        "whether the list is complete. A project's feed is ranked for that project "
+        "alone: a question about the lab's feed is answered by feeds_slate, not by "
+        "putting the projects' feeds together.",
         f"{H}.projects:projects_feed",
         output="public",
         params={
@@ -419,7 +422,8 @@ FEEDS = (
     _f(
         "feeds_slate",
         "Looking at the current feed",
-        "The current slate of a person, lab or project; filter by deadline or amount.",
+        "The feed (current slate) of the person, a lab or a project; filter by "
+        "deadline or amount. The one to call for \"the lab's feed\".",
         "The current Top-25 slate per category from the nightly ranking, in rank "
         "order, with why each item fits: the person's own (in a personal thread), or a "
         "lab's or project's (named, or this conversation's). To answer which grants, "
@@ -479,12 +483,16 @@ FEEDS = (
     _f(
         "feeds_deadlines",
         "Checking upcoming deadlines",
-        "Upcoming deadlines among saved and slate items.",
+        "Upcoming deadlines across the person's and this lab's saves and feeds "
+        "together; for one feed alone use feeds_slate with due_from and due_to.",
         "Deadlines in the coming days (default 60), or between due_from and due_to, "
         "of the grants, fellowships and conferences the person or this lab saved or "
         "has in its current slate, earliest first; types and deadline narrow it. "
-        "Every deadline in the window is listed; the last line says whether the "
-        "list is complete.",
+        "Every deadline in the window is listed, and each row says every save list "
+        "and feed the item is in; the last line says whether the list is complete. "
+        "It mixes the person's own and the lab's: when the question is about one "
+        "feed (the lab's feed, a project's feed), call feeds_slate or projects_feed "
+        "with due_from and due_to instead.",
         f"{H}.feeds:feeds_deadlines",
         output="lab",
         params={

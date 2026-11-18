@@ -360,6 +360,32 @@ def test_feeds_deadlines_mixed_output(world):
     )
 
 
+def test_a_deadline_row_names_every_feed_the_item_is_in(world):
+    # Q-095: an item in the person's feed and the lab's was labelled "from your
+    # feed" only, and an answer about the lab's feed left it out.
+    both, own = item("In both feeds", "grant"), item("Only mine", "grant")
+    score(both, 1, target_user=world.member)
+    score(both, 2, target_lab=world.lab)
+    score(own, 2, target_user=world.member)
+    deadline(both, 5)
+    deadline(own, 6)
+    out = run(world.member, "feeds_deadlines", {}, kind="lab", obj=world.lab)
+    lines = out["content"].splitlines()
+    shared_row = next(x for x in lines if "In both feeds" in x)
+    own_row = next(x for x in lines if "Only mine" in x)
+    assert shared_row.endswith(f"from your feed and {world.lab.name}'s feed")
+    assert own_row.endswith("from your feed")
+
+
+def test_the_index_says_which_function_reads_the_labs_feed():
+    # Q-095: asked about "the lab's feed", one model read each project's feed.
+    reg = registry.registry()
+    assert "the lab's feed" in reg.get("feeds_slate").summary
+    assert "not the lab's feed" in reg.get("projects_feed").summary
+    assert "feeds_slate" in reg.get("projects_feed").summary
+    assert "feeds_slate" in reg.get("feeds_deadlines").summary
+
+
 # -- knowledge ---------------------------------------------------------------
 
 

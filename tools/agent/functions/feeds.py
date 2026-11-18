@@ -310,11 +310,13 @@ def feeds_deadlines(
         span += f" ({only} only)"
     if set(types) != set(DATED):
         span += f" ({', '.join(types)} only)"
-    origin: dict = {}  # content id -> where it came from
+    origin: dict = {}  # content id -> every place it came from, in reading order
 
     def add(ids, label):
         for cid in ids:
-            origin.setdefault(cid, label)
+            places = origin.setdefault(cid, [])
+            if label not in places:
+                places.append(label)
 
     loose = []  # personal saves whose item has left the corpus: the snapshot date
     lab = caller.scope.lab
@@ -371,7 +373,7 @@ def feeds_deadlines(
         lines.append(
             f"- {d.due_date:%Y-%m-%d} (in {(d.due_date - today).days} days) "
             f"{{ref:{info.ref}}} {common.item_title(d.content)} — {what}{sure}; "
-            f"from {origin[d.content_id]}"
+            f"from {' and '.join(origin[d.content_id])}"
         )
     keep = lists.fit(lines)
     refs = [common.item_info(d.content) for d in rows[:keep]]
