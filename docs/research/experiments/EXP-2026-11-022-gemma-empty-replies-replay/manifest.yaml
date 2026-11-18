@@ -34,7 +34,7 @@ code:
   entrypoint: "SNAP=<git archive of 44100c04|55cfdb1c> LABEL={f1115,f1117,f1115ns} SEED={101,202,303} ARM={gate,prompt_only} [EXTRA=--no-stream] bash code/drive.sh; then python3 code/analyse.py"
   dirty: false  # only this new folder was untracked (ISSUES.md 6)
 config:
-  path: null
+  path: "none: the frozen code snapshots and the 2026-11-18 .env/mycelium.toml values listed in PROTOCOL.md"
   hash: null
 data:
   name: EXP-2026-11-016 seeded worlds and probes (16 access probes + 2 controls)

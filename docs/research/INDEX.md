@@ -72,6 +72,7 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-020` | 2026-11-15 | The answer checker as a loop: repair, removal, unread | complete | forced_drafts_error_in_final 0.0000 (n=90) | C-047, C-048 (refutes C-049) | [folder](experiments/EXP-2026-11-020-agent-verifier-loop/RESULTS.md) |
 | `EXP-2026-11-021` | 2026-11-16 | Does Mylo work on the model just loaded? A thirty-turn check, one row per model | complete | — | C-053, C-054 | [folder](experiments/EXP-2026-11-021-agent-model-check/RESULTS.md) |
 | `EXP-2026-11-022` | 2026-11-18 | Gemma 4 31B empty replies: the 2026-11-15 code replayed against today's server | complete | f1115.both.blank_turns 19.0000 (n=108) | — | [folder](experiments/EXP-2026-11-022-gemma-empty-replies-replay/RESULTS.md) |
+| `EXP-2026-11-023` | 2026-11-18 | Collaborator suggestions for a real department's faculty, for rating by someone who knows them | running | — | — | [folder](experiments/EXP-2026-11-023-collab-live-fsu-sc/RESULTS.md) |
 
 ## Status counts
 
@@ -79,5 +80,5 @@ deleted dead end is a dead end you walk into twice.
 |---|---:|
 | complete | 59 |
 | planned | 3 |
-| running | 1 |
-| **total** | **63** |
+| running | 2 |
+| **total** | **64** |
