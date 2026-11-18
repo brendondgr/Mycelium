@@ -523,3 +523,12 @@ builder unchanged: `R4_GOLD=r6g code/r4.py gold` at 02:47 UTC
 `gold_r5.json` stands, and it is the same as grading against the day's own
 gold.
 
+
+## Amendment 10 — 2026-11-18 ~17:40 UTC, before any answer: the full run on Qwen 3.8 27B after the feed fix (tag `r7`)
+
+- **Why.** Qwen 3.8 27B's full row (`r5`, 87%) is from before the feed fix (`36e1ee03`, Amendment 9); Gemma 4 31B's full row is `r5g`. The maintainer asked for a full run on Qwen after the last list fix.
+- **The run: Amendment 8's design, unchanged.** `code/run.py` unchanged, three arms, three repetitions, every kept question, a failed job retried once at the end, `code/drive_r4.sh` with `TAG=r7`, `LLM=default-model-2`, `EVAL_MODEL_NAME="Qwen 3.8 27B"`, **`--conc 60`** (at most 60 in flight: a turn makes one request at a time; the maintainer allows 64 on that server, which carries nothing else), a frozen copy of **`a99e1a01`** (contains `36e1ee03` and the Q-096 fix `8dc27349`). Model recorded at the start and end in `logs/model_r7.jsonl`.
+- **Gold recomputed immediately before the first answer**, with the builder unchanged: `R4_GOLD=r7 code/r4.py gold` → `data/gold_r7.json`; the job list is `R4_GOLD=r7 code/r4.py jobs` → `code/jobs_r7.txt` (expected 531 jobs, the same as `jobs_r5g.txt`; if the kept set differs it is the gold's and is reported). The run starts only in a window that keeps the gold and every answer on one UTC day and clear of the nightly run (12:00 UTC): not after 22:00 UTC, not between 10:00 and 15:30 UTC, never while `mylo-daily.service` is active; it waits otherwise. After the run, `R4_GOLD=r7end code/r4.py gold` is computed again and compared with `gold_r7.json`; a difference is reported.
+- **Grading unchanged:** `R4_GOLD=r7 R4_TAG=r7 code/r4.py grade` (and `--first-attempt`), `… code/r4.py partial`, `code/r5_counts.py r7 r5 r5g r6g`. Demo threads are deleted after the run (`code/cleanup.py`).
+- **Claims, on their own bars, beside (never pooled with) the earlier rows on the same model:** C-043, C-044, C-045, C-046, C-056, read as Amendment 8 registers them; lists beside `r5`'s 24/27 and `r6g`'s 24/27; `l07`, `l08`, `l09` by question. Reported whatever it shows.
+- Run fourth in `EXP-2026-11-019/code/drive_qwen_20261118.sh`.
