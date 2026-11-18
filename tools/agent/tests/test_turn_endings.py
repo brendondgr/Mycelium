@@ -96,13 +96,47 @@ def test_a_second_empty_reply_posts_an_honest_line(scripted, db):
 
 def test_a_cut_off_answer_is_asked_again_shorter(scripted, db):
     thread = thread_for(make_user("ada"))
+    _send(thread, "who am I, at length?")
+    model = scripted(
+        [("me_profile", {})], _cut("A very long answer that never"), "You are Ada."
+    )
+    loop.run_turn(thread.pk, port=model)
+    assert _final(thread) == "You are Ada."
+    assert all("never" not in p.get("text", "") for p in _events(thread, "assistant"))
+    assert _events(thread, "verdict")[0]["action"] == "length_retry"
+    assert any(n.get("text") == loop.LENGTH_RETRY for n in _events(thread, "note"))
+    # Something was read, so the shorter answer is asked for without functions.
+    assert model.requests[2]["tool_choice"] in ("none", None)
+
+
+def test_a_reply_cut_off_before_any_lookup_keeps_its_functions(scripted, db):
+    # Q-096: the retry had functions off, the model answered it with a call
+    # that had to be dropped, and the person read the give-up line.
+    thread = thread_for(make_user("ada"))
+    _send(thread, "who am I?")
+    model = scripted(
+        _cut("I should look at the profile first. Step 1"),
+        [("me_profile", {})],
+        "You are Ada.",
+    )
+    loop.run_turn(thread.pk, port=model)
+    assert _final(thread) == "You are Ada."
+    assert [r["status"] for r in _events(thread, "tool_result")] == ["ok"]
+    assert _events(thread, "verdict")[0]["action"] == "length_retry"
+    again = model.requests[1]
+    assert again["tool_choice"] == "auto" and again["tools"]
+    sent = [str(m.get("content")) for m in again["messages"]]
+    assert any(loop.LENGTH_RETRY_UNREAD in text for text in sent)
+    said = [p.get("text", "") for p in _events(thread, "assistant")]
+    assert all("Step 1" not in text for text in said)
+
+
+def test_a_first_reply_cut_off_can_still_be_answered_without_a_lookup(scripted, db):
+    thread = thread_for(make_user("ada"))
     _send(thread, "tell me everything")
     model = scripted(_cut("A very long answer that never"), "The short version.")
     loop.run_turn(thread.pk, port=model)
     assert _final(thread) == "The short version."
-    assert all("never" not in p.get("text", "") for p in _events(thread, "assistant"))
-    assert _events(thread, "verdict")[0]["action"] == "length_retry"
-    assert any(n.get("text") == loop.LENGTH_RETRY for n in _events(thread, "note"))
 
 
 def test_a_second_cut_off_posts_an_honest_line(scripted, db):

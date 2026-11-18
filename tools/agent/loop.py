@@ -97,6 +97,16 @@ LENGTH_RETRY = (
     "thrown away and nobody saw it. Answer again, much shorter: the main "
     "points only."
 )
+#: Told to the model when its reply hit the output cap before it had called
+#: any function in the turn. Functions stay on: "answer again, shorter" with
+#: functions off left a model that had only been reasoning aloud with nothing
+#: to answer from, and the turn ended on the give-up line (Q-096).
+LENGTH_RETRY_UNREAD = (
+    "Your last reply ran past the length limit before you had looked anything "
+    "up, so it was thrown away and nobody saw it. Do not write your reasoning "
+    "out. If you need to look something up, call the function now; if you do "
+    "not, answer in a few sentences."
+)
 #: Told to the model when what one turn read no longer fits the window and
 #: the oldest results were put away so the turn can still end with an answer.
 FIT_FINAL = (
@@ -507,6 +517,9 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
             gave_up = False
             # Cut off at the output cap: treated like a runaway (Q-078).
             cut_off = reply.finish == "length"
+            # Nothing has been called yet in this turn: there is nothing to
+            # answer from, so the retry keeps functions on (Q-096).
+            unread = cut_off and not seen and not force_final
             if "runaway_cut" in (reply.repairs or []) or cut_off:
                 if not runaway_retried:
                     # The looped text is never posted, and never replayed.
@@ -523,10 +536,16 @@ def _turn(caller: Caller, thread: AgentThread, port) -> str:
                     store.append(
                         thread,
                         "note",
-                        {"text": LENGTH_RETRY if cut_off else RUNAWAY_RETRY,
-                         "to_model": True},
+                        {
+                            "text": LENGTH_RETRY_UNREAD
+                            if unread
+                            else LENGTH_RETRY
+                            if cut_off
+                            else RUNAWAY_RETRY,
+                            "to_model": True,
+                        },
                     )
-                    if cut_off:
+                    if cut_off and not unread:
                         force_final = force_final or "Answer now."
                     continue
                 gave_up = True
