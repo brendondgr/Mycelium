@@ -120,6 +120,13 @@ metrics:
     r5g_gemma4.arm_a_rows_with_a_denied_call: {mean: 29, n: 177}
     r5g_gemma4.arm_a_final_text_is_call_markup: {mean: 0, n: 177}
     r5g_gemma4.arm_a_max_function_calls_in_a_job: {mean: 7, n: 177}
+    r6g_gemma4.arm_a_list_full_credit: {mean: 0.8889, n: 27, ci95_wilson: [0.7194, 0.9615]}
+    r6g_gemma4.arm_a_join_full_credit: {mean: 0.8667, n: 30, ci95_wilson: [0.7032, 0.9469]}
+    r6g_gemma4.arm_a_list_and_join_full_credit: {mean: 0.8772, n: 57, ci95_question_bootstrap: [0.7193, 1.0]}
+    r6g_gemma4.list_presented_complete: {mean: 0.0, n: 27, ci95: [0.0, 0.1246]}
+    r6g_gemma4.arm_a_runs_failed_both_attempts: {mean: 0, n: 57}
+    r6g_gemma4.arm_a_rows_with_a_denied_call: {mean: 3, n: 57}
+    r6g_gemma4.arm_a_turns_ended_on_the_give_up_line: {mean: 1, n: 57}
     r4g_gemma4.arm_a_answerable_full_credit: {mean: 0.9048, n: 147, ci95_question_bootstrap: [0.8163, 0.9796]}
     r4g_gemma4.arm_a_answerable_full_credit_secondary: {mean: 0.9048, n: 147, ci95_question_bootstrap: [0.8163, 0.9796]}
     r4g_gemma4.arm_a_list_full_credit: {mean: 0.5926, n: 27}

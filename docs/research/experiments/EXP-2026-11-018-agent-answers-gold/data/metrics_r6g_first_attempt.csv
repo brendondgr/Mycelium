@@ -1,0 +1,9 @@
+grading,arm,kind,metric,k,n,value,lo,hi
+primary,a,list,full_credit,24,27,0.8889,0.7194,0.9615
+primary,a,join,full_credit,26,30,0.8667,0.7032,0.9469
+primary,a,unanswerable,states_fact,0,0,,,
+primary,a,answerable,full_credit,50,57,0.8772,0.7193,1.0
+secondary,a,list,full_credit,24,27,0.8889,0.7194,0.9615
+secondary,a,join,full_credit,26,30,0.8667,0.7032,0.9469
+secondary,a,unanswerable,states_fact,0,0,,,
+secondary,a,answerable,full_credit,50,57,0.8772,0.7193,1.0

@@ -477,3 +477,52 @@ the same model sixteen hours earlier on the other server.
   and the number in flight differ from `r4g`'s, so seconds and arm (c)'s
   failures are not compared. On this model the afternoon's fixes changed two
   things that can be named (no cut list, no markup answer) and no score.
+
+**2026-11-18 — the list and join questions re-asked on Gemma 4 31B after the feed fix (Amendment 9, tag `r6g`).**
+Run 2026-11-18T02:38:23Z–02:42:45Z on `default-model` (operator-stated Gemma 4
+31B, self-reporting "trained by Google" at the start and the end,
+`logs/model_r6g.jsonl`), 32 in flight, arm (a) only, the nine list and ten
+join questions, three repetitions: 57 jobs, 57 rows, none retried, from a
+frozen copy of `36e1ee03`. Graded by `R4_GOLD=r5 R4_TAG=r6g code/r4.py grade`
+and `… partial` (`tables/summary_r6g.md`, `tables/partial_r6g.md`,
+`tables/j08_r6g.md`, `data/metrics_r6g.json`), counts by `code/r5_counts.py`
+(`tables/counts.md`). The row to read it beside is `r5g`, four hours earlier
+on the same server. The run was a day after the gold's day (PROTOCOL, note of
+02:50 UTC): the gold recomputed for the 18th has the same objects for every
+question, so the grading is the same either way.
+
+| Question | `r5g` | `r6g` | What Mylo called in `r6g` |
+|---|---|---|---|
+| `l07` conferences in the lab's feed due in 10 days | 0/3 | **3/3** | `feeds_slate` with the window (`feeds_deadlines` before) |
+| `l08` grants in the lab's feed paying at least €40 million | 0/3 | **3/3** | `feeds_slate` with the amount (each project's feed before) |
+| `l09` grants in the lab's feed stating funding in US dollars | 0/3 | **3/3** | `feeds_slate` with the currency (each project's feed before) |
+| `l04` fellowships with a *confirmed* deadline | 0/3 | 0/3 | `feeds_slate`; lists one anticipated deadline, as before |
+| `l01`, `l03`, `l05`, `l06`, `l10` | 3/3 each | 3/3 each | |
+| `j03` | 3/3 | 2/3 | see below |
+| `j10` | 0/3 | 0/3 | names the other two grants "for comparison", as before |
+| the other eight join questions | 3/3 each | 3/3 each | |
+
+- **Lists 24 of 27 on Gemma (15 of 27 in `r5g`, 16 of 27 in `r4g`)** — the
+  same as Qwen 3.8 27B's `r5`. In all nine runs of `l07`, `l08` and `l09` the
+  model now loads the feed functions and asks the lab's feed in one filtered
+  call. This is the index wording at work; the deadline rows' new labels were
+  not exercised, because no run called `feeds_deadlines`.
+- **C-056: 0 of 27** (Wilson 0–0.12; `r5g` 3 of 27 by the marker): no list
+  run saw a partial list.
+- **Join 26 of 30 (`r5g` 27 of 30), and by the amendment's own rule the lost
+  `j03` run counts against the fix.** What happened in it is not the feed
+  wording: in `j03` rep 2 the model's first reply ran to the 4,096-token
+  output cap without calling anything (its reasoning channel's markup is in
+  the cut text), the loop asked again for a shorter answer with functions
+  off, the model answered with a function call twice, and the turn ended on
+  the give-up line with nothing read. The other two `j03` runs make the same
+  calls as in `r5g` and are right. One event in 57 turns; in `r5g`'s 177
+  arm-(a) turns it did not occur. Recorded as Q-096.
+- **`j08`: 3/3**, no refused call. Denied calls: 3 of 57 rows, full credit in
+  all three.
+- **What this run cannot say:** 57 turns of one arm on one model. It does not
+  re-measure field, project, people or unanswerable questions, so C-043's and
+  C-046's rows on Gemma stay `r5g`'s; putting `r6g`'s list and join results
+  into `r5g`'s other kinds would give 140 of 147, which is an estimate from
+  two runs, not a measurement. The reworded index was not run on Qwen 3.8 27B.
+

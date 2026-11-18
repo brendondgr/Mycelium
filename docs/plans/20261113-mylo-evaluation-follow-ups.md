@@ -72,6 +72,14 @@ maintainer: "fix everything, run it"):**
   feed label, where the question says the lab's feed (Q-095) — the amount
   filter itself works and no list was cut. So the earlier "not measured" line
   above is closed except for the loop-cost arm.
+- **Feed fix, 2026-11-18** (the maintainer: "Yes, fix it"; `36e1ee03`, live
+  since the 02:38 UTC restart): a deadline row names every feed the item is
+  in, and the function index says which function reads the lab's feed.
+  Re-asked on Gemma 4 31B (`EXP-2026-11-018` `r6g`, list and join questions
+  only): the three list questions that were 0 of 3 are 3 of 3; lists 24 of 27
+  (15 before), the same as Qwen. One join turn of 30 ended on the give-up
+  line after its first reply was cut off before any lookup (Q-096, not
+  fixed).
 - **Not built:** ranking by "Open to" (Q-086): it needs the maintainer's word
   on where the kind of collaboration sought comes from, how far it outranks
   match quality, and what an empty "Open to" means.

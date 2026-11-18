@@ -510,3 +510,16 @@ server with the run; seconds are not compared with any other run.
   beside 27 of 30; C-056's marker beside 3 of 27. **What would count against
   the fix:** `l07`, `l08` or `l09` still 0/3; any list or join question that
   was 3/3 in `r5g` and is not now.
+
+**Added 2026-11-18 02:50 UTC, after the `r6g` run (a correction, not a change
+to it).** The day limit above is wrong, and so is Amendment 8's: the instance's
+day is UTC (`TIME_ZONE = "UTC"`), so "today" became 2026-11-18 at 00:00 UTC,
+not at 05:00 UTC. `r5g` (22:05–22:46 UTC on the 17th) ran on the gold's day;
+`r6g` (02:40–02:42 UTC on the 18th) ran a day after it. Three of its questions
+depend on the day (`l04`, `l05`, `l07`). Checked after the run, with the gold
+builder unchanged: `R4_GOLD=r6g code/r4.py gold` at 02:47 UTC
+(`data/gold_r6g.json`, today 2026-11-18) gives the same gold objects as
+`gold_r5.json` for all 59 questions. The registered grading against
+`gold_r5.json` stands, and it is the same as grading against the day's own
+gold.
+
