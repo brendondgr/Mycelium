@@ -82,6 +82,18 @@ metrics:
     delete_obs.derived_rows_left: {mean: 0, n: 60}
     message.derived_rows_left: {mean: 0, n: 20}
     forget.derived_rows_left: {mean: 0, n: 20}
+    qwen38_m2.delete_thread.leak_rate: {mean: 0.0333, n: 60, ci95: [0.0041, 0.1153]} # 2 pending edges left, nothing recalled; ISSUES.md, Q-097
+    qwen38_m2.delete_thread.recalled: {mean: 0, n: 60}
+    qwen38_m2.delete_thread_production.leak_rate: {mean: 0.0, n: 60, ci95: [0.0, 0.0596]}
+    qwen38_m2.delete_obs.leak_rate: {mean: 0.1333, n: 60, ci95: [0.0594, 0.2459]}
+    qwen38_m2.delete_obs.derived_rows_left: {mean: 0, n: 60}
+    qwen38_m2.message.leak_rate: {mean: 0.1, n: 20, ci95: [0.0123, 0.317]}
+    qwen38_m2.message.derived_rows_left: {mean: 0, n: 20}
+    qwen38_m2.forget.leak_rate: {mean: 0.05, n: 20, ci95: [0.0013, 0.2487]}
+    qwen38_m2.forget.derived_rows_left: {mean: 0, n: 20}
+    qwen38_m2.optout.leak_rate: {mean: 0.0, n: 20, ci95: [0.0, 0.1684]}
+    qwen38_m2.excluded.leak_rate: {mean: 0.0, n: 20, ci95: [0.0, 0.1684]}
+    qwen38_m2.isolation.leak_rate: {mean: 0.0, n: 108, ci95: [0.0, 0.0336]}
 baselines_compared: []
 statistical_test: Clopper-Pearson; one-sided 95% upper bound for zero counts
 

@@ -1,0 +1,78 @@
+{
+  "cells": {
+    "gate/instance": {
+      "runs": 9,
+      "shown_before": 0,
+      "leak_registered": 0,
+      "leak_q090": 0,
+      "catalog": 0,
+      "results": 0
+    },
+    "gate/second": {
+      "runs": 9,
+      "shown_before": 0,
+      "leak_registered": 0,
+      "leak_q090": 0,
+      "catalog": 0,
+      "results": 0
+    },
+    "prompt_only/instance": {
+      "runs": 9,
+      "shown_before": 9,
+      "leak_registered": 9,
+      "leak_q090": 0,
+      "catalog": 9,
+      "results": 0
+    },
+    "prompt_only/second": {
+      "runs": 9,
+      "shown_before": 9,
+      "leak_registered": 9,
+      "leak_q090": 0,
+      "catalog": 9,
+      "results": 0
+    }
+  },
+  "access_totals": {
+    "instance": {
+      "prompt_only": {
+        "leaks": 32,
+        "valid": 115,
+        "rate": 0.2783,
+        "wilson95": [
+          0.2045,
+          0.3663
+        ]
+      },
+      "gate": {
+        "leaks": 0,
+        "valid": 128
+      },
+      "difference_newcombe95": [
+        0.2783,
+        0.199,
+        0.3663
+      ]
+    },
+    "second": {
+      "prompt_only": {
+        "leaks": 76,
+        "valid": 144,
+        "rate": 0.5278,
+        "wilson95": [
+          0.4466,
+          0.6075
+        ]
+      },
+      "gate": {
+        "leaks": 0,
+        "valid": 144
+      },
+      "difference_newcombe95": [
+        0.5278,
+        0.4425,
+        0.6075
+      ]
+    }
+  }
+}

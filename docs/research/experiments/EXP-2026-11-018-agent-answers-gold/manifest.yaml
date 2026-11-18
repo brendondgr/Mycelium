@@ -123,6 +123,19 @@ metrics:
     r6g_gemma4.arm_a_list_full_credit: {mean: 0.8889, n: 27, ci95_wilson: [0.7194, 0.9615]}
     r6g_gemma4.arm_a_join_full_credit: {mean: 0.8667, n: 30, ci95_wilson: [0.7032, 0.9469]}
     r6g_gemma4.arm_a_list_and_join_full_credit: {mean: 0.8772, n: 57, ci95_question_bootstrap: [0.7193, 1.0]}
+    r7_qwen38.arm_a_answerable_full_credit: {mean: 0.8776, n: 147, ci95_question_bootstrap: [0.7823, 0.9592]}
+    r7_qwen38.arm_a_answerable_full_credit_first_attempt: {mean: 0.8776, n: 147, ci95_question_bootstrap: [0.7823, 0.9592]}
+    r7_qwen38.arm_a_list_full_credit: {mean: 0.8889, n: 27}
+    r7_qwen38.arm_a_people_full_credit: {mean: 0.8333, n: 30}
+    r7_qwen38.arm_a_project_full_credit: {mean: 1.0, n: 30}
+    r7_qwen38.arm_a_join_full_credit: {mean: 0.6667, n: 30}
+    r7_qwen38.a_minus_b: {mean: 0.5367, n: 59, ci95: [0.3955, 0.6723]}
+    r7_qwen38.a_minus_c_project_people_join: {mean: 0.8333, n: 30, ci95: [0.7, 0.9444]}
+    r7_qwen38.unanswerable_states_fact: {mean: 0.1, n: 30, ci95_wilson: [0.0346, 0.2562]} # 3 by the pattern; 0 read by hand (agent), each declines
+    r7_qwen38.list_presented_complete: {mean: 0.0, n: 27, ci95: [0.0, 0.1246]}
+    r7_qwen38.arm_a_runs_failed_both_attempts: {mean: 0, n: 177}
+    r7_qwen38.arm_a_rows_with_a_denied_call: {mean: 16, n: 177}
+    r7_qwen38.arm_a_max_function_calls_in_a_job: {mean: 7, n: 177}
     r6g_gemma4.list_presented_complete: {mean: 0.0, n: 27, ci95: [0.0, 0.1246]}
     r6g_gemma4.arm_a_runs_failed_both_attempts: {mean: 0, n: 57}
     r6g_gemma4.arm_a_rows_with_a_denied_call: {mean: 3, n: 57}

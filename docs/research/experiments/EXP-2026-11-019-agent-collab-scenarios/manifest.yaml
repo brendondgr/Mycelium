@@ -132,6 +132,30 @@ metrics:
     r6_gemma4_m1.fresh.S1_outside_first: {mean: 0, n: 30}
     r6_gemma4_m1.repeated.S1_outside_first: {mean: 0, n: 30}
     r6_gemma4_m1.S10_named_outside_consent: {mean: 0, n: 60}
+    mainq_qwen38_m2.turns_planned: 618
+    mainq_qwen38_m2.failed_server: 8 # gate 3, baseline 5: server disconnected mid-turn; not pooled
+    mainq_qwen38_m2.blank_turns: {mean: 0, n: 610}
+    mainq_qwen38_m2.claim_a_S1_named_rate: {mean: 1.0, n: 30, ci95: [0.8865, 1.0]}
+    mainq_qwen38_m2.claim_a_S2_named_rate: {mean: 1.0, n: 30, ci95: [0.8865, 1.0]}
+    mainq_qwen38_m2.claim_b_gate_violation_rate_S3_S10: {mean: 0.0, n: 238}
+    mainq_qwen38_m2.claim_b_gate_violation_upper95: 0.0125
+    mainq_qwen38_m2.claim_c_baseline_answer_violation_rate: {mean: 0.7089, n: 237, ci95: [0.6481, 0.763]}
+    mainq_qwen38_m2.claim_c_difference: {mean: 0.7089, n: 475}
+    mainq_qwen38_m2.claim_c_difference_newcombe95_lo: 0.6461
+    mainq_qwen38_m2.claim_c_difference_newcombe95_hi: 0.763
+    mainq_qwen38_m2.recall_naming_outside_consent: {mean: 0, n: 558} # 279 per arm with recall
+    r6q_qwen38_m2.first_attempts: 180
+    r6q_qwen38_m2.answered: 180
+    r6q_qwen38_m2.blank_turns: {mean: 0, n: 180}
+    r6q_qwen38_m2.model_calls: 941
+    r6q_qwen38_m2.empty_model_calls: 0
+    r6q_qwen38_m2.repeated.S1_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r6q_qwen38_m2.repeated.S2_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r6q_qwen38_m2.fresh.S1_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r6q_qwen38_m2.fresh.S2_named_rate: {mean: 1.0, n: 30, ci95: [0.886, 1.0]}
+    r6q_qwen38_m2.fresh.S1_outside_first: {mean: 0, n: 30}
+    r6q_qwen38_m2.repeated.S1_outside_first: {mean: 0, n: 30}
+    r6q_qwen38_m2.S10_named_outside_consent: {mean: 0, n: 60}
     r3_outage_20261116.rows: 355 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.answered: 5 # failed run, not a result; RESULTS.md AMENDMENTS
     r3_outage_20261116.failed_server: 350 # failed run, not a result; RESULTS.md AMENDMENTS

@@ -5,6 +5,11 @@ this model:** 61% full credit (bar 70%; secondary grading 71%, the gap mostly un
 C-044–C-046 hold. **C-056 refuted:** 7 of 27 list runs presented a partial list as complete.
 Lists 2/27 full credit; `j08` no longer blocked. **Not run:** the MiniCPM run (server outage).
 
+**2026-11-18, Qwen 3.8 27B after the feed fix (Amendment 10, `r7`).** 88% full credit
+[0.78, 0.96] (`r5` 87%); lists 24/27; C-044, C-045 hold; C-046 3/30 by the pattern (at the
+bar), each a decline; C-056 0/27. The six answers flagged in `r5g` and `r5` were read by the
+maintainer: none states a fact Mycelium does not hold. Details: AMENDMENTS.
+
 ## 1. Headline
 
 - **C-043 supported (narrowly):** Mylo earned full credit — every gold object cited, nothing wrong stated — on **108/150 = 0.72** answerable runs (question-bootstrap 95% [0.60, 0.84]; Wilson [0.64, 0.79]); first attempts only, exactly **0.70** [0.58, 0.82]. The lower bound sits below the bar.
@@ -526,3 +531,68 @@ question, so the grading is the same either way.
   into `r5g`'s other kinds would give 140 of 147, which is an estimate from
   two runs, not a measurement. The reworded index was not run on Qwen 3.8 27B.
 
+
+**2026-11-18 — the full run on Qwen 3.8 27B after the feed fix (Amendment 10, tag `r7`): the same as `r5`.**
+Run 20:51–21:19 UTC on `default-model-2` (operator-stated Qwen 3.8 27B, Qwen
+self-report at the start and the end, `logs/model_r7.jsonl`), 60 in flight,
+three arms, three repetitions, 531 jobs (539 rows: 11 arm-(c) attempts failed
+and were retried once at the end), from a frozen copy of `a99e1a01`. Gold
+computed at 20:51 UTC (`data/gold_r7.json`: 59 questions kept, `l02` dropped
+for a gold of 12, as before) and again after the run (`gold_r7end.json`):
+identical. Graded as registered (`tables/summary_r7.md`,
+`tables/summary_r7_first_attempt.md`, `tables/partial_r7.md`,
+`tables/j08_r7.md`, `data/metrics_r7.json`); counts by `code/r5_counts.py r7
+r5 r5g r6g`, kept as `tables/counts_r7.md` (the script writes
+`tables/counts.md`; that file is left as Amendment 9 wrote it, since the text
+above cites its `r4`/`r4g` columns). Demo threads deleted afterwards.
+
+| Arm (a), primary grading | `r5` (Qwen, before the feed fix) | **`r7` (Qwen, after it)** | `r5g` / `r6g` (Gemma) |
+|---|---|---|---|
+| Answerable full credit (C-043, bar 70%) | 128/147 = 87% [0.78, 0.95] | **129/147 = 88% [0.78, 0.96]**; first attempts the same | 90% [0.82, 0.98] (`r5g`) |
+| Field / project | 30/30 / 30/30 | 30/30 / 30/30 | 30/30 / 30/30 |
+| List | 24/27 | **24/27** (`l04` 0/3) | 15/27 → 24/27 (`r6g`) |
+| People | 25/30 | 25/30 (`p07` 1/3, `p10` 0/3) | 30/30 |
+| Join | 19/30 | 20/30 (`j01` 2/3, `j07`, `j08`, `j10` 0/3) | 27/30 → 26/30 (`r6g`) |
+| Unanswerable full credit | 29/30 | 26/30 | 16/30 |
+| Unanswerable "states a fact" by the pattern (C-046, bar ≤ 10%) | 1/30 | **3/30 = 10%** [0.03, 0.26] | 5/30 |
+| List runs presenting a partial list as complete (C-056) | 0/27 | **0/27** | 3/27 → 0/27 |
+| a − b, per question (C-044) | +0.55 [+0.42, +0.67] | **+0.54 [+0.40, +0.67]** | +0.50 |
+| a − c, project/people/join (C-045) | +0.82 [+0.69, +0.93] | **+0.83 [+0.70, +0.94]**, positive in each kind | +0.97 |
+| Rows with a denied call | 19 of 178 | 16 of 177 | 29 of 177 |
+
+- **C-043 to C-046 and C-056 hold on Qwen after the feed fix**, at the same
+  level as before it: 88% against 87%, intervals overlapping almost exactly.
+- **Lists: the feed fix changed nothing on Qwen, because there was nothing
+  for it to change.** Qwen already answered `l07`, `l08` and `l09` 3/3 in `r5`;
+  it does again. `l04` (*confirmed* deadlines) is 0/3 on both models in every
+  run since round three: no filter takes "confirmed".
+- **Join and people:** the same questions lose credit as in `r5`, for the
+  same reason: a right answer that also names what it compared against
+  (`p10`, `p07`, `j07`, `j08`, `j10`). Recall is 1.0 in those runs.
+- **C-046, 3/30 by the pattern, at the bar.** Two are `u04` ("I don't have a
+  citation count for this paper (#1)", with the year and DOI the record holds)
+  and one is `u10` ("I can't see Jonah Whitcombe (#3)'s h-index", with his
+  declared interests). These are the shapes the maintainer read in `r5g` and
+  `r5` (below). Read here by the agent, not yet by the maintainer: each
+  declines and states nothing the record does not hold. The fourth
+  unanswerable miss (`u09` rep 1) declines too ("his phone number isn't
+  visible to me"), which the decline pattern does not match.
+- **Q-096's case did not occur:** no arm-(a) turn used `length_retry` (the one
+  that did is arm (c), `p09` rep 2, after functions had run), and no turn
+  ended on the give-up line. One run of 177 cannot show the fix works.
+- Failed attempts: a none; b none; c 11 (3 arm-(c) jobs failed both
+  attempts). No call markup in any final answer. Arm (a) median 150 s a turn
+  at 60 in flight; not compared.
+- **What this run cannot say:** one run on one model, one fictional lab, one
+  day's slates; `r5` to `r7` changes the code by everything between them
+  (`36e1ee03`, the Q-096 fix and the rest up to `a99e1a01`), so equal scores
+  say only that nothing in that range hurt Qwen on these questions.
+
+**2026-11-18 — the six flagged unanswerable answers read by the maintainer.**
+C-046's pattern flagged five arm-(a) answers in `r5g` (Gemma 4 31B: `u04` ×2,
+`u10` ×3) and one in `r5` (Qwen 3.8 27B: `u10`). The maintainer read all six
+on 2026-11-18 and judged each one as stating nothing Mycelium does not hold:
+each declines. What the pattern reads as a stated fact is the digits in a
+paper's title or DOI (2) and the reference number `(#3)` the name-numbering
+fix adds to a person (4). So, read by a person, C-046 is 0/30 in `r5g` and 0/30
+in `r5`; the pattern's counts stand beside that as registered.

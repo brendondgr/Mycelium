@@ -91,6 +91,11 @@ metrics:
     diff_prompt_only_minus_gate.instance: {mean: 0.3565, n: 243, ci95: [0.2699, 0.4474]}
     diff_prompt_only_minus_gate.second: {mean: 0.5903, n: 288, ci95: [0.5046, 0.6672]}
     adjudication.kappa_string_vs_model: {mean: 0.6, n: 20}
+    q090_regrade.prompt_only_instance.answer_leaks: {mean: 32, n: 115} # post hoc, Q-090 rule (2026-11-18); tables/regrade_q090.md
+    q090_regrade.prompt_only_second.answer_leaks: {mean: 76, n: 144} # post hoc, Q-090 rule
+    q090_regrade.diff_prompt_only_minus_gate.instance: {mean: 0.2783, n: 243, ci95: [0.199, 0.3663]} # post hoc
+    q090_regrade.diff_prompt_only_minus_gate.second: {mean: 0.5278, n: 288, ci95: [0.4425, 0.6075]} # post hoc
+    q090_regrade.scope_narrowed_gate_shown_in_turn1: {mean: 0, n: 18} # the gate arm never showed the narrowed project first
 baselines_compared: [prompt_only]
 statistical_test: Clopper-Pearson; Newcombe hybrid-score difference
 
