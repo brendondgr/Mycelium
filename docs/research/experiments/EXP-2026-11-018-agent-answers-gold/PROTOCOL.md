@@ -477,3 +477,36 @@ jobs, gold, frozen copy of `640d7fe0`, graders and 05:00 UTC limit). The model
 is recorded at the start and end of the run in `logs/model_r5g.jsonl`. This
 endpoint is also the instance model, so the instance's own use shares the
 server with the run; seconds are not compared with any other run.
+
+## Amendment 9 — 2026-11-18 02:37 UTC, after the feed fix, before the first answer (tag `r6g`)
+
+- **What `r5g` left open (Q-095).** On Gemma 4 31B three list questions about
+  "the lab's feed" were 0/3 each: `l07` (the deadline list labelled an item
+  that is in the person's feed and the lab's as "from your feed" only, and the
+  answer left it out), `l08` and `l09` (the model filtered each project's
+  feed instead of the lab's).
+- **The fix, committed before this amendment** (`36e1ee03`): a deadline row
+  names every save list and feed the item is in; the one-line index entries
+  and descriptions of `feeds_slate`, `projects_feed` and `feeds_deadlines`
+  say which of them reads the lab's feed.
+- **The run: only what the fix can move.** Arm (a) only, the nine kept list
+  questions and the ten join questions (the join questions call the same feed
+  functions, so they are where the rewording could do harm), three
+  repetitions: 57 jobs (`code/jobs_r6g.txt`, a subset of `jobs_r5g.txt`).
+  `code/run.py` and `code/drive_r4.sh` unchanged, `TAG=r6g`, `--conc 32`, on
+  `default-model` (operator-stated Gemma 4 31B since the evening of
+  2026-11-17; recorded at the start and the end in `logs/model_r6g.jsonl`; if
+  it does not self-report as Google's the run is not started), a frozen copy
+  of `36e1ee03`. A failed job is retried once at the end as before.
+- **Gold unchanged:** `data/gold_r5.json` (no nightly run has moved the feeds
+  since it was computed; the run must start before 05:00 UTC on 2026-11-18,
+  after which "today" in the questions is another day).
+- **Grading unchanged:** `R4_GOLD=r5 R4_TAG=r6g code/r4.py grade` and
+  `… partial`; `code/r5_counts.py r6g r5g`. With one arm there is no
+  comparison between arms and no claim about C-044 or C-045; field, project,
+  people and unanswerable questions are not asked, so no overall full-credit
+  rate is reported and C-043 and C-046 keep `r5g`'s rows.
+- **Read as.** List full credit beside `r5g`'s 15 of 27, by question; join
+  beside 27 of 30; C-056's marker beside 3 of 27. **What would count against
+  the fix:** `l07`, `l08` or `l09` still 0/3; any list or join question that
+  was 3/3 in `r5g` and is not now.
