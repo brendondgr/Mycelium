@@ -78,8 +78,11 @@ maintainer: "fix everything, run it"):**
   Re-asked on Gemma 4 31B (`EXP-2026-11-018` `r6g`, list and join questions
   only): the three list questions that were 0 of 3 are 3 of 3; lists 24 of 27
   (15 before), the same as Qwen. One join turn of 30 ended on the give-up
-  line after its first reply was cut off before any lookup (Q-096, not
-  fixed).
+  line after its first reply was cut off before any lookup (Q-096). That
+  is fixed since (the retry keeps functions on when nothing was looked up
+  yet; live since the second restart of 2026-11-18) and covered by unit
+  tests only: one event in 57 turns is too rare to re-measure with a small
+  run.
 - **Not built:** ranking by "Open to" (Q-086): it needs the maintainer's word
   on where the kind of collaboration sought comes from, how far it outranks
   match quality, and what an empty "Open to" means.
