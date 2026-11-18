@@ -192,7 +192,9 @@ Who may ask Mylo in Discord is the host's choice, in `[tools.agent]`:
   verified email, and the server's binding always needs the bot add-on.
 - `discord_guest_level`: the most any lab may let a guest see —
   `full` (what a lab member would be told there, people included),
-  `no_people`, `public` (the thread's post and the corpus) or `off`. A lab or
+  `no_people` (the same without looking people up; a project or a feed a
+  guest reads still names the members it names), `public` (the thread's post
+  and the corpus) or `off`. A lab or
   department that has not chosen gives guests `public` only — no people, so
   someone without an account cannot list the lab's members or their
   interests. It raises or lowers that for its own server with

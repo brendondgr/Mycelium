@@ -333,7 +333,9 @@ Found on the way, and where each stands:
   invites a call per row. Seen again in the answers run. Not fixed.
 - **A guest in a lab whose audience hides people still sees member names**
   in a project's member list (Q-092). Not changed: who may see whom is a
-  permission question the plan put out of bounds.
+  permission question the plan put out of bounds. **Decided 2026-11-18 by the
+  maintainer: intended.** The level stops a guest looking people up, not the
+  lab's own material naming its members; the level's description now says so.
 - **Gemma's own call markup reached a person as the answer once (Q-093):**
   one of 177 turns ended with `<|tool_call>call:corpus_item{…}<tool_call|>` as
   its reply. Not fixed.

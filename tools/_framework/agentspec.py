@@ -36,7 +36,9 @@ SURFACES = ("web", "discord", "cli", "token")
 #: What a Discord guest (someone in a bound server with no Mycelium account)
 #: may be told, lowest first. ``off``: nothing. ``public``: the thread's post
 #: and the public corpus. ``no_people``: also the lab's or department's own
-#: material. ``full``: also its people (S-16).
+#: material (projects, feeds), which names the members it names — a project's
+#: member list, a slate's "who should look" — but no function that looks
+#: people up. ``full``: also those functions (S-16; Q-092).
 GUEST_LEVELS = ("off", "public", "no_people", "full")
 
 
