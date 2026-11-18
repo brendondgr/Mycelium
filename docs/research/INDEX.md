@@ -71,12 +71,13 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-019` | 2026-11-15 | Collaborator search through Mylo, by scenario | complete | claim_b_gate_violation_rate_S3_S10 0.0000 (n=206) | C-050, C-051, C-052 | [folder](experiments/EXP-2026-11-019-agent-collab-scenarios/RESULTS.md) |
 | `EXP-2026-11-020` | 2026-11-15 | The answer checker as a loop: repair, removal, unread | complete | forced_drafts_error_in_final 0.0000 (n=90) | C-047, C-048 (refutes C-049) | [folder](experiments/EXP-2026-11-020-agent-verifier-loop/RESULTS.md) |
 | `EXP-2026-11-021` | 2026-11-16 | Does Mylo work on the model just loaded? A thirty-turn check, one row per model | complete | — | C-053, C-054 | [folder](experiments/EXP-2026-11-021-agent-model-check/RESULTS.md) |
+| `EXP-2026-11-022` | 2026-11-18 | Gemma 4 31B empty replies: the 2026-11-15 code replayed against today's server | complete | f1115.both.blank_turns 19.0000 (n=108) | — | [folder](experiments/EXP-2026-11-022-gemma-empty-replies-replay/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 58 |
+| complete | 59 |
 | planned | 3 |
 | running | 1 |
-| **total** | **62** |
+| **total** | **63** |

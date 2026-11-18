@@ -1,0 +1,16 @@
+label,arm,rep,turns,blank_turns,turns_with_empty_call,empty_calls,calls
+ref_20261115,both,all,324,47,,,
+ref_20261115,both,rep0,108,21,,,
+ref_20261115,gate,all,162,18,,,
+ref_20261115,gate,rep0,54,10,,,
+ref_20261115,prompt_only,all,162,29,,,
+ref_20261115,prompt_only,rep0,54,11,,,
+f1115,gate,rep0,54,8,8,16,321
+f1115,prompt_only,rep0,54,11,12,23,348
+f1115,both,rep0,108,19,20,39,669
+f1115ns,gate,rep0,54,0,0,0,330
+f1115ns,prompt_only,rep0,54,0,0,0,370
+f1115ns,both,rep0,108,0,0,0,700
+f1117,gate,rep0,54,0,7,14,329
+f1117,prompt_only,rep0,54,0,7,14,285
+f1117,both,rep0,108,0,14,28,614

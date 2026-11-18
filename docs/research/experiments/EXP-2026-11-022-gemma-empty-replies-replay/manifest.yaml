@@ -1,0 +1,134 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-022
+slug: gemma-empty-replies-replay
+title: "Gemma 4 31B empty replies: the 2026-11-15 code replayed against today's server"
+status: complete # planned | running | complete | failed | superseded
+date_started: 2026-11-18
+date_completed: 2026-11-18
+authors: [Claude Opus 5.5 (agent), on behalf of the maintainer]
+
+purpose: >
+  Q-070 / Q-088: why Gemma 4 31B ended many Mylo turns blank on 2026-11-15
+  (EXP-2026-11-016, EXP-2026-11-019 round two) but none on 2026-11-17. Replays
+  the 11-15 code, frozen, against today's server; then the 11-17 code; then the
+  11-15 code with its model calls unstreamed. Bears on C-055 (consistent; no
+  status change).
+
+hypothesis: >
+  Registered before the run: the blanks come from our 11-15 request (most
+  likely a call to a function the request did not offer, dropped by the
+  server) and reproduce with the 11-15 code against today's server; if they
+  do not (<= 1 of 108), the server changed.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: a99e1a01  # harness; product code replayed frozen at 44100c04 (= 14a24374) and 55cfdb1c
+  branch: main
+  entrypoint: "SNAP=<git archive of 44100c04|55cfdb1c> LABEL={f1115,f1117,f1115ns} SEED={101,202,303} ARM={gate,prompt_only} [EXTRA=--no-stream] bash code/drive.sh; then python3 code/analyse.py"
+  dirty: false  # only this new folder was untracked (ISSUES.md 6)
+config:
+  path: null
+  hash: null
+data:
+  name: EXP-2026-11-016 seeded worlds and probes (16 access probes + 2 controls)
+  version: "2026-11-15"
+  split: test
+  n_examples: 324
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: [101, 202, 303]
+n_runs: 3  # three configurations (f1115, f1117, f1115ns), one repetition each
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: null
+compute:
+  hardware: "Xeon Silver 4114, 62 GB; model served remotely (relay default-model, Gemma 4 31B, vllm-0.21.0-5c6ca01c)"
+  wall_clock_hours: 0.47  # 17:10:45-17:38:32 UTC, model load about 26 minutes
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+# llm:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: f1115.both.blank_turns
+  values:
+    ref_20261115.both.all.blank_turns: {mean: 47, n: 324, ci95: [0.1109, 0.1876]}
+    ref_20261115.both.rep0.blank_turns: {mean: 21, n: 108, ci95: [0.1308, 0.279]}
+    ref_20261115.gate.all.blank_turns: {mean: 18, n: 162, ci95: [0.0714, 0.1688]}
+    ref_20261115.gate.rep0.blank_turns: {mean: 10, n: 54, ci95: [0.1038, 0.3084]}
+    ref_20261115.prompt_only.all.blank_turns: {mean: 29, n: 162, ci95: [0.1276, 0.2453]}
+    ref_20261115.prompt_only.rep0.blank_turns: {mean: 11, n: 54, ci95: [0.1177, 0.329]}
+    f1115.gate.blank_turns: {mean: 8, n: 54, ci95: [0.077, 0.266]}
+    f1115.prompt_only.blank_turns: {mean: 11, n: 54, ci95: [0.1177, 0.329]}
+    f1115.both.blank_turns: {mean: 19, n: 108, ci95: [0.1156, 0.2585]}
+    f1115.both.turns_with_empty_call: {mean: 20, n: 108}
+    f1115.both.empty_calls: {mean: 39, n: 669}
+    f1115.both.errors: {mean: 0, n: 108}
+    f1115.both.ended_on_question: {mean: 5, n: 108}
+    f1115.empty_calls_after_function_result: {mean: 39, n: 39}
+    f1115.short_calls_after_function_result_dropped: {mean: 39, n: 142}
+    f1115.diagnostic_is_one_argumentless_call: {mean: 39, n: 39}
+    f1115.turns_with_empty_call_ended.blank: {mean: 19, n: 20}
+    f1115.turns_with_empty_call_ended.give_up_line: {mean: 0, n: 20}
+    f1115.turns_with_empty_call_ended.question: {mean: 0, n: 20}
+    f1115.turns_with_empty_call_ended.answered: {mean: 1, n: 20}
+    f1115.identical_retry_empty_again: {mean: 19, n: 20}
+    f1115.diagnostic_call_not_offered: {mean: 24, n: 39}
+    f1115ns.gate.blank_turns: {mean: 0, n: 54, ci95: [0.0, 0.0664]}
+    f1115ns.prompt_only.blank_turns: {mean: 0, n: 54, ci95: [0.0, 0.0664]}
+    f1115ns.both.blank_turns: {mean: 0, n: 108, ci95: [0.0, 0.0343]}
+    f1115ns.both.turns_with_empty_call: {mean: 0, n: 108}
+    f1115ns.both.empty_calls: {mean: 0, n: 700}
+    f1115ns.both.errors: {mean: 0, n: 108}
+    f1115ns.both.ended_on_question: {mean: 16, n: 108}
+    f1115ns.short_calls_after_function_result_dropped: {mean: 0, n: 133}
+    f1117.gate.blank_turns: {mean: 0, n: 54, ci95: [0.0, 0.0664]}
+    f1117.prompt_only.blank_turns: {mean: 0, n: 54, ci95: [0.0, 0.0664]}
+    f1117.both.blank_turns: {mean: 0, n: 108, ci95: [0.0, 0.0343]}
+    f1117.both.turns_with_empty_call: {mean: 14, n: 108}
+    f1117.both.empty_calls: {mean: 28, n: 614}
+    f1117.both.errors: {mean: 0, n: 108}
+    f1117.both.ended_on_question: {mean: 11, n: 108}
+    f1117.empty_calls_after_function_result: {mean: 28, n: 28}
+    f1117.short_calls_after_function_result_dropped: {mean: 28, n: 117}
+    f1117.diagnostic_is_one_argumentless_call: {mean: 28, n: 28}
+    f1117.turns_with_empty_call_ended.blank: {mean: 0, n: 14}
+    f1117.turns_with_empty_call_ended.give_up_line: {mean: 2, n: 14}
+    f1117.turns_with_empty_call_ended.question: {mean: 0, n: 14}
+    f1117.turns_with_empty_call_ended.answered: {mean: 12, n: 14}
+    f1117.identical_retry_empty_again: {mean: 14, n: 14}
+    f1117.diagnostic_call_not_offered: {mean: 10, n: 28}
+    exp019_round2_20261115.empty_steps_at_first_step: {mean: 48, n: 56}  # read from mycelium_sandbox_exp019, both arms
+    exp019_r4_20261117.short_calls_after_first_step: {mean: 8, n: 939}  # EXP-2026-11-019 r4 model_call_log
+baselines_compared: [ref_20261115]
+statistical_test: Wilson 95% intervals; pre-registered count thresholds (PROTOCOL.md)
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-016, EXP-2026-11-019, EXP-2026-11-021]

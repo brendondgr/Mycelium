@@ -1,0 +1,374 @@
+{
+ "ref_20261115.both.all.blank_turns": {
+  "mean": 47,
+  "n": 324,
+  "ci95": [
+   0.1109,
+   0.1876
+  ]
+ },
+ "ref_20261115.both.rep0.blank_turns": {
+  "mean": 21,
+  "n": 108,
+  "ci95": [
+   0.1308,
+   0.279
+  ]
+ },
+ "ref_20261115.gate.all.blank_turns": {
+  "mean": 18,
+  "n": 162,
+  "ci95": [
+   0.0714,
+   0.1688
+  ]
+ },
+ "ref_20261115.gate.rep0.blank_turns": {
+  "mean": 10,
+  "n": 54,
+  "ci95": [
+   0.1038,
+   0.3084
+  ]
+ },
+ "ref_20261115.prompt_only.all.blank_turns": {
+  "mean": 29,
+  "n": 162,
+  "ci95": [
+   0.1276,
+   0.2453
+  ]
+ },
+ "ref_20261115.prompt_only.rep0.blank_turns": {
+  "mean": 11,
+  "n": 54,
+  "ci95": [
+   0.1177,
+   0.329
+  ]
+ },
+ "f1115.gate.blank_turns": {
+  "mean": 8,
+  "n": 54,
+  "ci95": [
+   0.077,
+   0.266
+  ]
+ },
+ "f1115.gate.turns_with_empty_call": {
+  "mean": 8,
+  "n": 54
+ },
+ "f1115.gate.empty_calls": {
+  "mean": 16,
+  "n": 321
+ },
+ "f1115.gate.errors": {
+  "mean": 0,
+  "n": 54
+ },
+ "f1115.gate.ended_on_question": {
+  "mean": 5,
+  "n": 54
+ },
+ "f1115.prompt_only.blank_turns": {
+  "mean": 11,
+  "n": 54,
+  "ci95": [
+   0.1177,
+   0.329
+  ]
+ },
+ "f1115.prompt_only.turns_with_empty_call": {
+  "mean": 12,
+  "n": 54
+ },
+ "f1115.prompt_only.empty_calls": {
+  "mean": 23,
+  "n": 348
+ },
+ "f1115.prompt_only.errors": {
+  "mean": 0,
+  "n": 54
+ },
+ "f1115.prompt_only.ended_on_question": {
+  "mean": 0,
+  "n": 54
+ },
+ "f1115.both.blank_turns": {
+  "mean": 19,
+  "n": 108,
+  "ci95": [
+   0.1156,
+   0.2585
+  ]
+ },
+ "f1115.both.turns_with_empty_call": {
+  "mean": 20,
+  "n": 108
+ },
+ "f1115.both.empty_calls": {
+  "mean": 39,
+  "n": 669
+ },
+ "f1115.both.errors": {
+  "mean": 0,
+  "n": 108
+ },
+ "f1115.both.ended_on_question": {
+  "mean": 5,
+  "n": 108
+ },
+ "f1115.empty_calls_after_function_result": {
+  "mean": 39,
+  "n": 39
+ },
+ "f1115.short_calls_after_function_result_dropped": {
+  "mean": 39,
+  "n": 142
+ },
+ "f1115.diagnostic_is_one_argumentless_call": {
+  "mean": 39,
+  "n": 39
+ },
+ "f1115.turns_with_empty_call_ended.blank": {
+  "mean": 19,
+  "n": 20
+ },
+ "f1115.turns_with_empty_call_ended.give_up_line": {
+  "mean": 0,
+  "n": 20
+ },
+ "f1115.turns_with_empty_call_ended.question": {
+  "mean": 0,
+  "n": 20
+ },
+ "f1115.turns_with_empty_call_ended.answered": {
+  "mean": 1,
+  "n": 20
+ },
+ "f1115.identical_retry_empty_again": {
+  "mean": 19,
+  "n": 20
+ },
+ "f1115.diagnostic_call_not_offered": {
+  "mean": 24,
+  "n": 39
+ },
+ "f1115ns.gate.blank_turns": {
+  "mean": 0,
+  "n": 54,
+  "ci95": [
+   0.0,
+   0.0664
+  ]
+ },
+ "f1115ns.gate.turns_with_empty_call": {
+  "mean": 0,
+  "n": 54
+ },
+ "f1115ns.gate.empty_calls": {
+  "mean": 0,
+  "n": 330
+ },
+ "f1115ns.gate.errors": {
+  "mean": 0,
+  "n": 54
+ },
+ "f1115ns.gate.ended_on_question": {
+  "mean": 13,
+  "n": 54
+ },
+ "f1115ns.prompt_only.blank_turns": {
+  "mean": 0,
+  "n": 54,
+  "ci95": [
+   0.0,
+   0.0664
+  ]
+ },
+ "f1115ns.prompt_only.turns_with_empty_call": {
+  "mean": 0,
+  "n": 54
+ },
+ "f1115ns.prompt_only.empty_calls": {
+  "mean": 0,
+  "n": 370
+ },
+ "f1115ns.prompt_only.errors": {
+  "mean": 0,
+  "n": 54
+ },
+ "f1115ns.prompt_only.ended_on_question": {
+  "mean": 3,
+  "n": 54
+ },
+ "f1115ns.both.blank_turns": {
+  "mean": 0,
+  "n": 108,
+  "ci95": [
+   0.0,
+   0.0343
+  ]
+ },
+ "f1115ns.both.turns_with_empty_call": {
+  "mean": 0,
+  "n": 108
+ },
+ "f1115ns.both.empty_calls": {
+  "mean": 0,
+  "n": 700
+ },
+ "f1115ns.both.errors": {
+  "mean": 0,
+  "n": 108
+ },
+ "f1115ns.both.ended_on_question": {
+  "mean": 16,
+  "n": 108
+ },
+ "f1115ns.empty_calls_after_function_result": {
+  "mean": 0,
+  "n": 0
+ },
+ "f1115ns.short_calls_after_function_result_dropped": {
+  "mean": 0,
+  "n": 133
+ },
+ "f1115ns.diagnostic_is_one_argumentless_call": {
+  "mean": 0,
+  "n": 0
+ },
+ "f1115ns.turns_with_empty_call_ended.blank": {
+  "mean": 0,
+  "n": 0
+ },
+ "f1115ns.turns_with_empty_call_ended.give_up_line": {
+  "mean": 0,
+  "n": 0
+ },
+ "f1115ns.turns_with_empty_call_ended.question": {
+  "mean": 0,
+  "n": 0
+ },
+ "f1115ns.turns_with_empty_call_ended.answered": {
+  "mean": 0,
+  "n": 0
+ },
+ "f1115ns.identical_retry_empty_again": {
+  "mean": 0,
+  "n": 0
+ },
+ "f1115ns.diagnostic_call_not_offered": {
+  "mean": 0,
+  "n": 0
+ },
+ "f1117.gate.blank_turns": {
+  "mean": 0,
+  "n": 54,
+  "ci95": [
+   0.0,
+   0.0664
+  ]
+ },
+ "f1117.gate.turns_with_empty_call": {
+  "mean": 7,
+  "n": 54
+ },
+ "f1117.gate.empty_calls": {
+  "mean": 14,
+  "n": 329
+ },
+ "f1117.gate.errors": {
+  "mean": 0,
+  "n": 54
+ },
+ "f1117.gate.ended_on_question": {
+  "mean": 8,
+  "n": 54
+ },
+ "f1117.prompt_only.blank_turns": {
+  "mean": 0,
+  "n": 54,
+  "ci95": [
+   0.0,
+   0.0664
+  ]
+ },
+ "f1117.prompt_only.turns_with_empty_call": {
+  "mean": 7,
+  "n": 54
+ },
+ "f1117.prompt_only.empty_calls": {
+  "mean": 14,
+  "n": 285
+ },
+ "f1117.prompt_only.errors": {
+  "mean": 0,
+  "n": 54
+ },
+ "f1117.prompt_only.ended_on_question": {
+  "mean": 3,
+  "n": 54
+ },
+ "f1117.both.blank_turns": {
+  "mean": 0,
+  "n": 108,
+  "ci95": [
+   0.0,
+   0.0343
+  ]
+ },
+ "f1117.both.turns_with_empty_call": {
+  "mean": 14,
+  "n": 108
+ },
+ "f1117.both.empty_calls": {
+  "mean": 28,
+  "n": 614
+ },
+ "f1117.both.errors": {
+  "mean": 0,
+  "n": 108
+ },
+ "f1117.both.ended_on_question": {
+  "mean": 11,
+  "n": 108
+ },
+ "f1117.empty_calls_after_function_result": {
+  "mean": 28,
+  "n": 28
+ },
+ "f1117.short_calls_after_function_result_dropped": {
+  "mean": 28,
+  "n": 117
+ },
+ "f1117.diagnostic_is_one_argumentless_call": {
+  "mean": 28,
+  "n": 28
+ },
+ "f1117.turns_with_empty_call_ended.blank": {
+  "mean": 0,
+  "n": 14
+ },
+ "f1117.turns_with_empty_call_ended.give_up_line": {
+  "mean": 2,
+  "n": 14
+ },
+ "f1117.turns_with_empty_call_ended.question": {
+  "mean": 0,
+  "n": 14
+ },
+ "f1117.turns_with_empty_call_ended.answered": {
+  "mean": 12,
+  "n": 14
+ },
+ "f1117.identical_retry_empty_again": {
+  "mean": 14,
+  "n": 14
+ },
+ "f1117.diagnostic_call_not_offered": {
+  "mean": 10,
+  "n": 28
+ }
+}
