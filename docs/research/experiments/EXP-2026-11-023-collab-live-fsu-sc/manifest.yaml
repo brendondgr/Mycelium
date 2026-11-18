@@ -1,0 +1,130 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-023
+slug: collab-live-fsu-sc
+title: Collaborator suggestions for a real department's faculty, for rating by someone who knows them
+status: running # planned | running | complete | failed | superseded
+date_started: 2026-11-18
+date_completed: null
+authors: [Claude (agent), maintainer (rater, pending)]
+
+purpose: >
+  The demo paper says collaborator search was tested on invented people only and
+  that we do not know whether it suggests people a researcher would contact. This
+  run puts the 14 core faculty of one real department (anonymous ids F01-F14)
+  through the matcher, each asking who in the department to collaborate with on
+  their own research areas, on a copy of the live database with their papers
+  imported through the product's own path, and produces a rating sheet for the
+  maintainer (who knows everyone) using EXP-2026-09-012's "would you contact this
+  person?" (yes/maybe/no) measure. Suggestions generated; ratings pending.
+
+hypothesis: >
+  Exploratory - no prior hypothesis on the rating. Structural expectations from
+  the code (PROTOCOL.md): people without read papers cannot be suggested;
+  lab-mates and existing co-authors are never suggested.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 181ca3c4
+  branch: main
+  entrypoint: "code/drive.sh check|prepare|search|export (run023.py in a one-off backend container on the copy mycelium_sandbox_fsusc; PROTOCOL.md Procedure)"
+  dirty: true  # set true if the tree had uncommitted changes; explain in ISSUES.md
+config:
+  path: "none: deployed settings, in-process changes listed in PROTOCOL.md (Setup)"
+  hash: null
+data:
+  name: FSU Department of Scientific Computing stand-in accounts (copy of the live database, 2026-11-18) + OpenAlex works
+  version: live snapshot 2026-11-18T17:20Z; OpenAlex as of 2026-11-18
+  split: test
+  n_examples: 14
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: []
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: "one-off backend container (docker compose run), code frozen by git archive of the recorded commit"
+compute:
+  hardware: "Intel Xeon Silver 4114 (20 threads), 62 GB RAM; model served remotely through the relay"
+  wall_clock_hours: 0.4
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+llm:
+  model: "relay default-model (Gemma 4 31B per the maintainer; self-report at 2026-11-18T17:27Z: 'trained by Google')"
+  temperature: 0.2
+  max_tokens: 8096
+  prompt_files: [web/backend/apps/knowledge/works.py, web/backend/apps/collab/slots.py, web/backend/apps/collab/matcher.py]
+  prompt_hash: null
+  total_input_tokens: null
+  total_output_tokens: null
+  nondeterminism_note: >
+    One run at temperature 0.2 on a shared server; slot reading, paper facets and
+    the rerank would differ somewhat on a rerun.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: would_contact_rate (pending; ratings not yet done)
+  values:
+    candidates_open: 25
+    coauthor_pairs_rebuilt: 6
+    excluded_coauthor_pairs: 6
+    excluded_lab_mate_pairs: 12
+    faculty_works_imported: 601
+    faculty_works_read_non_thin: 424
+    faculty_works_thin: 177
+    manual_distinct_candidates_shown: 14
+    manual_dropped_by_model: 39
+    manual_retries: 0
+    manual_seekers_with_any_gap_slot: 3
+    manual_seekers_zero_shown: 2
+    manual_seekers_zero_slots: 0
+    manual_shortlisted_total: 85
+    manual_shown_declared_tier: 1
+    manual_shown_in_field: 31
+    manual_shown_method_bridge: 1
+    manual_shown_students: 1
+    manual_shown_total: 32
+    manual_unexplained_searches: 0
+    optional_extras: 35
+    product_distinct_candidates_shown: 7
+    product_dropped_by_model: 23
+    product_retries: 0
+    product_seekers_with_any_gap_slot: 1
+    product_seekers_zero_shown: 7
+    product_seekers_zero_slots: 7
+    product_shortlisted_total: 33
+    product_shown_declared_tier: 1
+    product_shown_in_field: 9
+    product_shown_method_bridge: 1
+    product_shown_students: 0
+    product_shown_total: 10
+    product_unexplained_searches: 0
+    rating_rows: 52
+    rating_rows_model_dropped_only: 18
+    rating_rows_shown_with_model: 34
+    ratings_done: 0
+    seekers: 14
+    seekers_zero_rating_rows: 1
+    student_works_imported: 17
+    students_imported: 4
+baselines_compared: [no-model retrieval order (first 3 of each lane's shortlist)]
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-09-012, EXP-2026-11-019]

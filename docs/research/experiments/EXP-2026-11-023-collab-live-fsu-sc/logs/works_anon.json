@@ -1,0 +1,252 @@
+[
+ {
+  "distinct_fields": 8,
+  "facets_read": 50,
+  "facets_thin": 16,
+  "id": "F01",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 34,
+  "works": 50
+ },
+ {
+  "distinct_fields": 7,
+  "facets_read": 50,
+  "facets_thin": 17,
+  "id": "F02",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 34,
+  "works": 50
+ },
+ {
+  "distinct_fields": 9,
+  "facets_read": 50,
+  "facets_thin": 20,
+  "id": "F03",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 30,
+  "works": 50
+ },
+ {
+  "distinct_fields": 8,
+  "facets_read": 43,
+  "facets_thin": 14,
+  "id": "F04",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 29,
+  "works": 43
+ },
+ {
+  "distinct_fields": 3,
+  "facets_read": 50,
+  "facets_thin": 13,
+  "id": "F05",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 40,
+  "works": 50
+ },
+ {
+  "distinct_fields": 5,
+  "facets_read": 50,
+  "facets_thin": 6,
+  "id": "F06",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 44,
+  "works": 50
+ },
+ {
+  "distinct_fields": 7,
+  "facets_read": 50,
+  "facets_thin": 10,
+  "id": "F07",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 41,
+  "works": 50
+ },
+ {
+  "distinct_fields": 6,
+  "facets_read": 31,
+  "facets_thin": 11,
+  "id": "F08",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 21,
+  "works": 31
+ },
+ {
+  "distinct_fields": 4,
+  "facets_read": 25,
+  "facets_thin": 4,
+  "id": "F09",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 21,
+  "works": 25
+ },
+ {
+  "distinct_fields": 5,
+  "facets_read": 26,
+  "facets_thin": 13,
+  "id": "F10",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 15,
+  "works": 26
+ },
+ {
+  "distinct_fields": 7,
+  "facets_read": 50,
+  "facets_thin": 23,
+  "id": "F11",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 29,
+  "works": 50
+ },
+ {
+  "distinct_fields": 11,
+  "facets_read": 50,
+  "facets_thin": 17,
+  "id": "F12",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 33,
+  "works": 50
+ },
+ {
+  "distinct_fields": 2,
+  "facets_read": 26,
+  "facets_thin": 4,
+  "id": "F13",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 22,
+  "works": 26
+ },
+ {
+  "distinct_fields": 6,
+  "facets_read": 50,
+  "facets_thin": 9,
+  "id": "F14",
+  "imported": true,
+  "role": "faculty",
+  "with_abstract": 41,
+  "works": 50
+ },
+ {
+  "distinct_fields": 2,
+  "facets_read": 10,
+  "facets_thin": 2,
+  "id": "S01",
+  "imported": true,
+  "role": "student",
+  "with_abstract": 8,
+  "works": 10
+ },
+ {
+  "distinct_fields": 0,
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S02",
+  "imported": false,
+  "role": "student",
+  "with_abstract": 0,
+  "works": 0
+ },
+ {
+  "distinct_fields": 0,
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S03",
+  "imported": false,
+  "role": "student",
+  "with_abstract": 0,
+  "works": 0
+ },
+ {
+  "distinct_fields": 0,
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S04",
+  "imported": false,
+  "role": "student",
+  "with_abstract": 0,
+  "works": 0
+ },
+ {
+  "distinct_fields": 2,
+  "facets_read": 4,
+  "facets_thin": 0,
+  "id": "S05",
+  "imported": true,
+  "role": "student",
+  "with_abstract": 4,
+  "works": 4
+ },
+ {
+  "distinct_fields": 0,
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S06",
+  "imported": false,
+  "role": "student",
+  "with_abstract": 0,
+  "works": 0
+ },
+ {
+  "distinct_fields": 0,
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S07",
+  "imported": false,
+  "role": "student",
+  "with_abstract": 0,
+  "works": 0
+ },
+ {
+  "distinct_fields": 1,
+  "facets_read": 1,
+  "facets_thin": 0,
+  "id": "S08",
+  "imported": true,
+  "role": "student",
+  "with_abstract": 1,
+  "works": 1
+ },
+ {
+  "distinct_fields": 0,
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S09",
+  "imported": false,
+  "role": "student",
+  "with_abstract": 0,
+  "works": 0
+ },
+ {
+  "distinct_fields": 2,
+  "facets_read": 2,
+  "facets_thin": 1,
+  "id": "S10",
+  "imported": true,
+  "role": "student",
+  "with_abstract": 1,
+  "works": 2
+ },
+ {
+  "distinct_fields": 0,
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S11",
+  "imported": false,
+  "role": "student",
+  "with_abstract": 0,
+  "works": 0
+ }
+]

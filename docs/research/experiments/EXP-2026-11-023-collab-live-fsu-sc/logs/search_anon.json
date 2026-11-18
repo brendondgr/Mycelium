@@ -1,0 +1,2534 @@
+[
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F11",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8251,
+     "shortlist_position": 1,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8098,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5991,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.597,
+     "shortlist_position": 4,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F07",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5116,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F14",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5105,
+     "shortlist_position": 6,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 23,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 1,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 16,
+   "n_gaps": 2,
+   "n_slots": 18,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 6,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 9,
+    "problem": 9
+   }
+  },
+  "optional_extras": 1,
+  "product": {
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 23,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 1,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {}
+  },
+  "rating_rows": 5,
+  "rating_rows_shown_with_model": 3,
+  "seeker_id": "F01"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.875,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F09",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8232,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.724,
+     "shortlist_position": 3,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5731,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F01",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5258,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S05",
+     "candidate_role": "student",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.824,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5028,
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F03",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8006,
+     "shortlist_position": 8,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 23,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 1,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 7,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 16,
+   "n_gaps": 0,
+   "n_slots": 16,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 8,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 8,
+    "problem": 8
+   }
+  },
+  "optional_extras": 5,
+  "product": {
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 23,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 1,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {}
+  },
+  "rating_rows": 3,
+  "rating_rows_shown_with_model": 3,
+  "seeker_id": "F02"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8497,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8034,
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F13",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.7051,
+     "shortlist_position": 3,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6858,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5579,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.511,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5071,
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S05",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6796,
+     "shortlist_position": 8,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 19,
+   "eligible_with_read_works": 14,
+   "error": null,
+   "excluded_coauthor": 1,
+   "excluded_lab_mate": 4,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 2,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 16,
+   "n_gaps": 0,
+   "n_slots": 16,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 8,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 2,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 8,
+    "problem": 8
+   }
+  },
+  "optional_extras": 5,
+  "product": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8497,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8034,
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F13",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.7051,
+     "shortlist_position": 3,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6858,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5579,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.511,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5071,
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S05",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6796,
+     "shortlist_position": 8,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 19,
+   "eligible_with_read_works": 14,
+   "error": null,
+   "excluded_coauthor": 1,
+   "excluded_lab_mate": 4,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 2,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 8,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 2,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "problem": 6
+   }
+  },
+  "rating_rows": 3,
+  "rating_rows_shown_with_model": 2,
+  "seeker_id": "F03"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F13",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.9509,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6015,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F09",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.684,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6181,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.53,
+     "shortlist_position": 5,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 22,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 1,
+   "excluded_lab_mate": 1,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 16,
+   "n_gaps": 0,
+   "n_slots": 16,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 5,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 8,
+    "problem": 8
+   }
+  },
+  "optional_extras": 1,
+  "product": {
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 22,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 1,
+   "excluded_lab_mate": 1,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {}
+  },
+  "rating_rows": 4,
+  "rating_rows_shown_with_model": 3,
+  "seeker_id": "F04"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 1.0,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.9215,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F03",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6627,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S08",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.7025,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5585,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S10",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6495,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S01",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6396,
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.521,
+     "shortlist_position": 8,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 23,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 1,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 2,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 18,
+   "n_gaps": 0,
+   "n_slots": 18,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 8,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 2,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 9,
+    "problem": 9
+   }
+  },
+  "optional_extras": 4,
+  "product": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6706,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5585,
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5228,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5077,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 23,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 1,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 3,
+   "n_gaps": 0,
+   "n_slots": 3,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 4,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 2,
+    "problem": 1
+   }
+  },
+  "rating_rows": 4,
+  "rating_rows_shown_with_model": 2,
+  "seeker_id": "F05"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F07",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 1.0,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8574,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.7025,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 2,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 18,
+   "n_gaps": 0,
+   "n_slots": 18,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 2,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 9,
+    "problem": 9
+   }
+  },
+  "optional_extras": 0,
+  "product": {
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {}
+  },
+  "rating_rows": 3,
+  "rating_rows_shown_with_model": 2,
+  "seeker_id": "F06"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F06",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 1.0,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 1.0,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8774,
+     "shortlist_position": 3,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6502,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 14,
+   "n_gaps": 0,
+   "n_slots": 14,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 4,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 7,
+    "problem": 7
+   }
+  },
+  "optional_extras": 1,
+  "product": {
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {}
+  },
+  "rating_rows": 3,
+  "rating_rows_shown_with_model": 3,
+  "seeker_id": "F07"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F14",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.866,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8586,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8503,
+     "shortlist_position": 3,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F03",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8119,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S01",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8031,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S05",
+     "candidate_role": "student",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.7227,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F09",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.684,
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.548,
+     "shortlist_position": 8,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 5,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 18,
+   "n_gaps": 0,
+   "n_slots": 18,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 8,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 9,
+    "problem": 9
+   }
+  },
+  "optional_extras": 4,
+  "product": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.548,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 5,
+    "problem": 1
+   }
+  },
+  "rating_rows": 4,
+  "rating_rows_shown_with_model": 4,
+  "seeker_id": "F08"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 14,
+   "n_gaps": 0,
+   "n_slots": 14,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 7,
+    "problem": 7
+   }
+  },
+  "optional_extras": 0,
+  "product": {
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {}
+  },
+  "rating_rows": 0,
+  "rating_rows_shown_with_model": 0,
+  "seeker_id": "F09"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8787,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8502,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F11",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8065,
+     "shortlist_position": 3,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8006,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.4918,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.4959,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F01",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.4914,
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F09",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.684,
+     "shortlist_position": 8,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 21,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 3,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 7,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 20,
+   "n_gaps": 0,
+   "n_slots": 20,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 8,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 10,
+    "problem": 10
+   }
+  },
+  "optional_extras": 5,
+  "product": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8787,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.7225,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.4959,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F01",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.4914,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F09",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.684,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F14",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8787,
+     "shortlist_position": 6,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.4918,
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F07",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8053,
+     "shortlist_position": 8,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 21,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 3,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 8,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "problem": 6
+   }
+  },
+  "rating_rows": 5,
+  "rating_rows_shown_with_model": 4,
+  "seeker_id": "F10"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.7156,
+     "shortlist_position": 1,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.7003,
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F14",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6538,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5872,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5025,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F01",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.4991,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F03",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.6442,
+     "shortlist_position": 1,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 23,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 1,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 10,
+   "n_gaps": 4,
+   "n_slots": 14,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 6,
+    "method_bridge": 1,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 7,
+    "problem": 7
+   }
+  },
+  "optional_extras": 3,
+  "product": {
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 23,
+   "eligible_with_read_works": 16,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 1,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {}
+  },
+  "rating_rows": 4,
+  "rating_rows_shown_with_model": 0,
+  "seeker_id": "F11"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8577,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F03",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8341,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8249,
+     "shortlist_position": 3,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F06",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8142,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F01",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.8115,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5036,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F14",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6237,
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5304,
+     "shortlist_position": 8,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 7,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 16,
+   "n_gaps": 0,
+   "n_slots": 16,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 8,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 8,
+    "problem": 8
+   }
+  },
+  "optional_extras": 3,
+  "product": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F14",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.6237,
+     "shortlist_position": 1,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5093,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5009,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 24,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 3,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 5,
+    "problem": 1
+   }
+  },
+  "rating_rows": 5,
+  "rating_rows_shown_with_model": 3,
+  "seeker_id": "F12"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.9393,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 22,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 2,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 16,
+   "n_gaps": 0,
+   "n_slots": 16,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 8,
+    "problem": 8
+   }
+  },
+  "optional_extras": 0,
+  "product": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.9393,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 22,
+   "eligible_with_read_works": 17,
+   "error": null,
+   "excluded_coauthor": 0,
+   "excluded_lab_mate": 2,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 1,
+    "method_bridge": 0,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "problem": 6
+   }
+  },
+  "rating_rows": 1,
+  "rating_rows_shown_with_model": 1,
+  "seeker_id": "F13"
+ },
+ {
+  "manual": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.9019,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S05",
+     "candidate_role": "student",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.7537,
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5869,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5141,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.4926,
+     "shortlist_position": 5,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F07",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.7869,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "declared"
+    },
+    {
+     "candidate_id": "S05",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.7098,
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.6336,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.5083,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.4997,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F01",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.4903,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 22,
+   "eligible_with_read_works": 15,
+   "error": null,
+   "excluded_coauthor": 2,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 3,
+    "method_bridge": 1,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 14,
+   "n_gaps": 2,
+   "n_slots": 16,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 5,
+    "method_bridge": 6,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 3,
+    "method_bridge": 1,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 8,
+    "problem": 8
+   }
+  },
+  "optional_extras": 3,
+  "product": {
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F11",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5591,
+     "shortlist_position": 1,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "in_field",
+     "matched_facet": "problem",
+     "score": 0.5134,
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F07",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "has_reason": true,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.7869,
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "declared"
+    },
+    {
+     "candidate_id": "S05",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.7098,
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.6336,
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.5083,
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.4997,
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F01",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "has_reason": false,
+     "lane": "method_bridge",
+     "matched_facet": "method",
+     "score": 0.4903,
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 22,
+   "eligible_with_read_works": 15,
+   "error": null,
+   "excluded_coauthor": 2,
+   "excluded_lab_mate": 0,
+   "excluded_other": 0,
+   "explained": true,
+   "kept_per_lane": {
+    "in_field": 0,
+    "method_bridge": 1,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "n_covered": 5,
+   "n_gaps": 1,
+   "n_slots": 6,
+   "open_others": 24,
+   "shortlist_per_lane": {
+    "in_field": 2,
+    "method_bridge": 6,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "shown_per_lane": {
+    "in_field": 0,
+    "method_bridge": 1,
+    "problem_bridge": 0,
+    "resource": 0
+   },
+   "slot_facets": {
+    "method": 5,
+    "problem": 1
+   }
+  },
+  "rating_rows": 8,
+  "rating_rows_shown_with_model": 4,
+  "seeker_id": "F14"
+ }
+]
