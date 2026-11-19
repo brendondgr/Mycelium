@@ -259,3 +259,28 @@ def test_typed_text_is_read_with_its_own_prompt_and_the_same_checks():
 )
 def test_the_typed_topic_is_the_text_after_collaborate_on(text, topic):
     assert slots.typed_topic(text) == topic
+
+
+def test_each_topic_a_typed_question_lists_is_its_own_problem_slot():
+    """Only problem slots feed the in-field lane; one topic per question left
+    self-queries with a shortlist a single rerank drop could empty (Q-102)."""
+    question = (
+        "Who should I collaborate with on ocean modelling; sea ice; data assimilation?"
+    )
+    model = Recorder(
+        {
+            "slots": [
+                {"facet": "problem", "text": "ocean modelling"},
+                {"facet": "problem", "text": "sea ice"},
+                {"facet": "problem", "text": "data assimilation"},
+            ]
+        }
+    )
+    outcome = slots.extract_need(question, complete=model)
+    assert "One slot for\n            each one they list" in model.prompts[0]
+    assert "At most one" not in model.prompts[0]
+    assert [(s["facet"], s["text"]) for s in outcome.slots] == [
+        ("problem", "ocean modelling"),
+        ("problem", "sea ice"),
+        ("problem", "data assimilation"),
+    ]

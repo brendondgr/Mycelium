@@ -102,6 +102,10 @@ than rewording it to pass."""
 #: question ("who should I collaborate with on ocean modelling?") was judged
 #: not to be a call and came back as no slots for 7 of 14 real faculty
 #: (EXP-2026-11-023). Typed reads are not stored, so this needs no version.
+#:
+#: Every topic listed is its own problem slot. Only problem slots feed the
+#: in-field lane, so asking for one left a self-query with a shortlist of one
+#: or two, which a single rerank drop emptied (3 of 14, EXP-2026-11-024, Q-102).
 NEED_SYSTEM = (
     "You read what one researcher typed about the collaborator they are looking "
     "for and report what they name. You report only what the text says, in its "
@@ -119,10 +123,10 @@ Reply as {{"slots": [...], "thin": false}} where each slot is
     "text": a short phrase of at most {max_words} words, in the text's words,
     "required": true only if they say they need it}}
 
-  problem — a topic, question or field they want to work on. At most one,
-            first.
-  method  — a technique or kind of expertise they name, by its standard name:
-            "kriging", not "someone who can do kriging".
+  problem — a topic, question or field they want to work on. One slot for
+            each one they list: "on ocean modelling; sea ice" is two.
+  method  — a technique or kind of expertise they ask someone to bring, by
+            its standard name: "kriging", not "someone who can do kriging".
   data    — data, a cohort, an instrument, or a setting they name.
   role    — a kind of partner that is not expertise (e.g. "a hospital").
 
