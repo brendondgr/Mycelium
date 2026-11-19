@@ -9,10 +9,10 @@
 id: EXP-2026-11-023
 slug: collab-live-fsu-sc
 title: Collaborator suggestions for a real department's faculty, for rating by someone who knows them
-status: running # planned | running | complete | failed | superseded
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-11-18
-date_completed: null
-authors: [Claude (agent), maintainer (rater, pending)]
+date_completed: 2026-11-19
+authors: [Claude (agent), maintainer (rater)]
 
 purpose: >
   The demo paper says collaborator search was tested on invented people only and
@@ -22,7 +22,7 @@ purpose: >
   their own research areas, on a copy of the live database with their papers
   imported through the product's own path, and produces a rating sheet for the
   maintainer (who knows everyone) using EXP-2026-09-012's "would you contact this
-  person?" (yes/maybe/no) measure. Suggestions generated; ratings pending.
+  person?" (yes/maybe/no) measure. Rated by the maintainer 2026-11-19 (Amendment 1).
 
 hypothesis: >
   Exploratory - no prior hypothesis on the rating. Structural expectations from
@@ -74,7 +74,7 @@ llm:
 # --- Results block -----------------------------------------------------------
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
-  primary: would_contact_rate (pending; ratings not yet done)
+  primary: ratings_would_contact_rate_shown
   values:
     candidates_open: 25
     coauthor_pairs_rebuilt: 6
@@ -113,7 +113,21 @@ metrics:
     rating_rows: 52
     rating_rows_model_dropped_only: 18
     rating_rows_shown_with_model: 34
-    ratings_done: 0
+    ratings_done: 50
+    ratings_pairs: 50
+    ratings_sheet_rows: 52
+    ratings_would_contact: 49
+    ratings_maybe: 1
+    ratings_no: 0
+    ratings_would_contact_rate: 0.98
+    ratings_would_contact_rate_shown: 0.9706
+    ratings_shown_pairs: 34
+    ratings_shown_would_contact: 33
+    ratings_model_dropped_pairs: 16
+    ratings_model_dropped_would_contact: 16
+    ratings_product_shown_pairs: 10
+    ratings_product_shown_would_contact: 10
+    ratings_not_their_work: 0
     seekers: 14
     seekers_zero_rating_rows: 1
     student_works_imported: 17
@@ -122,7 +136,7 @@ baselines_compared: [no-model retrieval order (first 3 of each lane's shortlist)
 statistical_test: null
 
 # --- Linkage -----------------------------------------------------------------
-supports_claims: []
+supports_claims: [C-057]
 refutes_claims: []
 figures: []
 supersedes: null

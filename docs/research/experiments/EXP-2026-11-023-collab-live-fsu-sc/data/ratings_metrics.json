@@ -1,0 +1,139 @@
+{
+ "groups": {
+  "all pairs": {
+   "n": 50,
+   "yes": 49,
+   "maybe": 1,
+   "no": 0,
+   "unrated": 0,
+   "yes_rate": 0.98,
+   "yes_wilson95": [
+    0.895,
+    0.9965
+   ]
+  },
+  "shown with the model (either arm)": {
+   "n": 34,
+   "yes": 33,
+   "maybe": 1,
+   "no": 0,
+   "unrated": 0,
+   "yes_rate": 0.9706,
+   "yes_wilson95": [
+    0.8508,
+    0.9948
+   ]
+  },
+  "dropped by the model only": {
+   "n": 16,
+   "yes": 16,
+   "maybe": 0,
+   "no": 0,
+   "unrated": 0,
+   "yes_rate": 1.0,
+   "yes_wilson95": [
+    0.8064,
+    1.0
+   ]
+  },
+  "shown, product arm": {
+   "n": 10,
+   "yes": 10,
+   "maybe": 0,
+   "no": 0,
+   "unrated": 0,
+   "yes_rate": 1.0,
+   "yes_wilson95": [
+    0.7225,
+    1.0
+   ]
+  },
+  "shown, manual arm": {
+   "n": 32,
+   "yes": 31,
+   "maybe": 1,
+   "no": 0,
+   "unrated": 0,
+   "yes_rate": 0.9688,
+   "yes_wilson95": [
+    0.8426,
+    0.9945
+   ]
+  },
+  "includes a bridge-lane row": {
+   "n": 4,
+   "yes": 4,
+   "maybe": 0,
+   "no": 0,
+   "unrated": 0,
+   "yes_rate": 1.0,
+   "yes_wilson95": [
+    0.5101,
+    1.0
+   ]
+  },
+  "candidate is a student": {
+   "n": 1,
+   "yes": 1,
+   "maybe": 0,
+   "no": 0,
+   "unrated": 0,
+   "yes_rate": 1.0,
+   "yes_wilson95": [
+    0.2065,
+    1.0
+   ]
+  }
+ },
+ "sheet_rows": 52,
+ "pairs": 50,
+ "pairs_on_two_rows": 2,
+ "not_their_work": 0,
+ "pair_notes_written": 2,
+ "missing_notes_written": 1,
+ "overall_note_written": true,
+ "seekers_with_pairs": 13,
+ "seekers_all_yes": 12,
+ "per_seeker": {
+  "F01": {
+   "yes": 4,
+   "maybe": 1
+  },
+  "F02": {
+   "yes": 3
+  },
+  "F03": {
+   "yes": 3
+  },
+  "F04": {
+   "yes": 4
+  },
+  "F05": {
+   "yes": 4
+  },
+  "F06": {
+   "yes": 3
+  },
+  "F07": {
+   "yes": 3
+  },
+  "F08": {
+   "yes": 4
+  },
+  "F10": {
+   "yes": 5
+  },
+  "F11": {
+   "yes": 4
+  },
+  "F12": {
+   "yes": 5
+  },
+  "F13": {
+   "yes": 1
+  },
+  "F14": {
+   "yes": 6
+  }
+ }
+}

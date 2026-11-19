@@ -1,0 +1,1031 @@
+{
+ "seekers": [
+  {
+   "seeker": "F01",
+   "rows": 5,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F02",
+   "rows": 3,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F03",
+   "rows": 3,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F04",
+   "rows": 4,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F05",
+   "rows": 4,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F06",
+   "rows": 3,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F07",
+   "rows": 3,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F08",
+   "rows": 4,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F09",
+   "rows": 0,
+   "missing_note_written": true
+  },
+  {
+   "seeker": "F10",
+   "rows": 5,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F11",
+   "rows": 4,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F12",
+   "rows": 5,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F13",
+   "rows": 1,
+   "missing_note_written": false
+  },
+  {
+   "seeker": "F14",
+   "rows": 8,
+   "missing_note_written": false
+  }
+ ],
+ "overall_note_written": true,
+ "pairs": [
+  {
+   "seeker": "F01",
+   "candidate": "F02",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F01",
+   "candidate": "F10",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F01",
+   "candidate": "F11",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F01",
+   "candidate": "F12",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F01",
+   "candidate": "F14",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "maybe",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F02",
+   "candidate": "F05",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": true
+  },
+  {
+   "seeker": "F02",
+   "candidate": "F08",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F02",
+   "candidate": "F09",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F03",
+   "candidate": "F08",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": true,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F03",
+   "candidate": "F12",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": true,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F03",
+   "candidate": "F13",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": true,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F04",
+   "candidate": "F02",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F04",
+   "candidate": "F09",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F04",
+   "candidate": "F10",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F04",
+   "candidate": "F13",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F05",
+   "candidate": "F02",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": true,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F05",
+   "candidate": "F03",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F05",
+   "candidate": "F08",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": true,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F05",
+   "candidate": "F10",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": true,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F06",
+   "candidate": "F04",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F06",
+   "candidate": "F07",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F06",
+   "candidate": "F08",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F07",
+   "candidate": "F04",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F07",
+   "candidate": "F06",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F07",
+   "candidate": "F08",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F08",
+   "candidate": "F02",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": true,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F08",
+   "candidate": "F05",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F08",
+   "candidate": "F10",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F08",
+   "candidate": "F14",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F10",
+   "candidate": "F04",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": true,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": true
+  },
+  {
+   "seeker": "F10",
+   "candidate": "F08",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": true,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F10",
+   "candidate": "F11",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F10",
+   "candidate": "F12",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": true,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F10",
+   "candidate": "F14",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": true,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F11",
+   "candidate": "F03",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "method_bridge"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F11",
+   "candidate": "F08",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F11",
+   "candidate": "F10",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F11",
+   "candidate": "F14",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": false,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F12",
+   "candidate": "F02",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": true,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F12",
+   "candidate": "F03",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F12",
+   "candidate": "F05",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": true,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F12",
+   "candidate": "F08",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F12",
+   "candidate": "F14",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": true,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F13",
+   "candidate": "F04",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": true,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F14",
+   "candidate": "F07",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "method_bridge"
+   ],
+   "tiers": [
+    "declared"
+   ],
+   "shown_product": true,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F14",
+   "candidate": "F08",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": false,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F14",
+   "candidate": "F10",
+   "candidate_role": "faculty",
+   "rows": 2,
+   "lanes": [
+    "in_field",
+    "method_bridge"
+   ],
+   "tiers": [
+    "demonstrated",
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": true,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F14",
+   "candidate": "F11",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": false,
+   "dropped_product": true,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F14",
+   "candidate": "F12",
+   "candidate_role": "faculty",
+   "rows": 1,
+   "lanes": [
+    "in_field"
+   ],
+   "tiers": [
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": true,
+   "dropped_manual": false,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  },
+  {
+   "seeker": "F14",
+   "candidate": "S05",
+   "candidate_role": "student",
+   "rows": 2,
+   "lanes": [
+    "in_field",
+    "method_bridge"
+   ],
+   "tiers": [
+    "demonstrated",
+    "demonstrated"
+   ],
+   "shown_product": false,
+   "shown_manual": true,
+   "dropped_product": true,
+   "dropped_manual": true,
+   "rating": "yes",
+   "not_their_work": false,
+   "note_written": false
+  }
+ ]
+}

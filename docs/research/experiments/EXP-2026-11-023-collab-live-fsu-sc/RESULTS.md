@@ -1,7 +1,8 @@
 # EXP-2026-11-023 — Results
 
-**Status: suggestions generated; ratings pending.** No quality number exists
-yet. Everything below is a count from one run (n=1), on a copy of the live
+**Status: complete. The maintainer's ratings are in (Amendment 1, 2026-11-19):
+49 of 50 suggested pairs rated "would contact", 1 "maybe", 0 "no".** Sections
+1–8 were written before the ratings and are left as they were. Everything below is a count from one run (n=1), on a copy of the live
 database, with the in-process changes listed in PROTOCOL.md.
 
 ## 1. Headline
@@ -157,3 +158,87 @@ maintainer, outside the repository.
 
 A completed experiment is immutable. Corrections are appended here, dated, never
 edited into the sections above.
+
+### Amendment 1 — the maintainer's ratings (2026-11-19, post hoc)
+
+**What was rated.** The maintainer, who knows every person, rated each row of
+the private rating sheet on 2026-11-19 (01:48–01:53 UTC): "would this professor
+plausibly reach out to this person about this?" (would contact / maybe / no),
+plus a "not their work" box, an optional note per row, an optional "who is
+missing" note per professor and one overall note. The ratings were read from the
+rating page's store, joined to the sheet by anonymous id, and scored by
+`code/score_ratings.py`; `data/ratings_anon.json` keeps only ids, flags and the
+rating (no names, no note text). The analysis is post hoc: no rating measure or
+threshold was registered for this experiment beyond EXP-2026-09-012's
+yes/maybe/no question.
+
+**Unit.** A seeker–candidate pair. The sheet had 52 rows; two people appeared
+twice for the same seeker (once per lane), and the page stored one rating per
+pair, so the unit is 50 pairs (ISSUES.md). All 50 were rated.
+
+<!-- BEGIN GENERATED TABLE: tables/ratings.md -->
+| Pairs | n | Would contact | Maybe | No | Would contact, rate (Wilson 95%) |
+|---|---:|---:|---:|---:|---|
+| all pairs | 50 | 49 | 1 | 0 | 0.98 (0.895–0.9965) |
+| shown with the model (either arm) | 34 | 33 | 1 | 0 | 0.9706 (0.8508–0.9948) |
+| dropped by the model only | 16 | 16 | 0 | 0 | 1.0 (0.8064–1.0) |
+| shown, product arm | 10 | 10 | 0 | 0 | 1.0 (0.7225–1.0) |
+| shown, manual arm | 32 | 31 | 1 | 0 | 0.9688 (0.8426–0.9945) |
+| includes a bridge-lane row | 4 | 4 | 0 | 0 | 1.0 (0.5101–1.0) |
+| candidate is a student | 1 | 1 | 0 | 0 | 1.0 (0.2065–1.0) |
+<!-- END GENERATED TABLE -->
+
+"Not their work" was ticked for no pair, including those touching the two
+conflated author records. 12 of the 13 seekers with suggestions had every pair
+rated "would contact"; the one "maybe" is a pair the product showed.
+
+**The rater's notes (paraphrased, no names).**
+
+- On one "would contact" pair: the match fits the candidate's *earlier* work,
+  not what they do now. This is the "50 most-cited works" threat in section 5
+  showing up in a rating.
+- On another: the two people's research is more closely related than most
+  pairs on the sheet.
+- For the one professor with no suggestions: no other faculty member works in
+  that field, so nobody was the right answer; some students would match, but
+  none of them had imported papers.
+- Overall: most if not all suggestions fit "would contact"; many of the people
+  suggested are related to one another; the matching of interests is good. The
+  rater expects the same matching to help fill a missing piece of expertise
+  for a grant team. That use was not tested here.
+- The rater reported that the page "glitched". The only defect found in the
+  page is the shared rating for a person on two rows (ISSUES.md).
+
+**Interpretation.**
+
+- **The suggestions are ones the rater judges real.** On this department,
+  every suggestion the product showed was rated "would contact" except one
+  "maybe" (33/34, Wilson 0.85–0.99). The typed-question path's 10 suggestions
+  were all "would contact". That path still found nobody for 7 of 14
+  (section 1), so its coverage problem stands.
+- **The test cannot tell the matcher from the department.** The 16 pairs that
+  only the no-model order would have shown (the model's rerank dropped them)
+  were also all "would contact". So the rerank removed nobody the rater would
+  not contact, and its drops cost suggestions rather than removed bad ones. In
+  a 14-person department whose faculty all work in computational science, most
+  pairs may be plausible. No pair outside the matcher's output (for example, a
+  random colleague) was rated, so there is no base rate. The 98% says the
+  suggestions are plausible, not that the matcher picks them out better than
+  chance would.
+- **This is in-field matching only** (section 4): the suggestions are people in
+  one's own field one does not already publish with. The cross-field bridges
+  were barely exercised (4 pairs).
+- **One rater, not blind, rating on others' behalf** (section 5). The rater saw
+  which rows the model hid.
+
+**What the paper can say.** On the 14 faculty of one real department, with
+their papers imported, the people the matcher suggests are ones the rater
+judges the professor would contact (49 of 50 pairs, the rest "maybe"). The
+paper must also say: one rater, no comparison with random colleagues, in-field
+suggestions only, and the typed-question path found nobody for half of them.
+No names or other identifying details.
+
+**Follow-ups** (copied to `../../OPEN_QUESTIONS.md` as Q-099 to Q-101): the
+typed-question slot reader (section 7), self-queries reaching only the in-field
+lane (section 7), and a random-colleague control rated blind so the would-contact
+rate has a base rate.

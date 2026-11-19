@@ -29,3 +29,13 @@
   professor would test something else, so it was skipped.
 - **The relay endpoint is shared with live use**; latencies in the logs are not
   a performance measurement.
+- **Rating page: one rating per (seeker, candidate), not per row** (found
+  2026-11-19 while scoring). The page named each row's radio group
+  `r_<seeker>_<candidate>`. One seeker had two people on two rows each (an
+  in-field row and a method-bridge row), so each pair of rows shared one radio
+  group and one stored rating. The maintainer reported that the page "glitched";
+  this is the likely cause. Scoring therefore counts seeker–candidate pairs
+  (50), not rows (52). No row was left without a rating.
+- **The rating notes stay private.** The free-text notes name or describe real
+  people and are kept with the maintainer. The record holds only whether a note
+  was written, plus paraphrases without names in RESULTS.md.
