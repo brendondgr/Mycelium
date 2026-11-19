@@ -98,6 +98,49 @@ REPAIR = """Your previous answer had these problems:
 Answer again in the same shape. Drop anything the call does not support rather
 than rewording it to pass."""
 
+#: Typed text has its own prompt. Read with the call prompt above, a plain
+#: question ("who should I collaborate with on ocean modelling?") was judged
+#: not to be a call and came back as no slots for 7 of 14 real faculty
+#: (EXP-2026-11-023). Typed reads are not stored, so this needs no version.
+NEED_SYSTEM = (
+    "You read what one researcher typed about the collaborator they are looking "
+    "for and report what they name. You report only what the text says, in its "
+    "own words where you can, and you return an empty list rather than guess. "
+    "Reply with one JSON object and nothing else."
+)
+
+NEED_PROMPT = """A researcher typed the text below into a collaborator search.
+It may be a question ("Who should I work with on ...?"), a request or a
+description of a project. List the topics, methods, data or kinds of partner
+this person names.
+
+Reply as {{"slots": [...], "thin": false}} where each slot is
+  {{"facet": "problem" | "method" | "data" | "role",
+    "text": a short phrase of at most {max_words} words, in the text's words,
+    "required": true only if they say they need it}}
+
+  problem — a topic, question or field they want to work on. At most one,
+            first.
+  method  — a technique or kind of expertise they name, by its standard name:
+            "kriging", not "someone who can do kriging".
+  data    — data, a cohort, an instrument, or a setting they name.
+  role    — a kind of partner that is not expertise (e.g. "a hospital").
+
+At most {max_slots} slots. A question about a topic names that topic: list it.
+Use [] only if the text names no topic, method, data or partner at all. Do not
+invent anything the text does not say.
+
+TEXT
+----
+{source}
+"""
+
+NEED_REPAIR = """Your previous answer had these problems:
+{failures}
+
+Answer again in the same shape. Drop anything the text does not support rather
+than rewording it to pass."""
+
 CompleteFn = Callable[[str, str], str | None]
 
 
@@ -259,14 +302,55 @@ def extract(
     source = source_text(item)
     if len(_content_words(source)) < min_words:
         return SlotOutcome(thin=True, refused=["too little text to read"])
+    return _read(source, SYSTEM, PROMPT, REPAIR, complete, label=item.pk)
+
+
+def extract_need(
+    text: str, *, complete: CompleteFn | None = None
+) -> SlotOutcome | None:
+    """A person's typed words into slots, with the prompt written for them.
+
+    Same contract and checks as :func:`extract` (short phrases, every slot's
+    words in the text); ``None`` means the model was unreachable."""
+    source = " ".join((text or "").split())[:MAX_SOURCE_CHARS]
+    if len(_content_words(source)) < MIN_NEED_WORDS:
+        return SlotOutcome(thin=True, refused=["too little text to read"])
+    return _read(source, NEED_SYSTEM, NEED_PROMPT, NEED_REPAIR, complete, label="typed")
+
+
+#: "... collaborate with <anyone> on <topic>" / "... work with <anyone> about
+#: <topic>": the topic is everything after the first "on" or "about".
+_TYPED_TOPIC = re.compile(
+    r"\b(?:collaborat\w*|work(?:ing)?|partner(?:ing)?|team(?:ing)?\s+up)\b"
+    r"(?:\s+with\b.*?)?\s+(?:on|about)\s+(?P<topic>.+)$",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def typed_topic(text: str) -> str:
+    """The topic a typed question names after "collaborate with ... on", or
+    ``""``. The fallback when the reader finds no slots in typed text."""
+    flat = " ".join((text or "").split())
+    found = _TYPED_TOPIC.search(flat)
+    if not found:
+        return ""
+    topic = found.group("topic").strip().rstrip("?.!").strip()
+    return topic[:MAX_SOURCE_CHARS] if _content_words(topic) else ""
+
+
+def _read(
+    source: str, system: str, template: str, repair: str, complete, *, label
+) -> SlotOutcome | None:
     ask = complete if complete is not None else _settings_complete
-    prompt = PROMPT.format(max_words=MAX_SLOT_WORDS, max_slots=MAX_SLOTS, source=source)
+    prompt = template.format(
+        max_words=MAX_SLOT_WORDS, max_slots=MAX_SLOTS, source=source
+    )
     best: SlotOutcome | None = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
-            raw = ask(SYSTEM, prompt)
+            raw = ask(system, prompt)
         except Exception as exc:  # noqa: BLE001 - unavailable, not broken
-            logger.warning("requirement slots unavailable for %s (%s)", item.pk, exc)
+            logger.warning("requirement slots unavailable for %s (%s)", label, exc)
             if best is None:
                 return None
             break
@@ -281,9 +365,11 @@ def extract(
         if not failures:
             break
         prompt = (
-            PROMPT.format(max_words=MAX_SLOT_WORDS, max_slots=MAX_SLOTS, source=source)
+            template.format(
+                max_words=MAX_SLOT_WORDS, max_slots=MAX_SLOTS, source=source
+            )
             + "\n"
-            + REPAIR.format(failures="\n".join(f"- {f}" for f in failures))
+            + repair.format(failures="\n".join(f"- {f}" for f in failures))
         )
     return best
 

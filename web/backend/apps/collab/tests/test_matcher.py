@@ -482,6 +482,7 @@ def test_manual_search_with_edited_slots_does_not_read_the_words_again(
         raise AssertionError("the slot reader ran for slots already given")
 
     monkeypatch.setattr(slot_reader, "extract", boom)
+    monkeypatch.setattr(slot_reader, "extract_need", boom)
     response = _client(ada).post(
         "/api/collab/search/",
         {
@@ -562,3 +563,95 @@ def test_a_short_need_in_ones_own_words_is_read_not_refused(world):
     )
     assert asked, "the call floor refused a person's short statement of need"
     assert [s["text"] for s in query.slots] == ["kriging"]
+
+
+# --- typed questions (EXP-2026-11-023: 7 of 14 found nobody) -----------------
+
+QUESTION = "Who in the department should I collaborate with on ocean modelling?"
+
+
+def test_a_typed_question_the_reader_finds_nothing_in_still_searches(world):
+    ada, _, _ = world
+
+    def reader(system, user):
+        return '{"slots": [], "thin": false}'
+
+    query = matcher.query_for_text(ada, QUESTION, complete=reader)
+    assert [(s["facet"], s["text"]) for s in query.slots] == [
+        ("problem", "ocean modelling")
+    ]
+    assert query.slots[0].get("vector"), "the fallback slot is matchable"
+    result = matcher.search(ada, query, complete=_model())
+    assert result.search_id is not None
+    log = SearchLog.objects.get(pk=result.search_id)
+    assert log.slots == [{"facet": "problem", "text": "ocean modelling"}]
+
+
+def test_a_typed_question_still_searches_when_the_model_is_down(world):
+    ada, _, _ = world
+
+    def down(system, user):
+        raise ConnectionError("relay unreachable")
+
+    query = matcher.query_for_text(ada, QUESTION, complete=down)
+    assert [s["text"] for s in query.slots] == ["ocean modelling"]
+
+
+def test_a_normal_question_is_read_into_slots(world):
+    ada, _, _ = world
+    systems = []
+
+    def reader(system, user):
+        systems.append(system)
+        return json.dumps(
+            {
+                "slots": [
+                    {"facet": "problem", "text": "ocean modelling"},
+                    {"facet": "method", "text": "data assimilation"},
+                ]
+            }
+        )
+
+    query = matcher.query_for_text(
+        ada,
+        "Who should I collaborate with on ocean modelling with data assimilation?",
+        complete=reader,
+    )
+    assert [(s["facet"], s["text"]) for s in query.slots] == [
+        ("problem", "ocean modelling"),
+        ("method", "data assimilation"),
+    ]
+    assert systems and "funding call" not in systems[0]
+
+
+def test_words_with_no_topic_are_refused_with_a_reason(world):
+    ada, _, _ = world
+
+    def reader(system, user):
+        return '{"slots": []}'
+
+    with pytest.raises(matcher.SearchRefused) as refused:
+        matcher.query_for_text(ada, "Hello, can you help me please?", complete=reader)
+    assert refused.value.code == "no_topic"
+    assert "try naming a method or field" in str(refused.value)
+
+
+def test_the_api_tells_the_person_their_words_named_no_topic(
+    world, settings, monkeypatch
+):
+    from apps.collab import slots as slot_reader
+
+    ada, _, _ = world
+    settings.COLLAB_SEARCH_ENABLED = True
+    monkeypatch.setattr(
+        slot_reader, "_settings_complete", lambda system, user: '{"slots": []}'
+    )
+    client = _client(ada)
+    for body in (
+        {"entry": "manual", "text": "Hello, can you help me please?", "dry_run": True},
+        {"entry": "manual", "text": "Hello, can you help me please?"},
+    ):
+        response = client.post("/api/collab/search/", body, format="json")
+        assert response.status_code == 400
+        assert response.json() == {"detail": matcher.NO_TOPIC, "code": "no_topic"}
+    assert not SearchLog.objects.filter(seeker=ada).exists()

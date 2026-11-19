@@ -224,6 +224,11 @@ export function SearchPanel({
             >
               {readWords.isPending ? "Reading…" : "Turn into requirements"}
             </button>
+            {readWords.isError ? (
+              <p role="alert" className="mt-1.5 text-sm text-clay">
+                {(readWords.error as Error).message}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

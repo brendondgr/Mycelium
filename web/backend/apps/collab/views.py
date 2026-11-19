@@ -217,8 +217,18 @@ class SearchView(APIView):
                 return Response({"slots": _public_slots(query)})
             result = matcher.search(request.user, query)
         except matcher.SearchRefused as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+            return _refused(exc)
         return Response({"slots": _public_slots(query), **result.as_dict()})
+
+
+def _refused(exc) -> Response:
+    """A refused search. Typed words with no topic in them are the person's
+    input to fix (400); every other refusal is about who may search (403)."""
+    if exc.code == "no_topic":
+        code = status.HTTP_400_BAD_REQUEST
+    else:
+        code = status.HTTP_403_FORBIDDEN
+    return Response({"detail": str(exc), "code": exc.code}, status=code)
 
 
 def _search_closed() -> Response | None:
@@ -298,10 +308,7 @@ class TeamView(APIView):
                 return query
             result = matcher.assemble_team(request.user, query)
         except matcher.SearchRefused as exc:
-            return Response(
-                {"detail": str(exc), "code": exc.code},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return _refused(exc)
         return Response({"slots": _public_slots(query), **result.as_dict()})
 
 

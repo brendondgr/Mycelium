@@ -181,18 +181,26 @@ def project_visible(project, viewer) -> bool:
     return Project.objects.visible_to(viewer).filter(pk=project.pk).exists()
 
 
+NO_TOPIC = "I couldn't find a topic in your question; try naming a method or field."
+
+
 def query_for_text(seeker, text: str, *, complete=None, **options) -> Query:
-    """The seeker's own words, read by the same slot reader as a call."""
+    """The seeker's own words, read by the slot reader's prompt for typed text.
+
+    When the reader finds nothing (or the model is unreachable), the topic
+    after "collaborate with ... on" becomes one problem slot; when there is no
+    such topic either, the search is refused with ``no_topic`` and a sentence
+    the person can act on — never an empty search that shows nobody."""
     from . import slots as slot_reader
 
-    class _Typed:
-        pk = None
-        metadata = {"title": "", "description": text}
-
-    outcome = slot_reader.extract(
-        _Typed(), complete=complete, min_words=slot_reader.MIN_NEED_WORDS
-    )
+    outcome = slot_reader.extract_need(text, complete=complete)
     found = outcome.slots if outcome else []
+    if not found:
+        topic = slot_reader.typed_topic(text)
+        if topic:
+            found = [{"facet": SlotFacet.PROBLEM, "text": topic, "required": False}]
+    if not found:
+        raise SearchRefused(NO_TOPIC, "no_topic")
     return Query(
         "manual", _with_vectors(found), need_fields=_fields_of([seeker]), **options
     )

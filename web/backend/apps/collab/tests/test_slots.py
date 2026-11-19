@@ -187,3 +187,75 @@ def test_a_problem_is_never_required(call):
     }
     outcome = slots.extract(call, complete=Model(reply))
     assert [s["required"] for s in outcome.slots] == [False, True]
+
+
+# --- typed text (EXP-2026-11-023) ---------------------------------------------
+
+
+class Recorder(Model):
+    def __init__(self, *replies):
+        super().__init__(*replies)
+        self.systems = []
+
+    def __call__(self, system, user):
+        self.systems.append(system)
+        return super().__call__(system, user)
+
+
+def test_the_funding_call_path_still_reads_with_the_call_prompt(call):
+    model = Recorder(GOOD)
+    slots.extract(call, complete=model)
+    assert model.systems == [slots.SYSTEM]
+    assert model.prompts == [
+        slots.PROMPT.format(
+            max_words=slots.MAX_SLOT_WORDS,
+            max_slots=slots.MAX_SLOTS,
+            source=slots.source_text(call),
+        )
+    ]
+
+
+def test_typed_text_is_read_with_its_own_prompt_and_the_same_checks():
+    question = "Who should I collaborate with on ocean modelling using kriging?"
+    model = Recorder(
+        {
+            "slots": [
+                {"facet": "problem", "text": "ocean modelling"},
+                {"facet": "method", "text": "kriging"},
+                {"facet": "data", "text": "Argo float profiles"},
+            ]
+        },
+        {
+            "slots": [
+                {"facet": "problem", "text": "ocean modelling"},
+                {"facet": "method", "text": "kriging"},
+            ]
+        },
+    )
+    outcome = slots.extract_need(question, complete=model)
+    assert model.systems == [slots.NEED_SYSTEM, slots.NEED_SYSTEM]
+    assert "funding call" not in model.prompts[0]
+    assert question in model.prompts[0]
+    # A slot the text does not contain is repaired away, as for a call.
+    assert "Argo float profiles" in model.prompts[1]
+    assert [s["text"] for s in outcome.slots] == ["ocean modelling", "kriging"]
+
+
+@pytest.mark.parametrize(
+    ("text", "topic"),
+    [
+        (
+            "Who in the department should I collaborate with on ocean modelling?",
+            "ocean modelling",
+        ),
+        (
+            "Who should I collaborate with in the department on reef data; kriging.",
+            "reef data; kriging",
+        ),
+        ("Anyone to work with about  sea ice\nretreat?", "sea ice retreat"),
+        ("Hello, can you help me please?", ""),
+        ("Who should I collaborate with on it?", ""),
+    ],
+)
+def test_the_typed_topic_is_the_text_after_collaborate_on(text, topic):
+    assert slots.typed_topic(text) == topic
