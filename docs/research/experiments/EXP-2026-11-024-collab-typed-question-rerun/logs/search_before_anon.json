@@ -1,0 +1,701 @@
+{
+ "arm": "before",
+ "cleared": {
+  "appearances": 0,
+  "search_logs": 0
+ },
+ "commit_under_test": "b45c1211d6aaee8a08a5155ac5a1ca4e7bba5208",
+ "finished": "2026-11-19T19:05:05Z",
+ "results": [
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 23,
+   "error": null,
+   "explained": true,
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 0,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F01",
+   "shown": 0,
+   "slot_facets": [],
+   "slot_source": "none"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 23,
+   "error": null,
+   "explained": true,
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 0,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F02",
+   "shown": 0,
+   "slot_facets": [],
+   "slot_source": "none"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F13",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 3,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S05",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 8,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 19,
+   "error": null,
+   "explained": true,
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 6,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F03",
+   "shown": 2,
+   "slot_facets": [
+    "problem",
+    "problem",
+    "problem",
+    "problem",
+    "problem",
+    "problem"
+   ],
+   "slot_source": "reader"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 22,
+   "error": null,
+   "explained": true,
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 0,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F04",
+   "shown": 0,
+   "slot_facets": [],
+   "slot_source": "none"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "S10",
+     "candidate_role": "student",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 3,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 4,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F10",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F03",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 23,
+   "error": null,
+   "explained": true,
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 6,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F05",
+   "shown": 3,
+   "slot_facets": [
+    "problem",
+    "problem",
+    "problem",
+    "problem",
+    "method",
+    "method"
+   ],
+   "slot_source": "reader"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 24,
+   "error": null,
+   "explained": true,
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 0,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F06",
+   "shown": 0,
+   "slot_facets": [],
+   "slot_source": "none"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 24,
+   "error": null,
+   "explained": true,
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 0,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F07",
+   "shown": 0,
+   "slot_facets": [],
+   "slot_source": "none"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 24,
+   "error": null,
+   "explained": true,
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 6,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F08",
+   "shown": 1,
+   "slot_facets": [
+    "problem",
+    "method",
+    "method",
+    "method",
+    "method",
+    "method"
+   ],
+   "slot_source": "reader"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 24,
+   "error": null,
+   "explained": true,
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 0,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F09",
+   "shown": 0,
+   "slot_facets": [],
+   "slot_source": "none"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F01",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F14",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 5,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 6,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F07",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 7,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 21,
+   "error": null,
+   "explained": true,
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 6,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F10",
+   "shown": 3,
+   "slot_facets": [
+    "problem",
+    "problem",
+    "problem",
+    "problem",
+    "problem",
+    "problem"
+   ],
+   "slot_source": "reader"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [],
+   "candidates_considered": 23,
+   "error": null,
+   "explained": true,
+   "n_covered": 0,
+   "n_gaps": 0,
+   "n_slots": 0,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 0,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F11",
+   "shown": 0,
+   "slot_facets": [],
+   "slot_source": "none"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F14",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 1,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F02",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 2,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F05",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 24,
+   "error": null,
+   "explained": true,
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 6,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F12",
+   "shown": 1,
+   "slot_facets": [
+    "problem",
+    "method",
+    "method",
+    "method",
+    "method",
+    "method"
+   ],
+   "slot_source": "reader"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "in_field",
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 22,
+   "error": null,
+   "explained": true,
+   "n_covered": 6,
+   "n_gaps": 0,
+   "n_slots": 6,
+   "reader": {
+    "attempts": 1,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 6,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F13",
+   "shown": 1,
+   "slot_facets": [
+    "problem",
+    "problem",
+    "problem",
+    "problem",
+    "problem",
+    "problem"
+   ],
+   "slot_source": "reader"
+  },
+  {
+   "arm": "before",
+   "attempts": 1,
+   "candidates": [
+    {
+     "candidate_id": "F11",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 1,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F12",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "in_field",
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F07",
+     "candidate_role": "faculty",
+     "dropped_by_model": false,
+     "lane": "method_bridge",
+     "shortlist_position": 1,
+     "shown_with_model": true,
+     "tier": "declared"
+    },
+    {
+     "candidate_id": "S05",
+     "candidate_role": "student",
+     "dropped_by_model": true,
+     "lane": "method_bridge",
+     "shortlist_position": 2,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F08",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "method_bridge",
+     "shortlist_position": 3,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F04",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "method_bridge",
+     "shortlist_position": 4,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    },
+    {
+     "candidate_id": "F01",
+     "candidate_role": "faculty",
+     "dropped_by_model": true,
+     "lane": "method_bridge",
+     "shortlist_position": 5,
+     "shown_with_model": false,
+     "tier": "demonstrated"
+    }
+   ],
+   "candidates_considered": 22,
+   "error": null,
+   "explained": true,
+   "n_covered": 5,
+   "n_gaps": 1,
+   "n_slots": 6,
+   "reader": {
+    "attempts": 2,
+    "function": "extract",
+    "reachable": true,
+    "refused": [],
+    "slots": 6,
+    "thin": false
+   },
+   "refused": null,
+   "seeker_id": "F14",
+   "shown": 1,
+   "slot_facets": [
+    "problem",
+    "method",
+    "method",
+    "method",
+    "method",
+    "method"
+   ],
+   "slot_source": "reader"
+  }
+ ],
+ "started": "2026-11-19T19:04:26Z"
+}

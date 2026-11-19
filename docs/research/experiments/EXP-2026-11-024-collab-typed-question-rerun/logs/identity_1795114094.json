@@ -1,0 +1,81 @@
+{
+ "at": "2026-11-19T18:48:12Z",
+ "relay_models": {
+  "data": [
+   {
+    "created": 1795114092,
+    "id": "auto",
+    "object": "model",
+    "owned_by": "relay",
+    "relay": {
+     "routing": "active endpoint (hot-swap)"
+    }
+   },
+   {
+    "created": 1795114092,
+    "id": "default-model",
+    "object": "model",
+    "owned_by": "relay:default-model",
+    "relay": {
+     "endpoint": "default-model",
+     "health": "healthy",
+     "protocol": "openai",
+     "upstream_model": "default-model"
+    }
+   },
+   {
+    "created": 1795114092,
+    "id": "default-model-2",
+    "object": "model",
+    "owned_by": "relay:default-model-2",
+    "relay": {
+     "endpoint": "default-model-2",
+     "health": "healthy",
+     "protocol": "openai",
+     "upstream_model": "default-model-2"
+    }
+   },
+   {
+    "created": 1795114092,
+    "id": "default-model-3",
+    "object": "model",
+    "owned_by": "relay:default-model-3",
+    "relay": {
+     "endpoint": "default-model-3",
+     "health": "failed",
+     "protocol": "openai",
+     "upstream_model": null
+    }
+   },
+   {
+    "created": 1795114092,
+    "id": "default-model-4",
+    "object": "model",
+    "owned_by": "relay:default-model-4",
+    "relay": {
+     "endpoint": "default-model-4",
+     "health": "failed",
+     "protocol": "openai",
+     "upstream_model": null
+    }
+   }
+  ],
+  "object": "list"
+ },
+ "self_report": "I am a large language model, trained by Google.",
+ "setup": {
+  "appearance_cap": 1000000,
+  "billing_enforce": false,
+  "collab_max_scope": "institution",
+  "collab_search_enabled": true,
+  "concept_match_cosine": 0.8,
+  "database": "mycelium_sandbox_fsusc24",
+  "lane_match_cosine": 0.7,
+  "llm_model": "default-model",
+  "results_per_lane": 3,
+  "searches_per_day": 1000000,
+  "shortlist_per_lane": 8,
+  "standin_resolves_to": "Florida State University",
+  "writeup_llm_concurrency": 4
+ }
+}

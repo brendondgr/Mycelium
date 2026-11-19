@@ -1,0 +1,177 @@
+[
+ {
+  "facets_read": 50,
+  "facets_thin": 16,
+  "id": "F01",
+  "role": "faculty",
+  "works": 50
+ },
+ {
+  "facets_read": 50,
+  "facets_thin": 17,
+  "id": "F02",
+  "role": "faculty",
+  "works": 50
+ },
+ {
+  "facets_read": 50,
+  "facets_thin": 20,
+  "id": "F03",
+  "role": "faculty",
+  "works": 50
+ },
+ {
+  "facets_read": 43,
+  "facets_thin": 14,
+  "id": "F04",
+  "role": "faculty",
+  "works": 43
+ },
+ {
+  "facets_read": 50,
+  "facets_thin": 13,
+  "id": "F05",
+  "role": "faculty",
+  "works": 50
+ },
+ {
+  "facets_read": 50,
+  "facets_thin": 6,
+  "id": "F06",
+  "role": "faculty",
+  "works": 50
+ },
+ {
+  "facets_read": 50,
+  "facets_thin": 10,
+  "id": "F07",
+  "role": "faculty",
+  "works": 50
+ },
+ {
+  "facets_read": 31,
+  "facets_thin": 11,
+  "id": "F08",
+  "role": "faculty",
+  "works": 31
+ },
+ {
+  "facets_read": 25,
+  "facets_thin": 4,
+  "id": "F09",
+  "role": "faculty",
+  "works": 25
+ },
+ {
+  "facets_read": 26,
+  "facets_thin": 13,
+  "id": "F10",
+  "role": "faculty",
+  "works": 26
+ },
+ {
+  "facets_read": 50,
+  "facets_thin": 23,
+  "id": "F11",
+  "role": "faculty",
+  "works": 50
+ },
+ {
+  "facets_read": 50,
+  "facets_thin": 17,
+  "id": "F12",
+  "role": "faculty",
+  "works": 50
+ },
+ {
+  "facets_read": 26,
+  "facets_thin": 4,
+  "id": "F13",
+  "role": "faculty",
+  "works": 26
+ },
+ {
+  "facets_read": 50,
+  "facets_thin": 9,
+  "id": "F14",
+  "role": "faculty",
+  "works": 50
+ },
+ {
+  "facets_read": 10,
+  "facets_thin": 2,
+  "id": "S01",
+  "role": "student",
+  "works": 10
+ },
+ {
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S02",
+  "role": "student",
+  "works": 0
+ },
+ {
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S03",
+  "role": "student",
+  "works": 0
+ },
+ {
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S04",
+  "role": "student",
+  "works": 0
+ },
+ {
+  "facets_read": 4,
+  "facets_thin": 0,
+  "id": "S05",
+  "role": "student",
+  "works": 4
+ },
+ {
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S06",
+  "role": "student",
+  "works": 0
+ },
+ {
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S07",
+  "role": "student",
+  "works": 0
+ },
+ {
+  "facets_read": 1,
+  "facets_thin": 0,
+  "id": "S08",
+  "role": "student",
+  "works": 1
+ },
+ {
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S09",
+  "role": "student",
+  "works": 0
+ },
+ {
+  "facets_read": 2,
+  "facets_thin": 1,
+  "id": "S10",
+  "role": "student",
+  "works": 2
+ },
+ {
+  "facets_read": 0,
+  "facets_thin": 0,
+  "id": "S11",
+  "role": "student",
+  "works": 0
+ }
+]
