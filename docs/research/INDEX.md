@@ -74,12 +74,13 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-022` | 2026-11-18 | Gemma 4 31B empty replies: the 2026-11-15 code replayed against today's server | complete | f1115.both.blank_turns 19.0000 (n=108) | — | [folder](experiments/EXP-2026-11-022-gemma-empty-replies-replay/RESULTS.md) |
 | `EXP-2026-11-023` | 2026-11-19 | Collaborator suggestions for a real department's faculty, for rating by someone who knows them | complete | ratings_would_contact_rate_shown 0.9706 | C-057 | [folder](experiments/EXP-2026-11-023-collab-live-fsu-sc/RESULTS.md) |
 | `EXP-2026-11-024` | 2026-11-19 | Typed-question collaborator search after the slot-reader fix, on the EXP-2026-11-023 department | complete | after_seekers_with_any_suggestion 11.0000 | — | [folder](experiments/EXP-2026-11-024-collab-typed-question-rerun/RESULTS.md) |
+| `EXP-2026-11-025` | 2026-11-19 | One problem slot per listed topic in typed collaborator questions (Q-102) | complete | multi_seekers_with_any_suggestion 12.0000 | — | [folder](experiments/EXP-2026-11-025-collab-self-query-problem-slots/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 61 |
+| complete | 62 |
 | planned | 3 |
 | running | 1 |
-| **total** | **65** |
+| **total** | **66** |
