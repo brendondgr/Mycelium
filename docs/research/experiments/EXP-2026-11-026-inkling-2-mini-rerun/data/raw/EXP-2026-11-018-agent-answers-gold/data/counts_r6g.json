@@ -1,0 +1,43 @@
+{
+ "tag": "r6g",
+ "arm_a_rows": 57,
+ "arm_a_jobs": 57,
+ "jobs_failed_both_attempts": [],
+ "rows_with_a_denied_call": 3,
+ "jobs_with_a_denied_call": 3,
+ "full_credit_answerable_jobs_with_denied": [
+  3,
+  3
+ ],
+ "full_credit_answerable_jobs_without_denied": [
+  47,
+  54
+ ],
+ "denied_jobs_first_calls": [
+  [
+   "load_functions > projects_get > projects_list > projects_get",
+   3
+  ]
+ ],
+ "jobs_with_a_call_past_the_step_limit": 0,
+ "jobs_ended_by_fit_final": 0,
+ "jobs_whose_final_text_is_call_markup": [],
+ "max_function_calls_in_a_job": 7,
+ "jobs_with_more_than_12_function_calls": 0,
+ "jobs_using_load_functions": 56,
+ "full_credit_by_kind": {
+  "join": [
+   26,
+   30
+  ],
+  "list": [
+   24,
+   27
+  ]
+ },
+ "questions_below_full_credit": {
+  "j03": "2/3",
+  "j10": "0/3",
+  "l04": "0/3"
+ }
+}

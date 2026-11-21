@@ -1,0 +1,40 @@
+ Container i-016-202-prompt_only Creating 
+ Container i-016-202-prompt_only Created 
+agent function files_read failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“pilot-report.txt” is not a valid UUID.']
+agent function files_info failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“pilot-report.txt” is not a valid UUID.']
+agent function files_search failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“pilot-report.txt” is not a valid UUID.']
+probe-injection 0 ok
+probe-guess 0 ok
+agent function corpus_item failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“QX-MEMBE-W23IB5” is not a valid UUID.']
+probe-other-lab 0 ok
+scope-invite-only 0 ok
+probe-dm-admin 0 ok
+

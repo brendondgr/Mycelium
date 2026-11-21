@@ -7,13 +7,15 @@ and Qwen 3.8 27B's numbers there are read from the source experiments' files.
 
 ## 1. Headline
 
-So far (parts 1–2 of 7): on Inkling 2 Mini, Mylo answered every turn,
-leaked nothing on the model check's five access probes and gave all six
-entitled askers their answer, as on both earlier models; it reached full
-credit on 8 of 12 graded questions (Gemma 12, Qwen 10), every miss naming an
-extra object. It decodes about twice as fast as Qwen 3.8 27B, but makes 2–3
-times as many model calls on multi-step questions, so only one-lookup
-questions are faster (median 2.2 s idle, 3.7 s with 8 at once).
+So far (parts 1, 2 and 4 of 7). On Inkling 2 Mini, Mylo answered every turn
+of the model check. It leaked nothing on the check's five access probes and
+gave all six entitled askers their answer, as on both earlier models. It
+decodes about twice as fast as Qwen 3.8 27B, but makes 2–3 times as many
+model calls on multi-step questions, so only one-lookup questions are faster
+(median 2.2 s idle). Against stored facts it earned full credit on 74% of
+answerable runs (Qwen 88%, Gemma 90%), still 54 points above a single search
+plus one model call. Every miss cited all expected objects plus extra ones;
+the answers read cite the objects the model ruled out (Q-103).
 
 ## 2. Results by part
 
@@ -96,7 +98,51 @@ Not started.
 
 ### Part 4 — answers graded against stored facts (EXP-2026-11-018, paper §4.4, Table 1)
 
-Not started.
+Run 2026-11-21 18:07–19:12 UTC, 60 in flight, code `a99e1a01`; 59 questions ×
+3 arms × 3 repetitions (531 jobs, the same job list as Qwen's r7), gold
+recomputed at the start and identical at the end. Tables: `tables/part4.md`.
+
+| Model | Arm | field | list | project | people | join | unanswerable | Answerable, full credit |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| Qwen 3.8 27B | Mylo | 30/30 | 24/27 | 30/30 | 25/30 | 20/30 | 26/30 | 129/147 = 0.88 |
+| Gemma 4 31B | Mylo | 30/30 | 15/27 | 30/30 | 30/30 | 27/30 | 16/30 | 132/147 = 0.90 |
+| Inkling 2 Mini | Mylo | 30/30 | 20/27 | 30/30 | 16/30 | 13/30 | 26/30 | 109/147 = 0.74 [0.67, 0.81] |
+| Inkling 2 Mini | single call | 30/30 | 0/27 | 0/30 | 0/30 | 0/30 | 22/30 | 30/147 = 0.20 |
+| Inkling 2 Mini | corpus only | 30/30 | 0/27 | 0/30 | 0/30 | 0/30 | 29/30 | 30/147 = 0.20 |
+
+Mylo minus the single call on answerable questions: +0.54 [+0.41, +0.67]
+(Qwen +0.67, Gemma +0.69). Mylo minus the corpus-only agent on project, people
+and join questions: +0.66 [+0.49, +0.81] (Qwen +0.83, Gemma +0.97).
+
+**Analysis.**
+- *Lower full credit, from one cause.* Mylo on Inkling earned full credit on
+  74% of answerable runs, against 88% (Qwen) and 90% (Gemma); the intervals do
+  not overlap Qwen's or Gemma's point estimates. The loss is in people (16/30)
+  and join (13/30) questions, plus a few lists (20/27).
+- *Recall was 1.00 on every run.* Every expected object was cited in every
+  answer; all 38 answerable misses are precision misses (people 14, join 17,
+  list 7). Qwen's 18 misses were also all precision misses.
+- *What the extra objects are (observation, not a measure).* In the answers
+  read (p01 and j01, one repetition each), Inkling answers correctly and then
+  cites the objects it ruled out: "Jonah Whitcombe (#3) is the only member
+  who has declared an interest in marine litter … The others declare: Mara
+  Ellison (#2) — …; Priya Raman (#4) — …". The registered grader counts every
+  cited object as named, so this is graded as naming four extra people. Read
+  this way, the gap to the larger models is mostly about citation habits,
+  not wrong answers. That reading is post hoc and based on two answers;
+  no grade here is changed by it. A registered secondary grading that counts
+  only objects presented as the answer would settle it (Q-103).
+- *No list was presented as complete when it was partial* (0 of 27), and no
+  job failed twice in the Mylo arm. Inkling used `load_functions` in 140 of
+  177 Mylo jobs (Qwen 99) and made at most 10 function calls in one job
+  (Qwen 7).
+- *The baselines still score only where the corpus holds the answer*
+  (one-item field, 30/30). The single call stated a fact on 8 of 30
+  unanswerable runs (Qwen 0, Gemma 0), so Inkling invents more often when it
+  is given one search and no functions. With Mylo's functions it stated a fact
+  on 4 of 30 (Qwen 3, Gemma 5).
+- *Cost.* Median 250 s per Mylo answer at 60 in flight (Qwen 150 s, Gemma
+  152 s, each at their own load), in line with part 2's longer loops.
 
 ### Part 5 — collaborator scenarios (EXP-2026-11-019, paper §4.2, Table 3)
 

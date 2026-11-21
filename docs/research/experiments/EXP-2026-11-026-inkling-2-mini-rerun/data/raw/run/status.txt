@@ -11,3 +11,14 @@
 2026-11-21T18:07:12Z item2 returned
 2026-11-21T18:07:15Z item4 EXP-018 answers (ink): waiting for a window clear of midnight UTC and the nightly
 2026-11-21T18:07:15Z item4 EXP-018 answers (ink): start
+2026-11-21T18:07:26Z item4 gold rc=0 {"wrote": "data/gold_ink.json", "kept": 59, "dropped": [{"id": "l02", "why": "gold size 12"}], "today": "2026-11-21"}
+2026-11-21T18:07:26Z item4 jobs_ink.txt = jobs_r7.txt
+2026-11-21T18:08:15Z item3 EXP-016 access probes via ink_replay.py (label ink): start
+2026-11-21T18:13:09Z driver start pid 641561 items: 3 5 6 7; snapshots 44100c04 640d7fe0 a99e1a01; stage /home/bdg20b/Projects/Mycelium-runs/inkling-20261121/stage
+2026-11-21T18:13:09Z waiting for pid 628255 (the previous driver's part 4) to finish
+2026-11-21T19:11:47Z item4 drive rc=0 rows=594
+2026-11-21T19:11:58Z item4 grading: 4 of 4 steps rc=0
+2026-11-21T19:12:09Z item4 gold at the end = gold at the start
+2026-11-21T19:12:14Z item4 cleanup rc=0 {"EXP-2026-11-018": 417, "EXP-2026-11-020": 0, "EXP-2026-11-013": 0, "audit_rows_by_action": {"agent.org_lab_members": 48, "agent.org_person": 11}, "deleted_rows": {"agent.AgentEvent": 28772, "agent.A
+2026-11-21T19:12:39Z pid 628255 finished
+2026-11-21T19:12:46Z item3 EXP-016 access probes via ink_replay.py (label ink): start

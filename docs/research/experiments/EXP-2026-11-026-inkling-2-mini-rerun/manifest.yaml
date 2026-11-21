@@ -110,6 +110,30 @@ metrics:
     p2_latency.p8.single.model_calls_median: {mean: 2.0, n: 32}
     p2_latency.p8.single.tokens_median: {mean: 6767.5, n: 32}
     p2_latency.p8.single.worst_s: {mean: 10.21, n: 32}
+    p4_answers.a.answerable.full_credit: {mean: 109, n: 147}
+    p4_answers.a.field.full_credit: {mean: 30, n: 30}
+    p4_answers.a.join.full_credit: {mean: 13, n: 30}
+    p4_answers.a.list.full_credit: {mean: 20, n: 27}
+    p4_answers.a.people.full_credit: {mean: 16, n: 30}
+    p4_answers.a.project.full_credit: {mean: 30, n: 30}
+    p4_answers.a.unanswerable.full_credit: {mean: 26, n: 30}
+    p4_answers.a.unanswerable_states_fact: {mean: 4, n: 30}
+    p4_answers.b.answerable.full_credit: {mean: 30, n: 147}
+    p4_answers.b.field.full_credit: {mean: 30, n: 30}
+    p4_answers.b.join.full_credit: {mean: 0, n: 30}
+    p4_answers.b.list.full_credit: {mean: 0, n: 27}
+    p4_answers.b.people.full_credit: {mean: 0, n: 30}
+    p4_answers.b.project.full_credit: {mean: 0, n: 30}
+    p4_answers.b.unanswerable.full_credit: {mean: 22, n: 30}
+    p4_answers.b.unanswerable_states_fact: {mean: 8, n: 30}
+    p4_answers.c.answerable.full_credit: {mean: 30, n: 147}
+    p4_answers.c.field.full_credit: {mean: 30, n: 30}
+    p4_answers.c.join.full_credit: {mean: 0, n: 30}
+    p4_answers.c.list.full_credit: {mean: 0, n: 27}
+    p4_answers.c.people.full_credit: {mean: 0, n: 30}
+    p4_answers.c.project.full_credit: {mean: 0, n: 30}
+    p4_answers.c.unanswerable.full_credit: {mean: 29, n: 30}
+    p4_answers.c.unanswerable_states_fact: {mean: 1, n: 30}
 baselines_compared: [Gemma 4 31B (paper), Qwen 3.8 27B (paper), rules in the prompt, prose directory, single call, corpus-only]
 statistical_test: null
 
