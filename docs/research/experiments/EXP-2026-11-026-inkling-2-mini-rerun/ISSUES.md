@@ -14,3 +14,8 @@
   clients". The live app shares that Postgres and may have seen connection
   errors in those minutes. Part 3 stopped and set aside
   (`data/raw/run/aborted-2-part3/`); PROTOCOL Amendment 2.
+- 2026-11-21 19:17–21:24 UTC: one part-3 model request (seed 101, code arm)
+  never returned; the harness has no deadline on a streamed request that
+  stays open, so the process waited two hours. Stopped and rerun in full
+  (PROTOCOL Amendment 3). The same can happen in any part; the per-container
+  timeouts in the driver (2–7 h) are the only backstop.

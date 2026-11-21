@@ -166,3 +166,16 @@ them), then parts 5, 6 and 7, from a second driver started with
 `ITEMS="3 5 6 7" WAIT_PID=<part 4's process>` so it begins after part 4. The
 in-flight figures in the Setup table are unchanged; only parts no longer
 overlap.
+
+## Amendment 3 (2026-11-21 21:25 UTC, during part 3; no part-3 grade read)
+
+Part 3's seed-101 code-arm process wrote its last row at 19:17 UTC and then
+waited for over two hours on one model request: the process held an open
+connection to the relay (`llm-tunnel:9090`) with no reply, its database
+connections idle. The other five processes kept running. At 21:24 UTC the
+process was stopped and its 16 rows set aside without grading
+(`data/raw/run/aborted-3-part3-s101gate/`). Seed 101's code arm is rerun in
+full (3 repetitions, fresh database, same command, container
+`i-016-101-gate-r2`), beside the other part-3 processes and then part 5; the
+connection guard still holds (about 75 in use at most). Only the rerun's rows
+are counted for seed 101's code arm.
