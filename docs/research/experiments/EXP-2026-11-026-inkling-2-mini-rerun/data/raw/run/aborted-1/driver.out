@@ -1,0 +1,15 @@
+2026-11-21T17:34:44Z STATUS driver start pid 571111 items: 1 2 34 56 7; snapshots 44100c04 640d7fe0 a99e1a01; stage /home/bdg20b/Projects/Mycelium-runs/inkling-20261121/stage
+2026-11-21T17:34:44Z relay default-model: healthy
+tail: cannot open '/home/bdg20b/Projects/Mycelium-runs/inkling-20261121/logs/preflight.jsonl' for reading: No such file or directory
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+  File "/usr/lib/python3.12/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+2026-11-21T17:34:45Z self-report: 

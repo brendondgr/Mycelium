@@ -1,0 +1,98 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-026
+slug: inkling-2-mini-rerun
+title: The paper's Mylo evaluation repeated on Inkling 2 Mini (26B-A3B, NVFP4)
+status: running # planned | running | complete | failed | superseded
+date_started: 2026-11-21
+date_completed: null
+authors: [Claude Opus 5.5 (agent), on behalf of the maintainer]
+
+purpose: >
+  Repeats every Mylo result of the demo paper that was measured on Gemma 4 31B
+  and Qwen 3.8 27B (model check, latency, access probes code vs prompt,
+  answers against stored facts, collaborator scenarios and controls, memory
+  lifecycle) on Inkling 2 Mini, a 26B-total / 3B-active mixture-of-experts
+  model quantised to NVFP4, with the product code frozen at the commits the
+  earlier models were measured on. Bears on the paper's claims that the access
+  rules hold whichever model is served and that Mylo runs on small local
+  hardware.
+
+hypothesis: >
+  Rules in code: 0 leaks in access probes and collaborator search, as on both
+  earlier models. Rules in the prompt, answers, memory and latency:
+  exploratory — no prior hypothesis (PROTOCOL.md).
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: 1b09f7fd
+  branch: main
+  entrypoint: "setsid nohup bash <run dir>/driver.sh (a copy of code/driver.sh); bash code/collect.sh; python3 code/analyse.py"
+  dirty: false  # only this folder was uncommitted at scaffold time; product code is the frozen snapshots 44100c04, 640d7fe0, a99e1a01
+config:
+  path: docs/research/experiments/EXP-2026-11-026-inkling-2-mini-rerun/code/driver.sh
+  hash: null
+data:
+  name: the source experiments' fictional worlds (EXP-2026-11-016 seeded worlds, EXP-2026-11-017 lifecycle world, EXP-2026-11-019 collaboration sandbox, demo lab)
+  version: "as frozen in each source experiment; EXP-2026-11-018 gold recomputed at run time"
+  split: test
+  n_examples: 0
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: [101, 202, 303]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: "one-off backend containers (docker compose run --rm --no-deps), product code mounted read-only from git archive snapshots, research record mounted from a staged copy"
+compute:
+  hardware: "host sc-zeus (see env/hardware.md); model served behind the llm-tunnel relay, operator-stated Inkling 2 Mini 26B-A3B NVFP4"
+  wall_clock_hours: null
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+llm:
+  model: "relay default-model: Inkling 2 Mini (26B-A3B, NVFP4), operator-stated 2026-11-21; self-report 'Inkling, Thinking Machines Lab'"
+  temperature: 0.2
+  nondeterminism_note: >
+    Repetitions of a question are not independent draws; see PROTOCOL.md.
+# llm-template:
+#   model: "<provider>/<model>@<version-or-date>"
+#   temperature: 0.0
+#   max_tokens: 2048
+#   prompt_files: []
+#   prompt_hash: null
+#   total_input_tokens: 0
+#   total_output_tokens: 0
+#   nondeterminism_note: >
+#     Provider-side nondeterminism remains even at temperature 0; report
+#     mean ± std over n_runs.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: code_arm_leaks
+  values:
+    p1_model_check.answered: {mean: 31, n: 31}
+    p1_model_check.controls_passed: {mean: 6, n: 6}
+    p1_model_check.full_credit: {mean: 8, n: 12}
+    p1_model_check.gate_leaks: {mean: 0, n: 5}
+    p1_model_check.median_turn_s: {mean: 22.2, n: 31}
+baselines_compared: [Gemma 4 31B (paper), Qwen 3.8 27B (paper), rules in the prompt, prose directory, single call, corpus-only]
+statistical_test: null
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-010, EXP-2026-11-016, EXP-2026-11-017, EXP-2026-11-018, EXP-2026-11-019, EXP-2026-11-021, EXP-2026-11-022]

@@ -1,0 +1,1105 @@
+{
+ "rows": [
+  {
+   "tag": "minicpm47-20261116",
+   "model_stated": "MiniCPM 4.7 35B-A3B (35B total, 3B active)",
+   "self_report": " | I am a model from the MiniCPM series, developed by ModelBest Inc. and the OpenBMB open-source community. | I am a model from the MiniCPM series, trained by ModelBest Inc. and the OpenBMB open-source community.",
+   "turns": 31,
+   "answered": 21,
+   "question": 0,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 10,
+   "error": 0,
+   "blank_as_registered": 10,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 2,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 8,
+   "median_s": 52.1,
+   "worst_s": 169.4,
+   "started": "2026-11-16T16:52:33Z",
+   "ended": "2026-11-16T17:05:19Z"
+  },
+  {
+   "tag": "qwen38-20261116",
+   "model_stated": "Qwen 3.8 27B",
+   "self_report": "\n\nI am Qwen, a large language model developed and trained by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model independently developed by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model trained by Alibaba's Tongyi Lab. | \nI am Qwen, a large language model independen",
+   "turns": 31,
+   "answered": 31,
+   "question": 0,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 8,
+   "median_s": 22.5,
+   "worst_s": 55.1,
+   "started": "2026-11-16T20:34:24Z",
+   "ended": "2026-11-16T20:37:43Z"
+  },
+  {
+   "tag": "qwen38-m2-20261116",
+   "model_stated": "Qwen 3.8 27B",
+   "self_report": "\n\nI am Qwen (Tongyi Qianwen), a large language model trained by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model developed by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model independently developed by Alibaba Group's Tongyi Lab. | \nI am Qwen, a large language model",
+   "turns": 31,
+   "answered": 31,
+   "question": 0,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 8,
+   "median_s": 71.2,
+   "worst_s": 153.1,
+   "started": "2026-11-16T20:45:10Z",
+   "ended": "2026-11-16T20:50:46Z"
+  },
+  {
+   "tag": "qwen38-before-20261117",
+   "model_stated": "Qwen 3.8 27B",
+   "self_report": "\n\nI am Qwen (Tongyi Qianwen), a large language model independently developed by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model developed by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model independently developed by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a lar",
+   "turns": 31,
+   "answered": 31,
+   "question": 0,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 7,
+   "median_s": 155.0,
+   "worst_s": 279.5,
+   "started": "2026-11-17T04:48:42Z",
+   "ended": "2026-11-17T05:05:14Z"
+  },
+  {
+   "tag": "gemma4-before-20261117",
+   "model_stated": "Gemma 4 31B",
+   "self_report": "I am a large language model, trained by Google.",
+   "turns": 31,
+   "answered": 28,
+   "question": 1,
+   "fallback": 2,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 5,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 11,
+   "median_s": 187.2,
+   "worst_s": 306.4,
+   "started": "2026-11-17T04:48:42Z",
+   "ended": "2026-11-17T05:17:01Z"
+  },
+  {
+   "tag": "gemma4-after-20261117",
+   "model_stated": "Gemma 4 31B",
+   "self_report": "I am a large language model, trained by Google.",
+   "turns": 31,
+   "answered": 31,
+   "question": 0,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 12,
+   "median_s": 211.6,
+   "worst_s": 400.1,
+   "started": "2026-11-17T06:18:29Z",
+   "ended": "2026-11-17T06:35:27Z"
+  },
+  {
+   "tag": "qwen38-after-20261117",
+   "model_stated": "Qwen 3.8 27B",
+   "self_report": "\n\nI am Qwen, a large language model developed by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model independently developed and trained by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model independently developed by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large la",
+   "turns": 31,
+   "answered": 31,
+   "question": 0,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 9,
+   "median_s": 126.1,
+   "worst_s": 302.9,
+   "started": "2026-11-17T10:33:24Z",
+   "ended": "2026-11-17T10:44:35Z"
+  },
+  {
+   "tag": "qwen38-after2-20261117",
+   "model_stated": "Qwen 3.8 27B",
+   "self_report": "\n\nI am Qwen, a large language model independently developed by Alibaba Group's Tongyi Lab. | \n\nI am Qwen, a large language model trained by Alibaba Group’s Tongyi Lab. | \nI am Qwen, a large language model independently trained by Alibaba Group's Tongyi Lab.",
+   "turns": 31,
+   "answered": 30,
+   "question": 1,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 10,
+   "median_s": 96.0,
+   "worst_s": 354.6,
+   "started": "2026-11-17T18:38:31Z",
+   "ended": "2026-11-17T18:48:14Z"
+  },
+  {
+   "tag": "gemma4-after2-20261117",
+   "model_stated": "Gemma 4 31B",
+   "self_report": "I am a large language model, trained by Google.",
+   "turns": 31,
+   "answered": 29,
+   "question": 2,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 12,
+   "median_s": 36.7,
+   "worst_s": 67.2,
+   "started": "2026-11-17T22:46:39Z",
+   "ended": "2026-11-17T22:49:42Z"
+  },
+  {
+   "tag": "ink",
+   "model_stated": "Inkling 2 Mini (26B-A3B, NVFP4)",
+   "self_report": "I am Inkling, a model trained by Thinking Machines Lab. | I am Inkling, trained by Thinking Machines Lab.",
+   "turns": 31,
+   "answered": 31,
+   "question": 0,
+   "fallback": 0,
+   "blank": 0,
+   "failed": 0,
+   "error": 0,
+   "blank_as_registered": 0,
+   "failed_inside": 0,
+   "gate_probe_turns": 5,
+   "gate_leaks": 0,
+   "controls_passed": 6,
+   "controls_run": 6,
+   "graded": 12,
+   "graded_full": 8,
+   "median_s": 22.2,
+   "worst_s": 68.3,
+   "started": "2026-11-21T17:35:24Z",
+   "ended": "2026-11-21T17:38:59Z"
+  }
+ ],
+ "graded_by_question": {
+  "minicpm47-20261116": {
+   "g-f01": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-f04": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah"
+    ]
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.sunhee"
+    ]
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.tomas"
+    ]
+   },
+   "g-p08": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p10": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   }
+  },
+  "qwen38-20261116": {
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-p01": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 0.2,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.mara",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 0.25,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   },
+   "g-p10": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   }
+  },
+  "qwen38-m2-20261116": {
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p03": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-p01": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p07": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p10": {
+    "recall": 1.0,
+    "precision": 0.5,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   }
+  },
+  "gemma4-before-20261117": {
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.sunhee"
+    ]
+   },
+   "g-p01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah"
+    ]
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.tomas"
+    ]
+   },
+   "g-p10": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   }
+  },
+  "qwen38-before-20261117": {
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 0.5,
+    "full": 0,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah"
+    ]
+   },
+   "g-p03": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p05": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 0.25,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p10": {
+    "recall": 1.0,
+    "precision": 0.5,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   }
+  },
+  "gemma4-after-20261117": {
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-p01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah"
+    ]
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.sunhee"
+    ]
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.tomas"
+    ]
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p10": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya"
+    ]
+   }
+  },
+  "qwen38-after-20261117": {
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p01": {
+    "recall": 0.0,
+    "precision": 1.0,
+    "full": 0,
+    "named": []
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.sunhee"
+    ]
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 0.25,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p10": {
+    "recall": 1.0,
+    "precision": 0.4,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.mara",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   }
+  },
+  "qwen38-after2-20261117": {
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.sunhee"
+    ]
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah"
+    ]
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 0.25,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   },
+   "g-p10": {
+    "recall": 1.0,
+    "precision": 0.4,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.mara",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   }
+  },
+  "gemma4-after2-20261117": {
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah"
+    ]
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.sunhee"
+    ]
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.tomas"
+    ]
+   },
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p10": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya"
+    ]
+   }
+  },
+  "ink": {
+   "g-f04": {
+    "recall": 1.0,
+    "precision": 0.5,
+    "full": 0,
+    "named": []
+   },
+   "g-f01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f06": {
+    "recall": 1.0,
+    "precision": 0.5,
+    "full": 0,
+    "named": []
+   },
+   "g-f03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f09": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-f07": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p01": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.jonah"
+    ]
+   },
+   "g-p05": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.priya"
+    ]
+   },
+   "g-p03": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": [
+     "person:demo.sunhee"
+    ]
+   },
+   "g-p07": {
+    "recall": 1.0,
+    "precision": 0.25,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   },
+   "g-p08": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "full": 1,
+    "named": []
+   },
+   "g-p10": {
+    "recall": 1.0,
+    "precision": 0.4,
+    "full": 0,
+    "named": [
+     "person:demo.jonah",
+     "person:demo.mara",
+     "person:demo.priya",
+     "person:demo.sunhee",
+     "person:demo.tomas"
+    ]
+   }
+  }
+ }
+}

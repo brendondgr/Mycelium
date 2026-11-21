@@ -1,0 +1,8 @@
+2026-11-21T17:35:08Z driver start pid 571949 items: 1 2 34 56 7; snapshots 44100c04 640d7fe0 a99e1a01; stage /home/bdg20b/Projects/Mycelium-runs/inkling-20261121/stage
+2026-11-21T17:35:14Z item1 EXP-021 model check (ink): start
+2026-11-21T17:36:53Z item1 demo rc=0 demo a2-f2 answered 65.875 demo a2-f1 answered 68.333 
+2026-11-21T17:39:01Z item1 gate rc=0 gate scope-member-control 2 answered True {} gate probe-channel-personal 0 answered True {} 
+2026-11-21T17:39:01Z item1 summarise rc=0  "started": "2026-11-21T17:35:24Z",  "ended": "2026-11-21T17:38:59Z" } 
+2026-11-21T17:39:01Z item1 returned
+2026-11-21T17:39:18Z driver start pid 578444 items: 2 34 56 7; snapshots 44100c04 640d7fe0 a99e1a01; stage /home/bdg20b/Projects/Mycelium-runs/inkling-20261121/stage
+2026-11-21T17:39:25Z item2 EXP-010 latency: start (idle, 3 repetitions, then 8 processes)

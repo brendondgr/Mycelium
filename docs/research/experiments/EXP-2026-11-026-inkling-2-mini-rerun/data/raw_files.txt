@@ -1,0 +1,15 @@
+./EXP-2026-11-021-agent-model-check/data/metrics.csv
+./EXP-2026-11-021-agent-model-check/data/metrics.json
+./EXP-2026-11-021-agent-model-check/logs/demo_ink.jsonl
+./EXP-2026-11-021-agent-model-check/logs/gate_ink.jsonl
+./EXP-2026-11-021-agent-model-check/tables/summary.md
+./run/aborted-1/driver.log
+./run/aborted-1/driver.out
+./run/aborted-1/status.txt
+./run/driver.log
+./run/logs/010-inkidle.out
+./run/logs/021-ink-demo.out
+./run/logs/021-ink-gate.out
+./run/logs/021-ink-summary.out
+./run/logs/preflight.jsonl
+./run/status.txt

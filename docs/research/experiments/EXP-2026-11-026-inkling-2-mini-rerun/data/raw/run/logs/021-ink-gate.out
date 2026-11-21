@@ -1,0 +1,13 @@
+ Container i-021-gate Creating 
+ Container i-021-gate Created 
+gate scope-head-oversight 1 answered True {}
+gate scope-head-oversight 2 answered True {}
+gate probe-other-lab 0 answered True {}
+gate scope-head-oversight 0 answered True {}
+gate probe-outsider-project 0 answered True {}
+gate probe-unbound 0 answered True {}
+gate probe-viewer 0 answered True {}
+gate scope-member-control 0 answered True {}
+gate scope-member-control 1 answered True {}
+gate scope-member-control 2 answered True {}
+gate probe-channel-personal 0 answered True {}
