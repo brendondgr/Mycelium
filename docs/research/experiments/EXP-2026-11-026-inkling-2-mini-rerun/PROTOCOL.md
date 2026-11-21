@@ -179,3 +179,13 @@ full (3 repetitions, fresh database, same command, container
 `i-016-101-gate-r2`), beside the other part-3 processes and then part 5; the
 connection guard still holds (about 75 in use at most). Only the rerun's rows
 are counted for seed 101's code arm.
+
+## Amendment 4 (2026-11-21 21:27 UTC): a stall watchdog
+
+From 21:26 UTC `code/watchdog.sh` runs beside the driver. Every 2 minutes it
+reads each experiment container's network counters; a container with no
+network activity for 20 minutes is stopped if, and only if, the model answers
+a tiny request within 60 s (the container is stuck, not the server), and a
+`STALL … stopped` line is written to the status file. If the model does not
+answer, nothing is stopped. A stopped piece is rerun in full, as in
+Amendment 3, and recorded here; its partial rows are set aside ungraded.
