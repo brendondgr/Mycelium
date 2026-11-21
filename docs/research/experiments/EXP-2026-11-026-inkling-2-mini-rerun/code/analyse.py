@@ -147,6 +147,47 @@ def part2(values, tables):
             if key.startswith("ink."):
                 m(f"p2_latency.{key[4:]}.{g}.median_s", v["median_s"], v["n"])
                 m(f"p2_latency.{key[4:]}.{g}.worst_s", v["worst_s"], v["n"])
+    lines += ["", "Where the time goes, per question group (medians over turns; model-call time and "
+              "completion tokens from each turn's `model_call_log`; Gemma's A5 rows did not log calls):", "",
+              "| Run | Group | Function calls | Model calls | Tokens per turn | Seconds per model call | "
+              "Completion tokens per call | Completion tokens per second of call time |",
+              "|---|---|---:|---:|---:|---:|---:|---:|"]
+    for label, path, key in runs:
+        if not path.exists():
+            continue
+        by = defaultdict(list)
+        for r in jsonl(path):
+            by[r["group"]].append(r)
+        for g in ("single", "few", "compound"):
+            rs = by.get(g) or []
+            if not rs:
+                continue
+            calls = [c for r in rs for c in (r.get("model_call_log") or [])]
+            secs = [c["seconds"] for c in calls if c.get("seconds") is not None]
+            comp = [c.get("completion_tokens") or 0 for c in calls]
+            row = {"function_calls": statistics.median(r["function_calls"] for r in rs),
+                   "model_calls": statistics.median(r["model_calls"] for r in rs),
+                   "tokens": statistics.median((r.get("prompt_tokens") or 0) + (r.get("completion_tokens") or 0)
+                                               for r in rs),
+                   "call_s": round(statistics.median(secs), 2) if secs else None,
+                   "completion_per_call": round(statistics.median(comp)) if comp else None,
+                   "completion_per_s": round(sum(comp) / sum(secs), 1) if secs and sum(secs) else None}
+            for f, x in row.items():
+                values[f"p2.{key}.{g}.{f}"] = x
+            fmt = lambda x: "–" if x is None else f"{x:g}"
+            lines.append(f"| {label} | {g} | {fmt(row['function_calls'])} | {fmt(row['model_calls'])} | "
+                         f"{row['tokens'] / 1000:.1f}k | {fmt(row['call_s'])} | {fmt(row['completion_per_call'])} | "
+                         f"{fmt(row['completion_per_s'])} |")
+            if key.startswith("ink."):
+                m(f"p2_latency.{key[4:]}.{g}.model_calls_median", row["model_calls"], len(rs))
+                m(f"p2_latency.{key[4:]}.{g}.tokens_median", row["tokens"], len(rs))
+    for key, path in (("idle", base / "a2_inkidle.jsonl"), ("p8", base / "a2_inkp8.jsonl")):
+        rs = jsonl(path)
+        values[f"p2.ink.{key}.turns_with_text"] = sum(1 for r in rs if (r.get("final_text") or "").strip())
+        values[f"p2.ink.{key}.timed_out"] = sum(1 for r in rs if r.get("timed_out"))
+        values[f"p2.ink.{key}.cap_hits"] = sum(r.get("cap_hits") or 0 for r in rs)
+        values[f"p2.ink.{key}.empty_calls"] = sum(r.get("empty_calls") or 0 for r in rs)
+        values[f"p2.ink.{key}.turns"] = len(rs)
     tables["part2"] = lines
 
 

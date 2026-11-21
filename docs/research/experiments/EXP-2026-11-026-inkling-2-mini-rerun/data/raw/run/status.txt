@@ -6,3 +6,8 @@
 2026-11-21T17:39:01Z item1 returned
 2026-11-21T17:39:18Z driver start pid 578444 items: 2 34 56 7; snapshots 44100c04 640d7fe0 a99e1a01; stage /home/bdg20b/Projects/Mycelium-runs/inkling-20261121/stage
 2026-11-21T17:39:25Z item2 EXP-010 latency: start (idle, 3 repetitions, then 8 processes)
+2026-11-21T17:56:05Z item2 idle rc=0 rows=36
+2026-11-21T18:07:09Z item2 p8 rows=96
+2026-11-21T18:07:12Z item2 returned
+2026-11-21T18:07:15Z item4 EXP-018 answers (ink): waiting for a window clear of midnight UTC and the nightly
+2026-11-21T18:07:15Z item4 EXP-018 answers (ink): start

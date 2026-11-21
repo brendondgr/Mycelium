@@ -1,3 +1,8 @@
+./EXP-2026-11-010-agent-loop-cost/data/a2_inkidle.jsonl
+./EXP-2026-11-010-agent-loop-cost/data/a2_inkp8.jsonl
+./EXP-2026-11-010-agent-loop-cost/logs/a2_inkidle_health.json
+./EXP-2026-11-010-agent-loop-cost/logs/a2_inkp8_health.json
+./EXP-2026-11-010-agent-loop-cost/logs/model_ink.jsonl
 ./EXP-2026-11-021-agent-model-check/data/metrics.csv
 ./EXP-2026-11-021-agent-model-check/data/metrics.json
 ./EXP-2026-11-021-agent-model-check/logs/demo_ink.jsonl
@@ -8,6 +13,15 @@
 ./run/aborted-1/status.txt
 ./run/driver.log
 ./run/logs/010-inkidle.out
+./run/logs/010-inkp8-0.out
+./run/logs/010-inkp8-1.out
+./run/logs/010-inkp8-2.out
+./run/logs/010-inkp8-3.out
+./run/logs/010-inkp8-4.out
+./run/logs/010-inkp8-5.out
+./run/logs/010-inkp8-6.out
+./run/logs/010-inkp8-7.out
+./run/logs/018-ink-gold.out
 ./run/logs/021-ink-demo.out
 ./run/logs/021-ink-gate.out
 ./run/logs/021-ink-summary.out

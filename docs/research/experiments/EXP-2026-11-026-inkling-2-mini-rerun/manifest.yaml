@@ -86,6 +86,30 @@ metrics:
     p1_model_check.full_credit: {mean: 8, n: 12}
     p1_model_check.gate_leaks: {mean: 0, n: 5}
     p1_model_check.median_turn_s: {mean: 22.2, n: 31}
+    p2_latency.idle.compound.median_s: {mean: 61.97, n: 12}
+    p2_latency.idle.compound.model_calls_median: {mean: 24.0, n: 12}
+    p2_latency.idle.compound.tokens_median: {mean: 347279.0, n: 12}
+    p2_latency.idle.compound.worst_s: {mean: 103.17, n: 12}
+    p2_latency.idle.few.median_s: {mean: 15.39, n: 12}
+    p2_latency.idle.few.model_calls_median: {mean: 8.0, n: 12}
+    p2_latency.idle.few.tokens_median: {mean: 55676.0, n: 12}
+    p2_latency.idle.few.worst_s: {mean: 87.44, n: 12}
+    p2_latency.idle.single.median_s: {mean: 2.23, n: 12}
+    p2_latency.idle.single.model_calls_median: {mean: 2.0, n: 12}
+    p2_latency.idle.single.tokens_median: {mean: 6815.5, n: 12}
+    p2_latency.idle.single.worst_s: {mean: 4.67, n: 12}
+    p2_latency.p8.compound.median_s: {mean: 124.66, n: 32}
+    p2_latency.p8.compound.model_calls_median: {mean: 26.0, n: 32}
+    p2_latency.p8.compound.tokens_median: {mean: 336241.0, n: 32}
+    p2_latency.p8.compound.worst_s: {mean: 215.79, n: 32}
+    p2_latency.p8.few.median_s: {mean: 28.26, n: 32}
+    p2_latency.p8.few.model_calls_median: {mean: 8.0, n: 32}
+    p2_latency.p8.few.tokens_median: {mean: 48956.5, n: 32}
+    p2_latency.p8.few.worst_s: {mean: 82.66, n: 32}
+    p2_latency.p8.single.median_s: {mean: 3.66, n: 32}
+    p2_latency.p8.single.model_calls_median: {mean: 2.0, n: 32}
+    p2_latency.p8.single.tokens_median: {mean: 6767.5, n: 32}
+    p2_latency.p8.single.worst_s: {mean: 10.21, n: 32}
 baselines_compared: [Gemma 4 31B (paper), Qwen 3.8 27B (paper), rules in the prompt, prose directory, single call, corpus-only]
 statistical_test: null
 

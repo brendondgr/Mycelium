@@ -7,11 +7,13 @@ and Qwen 3.8 27B's numbers there are read from the source experiments' files.
 
 ## 1. Headline
 
-So far (part 1 of 7): on Inkling 2 Mini, Mylo answered every turn of the model
-check, leaked nothing on the five access probes and gave all six entitled
-askers their answer — the same as both earlier models. It reached full credit
-on 8 of 12 graded questions (Gemma 12, Qwen 10); every miss named an extra
-object, none left an expected one out.
+So far (parts 1–2 of 7): on Inkling 2 Mini, Mylo answered every turn,
+leaked nothing on the model check's five access probes and gave all six
+entitled askers their answer, as on both earlier models; it reached full
+credit on 8 of 12 graded questions (Gemma 12, Qwen 10), every miss naming an
+extra object. It decodes about twice as fast as Qwen 3.8 27B, but makes 2–3
+times as many model calls on multi-step questions, so only one-lookup
+questions are faster (median 2.2 s idle, 3.7 s with 8 at once).
 
 ## 2. Results by part
 
@@ -45,7 +47,48 @@ paper's "all fixes" rows). Table: `tables/part1.md`.
 
 ### Part 2 — latency (EXP-2026-11-010, paper §4.5)
 
-Running.
+Run 2026-11-21 17:39–18:07 UTC, alone on the server: 36 turns one at a time
+(3 repetitions of 12 questions per group), then 96 turns from 8 processes at
+once; code `a99e1a01`, harness `run_a6.py` (the Qwen row's). Tables:
+`tables/part2.md`.
+
+| Run | One lookup | A few | Compound | Turns |
+|---|---:|---:|---:|---:|
+| Qwen 3.8 27B, idle (A6) | 1.78 (3.14) | 9.12 (12.57) | 22.32 (61.85) | 36 |
+| Qwen 3.8 27B, 8 at once (A6) | 5.39 (11.01) | 24.34 (43.44) | 67.1 (117.65) | 96 |
+| Gemma 4 31B, idle (A5) | 14.4 (16.85) | 28.08 (58.12) | 63.18 (75.09) | 36 |
+| Gemma 4 31B, 8 at once (A5) | 17.87 (27.91) | 39.05 (92.9) | 78.95 (109.22) | 96 |
+| Inkling 2 Mini, idle | 2.23 (4.67) | 15.39 (87.44) | 61.97 (103.17) | 36 |
+| Inkling 2 Mini, 8 at once | 3.66 (10.21) | 28.26 (82.66) | 124.66 (215.79) | 96 |
+
+Median (worst) seconds to a complete answer.
+
+**Analysis.**
+- *Every turn finished:* 36/36 and 96/96 turns ended with text, none timed
+  out; 1 and 3 model calls hit the reply cap and the same number came back
+  empty (the loop recovered in every case).
+- *The model is fast; the turns are not.* Inkling produces about twice Qwen's
+  completion tokens per second of call time when idle (177–197 against
+  88–103), and about three times with 8 at once (79–82 against 22–29). On
+  one-lookup questions, where both models make 1 function call and 2 model
+  calls, it is about as fast as Qwen when idle (median 2.23 s against 1.78 s)
+  and faster with 8 at once (3.66 s against 5.39 s).
+- *It does more work per question.* On "a few" questions it makes a median of
+  9 function calls and 8 model calls (Qwen 5 and 5.5) and reads 55.7k tokens
+  per turn (Qwen 21.4k). On compound questions it makes 37.5 function calls
+  and 24 model calls (Qwen 20.5 and 8.5) and reads 347k tokens (Qwen 63.5k,
+  about 5.5 times as many). It also writes about 2–7 times as many completion
+  tokens per call (mostly reasoning). So its compound turns take about as long
+  as Gemma's when idle (62.0 s against 63.2 s) and about twice Qwen's with 8 at
+  once (124.7 s against 67.1 s).
+- *For the paper:* a 3B-active model serves a one-lookup question in about
+  2 s, but the gain in decoding speed is spent on longer loops for multi-step
+  questions. Whether those extra calls buy correctness is part 4's question.
+- *Comparability:* Qwen's A6 ran on the 2026-11-16 code and Gemma's A5 on
+  round two's; Inkling ran on `a99e1a01`, after the overnight fixes.
+  EXP-2026-11-010 A7 found the fixes left Qwen's calls per turn unchanged
+  (1 / 2 / 6.0k on one-lookup questions), so the call counts above are a
+  property of the model, not of the newer code.
 
 ### Part 3 — access probes, rules in code vs in the prompt (EXP-2026-11-016, paper §4.1, Table 2)
 
