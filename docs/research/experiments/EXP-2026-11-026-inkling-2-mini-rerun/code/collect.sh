@@ -24,7 +24,7 @@ find "$OUT" -type f -size +5M ! -name '*.gz' -exec gzip -9 {} \;
 mkdir -p "$OUT/run"
 cp "$RUN"/status.txt "$RUN"/driver.log "$OUT/run/"
 cp -r "$RUN"/logs "$OUT/run/"
-[ -d "$RUN/aborted-1" ] && cp -r "$RUN/aborted-1" "$OUT/run/"
+for a in "$RUN"/aborted-*; do [ -d "$a" ] && cp -r "$a" "$OUT/run/"; done
 find "$OUT/run" -type f -size +5M ! -name '*.gz' -exec gzip -9 {} \;
 (cd "$OUT" && find . -type f | sort > ../raw_files.txt)
 wc -l < "$OUT/../raw_files.txt"

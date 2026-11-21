@@ -146,3 +146,23 @@ change) now keeps it, and the driver was stopped after part 1 and restarted
 with `ITEMS="2 34 56 7"`. A first start at 17:34 UTC failed at its first
 container (the frozen snapshots had no `web/backend/media` mount point) before
 any model turn; its logs are in `data/raw/run/aborted-1/`.
+
+## Amendment 2 (2026-11-21 18:13 UTC, part 3 stopped after 4 minutes; no part-3 result read for its leak counts)
+
+Parts 3 and 4 started together at 18:07–18:08 UTC. Within four minutes 34 of
+67 part-3 turns failed with `FATAL: sorry, too many clients already`: every
+harness thread holds a Postgres connection, the instance's Postgres allows
+100, and part 4 (60 threads on the live database), part 3 (6 × 8) and the live
+app together exceeded it. Part 4's rows had no such error and it was left
+running. Part 3 was stopped at 18:12 UTC; its partial files are kept in
+`data/raw/run/aborted-2-part3/` and are not counted. The only thing read from
+them before stopping was the error count and the share of turns without a
+reply; the replies themselves were not graded for the decision.
+
+From here, **one part at a time**, each starting only when the connections in
+use plus the part's threads stay under 95 (`wait_db_room` in the driver).
+Part 3 is rerun in full (fresh databases, as `replay.py` drops and recreates
+them), then parts 5, 6 and 7, from a second driver started with
+`ITEMS="3 5 6 7" WAIT_PID=<part 4's process>` so it begins after part 4. The
+in-flight figures in the Setup table are unchanged; only parts no longer
+overlap.

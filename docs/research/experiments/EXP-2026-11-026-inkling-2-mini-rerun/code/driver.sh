@@ -14,9 +14,11 @@
 #   item5  EXP-2026-11-019 collaborator scenarios, tag maini .... a99e1a01, 60
 #   item6  EXP-2026-11-017 memory lifecycle, tags ink_a..e ...... a99e1a01, 5 x 12 = 60
 #   item7  EXP-2026-11-019 S1/S2/S10 after the fixes, tag r6i ... a99e1a01, 32
-# Schedule: item1, item2 alone (item2 needs an idle server); then item4 with
-# item3 (108 in flight); then item5 with item6 (120); then item7 (32). Never
-# more than 120 requests in flight against a server rated for 128.
+# Schedule: one part at a time (Amendment 2). Each harness thread holds a
+# Postgres connection and the instance's Postgres allows 100 in all, shared
+# with the live app; running parts 3 and 4 together (108 threads) exhausted it.
+# Before each part the driver waits until the connections in use plus the
+# part's threads stay under 95 (wait_db_room).
 #
 # Every harness writes into its own experiment folder, so the whole research
 # record is first copied to $STAGE/docs/research and the containers mount that
@@ -33,7 +35,7 @@ LOG=$RUN/driver.log
 STATUS=$RUN/status.txt
 LLM=default-model
 NAME="Inkling 2 Mini (26B-A3B, NVFP4)"
-ITEMS=${ITEMS:-1 2 34 56 7}
+ITEMS=${ITEMS:-1 2 4 3 5 6 7}
 export COMPOSE_FILE=$REPO/compose.yaml COMPOSE_PROJECT_NAME=mycelium
 cd "$STAGE" || exit 1
 echo $$ > "$RUN/driver.pid"
@@ -314,15 +316,32 @@ item7() {
   record_model "$E/logs/model_r6i.jsonl" end
 }
 
+db_in_use() {
+  docker compose exec -T postgres psql -U mycelium -d postgres -Atc "select count(*) from pg_stat_activity" 2>/dev/null || echo 999
+}
+wait_db_room() {  # <threads the part opens> <label>: wait (up to 2 h) for room under 95 connections
+  local need=$1 deadline=$(( $(date -u +%s) + 7200 )) used
+  while :; do
+    used=$(db_in_use)
+    [ $(( used + need )) -le 95 ] && { log "$2: postgres $used in use + $need <= 95"; return 0; }
+    log "$2: postgres $used in use + $need > 95 (waiting)"
+    [ "$(date -u +%s)" -ge "$deadline" ] && { status "$2: postgres never had room; running anyway"; return 0; }
+    sleep 60
+  done
+}
+declare -A NEED=( [1]=10 [2]=10 [3]=54 [4]=62 [5]=62 [6]=62 [7]=66 )
+
 status "driver start pid $$ items: $ITEMS; snapshots 44100c04 640d7fe0 a99e1a01; stage $STAGE"
+if [ -n "${WAIT_PID:-}" ]; then  # Amendment 2: the previous driver's part 4 finishes first
+  status "waiting for pid $WAIT_PID (the previous driver's part 4) to finish"
+  while kill -0 "$WAIT_PID" 2>/dev/null; do sleep 30; done
+  status "pid $WAIT_PID finished"
+fi
 gate_server 3600 "start" || { status "driver: server never came up; stopping"; exit 1; }
 for i in $ITEMS; do
   gate_server 3600 "item$i" || continue
-  case $i in
-    34) item4 & p4=$!; sleep 60; item3; wait $p4 ;;
-    56) item5 & p5=$!; sleep 60; item6; wait $p5 ;;
-    *) "item$i" ;;
-  esac
+  wait_db_room "${NEED[$i]}" "item$i"
+  "item$i"
   status "item$i returned"
 done
 status "driver finished"
