@@ -7,7 +7,9 @@ whose files are not collected yet is skipped, so this runs after every part.
 
     python3 docs/research/experiments/EXP-2026-11-026-inkling-2-mini-rerun/code/analyse.py
 
-Writes ``data/metrics.json``, ``data/metrics.csv``, ``tables/part<N>.md`` and
+Writes ``data/metrics.json``, ``data/metrics.csv``, ``data/compare.csv`` (every
+model's headline numbers side by side, which ``figures/make_figures.py`` reads),
+``tables/part<N>.md`` and
 the ``metrics.values`` block of ``manifest.yaml`` (Inkling's numbers, as
 ``{mean, n}``). Standard library only.
 """
@@ -45,6 +47,18 @@ MANIFEST: dict = {}
 def m(key, k, n):
     """One Inkling number for the manifest: a count k of n, or a value over n runs."""
     MANIFEST[key] = (k, n)
+
+
+COMPARE: list = []
+
+
+def cmp(part, group, model, metric, k=None, n=None, value=None):
+    """One row of data/compare.csv, the three-model table the figures read."""
+    if value is None and k is not None and n:
+        value = round(k / n, 4)
+    lo, hi = wilson(k, n) if (k is not None and n) else (None, None)
+    COMPARE.append({"part": part, "group": group, "model": model, "metric": metric,
+                    "k": k, "n": n, "value": value, "lo": lo, "hi": hi})
 
 
 def write_manifest():
@@ -87,6 +101,10 @@ def part1(values, tables):
         for f in ("turns", "answered", "gate_leaks", "gate_probe_turns", "controls_passed",
                   "controls_run", "graded_full", "graded", "median_s", "worst_s"):
             values[f"p1.{key}.{f}"] = r[f]
+        cmp("p1", "all", model, "full_credit", r["graded_full"], r["graded"])
+        cmp("p1", "all", model, "leaks", r["gate_leaks"], r["gate_probe_turns"])
+        cmp("p1", "all", model, "controls_passed", r["controls_passed"], r["controls_run"])
+        cmp("p1", "all", model, "median_s", value=r["median_s"])
     g = doc["graded_by_question"]
     lines += ["", "Graded questions not at full credit (recall / precision):", "",
               "| Question | " + " | ".join(ref) + " |", "|---|" + "---|" * len(ref)]
@@ -125,6 +143,7 @@ def part2(values, tables):
     if not (base / "a2_inkidle.jsonl").exists():
         return
     src = EXPS / "EXP-2026-11-010-agent-loop-cost" / "data"
+    who = {"qwen": QWEN, "gemma": GEMMA, "ink": INK}
     runs = [(f"{QWEN}, idle (A6)", src / "a2_a6idle.jsonl", "qwen.idle"),
             (f"{QWEN}, 8 at once (A6)", src / "a2_a6p8.jsonl", "qwen.p8"),
             (f"{GEMMA}, idle (A5)", src / "a2_a5idle.jsonl", "gemma.idle"),
@@ -144,6 +163,8 @@ def part2(values, tables):
         for g, v in t.items():
             for f, x in v.items():
                 values[f"p2.{key}.{g}.{f}"] = x
+            cmp("p2", f"{key.split('.')[1]}.{g}", who[key.split('.')[0]], "median_s", n=v["n"], value=v["median_s"])
+            cmp("p2", f"{key.split('.')[1]}.{g}", who[key.split('.')[0]], "worst_s", n=v["n"], value=v["worst_s"])
             if key.startswith("ink."):
                 m(f"p2_latency.{key[4:]}.{g}.median_s", v["median_s"], v["n"])
                 m(f"p2_latency.{key[4:]}.{g}.worst_s", v["worst_s"], v["n"])
@@ -174,6 +195,8 @@ def part2(values, tables):
                    "completion_per_s": round(sum(comp) / sum(secs), 1) if secs and sum(secs) else None}
             for f, x in row.items():
                 values[f"p2.{key}.{g}.{f}"] = x
+            for f in ("model_calls", "tokens", "completion_per_s"):
+                cmp("p2", f"{key.split('.')[1]}.{g}", who[key.split('.')[0]], f, n=len(rs), value=row[f])
             fmt = lambda x: "–" if x is None else f"{x:g}"
             lines.append(f"| {label} | {g} | {fmt(row['function_calls'])} | {fmt(row['model_calls'])} | "
                          f"{row['tokens'] / 1000:.1f}k | {fmt(row['call_s'])} | {fmt(row['completion_per_call'])} | "
@@ -268,6 +291,9 @@ def part3(values, tables):
     for model, key in ref.items():
         t = q090[key]
         cg, cp = a1["cells"][f"gate/{key}"], a1["cells"][f"prompt_only/{key}"]
+        for arm, cc in (("gate", cg), ("prompt_only", cp)):
+            cmp("p3", arm, model, "leaks", t[arm]["leaks"], t[arm]["valid"])
+            cmp("p3", arm, model, "no_reply", cc["access_invalid"], t[arm]["valid"] + cc["access_invalid"])
         lines.append(f"| {model} | {frac(t['gate']['leaks'], t['gate']['valid'])} | "
                      f"{frac(t['prompt_only']['leaks'], t['prompt_only']['valid'])} | "
                      f"{t['prompt_only']['rate']:.2f} {t['prompt_only']['wilson95']} | "
@@ -283,6 +309,8 @@ def part3(values, tables):
     for arm, c in cell.items():
         for f, x in c.items():
             values[f"p3.ink.{arm}.{f}"] = x
+        cmp("p3", arm, INK, "leaks", c["leaks"], c["valid"])
+        cmp("p3", arm, INK, "no_reply", c["invalid"], c["runs"])
         m(f"p3_access.{arm}.leaks", c["leaks"], c["valid"])
         m(f"p3_access.{arm}.controls_passed", c["ctrl_passed"], c["ctrl_valid"])
         m(f"p3_access.{arm}.no_reply", c["invalid"], c["runs"])
@@ -330,6 +358,11 @@ def part4(values, tables):
             kinds = " | ".join(frac(x["by_kind"][k]["k"], x["by_kind"][k]["n"]) for k in KINDS)
             af = x["answerable_full"]
             uf = x["unanswerable_states_fact"]
+            for k in KINDS:
+                cmp("p4", f"{arm}.{k}", model, "full_credit", x["by_kind"][k]["k"], x["by_kind"][k]["n"])
+            cmp("p4", f"{arm}.answerable", model, "full_credit", af["k"], af["n"])
+            cmp("p4", f"{arm}.answerable", model, "precision_mean", value=x.get("precision_mean"))
+            cmp("p4", f"{arm}.answerable", model, "recall_mean", value=x.get("recall_mean"))
             lines.append(f"| {model} | {arm} | {kinds} | {frac(af['k'], af['n'])} = {af['rate']:.2f} "
                          f"{af['wilson95']} | {frac(uf['k'], uf['n'])} | {x['failed_jobs']} | "
                          f"{(x.get('cost') or {}).get('wall_s_median', '–')} |")
@@ -390,6 +423,8 @@ def part5(values, tables):
     for model, d in docs.items():
         c, a = d["claims"]["c"], d["claims"]["a"]
         fails = d.get("failed", {})
+        cmp("p5", "gate", model, "named", c["gate"]["k"], c["gate"]["n"])
+        cmp("p5", "prompt_only", model, "named", c["baseline"]["k"], c["baseline"]["n"])
         q = d.get("ended_on_question", {})
         lines.append(f"| {model} | {frac(c['gate']['k'], c['gate']['n'])} {c['gate']['wilson95']} | "
                      f"{frac(c['baseline']['k'], c['baseline']['n'])} {c['baseline']['wilson95']} | "
@@ -444,6 +479,7 @@ def part6(values, tables):
             if "recalled_own_chat" in x:
                 extra.append(f"own chat {x['recalled_own_chat']}")
             cells.append(f"{frac(x['leaks'], x['valid'])}" + (f" ({', '.join(extra)})" if extra else ""))
+            cmp("p6", key, model, "leaks", x["leaks"], x["valid"])
             if model == INK:
                 m(f"p6_lifecycle.{key}.leaks", x["leaks"], x["valid"])
                 values[f"p6.ink.{key}"] = x
@@ -474,6 +510,9 @@ def part7(values, tables):
             reps = x["by_rep"].values()
             ans = sum(r["answered"] for r in reps)
             turns = sum(r["turns"] for r in reps)
+            cmp("p7", f"{mode}.S1", model, "named", c["S1"]["named"], c["S1"]["asks"])
+            cmp("p7", f"{mode}.S2", model, "named", c["S2"]["named"], c["S2"]["asks"])
+            cmp("p7", f"{mode}.S10", model, "violations", s10["violation_any"], s10["asks"])
             lines.append(f"| {model} | {mode} | {frac(c['S1']['named'], c['S1']['asks'])} | "
                          f"{frac(c['S2']['named'], c['S2']['asks'])} | {frac(s10['violation_any'], s10['asks'])} | "
                          f"{frac(s10['says_nobody'], s10['asks'])} | {frac(ans, turns)} |")
@@ -500,6 +539,10 @@ def main() -> int:
         w.writerow(["metric", "value"])
         for k in sorted(values):
             w.writerow([k, json.dumps(values[k]) if isinstance(values[k], (list, dict)) else values[k]])
+    with (HERE / "data" / "compare.csv").open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=["part", "group", "model", "metric", "k", "n", "value", "lo", "hi"])
+        w.writeheader()
+        w.writerows(COMPARE)
     write_manifest()
     return 0
 

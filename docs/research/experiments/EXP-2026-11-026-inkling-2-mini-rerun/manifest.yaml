@@ -140,7 +140,7 @@ statistical_test: null
 # --- Linkage -----------------------------------------------------------------
 supports_claims: []
 refutes_claims: []
-figures: []
+figures: [fig-full-credit-by-kind, fig-latency]
 supersedes: null
 superseded_by: null
 related: [EXP-2026-11-010, EXP-2026-11-016, EXP-2026-11-017, EXP-2026-11-018, EXP-2026-11-019, EXP-2026-11-021, EXP-2026-11-022]
