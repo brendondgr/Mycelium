@@ -19,3 +19,8 @@
   stays open, so the process waited two hours. Stopped and rerun in full
   (PROTOCOL Amendment 3). The same can happen in any part; the per-container
   timeouts in the driver (2–7 h) are the only backstop.
+- 2026-11-21 19:13–23:13 UTC: part 3's seed-101 prompt-only process hit the
+  4-hour container limit with 34 of 54 rows; model requests that waited out
+  the 600 s read timeout (82 across part 3) made it slow rather than hung, so
+  the watchdog (20 min of silence) correctly did not fire. Rerun in full
+  (PROTOCOL Amendment 5).

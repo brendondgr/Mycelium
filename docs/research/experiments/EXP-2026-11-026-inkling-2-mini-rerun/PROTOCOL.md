@@ -189,3 +189,16 @@ a tiny request within 60 s (the container is stuck, not the server), and a
 `STALL … stopped` line is written to the status file. If the model does not
 answer, nothing is stopped. A stopped piece is rerun in full, as in
 Amendment 3, and recorded here; its partial rows are set aside ungraded.
+
+## Amendment 5 (2026-11-21 23:15 UTC, after part 3; no part-3 grade read)
+
+Seed 101's prompt-only process reached the driver's 4-hour container limit
+(`timeout`, rc 124) with 34 of its 54 rows written. It was not hung in the
+Amendment 3 sense: it kept making progress, but slowly, because four of its
+model requests each waited out the 600-second read timeout (these come back as
+blank replies; 82 such timeouts across the seven part-3 processes). Its
+partial rows are set aside ungraded (`data/raw/run/aborted-4-part3-s101prompt/`)
+and seed 101's prompt-only arm is rerun in full (3 repetitions, fresh database,
+same command, container `i-016-101-prompt_only-r2`, 5-hour limit) beside part 5.
+Part 5 (62 threads) plus this process (8) plus the live app stays under the
+95-connection guard. Only the rerun's rows are counted for that cell.
