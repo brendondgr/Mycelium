@@ -156,6 +156,34 @@ Not started.
 
 Not started.
 
+### Side check — which reasoning controls the model obeys (not registered; descriptive)
+
+Asked during the run (2026-11-21 20:27–20:35 UTC, beside part 3), because the
+maintainer asked whether the model has reasoning levels. One fixed question,
+three requests per variant (`code/reasoning_probe.py`, raw rows in
+`data/reasoning_probe.jsonl`; reasoning tokens as the server reports them):
+
+| Variant sent | Reasoning tokens (3 requests) |
+|---|---|
+| Mylo today: `enable_thinking: false` + `thinking_token_budget: 512` | 512, 512, 305 |
+| nothing | 703, 473, 343 |
+| `enable_thinking: false` | 338, 324, 646 |
+| `enable_thinking: true` | 661, 274, 285 |
+| `reasoning_effort: low` | 465, 504, 471 |
+| `reasoning_effort: medium` | 295, 526, 281 |
+| `reasoning_effort: high` | 367, 568, 928 |
+| `thinking_token_budget: 64` | 64, 64, 64 (answer "Yes.", correct) |
+
+**Reading.** This server ignores both on/off switches (`enable_thinking`) and
+`reasoning_effort`: the model always reasons, by an amount that varies more
+between repetitions than between levels. The only control it obeys is the
+hard cap `thinking_token_budget`, which Mylo already sends (512), so every
+part of this experiment ran with Inkling's reasoning capped at 512 tokens per
+call. Part 2's extra time therefore comes mainly from more calls per turn,
+not from longer reasoning per call. Whether a lower cap (e.g. 128) shortens
+turns without costing correctness is an untested, separate question; it would
+be a change to the product setting, measured as its own experiment.
+
 ## 3. Figures
 
 None yet.
