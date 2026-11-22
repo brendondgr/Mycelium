@@ -9,9 +9,9 @@
 id: EXP-2026-11-026
 slug: inkling-2-mini-rerun
 title: The paper's Mylo evaluation repeated on Inkling 2 Mini (26B-A3B, NVFP4)
-status: running # planned | running | complete | failed | superseded
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-11-21
-date_completed: null
+date_completed: 2026-11-22
 authors: [Claude Opus 5.5 (agent), on behalf of the maintainer]
 
 purpose: >
@@ -55,7 +55,7 @@ environment:
   container: "one-off backend containers (docker compose run --rm --no-deps), product code mounted read-only from git archive snapshots, research record mounted from a staged copy"
 compute:
   hardware: "host sc-zeus (see env/hardware.md); model served behind the llm-tunnel relay, operator-stated Inkling 2 Mini 26B-A3B NVFP4"
-  wall_clock_hours: null
+  wall_clock_hours: 11.9  # 2026-11-21 17:35 to 2026-11-22 05:27 UTC, parts overlapping
   estimated_cost_usd: null
 
 # --- LLM block (delete entirely if no model was called) ----------------------
@@ -110,6 +110,12 @@ metrics:
     p2_latency.p8.single.model_calls_median: {mean: 2.0, n: 32}
     p2_latency.p8.single.tokens_median: {mean: 6767.5, n: 32}
     p2_latency.p8.single.worst_s: {mean: 10.21, n: 32}
+    p3_access.gate.controls_passed: {mean: 18, n: 18}
+    p3_access.gate.leaks: {mean: 0, n: 125}
+    p3_access.gate.no_reply: {mean: 19, n: 144}
+    p3_access.prompt_only.controls_passed: {mean: 6, n: 17}
+    p3_access.prompt_only.leaks: {mean: 16, n: 127}
+    p3_access.prompt_only.no_reply: {mean: 17, n: 144}
     p4_answers.a.answerable.full_credit: {mean: 109, n: 147}
     p4_answers.a.field.full_credit: {mean: 30, n: 30}
     p4_answers.a.join.full_credit: {mean: 13, n: 30}
@@ -161,7 +167,7 @@ baselines_compared: [Gemma 4 31B (paper), Qwen 3.8 27B (paper), rules in the pro
 statistical_test: null
 
 # --- Linkage -----------------------------------------------------------------
-supports_claims: []
+supports_claims: [C-037, C-038, C-044, C-052, C-053, C-054]  # C-040 stays partial (chat-kept recall); C-050 not met on this model (CLAIMS.md)
 refutes_claims: []
 figures: [fig-full-credit-by-kind, fig-latency, fig-leaks-code-vs-prompt, fig-memory-lifecycle]
 supersedes: null

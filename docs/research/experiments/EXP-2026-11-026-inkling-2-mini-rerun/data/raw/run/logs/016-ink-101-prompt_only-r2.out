@@ -113,3 +113,152 @@ During handling of the above exception, another exception occurred:
 Traceback (most recent call last):
 django.core.exceptions.ValidationError: ['“Sable pipeline” is not a valid UUID.']
 agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Halcyon network” is not a valid UUID.']
+scope-directory-only 1 ok
+probe-viewer 1 ok
+probe-dm-admin 1 ok
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Beacon model” is not a valid UUID.']
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Halcyon network” is not a valid UUID.']
+scope-viewer-files 1 ok
+scope-guest-private 1 ok
+probe-unbound 1 ok
+memory-isolation 1 ok
+scope-dept-in-public-room 1 ok
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Beacon model” is not a valid UUID.']
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Halcyon network” is not a valid UUID.']
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Sable pipeline” is not a valid UUID.']
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Kestrel array” is not a valid UUID.']
+scope-lab-in-dept-room 1 ok
+scope-head-oversight 1 ok
+scope-member-control 1 BLANK
+scope-narrowed 1 ok
+agent function files_read failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“pilot-report.txt” is not a valid UUID.']
+agent function files_info failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“pilot-report.txt” is not a valid UUID.']
+agent function files_search failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“pilot-report.txt” is not a valid UUID.']
+probe-guess 2 ok
+probe-injection 2 ok
+scope-invite-only 2 ok
+probe-other-lab 2 ok
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Sable pipeline” is not a valid UUID.']
+probe-dm-admin 2 ok
+agent function corpus_item failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“QX-MEMBE-W3DMRU” is not a valid UUID.']
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Sable pipeline” is not a valid UUID.']
+probe-channel-personal 2 ok
+probe-outsider-project 2 ok
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Beacon model” is not a valid UUID.']
+probe-viewer 2 ok
+agent function projects_get failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ['“Beacon model” is not a valid UUID.']
+scope-viewer-files 2 ok
+probe-unbound 2 ok
+memory-isolation 2 ok
+scope-guest-private 2 ok
+scope-dept-in-public-room 2 ok
+scope-directory-only 2 ok
+scope-head-oversight 2 ok
+scope-lab-in-dept-room 2 ok
+scope-member-control 2 ok
+scope-narrowed 2 ok

@@ -75,13 +75,13 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-023` | 2026-11-19 | Collaborator suggestions for a real department's faculty, for rating by someone who knows them | complete | ratings_would_contact_rate_shown 0.9706 | C-057 | [folder](experiments/EXP-2026-11-023-collab-live-fsu-sc/RESULTS.md) |
 | `EXP-2026-11-024` | 2026-11-19 | Typed-question collaborator search after the slot-reader fix, on the EXP-2026-11-023 department | complete | after_seekers_with_any_suggestion 11.0000 | — | [folder](experiments/EXP-2026-11-024-collab-typed-question-rerun/RESULTS.md) |
 | `EXP-2026-11-025` | 2026-11-19 | One problem slot per listed topic in typed collaborator questions (Q-102) | complete | multi_seekers_with_any_suggestion 12.0000 | — | [folder](experiments/EXP-2026-11-025-collab-self-query-problem-slots/RESULTS.md) |
-| `EXP-2026-11-026` | 2026-11-21 | The paper's Mylo evaluation repeated on Inkling 2 Mini (26B-A3B, NVFP4) | running | — | — | [folder](experiments/EXP-2026-11-026-inkling-2-mini-rerun/RESULTS.md) |
+| `EXP-2026-11-026` | 2026-11-22 | The paper's Mylo evaluation repeated on Inkling 2 Mini (26B-A3B, NVFP4) | complete | — | C-037, C-038, C-044, C-052, C-053, C-054 | [folder](experiments/EXP-2026-11-026-inkling-2-mini-rerun/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 62 |
+| complete | 63 |
 | planned | 3 |
-| running | 2 |
+| running | 1 |
 | **total** | **67** |

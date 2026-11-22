@@ -203,6 +203,27 @@ p2.qwen.p8.single.model_calls,2.0
 p2.qwen.p8.single.n,32
 p2.qwen.p8.single.tokens,5886.5
 p2.qwen.p8.single.worst_s,11.01
+p3.ink.blank_min_seconds,605.28
+p3.ink.blank_n,37
+p3.ink.gate.ctrl_passed,18
+p3.ink.gate.ctrl_runs,18
+p3.ink.gate.ctrl_valid,18
+p3.ink.gate.invalid,19
+p3.ink.gate.leak_rows,[]
+p3.ink.gate.leaks,0
+p3.ink.gate.question,5
+p3.ink.gate.runs,144
+p3.ink.gate.valid,125
+p3.ink.prompt_only.ctrl_passed,6
+p3.ink.prompt_only.ctrl_runs,18
+p3.ink.prompt_only.ctrl_valid,17
+p3.ink.prompt_only.invalid,17
+p3.ink.prompt_only.leaks,16
+p3.ink.prompt_only.question,0
+p3.ink.prompt_only.runs,144
+p3.ink.prompt_only.valid,127
+p3.ink.prompt_only.wilson95,"[0.0791, 0.1949]"
+p3.ink.runaway_calls,"{""prompt_only"": [{""run"": ""ink_s101_prompt_only"", ""task"": ""probe-channel-personal"", ""rep"": 0, ""reasoning_tokens"": 1045078, ""finish"": ""length""}, {""run"": ""ink_s101_prompt_only"", ""task"": ""scope-member-control"", ""rep"": 1, ""reasoning_tokens"": 1043883, ""finish"": ""length""}, {""run"": ""ink_s101_prompt_only"", ""task"": ""scope-member-control"", ""rep"": 1, ""reasoning_tokens"": 1043883, ""finish"": ""length""}], ""gate"": []}"
 p4.ink.a,"{""runs"": 177, ""failed_jobs"": 0, ""asked_jobs"": 0, ""asked_attempts"": 0, ""failed_attempts"": 1, ""answerable_full"": {""k"": 109, ""n"": 147, ""rate"": 0.7415, ""wilson95"": [0.6652, 0.8055], ""boot95_questions"": [0.619, 0.8503]}, ""all_full"": {""rate"": 0.7627, ""n_questions"": 59}, ""recall_mean"": 1.0, ""precision_mean"": 0.8598, ""by_kind"": {""field"": {""k"": 30, ""n"": 30, ""rate"": 1.0, ""wilson95"": [0.8865, 1.0]}, ""list"": {""k"": 20, ""n"": 27, ""rate"": 0.7407, ""wilson95"": [0.5532, 0.8683]}, ""project"": {""k"": 30, ""n"": 30, ""rate"": 1.0, ""wilson95"": [0.8865, 1.0]}, ""people"": {""k"": 16, ""n"": 30, ""rate"": 0.5333, ""wilson95"": [0.3614, 0.6977]}, ""join"": {""k"": 13, ""n"": 30, ""rate"": 0.4333, ""wilson95"": [0.2738, 0.608]}, ""unanswerable"": {""k"": 26, ""n"": 30, ""rate"": 0.8667, ""wilson95"": [0.7032, 0.9469]}}, ""unanswerable_states_fact"": {""k"": 4, ""n"": 30, ""rate"": 0.1333, ""wilson95"": [0.0531, 0.2968]}, ""cost"": {""wall_s_median"": 250.14, ""wall_s_mean"": 278.49, ""tokens_mean"": 18880, ""repairs"": 0}}"
 p4.ink.b,"{""runs"": 177, ""failed_jobs"": 0, ""asked_jobs"": 0, ""asked_attempts"": 0, ""failed_attempts"": 0, ""answerable_full"": {""k"": 30, ""n"": 147, ""rate"": 0.2041, ""wilson95"": [0.1469, 0.2764], ""boot95_questions"": [0.102, 0.3265]}, ""all_full"": {""rate"": 0.2938, ""n_questions"": 59}, ""recall_mean"": 0.216, ""precision_mean"": 0.7263, ""by_kind"": {""field"": {""k"": 30, ""n"": 30, ""rate"": 1.0, ""wilson95"": [0.8865, 1.0]}, ""list"": {""k"": 0, ""n"": 27, ""rate"": 0.0, ""wilson95"": [0.0, 0.1246]}, ""project"": {""k"": 0, ""n"": 30, ""rate"": 0.0, ""wilson95"": [0.0, 0.1135]}, ""people"": {""k"": 0, ""n"": 30, ""rate"": 0.0, ""wilson95"": [0.0, 0.1135]}, ""join"": {""k"": 0, ""n"": 30, ""rate"": 0.0, ""wilson95"": [0.0, 0.1135]}, ""unanswerable"": {""k"": 22, ""n"": 30, ""rate"": 0.7333, ""wilson95"": [0.5555, 0.8582]}}, ""unanswerable_states_fact"": {""k"": 8, ""n"": 30, ""rate"": 0.2667, ""wilson95"": [0.1418, 0.4445]}, ""cost"": {""wall_s_median"": 4.9, ""wall_s_mean"": 6.31, ""tokens_mean"": 9027, ""repairs"": 0}}"
 p4.ink.c,"{""runs"": 177, ""failed_jobs"": 31, ""asked_jobs"": 0, ""asked_attempts"": 0, ""failed_attempts"": 93, ""answerable_full"": {""k"": 30, ""n"": 147, ""rate"": 0.2041, ""wilson95"": [0.1469, 0.2764], ""boot95_questions"": [0.102, 0.3265]}, ""all_full"": {""rate"": 0.3333, ""n_questions"": 59}, ""recall_mean"": 0.2109, ""precision_mean"": 0.7755, ""by_kind"": {""field"": {""k"": 30, ""n"": 30, ""rate"": 1.0, ""wilson95"": [0.8865, 1.0]}, ""list"": {""k"": 0, ""n"": 27, ""rate"": 0.0, ""wilson95"": [0.0, 0.1246]}, ""project"": {""k"": 0, ""n"": 30, ""rate"": 0.0, ""wilson95"": [0.0, 0.1135]}, ""people"": {""k"": 0, ""n"": 30, ""rate"": 0.0, ""wilson95"": [0.0, 0.1135]}, ""join"": {""k"": 0, ""n"": 30, ""rate"": 0.0, ""wilson95"": [0.0, 0.1135]}, ""unanswerable"": {""k"": 29, ""n"": 30, ""rate"": 0.9667, ""wilson95"": [0.8333, 0.9941]}}, ""unanswerable_states_fact"": {""k"": 1, ""n"": 30, ""rate"": 0.0333, ""wilson95"": [0.0059, 0.1667]}, ""cost"": {""wall_s_median"": 617.15, ""wall_s_mean"": 524.6, ""tokens_mean"": 54776, ""repairs"": 0}}"

@@ -329,7 +329,61 @@ def part3(values, tables):
         lines.append(f"| {tid} | {ref_cell('gate', 'instance')} | {ref_cell('gate', 'second')} | {ink('gate')} | "
                      f"{ref_cell('prompt_only', 'instance')} | {ref_cell('prompt_only', 'second')} | "
                      f"{ink('prompt_only')} |")
+    lines += ["", *p3_times(values, logs)]
     tables["part3"] = lines
+
+
+def p3_times(values, logs):
+    """Amendment 6: turn times per model and arm, Inkling's empty replies, and
+    calls with over 100,000 reasoning tokens. Gemma's and Qwen's turns are
+    EXP-2026-11-016's main run (`instance` = Gemma, `second` = Qwen); that run
+    logged no per-call usage, so for them only the turn times are shown (no
+    turn over 85 s leaves no room for a call of that size)."""
+    import statistics as st
+    ref = EXPS / "EXP-2026-11-016-agent-gate-replication" / "logs"
+    out = ["Turn times and runaway calls (Amendment 6):", "",
+           "| Model | Arm | Turns | Median s | 90th pct s | Longest s | Turns over 20 min | "
+           "Calls over 100k reasoning tokens |", "|---|---|---:|---:|---:|---:|---:|---:|"]
+    runaway = defaultdict(list)
+    for f in sorted(logs.glob("calls_ink_s*.jsonl")):
+        arm = "prompt_only" if "prompt_only" in f.name else "gate"
+        for c in jsonl(f):
+            u = c.get("usage") or {}
+            rt = (u.get("completion_tokens_details") or {}).get("reasoning_tokens") or 0
+            if rt > 100000:
+                runaway[arm].append({"run": f.name.replace("calls_", "").replace(".jsonl", ""),
+                                     "task": c["task"], "rep": c["rep"], "reasoning_tokens": rt,
+                                     "finish": c.get("finish")})
+    blank_secs = []
+    for model, key in ((GEMMA, "instance"), (QWEN, "second"), (INK, None)):
+        for arm in ("gate", "prompt_only"):
+            if key:
+                rows = [r for f in sorted(ref.glob(f"runs_main_s*_{arm}_{key}.jsonl")) for r in jsonl(f)]
+            else:
+                rows = [r for f in sorted(logs.glob(f"runs_ink_s*_{arm}.jsonl")) for r in jsonl(f)]
+                blank_secs += [float(r["seconds"]) for r in rows if r.get("blank")]
+            v = sorted(float(r["seconds"]) for r in rows)
+            if not v:
+                continue
+            big = len(runaway[arm]) if key is None else "not logged"
+            out.append(f"| {model} | {'rules in code' if arm == 'gate' else 'rules in the prompt'} | {len(v)} | "
+                       f"{st.median(v):.0f} | {v[int(0.9 * len(v))]:.0f} | {v[-1]:.0f} | "
+                       f"{sum(x > 1200 for x in v)} | {big} |")
+            cmp("p3", arm, model, "median_turn_s", value=round(st.median(v), 1))
+    blank_turns = {(f.name.replace("runs_", "").replace(".jsonl", ""), r["task"], int(r["rep"]))
+                   for f in sorted(logs.glob("runs_ink_s*.jsonl")) for r in jsonl(f) if r.get("blank")}
+    blank_runaway = sum(1 for arm, xs in runaway.items() for x in xs
+                        if (x["run"], x["task"], int(x["rep"])) in blank_turns)
+    runaway_turns = {(x["run"], x["task"], int(x["rep"])) for xs in runaway.values() for x in xs}
+    out += ["", f"Inkling's empty replies: {len(blank_secs)}, every one taking at least 600 s "
+            f"(shortest {min(blank_secs):.0f} s), the 600-second read timeout on a model request that "
+            f"sent nothing. {blank_runaway} of the {sum(len(x) for x in runaway.values())} runaway calls "
+            f"fell in an empty turn; the {len(runaway_turns)} turns with a runaway call are listed in "
+            "`data/metrics.json` (`p3.ink.runaway_calls`)." if blank_secs else ""]
+    values["p3.ink.runaway_calls"] = dict(runaway)
+    values["p3.ink.blank_min_seconds"] = min(blank_secs) if blank_secs else None
+    values["p3.ink.blank_n"] = len(blank_secs)
+    return out
 
 
 # -- part 4: EXP-2026-11-018 answers against stored facts ------------------------------
