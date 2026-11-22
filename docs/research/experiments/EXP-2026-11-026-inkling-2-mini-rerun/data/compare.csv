@@ -182,3 +182,9 @@ p4,c.unanswerable,Inkling 2 Mini,full_credit,29,30,0.9667,0.8333,0.9941
 p4,c.answerable,Inkling 2 Mini,full_credit,30,147,0.2041,0.1469,0.2764
 p4,c.answerable,Inkling 2 Mini,precision_mean,,,0.7755,,
 p4,c.answerable,Inkling 2 Mini,recall_mean,,,0.2109,,
+p5,gate,Gemma 4 31B,named,0,206,0.0,0.0,0.0183
+p5,prompt_only,Gemma 4 31B,named,197,233,0.8455,0.7935,0.8863
+p5,gate,Qwen 3.8 27B,named,0,238,0.0,0.0,0.0159
+p5,prompt_only,Qwen 3.8 27B,named,168,237,0.7089,0.6481,0.763
+p5,gate,Inkling 2 Mini,named,0,238,0.0,0.0,0.0159
+p5,prompt_only,Inkling 2 Mini,named,131,235,0.5574,0.4935,0.6195

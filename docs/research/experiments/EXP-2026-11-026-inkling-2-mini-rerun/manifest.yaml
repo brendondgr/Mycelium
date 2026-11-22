@@ -134,13 +134,17 @@ metrics:
     p4_answers.c.project.full_credit: {mean: 0, n: 30}
     p4_answers.c.unanswerable.full_credit: {mean: 29, n: 30}
     p4_answers.c.unanswerable_states_fact: {mean: 1, n: 30}
+    p5_collab.S1_named: {mean: 28, n: 30}
+    p5_collab.S2_named: {mean: 1, n: 30}
+    p5_collab.code_arm_named: {mean: 0, n: 238}
+    p5_collab.prompt_arm_named: {mean: 131, n: 235}
 baselines_compared: [Gemma 4 31B (paper), Qwen 3.8 27B (paper), rules in the prompt, prose directory, single call, corpus-only]
 statistical_test: null
 
 # --- Linkage -----------------------------------------------------------------
 supports_claims: []
 refutes_claims: []
-figures: [fig-full-credit-by-kind, fig-latency]
+figures: [fig-full-credit-by-kind, fig-latency, fig-leaks-code-vs-prompt]
 supersedes: null
 superseded_by: null
 related: [EXP-2026-11-010, EXP-2026-11-016, EXP-2026-11-017, EXP-2026-11-018, EXP-2026-11-019, EXP-2026-11-021, EXP-2026-11-022]

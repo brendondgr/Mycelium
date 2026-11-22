@@ -22,3 +22,24 @@
 2026-11-21T19:12:14Z item4 cleanup rc=0 {"EXP-2026-11-018": 417, "EXP-2026-11-020": 0, "EXP-2026-11-013": 0, "audit_rows_by_action": {"agent.org_lab_members": 48, "agent.org_person": 11}, "deleted_rows": {"agent.AgentEvent": 28772, "agent.A
 2026-11-21T19:12:39Z pid 628255 finished
 2026-11-21T19:12:46Z item3 EXP-016 access probes via ink_replay.py (label ink): start
+2026-11-21T22:28:48Z item3 seed 101 gate RERUN rc=0 rows=54
+2026-11-21T23:13:06Z item3 seed 101 gate rc=143 rows=54
+2026-11-21T23:13:06Z item3 seed 101 prompt_only rc=124 rows=34
+2026-11-21T23:13:06Z item3 seed 202 gate rc=0 rows=54
+2026-11-21T23:13:06Z item3 seed 202 prompt_only rc=0 rows=54
+2026-11-21T23:13:06Z item3 seed 303 gate rc=0 rows=54
+2026-11-21T23:13:06Z item3 seed 303 prompt_only rc=0 rows=54
+2026-11-21T23:13:06Z item3 returned
+2026-11-21T23:14:40Z item3 seed 101 prompt_only RERUN start (i-016-101-prompt_only-r2)
+2026-11-21T23:15:10Z item5 EXP-019 collaborator scenarios (maini): start
+2026-11-21T23:38:05Z item5 gate rep 0 rc=0 rows=103
+2026-11-22T00:02:20Z item5 baseline rep 0 rc=0 rows=103
+2026-11-22T00:31:03Z item5 gate rep 1 rc=0 rows=206
+2026-11-22T00:57:30Z item5 baseline rep 1 rc=0 rows=206
+2026-11-22T01:22:46Z item5 gate rep 2 rc=0 rows=309
+2026-11-22T01:47:13Z item5 baseline rep 2 rc=0 rows=309
+2026-11-22T01:47:51Z item5 regrade rc=0
+2026-11-22T01:48:07Z item5 recall rc=0
+2026-11-22T01:48:07Z item5 analyse rc=0
+2026-11-22T01:48:12Z item5 returned
+2026-11-22T01:48:16Z item6 EXP-017 lifecycle (ink): start

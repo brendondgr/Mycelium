@@ -655,5 +655,110 @@
    "diff": -0.1,
    "n_questions": 10
   }
+ },
+ "p5.ink.claims": {
+  "a": {
+   "S1": {
+    "bar": 0.8,
+    "k": 28,
+    "n": 30,
+    "passes": true,
+    "rate": 0.9333,
+    "wilson95": [
+     0.7868,
+     0.9815
+    ]
+   },
+   "S2": {
+    "bar": 0.8,
+    "k": 1,
+    "n": 30,
+    "passes": false,
+    "rate": 0.0333,
+    "wilson95": [
+     0.0059,
+     0.1667
+    ]
+   }
+  },
+  "b": {
+   "k": 0,
+   "n": 238,
+   "passes": true,
+   "points": {
+    "answer": 0,
+    "catalog": 0,
+    "results": 0
+   },
+   "rate": 0.0,
+   "secondary_with_S4o": {
+    "k": 3,
+    "n": 247,
+    "rate": 0.0121,
+    "upper95_if_zero": 0.0121,
+    "wilson95": [
+     0.0041,
+     0.0351
+    ]
+   },
+   "upper95_if_zero": 0.0125,
+   "wilson95": [
+    0.0,
+    0.0159
+   ]
+  },
+  "c": {
+   "baseline": {
+    "k": 131,
+    "n": 235,
+    "rate": 0.5574,
+    "wilson95": [
+     0.4935,
+     0.6195
+    ]
+   },
+   "baseline_any_point": {
+    "k": 185,
+    "n": 235,
+    "rate": 0.7872,
+    "wilson95": [
+     0.7305,
+     0.8347
+    ]
+   },
+   "difference": 0.5574,
+   "gate": {
+    "k": 0,
+    "n": 238,
+    "rate": 0.0,
+    "wilson95": [
+     0.0,
+     0.0159
+    ]
+   },
+   "newcombe95": [
+    0.4916,
+    0.6195
+   ],
+   "passes": true
+  }
+ },
+ "p5.ink.failed": {
+  "baseline": 7,
+  "gate": 2
+ },
+ "p5.ink.recall": {
+  "baseline": {
+   "recall_naming_outside_consent": 0,
+   "runs": 309,
+   "upper95_if_zero": 0.0096,
+   "with_recall": 255
+  },
+  "gate": {
+   "recall_naming_outside_consent": 0,
+   "runs": 309,
+   "upper95_if_zero": 0.0096,
+   "with_recall": 186
+  }
  }
 }

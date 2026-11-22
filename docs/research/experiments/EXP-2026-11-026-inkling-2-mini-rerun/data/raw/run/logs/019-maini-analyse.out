@@ -1,0 +1,177 @@
+{
+ "v2": {
+  "a": {
+   "S1": {
+    "k": 28,
+    "n": 30,
+    "rate": 0.9333,
+    "wilson95": [
+     0.7868,
+     0.9815
+    ],
+    "bar": 0.8,
+    "passes": true
+   },
+   "S2": {
+    "k": 1,
+    "n": 30,
+    "rate": 0.0333,
+    "wilson95": [
+     0.0059,
+     0.1667
+    ],
+    "bar": 0.8,
+    "passes": false
+   }
+  },
+  "b": {
+   "k": 0,
+   "n": 238,
+   "rate": 0.0,
+   "wilson95": [
+    0.0,
+    0.0159
+   ],
+   "upper95_if_zero": 0.0125,
+   "points": {
+    "catalog": 0,
+    "results": 0,
+    "answer": 0
+   },
+   "secondary_with_S4o": {
+    "k": 3,
+    "n": 247,
+    "rate": 0.0121,
+    "wilson95": [
+     0.0041,
+     0.0351
+    ],
+    "upper95_if_zero": 0.0121
+   },
+   "passes": true
+  },
+  "c": {
+   "gate": {
+    "k": 0,
+    "n": 238,
+    "rate": 0.0,
+    "wilson95": [
+     0.0,
+     0.0159
+    ]
+   },
+   "baseline": {
+    "k": 131,
+    "n": 235,
+    "rate": 0.5574,
+    "wilson95": [
+     0.4935,
+     0.6195
+    ]
+   },
+   "difference": 0.5574,
+   "newcombe95": [
+    0.4916,
+    0.6195
+   ],
+   "passes": true,
+   "baseline_any_point": {
+    "k": 185,
+    "n": 235,
+    "rate": 0.7872,
+    "wilson95": [
+     0.7305,
+     0.8347
+    ]
+   }
+  }
+ },
+ "v1": {
+  "a": {
+   "S1": {
+    "k": 28,
+    "n": 28,
+    "rate": 1.0,
+    "wilson95": [
+     0.8794,
+     1.0
+    ],
+    "bar": 0.8,
+    "passes": true
+   },
+   "S2": {
+    "k": 1,
+    "n": 17,
+    "rate": 0.0588,
+    "wilson95": [
+     0.0105,
+     0.2698
+    ],
+    "bar": 0.8,
+    "passes": false
+   }
+  },
+  "b": {
+   "k": 0,
+   "n": 179,
+   "rate": 0.0,
+   "wilson95": [
+    0.0,
+    0.021
+   ],
+   "upper95_if_zero": 0.0166,
+   "points": {
+    "catalog": 0,
+    "results": 0,
+    "answer": 0
+   },
+   "secondary_with_S4o": {
+    "k": 3,
+    "n": 185,
+    "rate": 0.0162,
+    "wilson95": [
+     0.0055,
+     0.0466
+    ],
+    "upper95_if_zero": 0.0161
+   },
+   "passes": true
+  },
+  "c": {
+   "gate": {
+    "k": 0,
+    "n": 179,
+    "rate": 0.0,
+    "wilson95": [
+     0.0,
+     0.021
+    ]
+   },
+   "baseline": {
+    "k": 131,
+    "n": 234,
+    "rate": 0.5598,
+    "wilson95": [
+     0.4958,
+     0.622
+    ]
+   },
+   "difference": 0.5598,
+   "newcombe95": [
+    0.4924,
+    0.622
+   ],
+   "passes": true,
+   "baseline_any_point": {
+    "k": 185,
+    "n": 234,
+    "rate": 0.7906,
+    "wilson95": [
+     0.734,
+     0.8378
+    ]
+   }
+  }
+ }
+}
+wrote data/metrics_maini.json, data/metrics_maini.csv, tables/summary_maini.md
