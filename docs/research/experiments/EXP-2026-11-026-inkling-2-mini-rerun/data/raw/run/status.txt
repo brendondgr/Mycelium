@@ -43,3 +43,11 @@
 2026-11-22T01:48:07Z item5 analyse rc=0
 2026-11-22T01:48:12Z item5 returned
 2026-11-22T01:48:16Z item6 EXP-017 lifecycle (ink): start
+2026-11-22T03:52:58Z item6 process a (delete_thread) rc=0 rows=69
+2026-11-22T03:52:58Z item6 process b (delete_obs) rc=0 rows=68
+2026-11-22T03:52:58Z item6 process c (delete_thread_production,optout) rc=0 rows=95
+2026-11-22T03:52:58Z item6 process d (message,forget,excluded) rc=0 rows=67
+2026-11-22T03:52:58Z item6 process e (isolation) rc=0 rows=136
+2026-11-22T03:52:58Z item6 analyse rc=0
+2026-11-22T03:53:02Z item6 returned
+2026-11-22T03:53:07Z item7 EXP-019 r6 repeat (r6i): start

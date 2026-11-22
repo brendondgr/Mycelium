@@ -16,7 +16,8 @@ fig-full-credit-by-kind    full-credit rate per question kind, Mylo as shipped
 fig-latency                median seconds per answer, model calls and tokens
                            per turn, by question group, one at a time (part 2).
 fig-memory-lifecycle       leaks over valid runs per memory-lifecycle probe
-                           (part 6).
+                           (part 6), registered grading; where Amendment 7's
+                           re-attribution changes a count, the label says so.
 
 Colours: the three models take categorical slots 1–3 of the dataviz reference
 palette, in a fixed order (validated all-pairs, light surface). The third slot
@@ -163,9 +164,9 @@ def fig_latency(rows):
 
 LIFE = [("delete_thread", "delete the chat (lowered thresholds)"),
         ("delete_thread_production", "delete the chat (default settings)"),
-        ("delete_obs", "delete what was learned"),
-        ("message", "delete the message"),
-        ("forget", "ask Mylo to forget"),
+        ("delete_obs", "delete what was learned (chat kept)"),
+        ("message", "delete the message (chat kept)"),
+        ("forget", "ask Mylo to forget (chat kept)"),
         ("optout", "learning switched off"),
         ("excluded", "recording excluded"),
         ("isolation", "another member asks")]
@@ -186,7 +187,11 @@ def fig_memory(rows):
             v = r["value"]
             ax.barh(y, v, h, color=colour, edgecolor="white", lw=1, label=model if j == 0 else None,
                     xerr=[[v - r["lo"]], [r["hi"] - v]], capsize=1.5, error_kw={"lw": 0.7, "ecolor": MUTED})
-            ax.text(r["hi"] + 0.02, y, f"{int(r['k'])}/{int(r['n'])}", va="center", fontsize=5.5, color=MUTED)
+            label = f"{int(r['k'])}/{int(r['n'])}"
+            echo = get(rows, "p6", key, model, "leaks_after_echo")
+            if echo is not None and echo["k"] != r["k"]:
+                label += f" ({int(echo['k'])} after re-attribution)"
+            ax.text(r["hi"] + 0.02, y, label, va="center", fontsize=5.5, color=MUTED)
     ax.set_yticks(range(len(probes)))
     ax.set_yticklabels([label for _, label in probes])
     ax.invert_yaxis()

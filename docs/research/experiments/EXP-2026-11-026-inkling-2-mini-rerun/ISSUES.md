@@ -29,3 +29,10 @@
   context (one call: 6,368 s, 1,045,078 reasoning tokens). This is what
   stretched part 3's turns to as much as 1.8 h. Fixed in the product since
   a8e21c0e (falls back to the instance cap). PROTOCOL Amendment 6.
+- 2026-11-22: EXP-2026-11-017's harness classifies a planted string in any
+  non-chat function result as derived memory, so a search tool that repeats
+  its query ("Nothing in the corpus matches “<query>”") is scored as a leak.
+  Gemma and Qwen never searched for the planted name; Inkling did in 31 runs.
+  Function results are not logged, which left the echo to be inferred. A
+  future harness should ignore strings the model itself put in the call's
+  arguments and log the results. PROTOCOL Amendment 7.

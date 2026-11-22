@@ -1,0 +1,154 @@
+ Container i-017-e Creating 
+ Container i-017-e Created 
+isolation_plant 0 valid ok 442
+isolation_plant 10 INVALID ok 892
+isolation_plant 11 INVALID ok 599
+isolation_plant 12 INVALID ok 256
+isolation_plant 20 INVALID ok 148
+isolation_plant 21 INVALID ok 325
+isolation_plant 22 INVALID ok 423
+isolation_plant 30 valid ok 238
+isolation_plant 40 valid ok 675
+isolation_plant 50 valid ok 475
+isolation_plant 60 valid ok 107
+isolation_plant 70 valid ok 171
+isolation_plant 80 INVALID ok 115
+isolation_plant 81 INVALID ok 180
+isolation_plant 82 valid ok 113
+isolation_plant 90 valid ok 169
+isolation 7 valid ok 185
+isolation 2 valid ok 200
+isolation 8 valid ok 213
+isolation 0 valid ok 218
+isolation 6 valid ok 223
+isolation 10 valid ok 223
+isolation 3 valid ok 227
+isolation 4 valid ok 228
+isolation 9 valid ok 236
+isolation 5 valid ok 238
+isolation 11 valid ok 242
+isolation 1 valid ok 250
+isolation 23 INVALID ok 53
+isolation 22 INVALID ok 71
+isolation 21 INVALID ok 107
+isolation 12 INVALID ok 167
+isolation 20 INVALID ok 163
+isolation 19 INVALID ok 175
+isolation 18 INVALID ok 194
+isolation 13 INVALID ok 272
+isolation 14 INVALID ok 281
+isolation 24 INVALID ok 208
+isolation 27 INVALID ok 163
+isolation 15 INVALID ok 313
+isolation 17 INVALID ok 311
+isolation 26 INVALID ok 195
+isolation 29 INVALID ok 156
+isolation 28 INVALID ok 165
+isolation 16 INVALID ok 358
+isolation 33 INVALID ok 71
+isolation 34 INVALID ok 69
+isolation 25 INVALID ok 272
+isolation 30 INVALID ok 167
+isolation 31 INVALID ok 122
+isolation 35 INVALID ok 95
+isolation 32 INVALID ok 135
+isolation 37 valid ok 169
+agent turn failed for thread f5e0ea57-9a5a-4ebe-bb77-2ea9d51c1131
+Traceback (most recent call last):
+openai.InternalServerError: Error code: 502 - {'error': {'message': 'upstream error: ReadError: ', 'type': 'relay_proxy_error', 'code': 502}}
+isolation 39 valid ok 176
+isolation 43 valid ok 156
+isolation 46 valid ok 169
+isolation 45 valid ok 201
+isolation 47 valid ok 178
+isolation 42 valid ok 238
+isolation 36 valid ok 327
+isolation 40 valid ok 287
+isolation 41 valid ok 292
+isolation 38 valid ok 329
+isolation 48 valid ok 191
+isolation 44 valid ok 319
+isolation 57 valid ok 115
+isolation 53 valid ok 184
+isolation 52 valid ok 198
+isolation 51 valid ok 220
+agent turn failed for thread b71ada0c-5b65-416e-a8f0-20a37719327d
+Traceback (most recent call last):
+httpcore.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+httpx.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+openai.APIConnectionError: Connection error.
+isolation 50 valid ok 277
+isolation 54 valid ok 197
+isolation 59 valid ok 121
+isolation 55 valid ok 164
+isolation 49 valid ok 295
+isolation 58 valid ok 194
+isolation 60 valid ok 182
+isolation 71 valid ok 35
+isolation 63 valid ok 134
+isolation 70 valid ok 59
+isolation 64 valid ok 133
+isolation 56 valid ok 292
+isolation 65 valid ok 148
+isolation 69 valid ok 159
+isolation 75 valid ok 154
+isolation 62 valid ok 321
+isolation 68 valid ok 303
+isolation 61 valid ok 345
+isolation 77 valid ok 169
+isolation 67 valid ok 321
+isolation 76 valid ok 184
+isolation 72 valid ok 233
+isolation 66 valid ok 343
+isolation 73 valid ok 240
+isolation 78 valid ok 236
+isolation 87 valid ok 89
+isolation 81 valid ok 134
+isolation 79 valid ok 165
+isolation 83 valid ok 135
+isolation 74 valid ok 336
+isolation 82 valid ok 149
+isolation 84 valid ok 152
+isolation 80 valid ok 197
+isolation 88 valid ok 149
+isolation 94 valid ok 46
+isolation 85 valid ok 209
+isolation 89 valid ok 153
+isolation 86 valid ok 237
+isolation 93 valid ok 144
+isolation 95 valid ok 154
+isolation 91 valid ok 178
+isolation 99 valid ok 128
+isolation 92 valid ok 199
+isolation 100 valid ok 132
+isolation 105 valid ok 45
+isolation 107 valid ok 34
+isolation 106 valid ok 61
+isolation 101 valid ok 134
+isolation 90 valid ok 276
+isolation 98 valid ok 212
+isolation 112 valid ok 44
+isolation 96 valid ok 286
+isolation 104 valid ok 170
+isolation 111 valid ok 96
+isolation 102 valid ok 224
+isolation 113 valid ok 96
+isolation 97 valid ok 320
+isolation 118 valid ok 48
+isolation 103 valid ok 248
+isolation 108 valid ok 190
+isolation 109 valid ok 199
+isolation 117 valid ok 85
+isolation 114 valid ok 181
+isolation 115 valid ok 163
+isolation 116 valid ok 151
+isolation 110 valid ok 241
+isolation 119 valid ok 122
