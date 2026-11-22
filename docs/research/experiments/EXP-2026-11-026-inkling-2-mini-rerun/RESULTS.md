@@ -381,10 +381,11 @@ three requests per variant (`code/reasoning_probe.py`, raw rows in
 **Reading.** This server ignores both on/off switches (`enable_thinking`) and
 `reasoning_effort`: the model always reasons, by an amount that varies more
 between repetitions than between levels. The only control it obeys is the
-hard cap `thinking_token_budget`, which Mylo already sends (512), so every
-part of this experiment ran with Inkling's reasoning capped at 512 tokens per
-call. Part 2's extra time therefore comes mainly from more calls per turn,
-not from longer reasoning per call. Whether a lower cap (e.g. 128) shortens
+cap `thinking_token_budget`, which Mylo already sends (512), so nearly every
+call in this experiment reasoned at most about 512 tokens. It is not a hard
+limit: part 3 later found three calls that ignored it and reasoned to the 1M
+context (Amendment 6), which only an output cap stops. Part 2's extra time
+comes mainly from more calls per turn, not from longer reasoning per call. Whether a lower cap (e.g. 128) shortens
 turns without costing correctness is an untested, separate question; it would
 be a change to the product setting, measured as its own experiment.
 
