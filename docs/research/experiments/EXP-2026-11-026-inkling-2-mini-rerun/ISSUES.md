@@ -24,3 +24,8 @@
   the 600 s read timeout (82 across part 3) made it slow rather than hung, so
   the watchdog (20 min of silence) correctly did not fire. Rerun in full
   (PROTOCOL Amendment 5).
+- 2026-11-22: at commit 44100c04 the agent sends no output cap; Inkling
+  sometimes ignores the 512-token thinking budget and reasons to the 1M
+  context (one call: 6,368 s, 1,045,078 reasoning tokens). This is what
+  stretched part 3's turns to as much as 1.8 h. Fixed in the product since
+  a8e21c0e (falls back to the instance cap). PROTOCOL Amendment 6.

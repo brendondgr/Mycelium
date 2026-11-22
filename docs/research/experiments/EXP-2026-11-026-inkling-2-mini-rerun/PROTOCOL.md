@@ -202,3 +202,26 @@ and seed 101's prompt-only arm is rerun in full (3 repetitions, fresh database,
 same command, container `i-016-101-prompt_only-r2`, 5-hour limit) beside part 5.
 Part 5 (62 threads) plus this process (8) plus the live app stays under the
 95-connection guard. Only the rerun's rows are counted for that cell.
+
+## Amendment 6 (2026-11-22 01:50 UTC, during the seed-101 prompt-only rerun; no part-3 grade read)
+
+Cause of part 3's long turns found. At commit 44100c04 (the code part 3 runs,
+EXP-2026-11-016's) the agent passes `max_tokens=0` to the client, so its
+model calls carry **no output cap** (the instance's 8096 applies only from
+a8e21c0e on, the code parts 1, 2 and 4–7 run). Inkling usually obeys the
+512-token thinking budget, but some calls ignore it and reason until the
+context is full: one rerun call returned after 6,368 s with 1,045,078
+reasoning tokens (total 1,048,576 = the 1M context), and the rerun's rep 1
+is in another such call now. Gemma and Qwen ran the same uncapped code
+(EXP-2026-11-016: no turn over 85 s). The calls stream, so neither the 600 s
+read timeout nor the watchdog's silence rule ends them. Amendment 3's
+two-hour "hang" and the first seed-101 prompt-only process's slowness were
+probably the same thing; their rows stay set aside as recorded.
+
+Decision: a runaway call is what this version of the product does with this
+model, so it is **allowed to finish**, not cut: turns are graded on what the
+reader then sees, and the time is reported. The rerun's 5-hour container
+limit was removed at 01:49 UTC (the `timeout` wrapper killed; the container
+keeps running; its status line will show rc 137). The watchdog stays. Part 3
+reports the number of calls with over 100,000 reasoning tokens for each
+model, and the turn times.
