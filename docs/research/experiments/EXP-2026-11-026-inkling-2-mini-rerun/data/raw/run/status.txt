@@ -51,3 +51,7 @@
 2026-11-22T03:52:58Z item6 analyse rc=0
 2026-11-22T03:53:02Z item6 returned
 2026-11-22T03:53:07Z item7 EXP-019 r6 repeat (r6i): start
+2026-11-22T04:20:06Z item7 drive rc=0 (194 log lines)
+2026-11-22T04:20:06Z item7 analyse rc=0
+2026-11-22T04:20:10Z item7 returned
+2026-11-22T04:20:10Z driver finished

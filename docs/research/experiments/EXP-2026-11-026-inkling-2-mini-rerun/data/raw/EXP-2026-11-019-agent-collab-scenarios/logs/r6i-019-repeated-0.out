@@ -1,0 +1,46 @@
+ Container r6i-019-repeated-0 Creating 
+ Container r6i-019-repeated-0 Created 
+agent turn failed for thread 37d7eee9-8eda-42c3-87b4-c71ad5ccdee8
+Traceback (most recent call last):
+httpcore.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+httpx.RemoteProtocolError: Server disconnected without sending a response.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+openai.APIConnectionError: Connection error.
+S2 p0152 repeated 0 1 failed False 57.5
+S2 p0009 repeated 0 1 question False 156.4
+S2 p0011 repeated 0 1 answered False 183.96
+S10 p0329 repeated 0 1 answered None 192.74
+S10 p0520 repeated 0 1 answered None 212.68
+S2 p0399 repeated 0 1 answered False 221.92
+S10 p0333 repeated 0 1 answered None 228.84
+S1 p0337 repeated 0 1 answered True 229.48
+S2 p0541 repeated 0 1 question False 231.73
+S1 p0240 repeated 0 1 answered True 242.72
+S2 p0111 repeated 0 1 answered False 247.52
+S2 p0106 repeated 0 1 answered False 249.11
+S1 p0002 repeated 0 1 answered True 251.35
+S1 p0530 repeated 0 1 answered True 253.41
+S2 p0204 repeated 0 1 answered False 253.58
+S1 p0340 repeated 0 1 answered True 253.28
+S10 p0046 repeated 0 1 answered None 260.93
+S1 p0483 repeated 0 1 answered True 268.05
+S2 p0298 repeated 0 1 answered False 275.95
+S1 p0052 repeated 0 1 answered True 281.05
+S10 p0189 repeated 0 1 answered None 308.59
+S2 p0061 repeated 0 1 answered True 308.04
+S10 p0430 repeated 0 1 answered None 323.05
+S1 p0528 repeated 0 1 answered True 375.34
+S10 p0095 repeated 0 1 answered None 377.51
+S10 p0570 repeated 0 1 answered None 376.09
+S1 p0053 repeated 0 1 answered True 417.03
+S10 p0090 repeated 0 1 answered None 417.39
+S10 p0280 repeated 0 1 answered None 426.45
+S1 p0295 repeated 0 1 answered True 447.0
+S2 p0152 repeated 0 2 answered False 10.26

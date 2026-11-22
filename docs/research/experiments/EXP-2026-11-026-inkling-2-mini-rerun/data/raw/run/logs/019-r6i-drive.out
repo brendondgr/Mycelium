@@ -1,1 +1,25 @@
 2026-11-22T03:53:11Z start r6i-019-setup-repeated
+2026-11-22T03:54:27Z end r6i-019-setup-repeated rc=0 (55 lines)
+ "uniqueness": {
+ },
+ "preflight_failures": []
+}
+2026-11-22T03:54:28Z start r6i-019-setup-fresh
+2026-11-22T03:55:44Z end r6i-019-setup-fresh rc=0 (55 lines)
+ "uniqueness": {
+ },
+ "preflight_failures": []
+}
+2026-11-22T03:55:44Z start r6i-019-repeated-0
+2026-11-22T03:55:44Z start r6i-019-fresh-0
+2026-11-22T04:03:38Z end r6i-019-repeated-0 rc=0 (46 lines)
+2026-11-22T04:03:38Z start r6i-019-repeated-1
+2026-11-22T04:03:50Z end r6i-019-fresh-0 rc=0 (32 lines)
+2026-11-22T04:03:50Z start r6i-019-fresh-1
+2026-11-22T04:10:51Z end r6i-019-fresh-1 rc=0 (32 lines)
+2026-11-22T04:10:51Z start r6i-019-fresh-2
+2026-11-22T04:10:59Z end r6i-019-repeated-1 rc=0 (32 lines)
+2026-11-22T04:10:59Z start r6i-019-repeated-2
+2026-11-22T04:18:38Z end r6i-019-fresh-2 rc=0 (32 lines)
+2026-11-22T04:20:06Z end r6i-019-repeated-2 rc=0 (46 lines)
+2026-11-22T04:20:06Z r6i done

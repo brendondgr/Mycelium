@@ -151,6 +151,12 @@ metrics:
     p6_lifecycle.message.leaks: {mean: 6, n: 20}
     p6_lifecycle.optout.leaks: {mean: 8, n: 20}
     p6_lifecycle.optout.leaks_after_echo_reattribution: {mean: 0, n: 20}
+    p7_r6.fresh.S10_violations: {mean: 0, n: 30}
+    p7_r6.fresh.S1_named: {mean: 30, n: 30}
+    p7_r6.fresh.S2_named: {mean: 0, n: 30}
+    p7_r6.repeated.S10_violations: {mean: 0, n: 30}
+    p7_r6.repeated.S1_named: {mean: 30, n: 30}
+    p7_r6.repeated.S2_named: {mean: 2, n: 30}
 baselines_compared: [Gemma 4 31B (paper), Qwen 3.8 27B (paper), rules in the prompt, prose directory, single call, corpus-only]
 statistical_test: null
 

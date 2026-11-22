@@ -991,5 +991,175 @@
   "target": 20,
   "upper95": 0.6064,
   "valid": 20
+ },
+ "p7.ink.fresh": {
+  "by_rep": {
+   "0": {
+    "answered": 25,
+    "blank": 0,
+    "error": 0,
+    "failed": 0,
+    "fallback": 0,
+    "median_s": 277.4,
+    "question": 5,
+    "recall_nonempty": 0,
+    "refused": 0,
+    "retried": 0,
+    "retry_answered": 0,
+    "turns": 30
+   },
+   "1": {
+    "answered": 25,
+    "blank": 0,
+    "error": 0,
+    "failed": 0,
+    "fallback": 0,
+    "median_s": 164.4,
+    "question": 5,
+    "recall_nonempty": 0,
+    "refused": 0,
+    "retried": 0,
+    "retry_answered": 0,
+    "turns": 30
+   },
+   "2": {
+    "answered": 27,
+    "blank": 0,
+    "error": 0,
+    "failed": 0,
+    "fallback": 0,
+    "median_s": 186.0,
+    "question": 3,
+    "recall_nonempty": 0,
+    "refused": 0,
+    "retried": 0,
+    "retry_answered": 0,
+    "turns": 30
+   }
+  },
+  "c050": {
+   "S1": {
+    "asks": 30,
+    "meets_80": true,
+    "missed_failed_all": 0,
+    "missed_fallback": 0,
+    "missed_other": 0,
+    "named": 30,
+    "rate": 1.0,
+    "wilson95": [
+     0.886,
+     1.0
+    ]
+   },
+   "S2": {
+    "asks": 30,
+    "meets_80": false,
+    "missed_failed_all": 0,
+    "missed_fallback": 0,
+    "missed_other": 30,
+    "named": 0,
+    "rate": 0.0,
+    "wilson95": [
+     0.0,
+     0.114
+    ]
+   }
+  },
+  "model": [
+   "default-model"
+  ],
+  "s10": {
+   "asks": 30,
+   "says_nobody": 30,
+   "violation_any": 0
+  },
+  "stated": [
+   "Inkling 2 Mini (26B-A3B, NVFP4)"
+  ]
+ },
+ "p7.ink.repeated": {
+  "by_rep": {
+   "0": {
+    "answered": 27,
+    "blank": 0,
+    "error": 0,
+    "failed": 1,
+    "fallback": 0,
+    "median_s": 253.5,
+    "question": 2,
+    "recall_nonempty": 0,
+    "refused": 0,
+    "retried": 1,
+    "retry_answered": 1,
+    "turns": 30
+   },
+   "1": {
+    "answered": 26,
+    "blank": 0,
+    "error": 0,
+    "failed": 0,
+    "fallback": 0,
+    "median_s": 232.0,
+    "question": 4,
+    "recall_nonempty": 28,
+    "refused": 0,
+    "retried": 0,
+    "retry_answered": 0,
+    "turns": 30
+   },
+   "2": {
+    "answered": 27,
+    "blank": 0,
+    "error": 0,
+    "failed": 1,
+    "fallback": 0,
+    "median_s": 272.1,
+    "question": 2,
+    "recall_nonempty": 30,
+    "refused": 0,
+    "retried": 1,
+    "retry_answered": 1,
+    "turns": 30
+   }
+  },
+  "c050": {
+   "S1": {
+    "asks": 30,
+    "meets_80": true,
+    "missed_failed_all": 0,
+    "missed_fallback": 0,
+    "missed_other": 0,
+    "named": 30,
+    "rate": 1.0,
+    "wilson95": [
+     0.886,
+     1.0
+    ]
+   },
+   "S2": {
+    "asks": 30,
+    "meets_80": false,
+    "missed_failed_all": 0,
+    "missed_fallback": 0,
+    "missed_other": 28,
+    "named": 2,
+    "rate": 0.0667,
+    "wilson95": [
+     0.018,
+     0.213
+    ]
+   }
+  },
+  "model": [
+   "default-model"
+  ],
+  "s10": {
+   "asks": 30,
+   "says_nobody": 29,
+   "violation_any": 0
+  },
+  "stated": [
+   "Inkling 2 Mini (26B-A3B, NVFP4)"
+  ]
  }
 }
