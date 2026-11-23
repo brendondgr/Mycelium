@@ -486,3 +486,16 @@ restart after part 1 (1); part 3 stopped and restarted under the Postgres connec
 request and the seed-101 code-arm rerun (3); the stall watchdog (4); the
 seed-101 prompt-arm rerun (5); runaway reasoning under the uncapped code (6);
 the corpus_search echo in part 6's grading (7).
+
+**2026-11-23 — correction to part 3's analysis (wording only; no count
+changes).** Part 3 says "The lab head asking about an invite-only lab project
+was refused in 9 of 9". The asker in that control (`scope-head-oversight`) is
+the head of the department the lab belongs to, not the lab's head:
+`EXP-2026-11-011-mylo-agent-baseline/code/tasks_scope.py` defines it as "a
+department head over the lab asks about its invite_only project", and in the
+seeded world that persona owns the department
+(`EXP-2026-11-016-agent-gate-replication/code/world_seeded.py`). Read the
+sentence as "The department's head asking about an invite-only project of a
+lab in that department was refused in 9 of 9". The lab's PI is the other
+control (`scope-member-control`). The count, the tables and
+`data/metrics.json` are unchanged.
