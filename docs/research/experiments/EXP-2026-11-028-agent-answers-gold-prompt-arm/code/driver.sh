@@ -94,7 +94,7 @@ case $MODE in
 check)
   crun a-check 900 "$RUN/logs/check.out" "$E28/code/check_sandbox.py"
   rc=$?
-  sed -n '/^{/,$p' "$RUN/logs/check.out" > "$E28/logs/check_sandbox.json"
+  grep '^{' "$RUN/logs/check.out" > "$E28/logs/check_sandbox.json"
   status "sandbox check rc=$rc"
   [ "$rc" = 0 ] || exit 1
   crun a-gold 3600 "$RUN/logs/gold.out" "$E28/code/run_arms.py" gold
@@ -130,7 +130,7 @@ run)
   status "grading: $(grep -c '^rc=0' "$RUN/logs/$TAG-grade.out") of 3 steps rc=0"
   crun a-check-end 900 "$RUN/logs/check-end.out" "$E28/code/check_sandbox.py"
   status "sandbox check at the end rc=$?"
-  sed -n '/^{/,$p' "$RUN/logs/check-end.out" > "$E28/logs/check_sandbox_end.json"
+  grep '^{' "$RUN/logs/check-end.out" > "$E28/logs/check_sandbox_end.json"
   status "driver finished"
   ;;
 esac

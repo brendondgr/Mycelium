@@ -92,7 +92,7 @@ def main() -> int:
 
     bootstrap.setup()
     doc = counts()
-    print(json.dumps(doc, indent=1))
+    print(json.dumps(doc))  # one line: the driver drops indented lines from container output
     return 0 if doc["ok"] else 1
 
 
