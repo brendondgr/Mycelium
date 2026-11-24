@@ -9,9 +9,9 @@
 id: EXP-2026-11-027
 slug: agent-gate-temperature
 title: Access test at three temperatures, rules in code against rules in the prompt
-status: planned # planned | running | complete | failed | superseded
+status: complete # planned | running | complete | failed | superseded
 date_started: 2026-11-24
-date_completed: null
+date_completed: 2026-11-24
 authors: [Claude Fable 5.2 (agent), on behalf of the maintainer]
 
 purpose: >
@@ -54,7 +54,7 @@ environment:
   container: "one-off backend containers (docker compose run --rm --no-deps), product code mounted read-only from a git archive snapshot, research record mounted from a staged copy"
 compute:
   hardware: "host sc-zeus (see env/hardware.md); model served behind the llm-tunnel relay, operator-stated Gemma 4 31B"
-  wall_clock_hours: null
+  wall_clock_hours: 0.68  # 2026-11-24 17:00:43 to 17:41:20 UTC
   estimated_cost_usd: null
 
 # --- LLM block (delete entirely if no model was called) ----------------------
@@ -69,12 +69,36 @@ llm:
 # Single-run numbers still declare n so a reader is never guessing.
 metrics:
   primary: leaks_over_replies_received
-  values: {}
+  values:
+    gemma.t0.gate.cells_same_grade: {mean: 36, n: 48}
+    gemma.t0.gate.controls_answered: {mean: 16, n: 16}
+    gemma.t0.gate.leaks: {mean: 0, n: 129}
+    gemma.t0.gate.no_reply: {mean: 15, n: 144}
+    gemma.t0.prompt_only.cells_same_grade: {mean: 40, n: 48}
+    gemma.t0.prompt_only.controls_answered: {mean: 14, n: 15}
+    gemma.t0.prompt_only.leaks: {mean: 31, n: 116}
+    gemma.t0.prompt_only.no_reply: {mean: 28, n: 144}
+    gemma.t02.gate.cells_same_grade: {mean: 39, n: 48}
+    gemma.t02.gate.controls_answered: {mean: 16, n: 16}
+    gemma.t02.gate.leaks: {mean: 0, n: 129}
+    gemma.t02.gate.no_reply: {mean: 15, n: 144}
+    gemma.t02.prompt_only.cells_same_grade: {mean: 39, n: 48}
+    gemma.t02.prompt_only.controls_answered: {mean: 12, n: 15}
+    gemma.t02.prompt_only.leaks: {mean: 29, n: 112}
+    gemma.t02.prompt_only.no_reply: {mean: 32, n: 144}
+    gemma.t07.gate.cells_same_grade: {mean: 40, n: 48}
+    gemma.t07.gate.controls_answered: {mean: 17, n: 17}
+    gemma.t07.gate.leaks: {mean: 0, n: 128}
+    gemma.t07.gate.no_reply: {mean: 16, n: 144}
+    gemma.t07.prompt_only.cells_same_grade: {mean: 36, n: 48}
+    gemma.t07.prompt_only.controls_answered: {mean: 16, n: 18}
+    gemma.t07.prompt_only.leaks: {mean: 28, n: 110}
+    gemma.t07.prompt_only.no_reply: {mean: 34, n: 144}
 baselines_compared: ["prompt_only arm (gate bypassed, policy in the system prompt)"]
 statistical_test: "Wilson 95% per arm; Newcombe hybrid-score 95% for the difference between arms"
 
 # --- Linkage -----------------------------------------------------------------
-supports_claims: []
+supports_claims: [C-058, C-059]
 refutes_claims: []
 figures: []
 supersedes: null

@@ -1,0 +1,66 @@
+{}
+wrote data/metrics_i28.json
+wrote data/metrics_i28.csv
+wrote data/runs_i28.jsonl
+wrote data/graded_i28.jsonl
+wrote tables/summary_i28.md
+rc=0
+{}
+wrote data/graded_i28_first_attempt.jsonl
+wrote data/metrics_i28_first_attempt.json
+wrote data/metrics_i28_first_attempt.csv
+wrote tables/summary_i28_first_attempt.md
+rc=0
+{
+ "code": {
+  "runs": 24,
+  "saw_partial": 0,
+  "no_partial": 24,
+  "presented_complete_rate_all": {
+   "k": 0,
+   "n": 24,
+   "rate": 0.0,
+   "wilson95": [
+    0,
+    0.138
+   ]
+  },
+  "presented_complete_rate_saw": {
+   "k": 0,
+   "n": 0,
+   "rate": null,
+   "wilson95": [
+    null,
+    null
+   ]
+  }
+ },
+ "prompt": {
+  "runs": 24,
+  "saw_partial": 0,
+  "no_partial": 24,
+  "presented_complete_rate_all": {
+   "k": 0,
+   "n": 24,
+   "rate": 0.0,
+   "wilson95": [
+    0,
+    0.138
+   ]
+  },
+  "presented_complete_rate_saw": {
+   "k": 0,
+   "n": 0,
+   "rate": null,
+   "wilson95": [
+    null,
+    null
+   ]
+  }
+ }
+}
+wrote data/partial_i28.jsonl
+wrote data/metrics_partial_i28.json
+wrote tables/partial_i28.md
+wrote tables/j08_i28.md
+rc=0

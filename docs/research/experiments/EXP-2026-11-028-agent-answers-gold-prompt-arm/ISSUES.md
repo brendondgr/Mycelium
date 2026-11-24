@@ -23,3 +23,9 @@
   3 of 3 jobs and was absent in the code arm's 3; it listed the two demo
   projects only; the turn's own `denied` count was 1 in one code-arm job
   (`f01`) and 0 in every prompt-arm job.
+- 2026-11-24, Qwen run: 2 first attempts failed in each arm and succeeded on
+  the one retry (176 rows per arm for 174 jobs).
+- 2026-11-24: the sandbox copies for the second and third model
+  (`mycelium_sandbox_exp028q`, `…exp028i`) keep the 119 audit rows and the
+  one usage-counter row the first run wrote, all for demo accounts; only
+  the chat threads were emptied.

@@ -406,5 +406,825 @@
       "n_questions": 48,
       "holds": true
     }
+  },
+  "qwen": {
+    "model": "Qwen 3.8 27B",
+    "tag": "q28",
+    "questions": 58,
+    "arms": {
+      "code": {
+        "jobs": 174,
+        "failed_jobs_after_retry": 0,
+        "failed_first_attempts": 2,
+        "failed_first_attempts_by_reason": {
+          "no_final_text": 2
+        },
+        "attempts": 176,
+        "attempts_with_policy_in_prompt": 0,
+        "attempts_with_prompt_seen": 176,
+        "calls_gate_did_not_allow": 18,
+        "attempts_with_a_call_gate_did_not_allow": 18,
+        "calls_denied_in_the_turn": 18,
+        "function_calls": 452,
+        "gate_errors": 0,
+        "wall_s_median": 85.84,
+        "primary": {
+          "answerable_full": {
+            "k": 125,
+            "n": 144,
+            "rate": 0.8681,
+            "boot95_questions": [
+              0.7708,
+              0.9583
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 30,
+              "n": 30
+            },
+            "list": {
+              "k": 21,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 24,
+              "n": 30
+            },
+            "join": {
+              "k": 20,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 28,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 2,
+            "n": 30
+          }
+        },
+        "secondary": {
+          "answerable_full": {
+            "k": 125,
+            "n": 144,
+            "rate": 0.8681,
+            "boot95_questions": [
+              0.7708,
+              0.9583
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 30,
+              "n": 30
+            },
+            "list": {
+              "k": 21,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 24,
+              "n": 30
+            },
+            "join": {
+              "k": 20,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 28,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 2,
+            "n": 30
+          }
+        }
+      },
+      "prompt": {
+        "jobs": 174,
+        "failed_jobs_after_retry": 0,
+        "failed_first_attempts": 2,
+        "failed_first_attempts_by_reason": {
+          "no_final_text": 2
+        },
+        "attempts": 176,
+        "attempts_with_policy_in_prompt": 176,
+        "attempts_with_prompt_seen": 176,
+        "calls_gate_did_not_allow": 27,
+        "attempts_with_a_call_gate_did_not_allow": 18,
+        "calls_denied_in_the_turn": 0,
+        "function_calls": 430,
+        "gate_errors": 0,
+        "wall_s_median": 81.14,
+        "primary": {
+          "answerable_full": {
+            "k": 121,
+            "n": 144,
+            "rate": 0.8403,
+            "boot95_questions": [
+              0.7361,
+              0.9306
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 29,
+              "n": 30
+            },
+            "list": {
+              "k": 21,
+              "n": 24
+            },
+            "project": {
+              "k": 27,
+              "n": 30
+            },
+            "people": {
+              "k": 25,
+              "n": 30
+            },
+            "join": {
+              "k": 19,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 28,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 2,
+            "n": 30
+          }
+        },
+        "secondary": {
+          "answerable_full": {
+            "k": 121,
+            "n": 144,
+            "rate": 0.8403,
+            "boot95_questions": [
+              0.7361,
+              0.9306
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 29,
+              "n": 30
+            },
+            "list": {
+              "k": 21,
+              "n": 24
+            },
+            "project": {
+              "k": 27,
+              "n": 30
+            },
+            "people": {
+              "k": 25,
+              "n": 30
+            },
+            "join": {
+              "k": 19,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 28,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 2,
+            "n": 30
+          }
+        }
+      }
+    },
+    "differences": {
+      "primary": {
+        "answerable": {
+          "diff": 0.0278,
+          "boot95": [
+            -0.0208,
+            0.0903
+          ],
+          "n_questions": 48,
+          "code": 0.8681,
+          "prompt": 0.8403,
+          "questions_code_higher": 3,
+          "questions_prompt_higher": 2
+        },
+        "all": {
+          "diff": 0.023,
+          "boot95": [
+            -0.0172,
+            0.0747
+          ],
+          "n_questions": 58,
+          "code": 0.8793,
+          "prompt": 0.8563,
+          "questions_code_higher": 4,
+          "questions_prompt_higher": 3
+        },
+        "field": {
+          "diff": 0.0333,
+          "boot95": [
+            0.0,
+            0.1
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 0.9667,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 0
+        },
+        "list": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 8,
+          "code": 0.875,
+          "prompt": 0.875,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "project": {
+          "diff": 0.1,
+          "boot95": [
+            0.0,
+            0.3
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 0.9,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 0
+        },
+        "people": {
+          "diff": -0.0333,
+          "boot95": [
+            -0.1,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.8,
+          "prompt": 0.8333,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "join": {
+          "diff": 0.0333,
+          "boot95": [
+            -0.1,
+            0.2
+          ],
+          "n_questions": 10,
+          "code": 0.6667,
+          "prompt": 0.6333,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 1
+        },
+        "unanswerable": {
+          "diff": 0.0,
+          "boot95": [
+            -0.1,
+            0.1
+          ],
+          "n_questions": 10,
+          "code": 0.9333,
+          "prompt": 0.9333,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 1
+        }
+      },
+      "secondary": {
+        "answerable": {
+          "diff": 0.0278,
+          "boot95": [
+            -0.0208,
+            0.0903
+          ],
+          "n_questions": 48,
+          "code": 0.8681,
+          "prompt": 0.8403,
+          "questions_code_higher": 3,
+          "questions_prompt_higher": 2
+        },
+        "all": {
+          "diff": 0.023,
+          "boot95": [
+            -0.0172,
+            0.0747
+          ],
+          "n_questions": 58,
+          "code": 0.8793,
+          "prompt": 0.8563,
+          "questions_code_higher": 4,
+          "questions_prompt_higher": 3
+        },
+        "field": {
+          "diff": 0.0333,
+          "boot95": [
+            0.0,
+            0.1
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 0.9667,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 0
+        },
+        "list": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 8,
+          "code": 0.875,
+          "prompt": 0.875,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "project": {
+          "diff": 0.1,
+          "boot95": [
+            0.0,
+            0.3
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 0.9,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 0
+        },
+        "people": {
+          "diff": -0.0333,
+          "boot95": [
+            -0.1,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.8,
+          "prompt": 0.8333,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "join": {
+          "diff": 0.0333,
+          "boot95": [
+            -0.1,
+            0.2
+          ],
+          "n_questions": 10,
+          "code": 0.6667,
+          "prompt": 0.6333,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 1
+        },
+        "unanswerable": {
+          "diff": 0.0,
+          "boot95": [
+            -0.1,
+            0.1
+          ],
+          "n_questions": 10,
+          "code": 0.9333,
+          "prompt": 0.9333,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 1
+        }
+      }
+    },
+    "claim_C060": {
+      "diff": 0.0278,
+      "boot95": [
+        -0.0208,
+        0.0903
+      ],
+      "n_questions": 48,
+      "holds": true
+    }
+  },
+  "inkling": {
+    "model": "Inkling 2 Mini",
+    "tag": "i28",
+    "questions": 58,
+    "arms": {
+      "code": {
+        "jobs": 174,
+        "failed_jobs_after_retry": 0,
+        "failed_first_attempts": 0,
+        "failed_first_attempts_by_reason": {},
+        "attempts": 174,
+        "attempts_with_policy_in_prompt": 0,
+        "attempts_with_prompt_seen": 174,
+        "calls_gate_did_not_allow": 10,
+        "attempts_with_a_call_gate_did_not_allow": 10,
+        "calls_denied_in_the_turn": 10,
+        "function_calls": 687,
+        "gate_errors": 0,
+        "wall_s_median": 135.63,
+        "primary": {
+          "answerable_full": {
+            "k": 107,
+            "n": 144,
+            "rate": 0.7431,
+            "boot95_questions": [
+              0.625,
+              0.8542
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 30,
+              "n": 30
+            },
+            "list": {
+              "k": 18,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 16,
+              "n": 30
+            },
+            "join": {
+              "k": 13,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 25,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 5,
+            "n": 30
+          }
+        },
+        "secondary": {
+          "answerable_full": {
+            "k": 107,
+            "n": 144,
+            "rate": 0.7431,
+            "boot95_questions": [
+              0.625,
+              0.8542
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 30,
+              "n": 30
+            },
+            "list": {
+              "k": 18,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 16,
+              "n": 30
+            },
+            "join": {
+              "k": 13,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 25,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 5,
+            "n": 30
+          }
+        }
+      },
+      "prompt": {
+        "jobs": 174,
+        "failed_jobs_after_retry": 0,
+        "failed_first_attempts": 0,
+        "failed_first_attempts_by_reason": {},
+        "attempts": 174,
+        "attempts_with_policy_in_prompt": 174,
+        "attempts_with_prompt_seen": 174,
+        "calls_gate_did_not_allow": 4,
+        "attempts_with_a_call_gate_did_not_allow": 4,
+        "calls_denied_in_the_turn": 0,
+        "function_calls": 647,
+        "gate_errors": 0,
+        "wall_s_median": 122.82,
+        "primary": {
+          "answerable_full": {
+            "k": 106,
+            "n": 144,
+            "rate": 0.7361,
+            "boot95_questions": [
+              0.6111,
+              0.8542
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 30,
+              "n": 30
+            },
+            "list": {
+              "k": 19,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 12,
+              "n": 30
+            },
+            "join": {
+              "k": 15,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 25,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 5,
+            "n": 30
+          }
+        },
+        "secondary": {
+          "answerable_full": {
+            "k": 106,
+            "n": 144,
+            "rate": 0.7361,
+            "boot95_questions": [
+              0.6111,
+              0.8542
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 30,
+              "n": 30
+            },
+            "list": {
+              "k": 19,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 12,
+              "n": 30
+            },
+            "join": {
+              "k": 15,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 25,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 5,
+            "n": 30
+          }
+        }
+      }
+    },
+    "differences": {
+      "primary": {
+        "answerable": {
+          "diff": 0.0069,
+          "boot95": [
+            -0.0417,
+            0.0625
+          ],
+          "n_questions": 48,
+          "code": 0.7431,
+          "prompt": 0.7361,
+          "questions_code_higher": 3,
+          "questions_prompt_higher": 3
+        },
+        "all": {
+          "diff": 0.0057,
+          "boot95": [
+            -0.0402,
+            0.0517
+          ],
+          "n_questions": 58,
+          "code": 0.7586,
+          "prompt": 0.7529,
+          "questions_code_higher": 4,
+          "questions_prompt_higher": 4
+        },
+        "field": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "list": {
+          "diff": -0.0417,
+          "boot95": [
+            -0.125,
+            0.0
+          ],
+          "n_questions": 8,
+          "code": 0.75,
+          "prompt": 0.7917,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "project": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "people": {
+          "diff": 0.1333,
+          "boot95": [
+            -0.0333,
+            0.3333
+          ],
+          "n_questions": 10,
+          "code": 0.5333,
+          "prompt": 0.4,
+          "questions_code_higher": 3,
+          "questions_prompt_higher": 1
+        },
+        "join": {
+          "diff": -0.0667,
+          "boot95": [
+            -0.2,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.4333,
+          "prompt": 0.5,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "unanswerable": {
+          "diff": 0.0,
+          "boot95": [
+            -0.1,
+            0.1
+          ],
+          "n_questions": 10,
+          "code": 0.8333,
+          "prompt": 0.8333,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 1
+        }
+      },
+      "secondary": {
+        "answerable": {
+          "diff": 0.0069,
+          "boot95": [
+            -0.0417,
+            0.0625
+          ],
+          "n_questions": 48,
+          "code": 0.7431,
+          "prompt": 0.7361,
+          "questions_code_higher": 3,
+          "questions_prompt_higher": 3
+        },
+        "all": {
+          "diff": 0.0057,
+          "boot95": [
+            -0.0402,
+            0.0517
+          ],
+          "n_questions": 58,
+          "code": 0.7586,
+          "prompt": 0.7529,
+          "questions_code_higher": 4,
+          "questions_prompt_higher": 4
+        },
+        "field": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "list": {
+          "diff": -0.0417,
+          "boot95": [
+            -0.125,
+            0.0
+          ],
+          "n_questions": 8,
+          "code": 0.75,
+          "prompt": 0.7917,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "project": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "people": {
+          "diff": 0.1333,
+          "boot95": [
+            -0.0333,
+            0.3333
+          ],
+          "n_questions": 10,
+          "code": 0.5333,
+          "prompt": 0.4,
+          "questions_code_higher": 3,
+          "questions_prompt_higher": 1
+        },
+        "join": {
+          "diff": -0.0667,
+          "boot95": [
+            -0.2,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.4333,
+          "prompt": 0.5,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "unanswerable": {
+          "diff": 0.0,
+          "boot95": [
+            -0.1,
+            0.1
+          ],
+          "n_questions": 10,
+          "code": 0.8333,
+          "prompt": 0.8333,
+          "questions_code_higher": 1,
+          "questions_prompt_higher": 1
+        }
+      }
+    },
+    "claim_C060": {
+      "diff": 0.0069,
+      "boot95": [
+        -0.0417,
+        0.0625
+      ],
+      "n_questions": 48,
+      "holds": true
+    }
   }
 }

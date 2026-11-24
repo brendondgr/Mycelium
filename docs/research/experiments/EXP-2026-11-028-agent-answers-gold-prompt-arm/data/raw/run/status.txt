@@ -10,3 +10,27 @@
 2026-11-24T17:54:34Z grading: 3 of 3 steps rc=0
 2026-11-24T17:54:39Z sandbox check at the end rc=0
 2026-11-24T17:54:39Z driver finished
+2026-11-24T18:39:11Z sandbox check rc=0
+2026-11-24T18:39:23Z gold (q28) rc=0 {"wrote": "data/gold_q28.json", "kept": 58, "dropped": [{"id": "l02", "why": "gold size 12"}, {"id": "l06", "why": "gold size 10"}], "today": "2026-11-24"}
+2026-11-24T18:39:27Z smoke: jobs 1:p01,1:j01,1:f01 per arm
+2026-11-24T18:39:54Z qsmoke code rc=0 rows=3
+2026-11-24T18:39:54Z qsmoke prompt rc=0 rows=3
+2026-11-24T18:43:54Z driver start pid 1911959: Qwen 3.8 27B on default-model-2, tag q28, 30 threads per arm, sandbox mycelium_sandbox_exp028q, snapshot a99e1a01
+2026-11-24T18:50:09Z sandbox check rc=0
+2026-11-24T18:50:23Z gold (i28) rc=0 {"wrote": "data/gold_i28.json", "kept": 58, "dropped": [{"id": "l02", "why": "gold size 12"}, {"id": "l06", "why": "gold size 10"}], "today": "2026-11-24"}
+2026-11-24T18:50:27Z smoke: jobs 1:p01,1:j01,1:f01 per arm
+2026-11-24T18:50:56Z ismoke code rc=0 rows=3
+2026-11-24T18:50:56Z ismoke prompt rc=0 rows=3
+2026-11-24T18:53:53Z q28 code rc=0 rows=176
+2026-11-24T18:53:53Z q28 prompt rc=0 rows=176
+2026-11-24T18:53:58Z grading: 3 of 3 steps rc=0
+2026-11-24T18:54:03Z sandbox check at the end rc=0
+2026-11-24T18:54:03Z driver finished
+2026-11-24T19:30:38Z qwen chain finished
+2026-11-24T19:30:40Z driver start pid 1984150: Inkling 2 Mini on default-model, tag i28, 30 threads per arm, sandbox mycelium_sandbox_exp028i, snapshot a99e1a01
+2026-11-24T19:45:53Z i28 code rc=0 rows=174
+2026-11-24T19:45:53Z i28 prompt rc=0 rows=174
+2026-11-24T19:45:57Z grading: 3 of 3 steps rc=0
+2026-11-24T19:46:03Z sandbox check at the end rc=0
+2026-11-24T19:46:03Z driver finished
+2026-11-24T19:46:03Z inkling run finished

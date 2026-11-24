@@ -1,0 +1,392 @@
+{
+ "n_jobs": 348,
+ "n_rows": 352,
+ "snapshot": "2026-11-24T18:39:16.199484+00:00",
+ "arms": {
+  "primary": {
+   "code": {
+    "runs": 174,
+    "failed_jobs": 0,
+    "asked_jobs": 0,
+    "asked_attempts": 0,
+    "failed_attempts": 2,
+    "answerable_full": {
+     "k": 125,
+     "n": 144,
+     "rate": 0.8681,
+     "wilson95": [
+      0.8031,
+      0.9139
+     ],
+     "boot95_questions": [
+      0.7708,
+      0.9514
+     ]
+    },
+    "all_full": {
+     "rate": 0.8793,
+     "n_questions": 58
+    },
+    "recall_mean": 1.0,
+    "precision_mean": 0.9307,
+    "by_kind": {
+     "field": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "list": {
+      "k": 21,
+      "n": 24,
+      "rate": 0.875,
+      "wilson95": [
+       0.69,
+       0.9566
+      ]
+     },
+     "project": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "people": {
+      "k": 24,
+      "n": 30,
+      "rate": 0.8,
+      "wilson95": [
+       0.6269,
+       0.905
+      ]
+     },
+     "join": {
+      "k": 20,
+      "n": 30,
+      "rate": 0.6667,
+      "wilson95": [
+       0.4878,
+       0.8077
+      ]
+     },
+     "unanswerable": {
+      "k": 28,
+      "n": 30,
+      "rate": 0.9333,
+      "wilson95": [
+       0.7868,
+       0.9815
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 2,
+     "n": 30,
+     "rate": 0.0667,
+     "wilson95": [
+      0.0185,
+      0.2132
+     ]
+    },
+    "cost": {
+     "wall_s_median": 85.84,
+     "wall_s_mean": 92.68,
+     "tokens_mean": 11325,
+     "repairs": 0
+    }
+   },
+   "prompt": {
+    "runs": 174,
+    "failed_jobs": 0,
+    "asked_jobs": 0,
+    "asked_attempts": 0,
+    "failed_attempts": 2,
+    "answerable_full": {
+     "k": 121,
+     "n": 144,
+     "rate": 0.8403,
+     "wilson95": [
+      0.7717,
+      0.8911
+     ],
+     "boot95_questions": [
+      0.7361,
+      0.9306
+     ]
+    },
+    "all_full": {
+     "rate": 0.8563,
+     "n_questions": 58
+    },
+    "recall_mean": 0.9722,
+    "precision_mean": 0.9331,
+    "by_kind": {
+     "field": {
+      "k": 29,
+      "n": 30,
+      "rate": 0.9667,
+      "wilson95": [
+       0.8333,
+       0.9941
+      ]
+     },
+     "list": {
+      "k": 21,
+      "n": 24,
+      "rate": 0.875,
+      "wilson95": [
+       0.69,
+       0.9566
+      ]
+     },
+     "project": {
+      "k": 27,
+      "n": 30,
+      "rate": 0.9,
+      "wilson95": [
+       0.7438,
+       0.9654
+      ]
+     },
+     "people": {
+      "k": 25,
+      "n": 30,
+      "rate": 0.8333,
+      "wilson95": [
+       0.6644,
+       0.9266
+      ]
+     },
+     "join": {
+      "k": 19,
+      "n": 30,
+      "rate": 0.6333,
+      "wilson95": [
+       0.4551,
+       0.7813
+      ]
+     },
+     "unanswerable": {
+      "k": 28,
+      "n": 30,
+      "rate": 0.9333,
+      "wilson95": [
+       0.7868,
+       0.9815
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 2,
+     "n": 30,
+     "rate": 0.0667,
+     "wilson95": [
+      0.0185,
+      0.2132
+     ]
+    },
+    "cost": {
+     "wall_s_median": 81.5,
+     "wall_s_mean": 87.13,
+     "tokens_mean": 11966,
+     "repairs": 1
+    }
+   }
+  },
+  "secondary": {
+   "code": {
+    "runs": 174,
+    "failed_jobs": 0,
+    "asked_jobs": 0,
+    "asked_attempts": 0,
+    "failed_attempts": 2,
+    "answerable_full": {
+     "k": 125,
+     "n": 144,
+     "rate": 0.8681,
+     "wilson95": [
+      0.8031,
+      0.9139
+     ],
+     "boot95_questions": [
+      0.7708,
+      0.9514
+     ]
+    },
+    "all_full": {
+     "rate": 0.8793,
+     "n_questions": 58
+    },
+    "recall_mean": 1.0,
+    "precision_mean": 0.9307,
+    "by_kind": {
+     "field": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "list": {
+      "k": 21,
+      "n": 24,
+      "rate": 0.875,
+      "wilson95": [
+       0.69,
+       0.9566
+      ]
+     },
+     "project": {
+      "k": 30,
+      "n": 30,
+      "rate": 1.0,
+      "wilson95": [
+       0.8865,
+       1.0
+      ]
+     },
+     "people": {
+      "k": 24,
+      "n": 30,
+      "rate": 0.8,
+      "wilson95": [
+       0.6269,
+       0.905
+      ]
+     },
+     "join": {
+      "k": 20,
+      "n": 30,
+      "rate": 0.6667,
+      "wilson95": [
+       0.4878,
+       0.8077
+      ]
+     },
+     "unanswerable": {
+      "k": 28,
+      "n": 30,
+      "rate": 0.9333,
+      "wilson95": [
+       0.7868,
+       0.9815
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 2,
+     "n": 30,
+     "rate": 0.0667,
+     "wilson95": [
+      0.0185,
+      0.2132
+     ]
+    }
+   },
+   "prompt": {
+    "runs": 174,
+    "failed_jobs": 0,
+    "asked_jobs": 0,
+    "asked_attempts": 0,
+    "failed_attempts": 2,
+    "answerable_full": {
+     "k": 121,
+     "n": 144,
+     "rate": 0.8403,
+     "wilson95": [
+      0.7717,
+      0.8911
+     ],
+     "boot95_questions": [
+      0.7361,
+      0.9306
+     ]
+    },
+    "all_full": {
+     "rate": 0.8563,
+     "n_questions": 58
+    },
+    "recall_mean": 0.9826,
+    "precision_mean": 0.9331,
+    "by_kind": {
+     "field": {
+      "k": 29,
+      "n": 30,
+      "rate": 0.9667,
+      "wilson95": [
+       0.8333,
+       0.9941
+      ]
+     },
+     "list": {
+      "k": 21,
+      "n": 24,
+      "rate": 0.875,
+      "wilson95": [
+       0.69,
+       0.9566
+      ]
+     },
+     "project": {
+      "k": 27,
+      "n": 30,
+      "rate": 0.9,
+      "wilson95": [
+       0.7438,
+       0.9654
+      ]
+     },
+     "people": {
+      "k": 25,
+      "n": 30,
+      "rate": 0.8333,
+      "wilson95": [
+       0.6644,
+       0.9266
+      ]
+     },
+     "join": {
+      "k": 19,
+      "n": 30,
+      "rate": 0.6333,
+      "wilson95": [
+       0.4551,
+       0.7813
+      ]
+     },
+     "unanswerable": {
+      "k": 28,
+      "n": 30,
+      "rate": 0.9333,
+      "wilson95": [
+       0.7868,
+       0.9815
+      ]
+     }
+    },
+    "unanswerable_states_fact": {
+     "k": 2,
+     "n": 30,
+     "rate": 0.0667,
+     "wilson95": [
+      0.0185,
+      0.2132
+     ]
+    }
+   }
+  }
+ },
+ "comparisons": {
+  "primary": {},
+  "secondary": {}
+ },
+ "claims": {}
+}

@@ -38,3 +38,81 @@ Jobs and the manipulation check:
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | code | 174 | 0 | 0 | 174 | 0/174 | 494 | 37 | 37 | 120.05 |
 | prompt | 174 | 0 | 0 | 174 | 174/174 | 429 | 0 | 10 | 108.89 |
+
+## Qwen 3.8 27B
+
+58 questions × 3 repetitions per arm. Full credit, jobs with full credit over jobs:
+
+| grading | arm | field | list | project | people | join | unanswerable | answerable (rate, 95% over questions) | unanswerable: states a fact |
+|---|---|---|---|---|---|---|---|---|---|
+| primary | code | 30/30 | 21/24 | 30/30 | 24/30 | 20/30 | 28/30 | 125/144 = 0.8681 [0.7708, 0.9583] | 2/30 |
+| primary | prompt | 29/30 | 21/24 | 27/30 | 25/30 | 19/30 | 28/30 | 121/144 = 0.8403 [0.7361, 0.9306] | 2/30 |
+| secondary | code | 30/30 | 21/24 | 30/30 | 24/30 | 20/30 | 28/30 | 125/144 = 0.8681 [0.7708, 0.9583] | 2/30 |
+| secondary | prompt | 29/30 | 21/24 | 27/30 | 25/30 | 19/30 | 28/30 | 121/144 = 0.8403 [0.7361, 0.9306] | 2/30 |
+
+Paired difference in full credit, code minus prompt (per-question mean of three repetitions; bootstrap over questions, 10,000 resamples):
+
+| grading | questions | code | prompt | difference | 95% interval | n | code higher / prompt higher |
+|---|---|---:|---:|---:|---|---:|---|
+| primary | answerable | 0.8681 | 0.8403 | +0.0278 | [-0.0208, +0.0903] | 48 | 3 / 2 |
+| primary | all | 0.8793 | 0.8563 | +0.0230 | [-0.0172, +0.0747] | 58 | 4 / 3 |
+| primary | field | 1 | 0.9667 | +0.0333 | [+0.0000, +0.1000] | 10 | 1 / 0 |
+| primary | list | 0.875 | 0.875 | +0.0000 | [+0.0000, +0.0000] | 8 | 0 / 0 |
+| primary | project | 1 | 0.9 | +0.1000 | [+0.0000, +0.3000] | 10 | 1 / 0 |
+| primary | people | 0.8 | 0.8333 | -0.0333 | [-0.1000, +0.0000] | 10 | 0 / 1 |
+| primary | join | 0.6667 | 0.6333 | +0.0333 | [-0.1000, +0.2000] | 10 | 1 / 1 |
+| primary | unanswerable | 0.9333 | 0.9333 | +0.0000 | [-0.1000, +0.1000] | 10 | 1 / 1 |
+| secondary | answerable | 0.8681 | 0.8403 | +0.0278 | [-0.0208, +0.0903] | 48 | 3 / 2 |
+| secondary | all | 0.8793 | 0.8563 | +0.0230 | [-0.0172, +0.0747] | 58 | 4 / 3 |
+| secondary | field | 1 | 0.9667 | +0.0333 | [+0.0000, +0.1000] | 10 | 1 / 0 |
+| secondary | list | 0.875 | 0.875 | +0.0000 | [+0.0000, +0.0000] | 8 | 0 / 0 |
+| secondary | project | 1 | 0.9 | +0.1000 | [+0.0000, +0.3000] | 10 | 1 / 0 |
+| secondary | people | 0.8 | 0.8333 | -0.0333 | [-0.1000, +0.0000] | 10 | 0 / 1 |
+| secondary | join | 0.6667 | 0.6333 | +0.0333 | [-0.1000, +0.2000] | 10 | 1 / 1 |
+| secondary | unanswerable | 0.9333 | 0.9333 | +0.0000 | [-0.1000, +0.1000] | 10 | 1 / 1 |
+
+Jobs and the manipulation check:
+
+| arm | jobs | failed first attempts | failed after one retry | attempts | attempts whose system prompt carried the policy | function calls | calls refused in the turn | calls the gate did not allow (counted by the harness) | median turn, s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| code | 174 | 2 | 0 | 176 | 0/176 | 452 | 18 | 18 | 85.84 |
+| prompt | 174 | 2 | 0 | 176 | 176/176 | 430 | 0 | 27 | 81.14 |
+
+## Inkling 2 Mini
+
+58 questions × 3 repetitions per arm. Full credit, jobs with full credit over jobs:
+
+| grading | arm | field | list | project | people | join | unanswerable | answerable (rate, 95% over questions) | unanswerable: states a fact |
+|---|---|---|---|---|---|---|---|---|---|
+| primary | code | 30/30 | 18/24 | 30/30 | 16/30 | 13/30 | 25/30 | 107/144 = 0.7431 [0.625, 0.8542] | 5/30 |
+| primary | prompt | 30/30 | 19/24 | 30/30 | 12/30 | 15/30 | 25/30 | 106/144 = 0.7361 [0.6111, 0.8542] | 5/30 |
+| secondary | code | 30/30 | 18/24 | 30/30 | 16/30 | 13/30 | 25/30 | 107/144 = 0.7431 [0.625, 0.8542] | 5/30 |
+| secondary | prompt | 30/30 | 19/24 | 30/30 | 12/30 | 15/30 | 25/30 | 106/144 = 0.7361 [0.6111, 0.8542] | 5/30 |
+
+Paired difference in full credit, code minus prompt (per-question mean of three repetitions; bootstrap over questions, 10,000 resamples):
+
+| grading | questions | code | prompt | difference | 95% interval | n | code higher / prompt higher |
+|---|---|---:|---:|---:|---|---:|---|
+| primary | answerable | 0.7431 | 0.7361 | +0.0069 | [-0.0417, +0.0625] | 48 | 3 / 3 |
+| primary | all | 0.7586 | 0.7529 | +0.0057 | [-0.0402, +0.0517] | 58 | 4 / 4 |
+| primary | field | 1 | 1 | +0.0000 | [+0.0000, +0.0000] | 10 | 0 / 0 |
+| primary | list | 0.75 | 0.7917 | -0.0417 | [-0.1250, +0.0000] | 8 | 0 / 1 |
+| primary | project | 1 | 1 | +0.0000 | [+0.0000, +0.0000] | 10 | 0 / 0 |
+| primary | people | 0.5333 | 0.4 | +0.1333 | [-0.0333, +0.3333] | 10 | 3 / 1 |
+| primary | join | 0.4333 | 0.5 | -0.0667 | [-0.2000, +0.0000] | 10 | 0 / 1 |
+| primary | unanswerable | 0.8333 | 0.8333 | +0.0000 | [-0.1000, +0.1000] | 10 | 1 / 1 |
+| secondary | answerable | 0.7431 | 0.7361 | +0.0069 | [-0.0417, +0.0625] | 48 | 3 / 3 |
+| secondary | all | 0.7586 | 0.7529 | +0.0057 | [-0.0402, +0.0517] | 58 | 4 / 4 |
+| secondary | field | 1 | 1 | +0.0000 | [+0.0000, +0.0000] | 10 | 0 / 0 |
+| secondary | list | 0.75 | 0.7917 | -0.0417 | [-0.1250, +0.0000] | 8 | 0 / 1 |
+| secondary | project | 1 | 1 | +0.0000 | [+0.0000, +0.0000] | 10 | 0 / 0 |
+| secondary | people | 0.5333 | 0.4 | +0.1333 | [-0.0333, +0.3333] | 10 | 3 / 1 |
+| secondary | join | 0.4333 | 0.5 | -0.0667 | [-0.2000, +0.0000] | 10 | 0 / 1 |
+| secondary | unanswerable | 0.8333 | 0.8333 | +0.0000 | [-0.1000, +0.1000] | 10 | 1 / 1 |
+
+Jobs and the manipulation check:
+
+| arm | jobs | failed first attempts | failed after one retry | attempts | attempts whose system prompt carried the policy | function calls | calls refused in the turn | calls the gate did not allow (counted by the harness) | median turn, s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| code | 174 | 0 | 0 | 174 | 0/174 | 687 | 10 | 10 | 135.63 |
+| prompt | 174 | 0 | 0 | 174 | 174/174 | 647 | 0 | 4 | 122.82 |

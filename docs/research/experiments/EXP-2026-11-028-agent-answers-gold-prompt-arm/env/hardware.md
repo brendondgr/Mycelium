@@ -15,3 +15,13 @@
 
 The earlier record gives Gemma 4 31B as W4A16 on one A100 80GB. That was not
 restated for this run, so it is not asserted here.
+
+Amendments 1 and 2: Qwen 3.8 27B on `default-model-2` (self-report "I am
+Qwen, a large language model independently developed by Alibaba Group's
+Tongyi Lab."; server `vllm-0.31.1rc1.dev344+g5b0b8f251-98b23dce`) and
+Inkling 2 Mini on `default-model` after the operator's switch at about 18:49
+UTC (self-report "I am Inkling, a model developed by Thinking Machines
+Lab."; the relay reports the model as "Inkling 2 Mini"). Neither model's
+quantisation or GPU was stated for these runs. Relay listings and
+self-reports at the start and end of each run are in `logs/model_q28.jsonl`
+and `logs/model_i28.jsonl`.
