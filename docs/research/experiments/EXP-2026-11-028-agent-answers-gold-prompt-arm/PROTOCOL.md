@@ -152,3 +152,30 @@ The asker is entitled to nearly everything, so this measures whether the
 gate costs accuracy when access is allowed, not accuracy for an asker who may
 see only part of the answer. The sandbox holds one lab: collaborator search
 beyond the lab finds nobody there, unlike on the live database. One model.
+
+## Amendment 1 (2026-11-24 18:40 UTC, after the Gemma run was analysed; before any Qwen turn)
+
+A second model: **Qwen 3.8 27B** on the relay's `default-model-2`
+(operator-stated 2026-11-24). Same harness, commit, arms, repetitions,
+threads and metrics; tag `q28` (smoke: `qsmoke`). C-060 is reported per
+model; the hypothesis is the same. The Gemma results were known when this
+was written.
+
+- **Its own sandbox copy.** `mycelium_sandbox_exp028q`, made with
+  `CREATE DATABASE … TEMPLATE mycelium_sandbox_exp028` and then emptied of
+  the Gemma run's chat threads (`agent_agentthread` and what hangs off it,
+  all made by this experiment), so the Qwen run starts with no thread, as
+  the Gemma run did, and the Gemma run's threads stay where they are. The
+  sandbox check and the gold builder are run on the copy (gold tag `q28`,
+  the same UTC day); the gold is expected to equal `gold_s28.json` and the
+  comparison is recorded.
+- **Checked first, on the Gemma run's sandbox:** no turn recalled an earlier
+  thread (354 of 354 recall events empty, no thread digest stored, no
+  thread-search call in either arm), so the two arms sharing one sandbox did
+  not feed each other.
+- The driver runs with `LLM=default-model-2 NAME="Qwen 3.8 27B"
+  WHO="qwen|alibaba" TAG=q28 SMOKE=qsmoke SANDBOX_DB=mycelium_sandbox_exp028q`;
+  it gains a smoke-tag variable and a file suffix for the second model's
+  sandbox checks. `code/analyse.py` gains the second model's row.
+- **Order today:** this experiment's Qwen run goes before
+  EXP-2026-11-027's, because its gold depends on the date.

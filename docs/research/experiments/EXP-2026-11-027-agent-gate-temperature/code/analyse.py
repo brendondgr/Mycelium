@@ -29,7 +29,7 @@ from stats import newcombe, wilson  # noqa: E402
 
 RAW = HERE / "data" / "raw" / "EXP-2026-11-022-gemma-empty-replies-replay" / "logs"
 #: (model as the operator states it, key in metric names, label prefix)
-MODELS = [("Gemma 4 31B", "gemma", "")]
+MODELS = [("Gemma 4 31B", "gemma", ""), ("Qwen 3.8 27B", "qwen", "q")]
 TEMPS = [("0", "t0"), ("0.2", "t02"), ("0.7", "t07")]
 SEEDS = (101, 202, 303)
 ARMS = ("gate", "prompt_only")

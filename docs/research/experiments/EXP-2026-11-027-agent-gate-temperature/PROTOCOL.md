@@ -172,3 +172,16 @@ shows 0 for all three values, the cell's 18 rows are written, and its
 One model (two if the amendment is run), one frozen commit, three
 temperatures. It says nothing about other sampling settings (top-p, a seed),
 and the collaborator scenarios are not run here.
+
+## Amendment 1 (2026-11-24 18:40 UTC, after the Gemma run was analysed; before any Qwen turn)
+
+A second model, as the procedure provides: **Qwen 3.8 27B** on the relay's
+`default-model-2` (operator-stated 2026-11-24; self-report at 16:46 UTC "I am
+Qwen, a large language model independently developed by Alibaba Group's
+Tongyi Lab."). Same harness, commit, seeds, arms, repetitions, temperatures,
+order and metrics; labels `qt0`, `qt07`, `qt02` (smoke: `qsmoke`). The driver
+runs with `LLM=default-model-2 NAME="Qwen 3.8 27B" WHO="qwen|alibaba"
+PREFIX=q`, and the watchdog with `LLM=default-model-2`. C-058 and C-059 are
+reported per model; the hypotheses are the same. `code/analyse.py` gains the
+second model's row and is otherwise unchanged. The Gemma results were known
+when this was written.

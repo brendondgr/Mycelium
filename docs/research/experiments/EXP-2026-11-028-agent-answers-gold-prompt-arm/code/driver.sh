@@ -3,7 +3,7 @@
 # on the sandbox database only (PROTOCOL.md). Product code frozen at a99e1a01.
 #
 #   MODE=check bash $RUN/driver.sh   # sandbox check (committed), gold on the sandbox (tag $TAG)
-#   MODE=smoke bash $RUN/driver.sh   # three jobs per arm, tag smoke; kept, not counted
+#   MODE=smoke bash $RUN/driver.sh   # three jobs per arm, tag $SMOKE; kept, not counted
 #   setsid nohup bash $RUN/driver.sh > $RUN/driver.out 2>&1 < /dev/null &   # the measured run, then grading
 # Variables: LLM, NAME, WHO (regex the self-report must match), TAG, CONC.
 # Every harness writes into the staged copy of the research record.
@@ -19,6 +19,8 @@ NAME=${NAME:-Gemma 4 31B}
 WHO=${WHO:-google|gemma}
 TAG=${TAG:-s28}
 CONC=${CONC:-30}
+SMOKE=${SMOKE:-smoke}                      # tag of the smoke jobs (a second model uses its own)
+SUF=$([ "$TAG" = s28 ] && echo "" || echo "_$TAG")   # file suffix of a second model's sandbox checks
 SB=${SANDBOX_DB:-mycelium_sandbox_exp028}
 export COMPOSE_FILE=$REPO/compose.yaml COMPOSE_PROJECT_NAME=mycelium
 cd "$STAGE" || exit 1
@@ -94,7 +96,7 @@ case $MODE in
 check)
   crun a-check 900 "$RUN/logs/check.out" "$E28/code/check_sandbox.py"
   rc=$?
-  grep '^{' "$RUN/logs/check.out" > "$E28/logs/check_sandbox.json"
+  grep '^{' "$RUN/logs/check.out" > "$E28/logs/check_sandbox$SUF.json"
   status "sandbox check rc=$rc"
   [ "$rc" = 0 ] || exit 1
   crun a-gold 3600 "$RUN/logs/gold.out" "$E28/code/run_arms.py" gold
@@ -112,7 +114,7 @@ print(",".join(f"1:{i}" for i in pick))
 PY
 )
   status "smoke: jobs $only per arm"
-  CONC=3 two_arms smoke 3600 --only "$only"
+  CONC=3 two_arms "$SMOKE" 3600 --only "$only"
   ;;
 run)
   echo $$ > "$RUN/driver.pid"
@@ -130,7 +132,7 @@ run)
   status "grading: $(grep -c '^rc=0' "$RUN/logs/$TAG-grade.out") of 3 steps rc=0"
   crun a-check-end 900 "$RUN/logs/check-end.out" "$E28/code/check_sandbox.py"
   status "sandbox check at the end rc=$?"
-  grep '^{' "$RUN/logs/check-end.out" > "$E28/logs/check_sandbox_end.json"
+  grep '^{' "$RUN/logs/check-end.out" > "$E28/logs/check_sandbox_end$SUF.json"
   status "driver finished"
   ;;
 esac
