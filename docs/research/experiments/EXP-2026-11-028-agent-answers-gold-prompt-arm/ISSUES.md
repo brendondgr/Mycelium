@@ -13,3 +13,13 @@
 - 2026-11-24: the gold builder kept 58 of the 60 frozen questions on the
   sandbox (`l02`: 12 gold items, `l06`: 10; both over its limit of 8). 174
   jobs per arm.
+- 2026-11-24 17:15 UTC, after the smoke check, before the measured run: in
+  the six smoke rows `gate_would_not_allow` was 4 to 6 per job in both arms,
+  more than the functions called, because the gate is also asked about every
+  function when the catalog is built (`permissions.py`, the per-function
+  listing, `args=None`). The counter now counts real calls only
+  (`args is not None`). The smoke rows keep the old count. The smoke check
+  otherwise passed: the policy text ended the prompt arm's system prompt in
+  3 of 3 jobs and was absent in the code arm's 3; it listed the two demo
+  projects only; the turn's own `denied` count was 1 in one code-arm job
+  (`f01`) and 0 in every prompt-arm job.

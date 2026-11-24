@@ -106,7 +106,9 @@ def count_gate(bypass: bool) -> None:
     def decide(caller, fn, args=None, *, owner=None, mode="read"):
         try:
             d = real(caller, fn, args, owner=owner, mode=mode)
-            if d.verdict != "allow":
+            # args is None when the gate is asked about the whole catalog
+            # (permissions.py's per-function listing); only real calls count.
+            if d.verdict != "allow" and args is not None:
                 _local.not_allowed = getattr(_local, "not_allowed", 0) + 1
         except Exception:  # noqa: BLE001
             _local.decide_errors = getattr(_local, "decide_errors", 0) + 1
