@@ -28,3 +28,33 @@
 2026-11-24T17:41:20Z t02 seed 303 prompt_only rc=0 rows=54 of 54
 2026-11-24T17:41:20Z t02 returned
 2026-11-24T17:41:20Z driver finished
+2026-11-24T18:39:58Z qsmoke: dry run (no model), seed 101 gate, T=0
+2026-11-24T18:41:19Z qsmoke dry rc=0 rows=18 of 18
+2026-11-24T18:41:19Z qsmoke: one cell, seed 101 prompt_only, 1 repetition, T=0
+2026-11-24T18:43:43Z qsmoke cell rc=0 rows=18 of 18
+2026-11-24T18:54:03Z driver start pid 1928551: Qwen 3.8 27B on default-model-2, temperatures 0 0.7 0.2, labels prefix 'q', snapshot 44100c04, stage /home/bdg20b/Projects/Mycelium-runs/temperature-20261124/stage
+2026-11-24T18:54:07Z qt0 (T=0, Qwen 3.8 27B on default-model-2): start, 6 processes x 8
+2026-11-24T19:05:43Z qt0 seed 101 gate rc=0 rows=54 of 54
+2026-11-24T19:05:43Z qt0 seed 101 prompt_only rc=0 rows=54 of 54
+2026-11-24T19:05:43Z qt0 seed 202 gate rc=0 rows=54 of 54
+2026-11-24T19:05:43Z qt0 seed 202 prompt_only rc=0 rows=54 of 54
+2026-11-24T19:05:43Z qt0 seed 303 gate rc=0 rows=54 of 54
+2026-11-24T19:05:43Z qt0 seed 303 prompt_only rc=0 rows=54 of 54
+2026-11-24T19:05:43Z qt0 returned
+2026-11-24T19:05:47Z qt07 (T=0.7, Qwen 3.8 27B on default-model-2): start, 6 processes x 8
+2026-11-24T19:18:46Z qt07 seed 101 gate rc=0 rows=54 of 54
+2026-11-24T19:18:46Z qt07 seed 101 prompt_only rc=0 rows=54 of 54
+2026-11-24T19:18:46Z qt07 seed 202 gate rc=0 rows=54 of 54
+2026-11-24T19:18:46Z qt07 seed 202 prompt_only rc=0 rows=54 of 54
+2026-11-24T19:18:46Z qt07 seed 303 gate rc=0 rows=54 of 54
+2026-11-24T19:18:46Z qt07 seed 303 prompt_only rc=0 rows=54 of 54
+2026-11-24T19:18:46Z qt07 returned
+2026-11-24T19:18:49Z qt02 (T=0.2, Qwen 3.8 27B on default-model-2): start, 6 processes x 8
+2026-11-24T19:30:38Z qt02 seed 101 gate rc=0 rows=54 of 54
+2026-11-24T19:30:38Z qt02 seed 101 prompt_only rc=0 rows=54 of 54
+2026-11-24T19:30:38Z qt02 seed 202 gate rc=0 rows=54 of 54
+2026-11-24T19:30:38Z qt02 seed 202 prompt_only rc=0 rows=54 of 54
+2026-11-24T19:30:38Z qt02 seed 303 gate rc=0 rows=54 of 54
+2026-11-24T19:30:38Z qt02 seed 303 prompt_only rc=0 rows=54 of 54
+2026-11-24T19:30:38Z qt02 returned
+2026-11-24T19:30:38Z driver finished

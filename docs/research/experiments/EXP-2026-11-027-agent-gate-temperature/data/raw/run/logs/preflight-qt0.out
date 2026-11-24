@@ -1,0 +1,3 @@
+ Container t-preflight-1928551 Creating 
+ Container t-preflight-1928551 Created 
+{"at": "2026-11-24T18:54:05Z", "relay_model": "default-model-2", "stated": "Qwen 3.8 27B", "relay_listing": [{"id": "auto", "relay": {"routing": "active endpoint (hot-swap)"}}, {"id": "default-model", "relay": {"endpoint": "default-model", "health": "healthy", "protocol": "openai", "upstream_model": "Inkling 2 Mini"}}, {"id": "default-model-2", "relay": {"endpoint": "default-model-2", "health": "healthy", "protocol": "openai", "upstream_model": "default-model-2"}}, {"id": "default-model-3", "relay": {"endpoint": "default-model-3", "health": "failed", "protocol": "openai", "upstream_model": "In

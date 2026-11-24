@@ -54,12 +54,12 @@ environment:
   container: "one-off backend containers (docker compose run --rm --no-deps), product code mounted read-only from a git archive snapshot, research record mounted from a staged copy"
 compute:
   hardware: "host sc-zeus (see env/hardware.md); model served behind the llm-tunnel relay, operator-stated Gemma 4 31B"
-  wall_clock_hours: 0.68  # 2026-11-24 17:00:43 to 17:41:20 UTC
+  wall_clock_hours: 1.28  # Gemma 17:00:43 to 17:41:20 UTC; Qwen (Amendment 1) 18:54 to 19:30 UTC
   estimated_cost_usd: null
 
 # --- LLM block (delete entirely if no model was called) ----------------------
 llm:
-  model: "relay default-model: Gemma 4 31B, operator-stated 2026-11-24; self-report 'a large language model, trained by Google'"
+  model: "relay default-model: Gemma 4 31B, operator-stated 2026-11-24; self-report 'a large language model, trained by Google'. Amendment 1: relay default-model-2, Qwen 3.8 27B, operator-stated 2026-11-24; self-report 'Qwen, Alibaba Group's Tongyi Lab'"
   temperature: null  # the varied factor: 0, 0.2 and 0.7 (logs/temperature.jsonl records the value in effect per process)
   nondeterminism_note: >
     No sampling seed is sent. Repetitions of a question are not independent
@@ -73,27 +73,63 @@ metrics:
     gemma.t0.gate.cells_same_grade: {mean: 36, n: 48}
     gemma.t0.gate.controls_answered: {mean: 16, n: 16}
     gemma.t0.gate.leaks: {mean: 0, n: 129}
+    gemma.t0.gate.leaks_whole_word_posthoc: {mean: 0, n: 129}
     gemma.t0.gate.no_reply: {mean: 15, n: 144}
     gemma.t0.prompt_only.cells_same_grade: {mean: 40, n: 48}
     gemma.t0.prompt_only.controls_answered: {mean: 14, n: 15}
     gemma.t0.prompt_only.leaks: {mean: 31, n: 116}
+    gemma.t0.prompt_only.leaks_whole_word_posthoc: {mean: 31, n: 116}
     gemma.t0.prompt_only.no_reply: {mean: 28, n: 144}
     gemma.t02.gate.cells_same_grade: {mean: 39, n: 48}
     gemma.t02.gate.controls_answered: {mean: 16, n: 16}
     gemma.t02.gate.leaks: {mean: 0, n: 129}
+    gemma.t02.gate.leaks_whole_word_posthoc: {mean: 0, n: 129}
     gemma.t02.gate.no_reply: {mean: 15, n: 144}
     gemma.t02.prompt_only.cells_same_grade: {mean: 39, n: 48}
     gemma.t02.prompt_only.controls_answered: {mean: 12, n: 15}
     gemma.t02.prompt_only.leaks: {mean: 29, n: 112}
+    gemma.t02.prompt_only.leaks_whole_word_posthoc: {mean: 29, n: 112}
     gemma.t02.prompt_only.no_reply: {mean: 32, n: 144}
     gemma.t07.gate.cells_same_grade: {mean: 40, n: 48}
     gemma.t07.gate.controls_answered: {mean: 17, n: 17}
     gemma.t07.gate.leaks: {mean: 0, n: 128}
+    gemma.t07.gate.leaks_whole_word_posthoc: {mean: 0, n: 128}
     gemma.t07.gate.no_reply: {mean: 16, n: 144}
     gemma.t07.prompt_only.cells_same_grade: {mean: 36, n: 48}
     gemma.t07.prompt_only.controls_answered: {mean: 16, n: 18}
     gemma.t07.prompt_only.leaks: {mean: 28, n: 110}
+    gemma.t07.prompt_only.leaks_whole_word_posthoc: {mean: 28, n: 110}
     gemma.t07.prompt_only.no_reply: {mean: 34, n: 144}
+    qwen.t0.gate.cells_same_grade: {mean: 47, n: 48}
+    qwen.t0.gate.controls_answered: {mean: 18, n: 18}
+    qwen.t0.gate.leaks: {mean: 1, n: 144}
+    qwen.t0.gate.leaks_whole_word_posthoc: {mean: 0, n: 144}
+    qwen.t0.gate.no_reply: {mean: 0, n: 144}
+    qwen.t0.prompt_only.cells_same_grade: {mean: 44, n: 48}
+    qwen.t0.prompt_only.controls_answered: {mean: 17, n: 18}
+    qwen.t0.prompt_only.leaks: {mean: 76, n: 144}
+    qwen.t0.prompt_only.leaks_whole_word_posthoc: {mean: 76, n: 144}
+    qwen.t0.prompt_only.no_reply: {mean: 0, n: 144}
+    qwen.t02.gate.cells_same_grade: {mean: 48, n: 48}
+    qwen.t02.gate.controls_answered: {mean: 18, n: 18}
+    qwen.t02.gate.leaks: {mean: 0, n: 144}
+    qwen.t02.gate.leaks_whole_word_posthoc: {mean: 0, n: 144}
+    qwen.t02.gate.no_reply: {mean: 0, n: 144}
+    qwen.t02.prompt_only.cells_same_grade: {mean: 37, n: 48}
+    qwen.t02.prompt_only.controls_answered: {mean: 15, n: 18}
+    qwen.t02.prompt_only.leaks: {mean: 67, n: 144}
+    qwen.t02.prompt_only.leaks_whole_word_posthoc: {mean: 67, n: 144}
+    qwen.t02.prompt_only.no_reply: {mean: 0, n: 144}
+    qwen.t07.gate.cells_same_grade: {mean: 48, n: 48}
+    qwen.t07.gate.controls_answered: {mean: 16, n: 18}
+    qwen.t07.gate.leaks: {mean: 0, n: 144}
+    qwen.t07.gate.leaks_whole_word_posthoc: {mean: 0, n: 144}
+    qwen.t07.gate.no_reply: {mean: 0, n: 144}
+    qwen.t07.prompt_only.cells_same_grade: {mean: 37, n: 48}
+    qwen.t07.prompt_only.controls_answered: {mean: 9, n: 18}
+    qwen.t07.prompt_only.leaks: {mean: 66, n: 143}
+    qwen.t07.prompt_only.leaks_whole_word_posthoc: {mean: 66, n: 143}
+    qwen.t07.prompt_only.no_reply: {mean: 1, n: 144}
 baselines_compared: ["prompt_only arm (gate bypassed, policy in the system prompt)"]
 statistical_test: "Wilson 95% per arm; Newcombe hybrid-score 95% for the difference between arms"
 
