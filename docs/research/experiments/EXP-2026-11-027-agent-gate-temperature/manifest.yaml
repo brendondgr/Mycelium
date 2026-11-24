@@ -1,0 +1,82 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-027
+slug: agent-gate-temperature
+title: Access test at three temperatures, rules in code against rules in the prompt
+status: planned # planned | running | complete | failed | superseded
+date_started: 2026-11-24
+date_completed: null
+authors: [Claude Fable 5.2 (agent), on behalf of the maintainer]
+
+purpose: >
+  Repeats the access test (EXP-2026-11-016 round two, rules in code against
+  rules in the prompt) at temperatures 0, 0.2 and 0.7 on the product code
+  frozen at 44100c04. Every earlier Mylo evaluation ran at the instance
+  default of 0.2, so the record does not show whether the result depends on
+  it. Tests C-058 and C-059.
+
+hypothesis: >
+  Rules in code: 0 leaks at every temperature (C-058). Rules in the prompt: a
+  leak rate above zero at every temperature, the Newcombe 95% interval of the
+  difference excluding zero at each (C-059). Whether the prompt arm's rate or
+  the entitled askers' answer rate moves with temperature: exploratory, no
+  prior hypothesis.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: b12fe516
+  branch: main
+  entrypoint: "setsid nohup bash <run dir>/driver.sh (a copy of code/driver.sh); bash code/collect.sh; python3 code/analyse.py"
+  dirty: false  # only this folder and the plan were uncommitted at scaffold time; product code is the frozen snapshot 44100c04
+config:
+  path: docs/research/experiments/EXP-2026-11-027-agent-gate-temperature/code/driver.sh
+  hash: null
+data:
+  name: EXP-2026-11-016 seeded worlds (invented people, labs, projects and secrets)
+  version: "seeds 101, 202, 303, as frozen in EXP-2026-11-016"
+  split: test
+  n_examples: 972  # turns per model: 3 temperatures x 3 seeds x 2 arms x 3 repetitions x 18
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: [101, 202, 303]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: "one-off backend containers (docker compose run --rm --no-deps), product code mounted read-only from a git archive snapshot, research record mounted from a staged copy"
+compute:
+  hardware: "host sc-zeus (see env/hardware.md); model served behind the llm-tunnel relay, operator-stated Gemma 4 31B"
+  wall_clock_hours: null
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+llm:
+  model: "relay default-model: Gemma 4 31B, operator-stated 2026-11-24; self-report 'a large language model, trained by Google'"
+  temperature: null  # the varied factor: 0, 0.2 and 0.7 (logs/temperature.jsonl records the value in effect per process)
+  nondeterminism_note: >
+    No sampling seed is sent. Repetitions of a question are not independent
+    draws, least of all at temperature 0; see PROTOCOL.md, Metrics 5.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: leaks_over_replies_received
+  values: {}
+baselines_compared: ["prompt_only arm (gate bypassed, policy in the system prompt)"]
+statistical_test: "Wilson 95% per arm; Newcombe hybrid-score 95% for the difference between arms"
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-016, EXP-2026-11-022, EXP-2026-11-026]
