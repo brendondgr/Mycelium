@@ -1,0 +1,82 @@
+# The machine-readable half of the record. `make new-experiment` fills the id,
+# slug, dates, and git block; you fill the rest. Validated against
+# `ops/research/manifest.schema.json` by `make validate-research`.
+#
+# Do not invent a value you do not have. A back-filled experiment with three
+# honest fields is worth more than one with ten plausible ones — write `unknown`
+# and say what could not be recovered in ISSUES.md.
+
+id: EXP-2026-11-028
+slug: agent-answers-gold-prompt-arm
+title: Answer accuracy with the rules in code against the rules in the prompt, on a demo-only sandbox
+status: planned # planned | running | complete | failed | superseded
+date_started: 2026-11-24
+date_completed: null
+authors: [Claude Fable 5.2 (agent), on behalf of the maintainer]
+
+purpose: >
+  Runs EXP-2026-11-018's answer-accuracy questions on Mylo as shipped and on
+  Mylo with the permission gate bypassed and the access policy in the system
+  prompt, both on a sandbox database that holds only the fictional demo lab
+  and the public corpus. Gives the record its first code-against-prompt
+  comparison on answer accuracy. Tests C-060.
+
+hypothesis: >
+  Over the answerable questions, the paired 95% interval of the difference in
+  full credit (code minus prompt) includes zero or lies above it (C-060): the
+  asker is allowed nearly everything, so the gate should rarely act. By
+  question kind and on the unanswerable questions: exploratory, no prior
+  hypothesis.
+
+# --- Reproducibility block ---------------------------------------------------
+code:
+  commit: c157d421
+  branch: main
+  entrypoint: "bash code/build_sandbox.sh; MODE=check, MODE=smoke, then setsid nohup bash <run dir>/driver.sh (a copy of code/driver.sh); bash code/collect.sh; python3 code/analyse.py"
+  dirty: false  # only this folder was uncommitted at scaffold time; product code is the frozen snapshot a99e1a01
+config:
+  path: docs/research/experiments/EXP-2026-11-028-agent-answers-gold-prompt-arm/code/driver.sh
+  hash: null
+data:
+  name: EXP-2026-11-018 frozen questions on the demo lab (fictional members, public corpus records)
+  version: "sandbox mycelium_sandbox_exp028, copied from the live database on 2026-11-24; gold tag s28"
+  split: test
+  n_examples: 60  # frozen questions; the gold builder may drop some
+  qrels: null
+  hash: null
+  card: null # docs/research/datasets/cards/<name>.md
+seeds: [20261115]
+n_runs: 1
+
+environment:
+  python: "3.13"
+  lockfile: web/backend/uv.lock
+  container: "one-off backend containers (docker compose run --rm --no-deps), product code mounted read-only from a git archive snapshot, research record mounted from a staged copy"
+compute:
+  hardware: "host sc-zeus (see env/hardware.md); model served behind the llm-tunnel relay, operator-stated Gemma 4 31B"
+  wall_clock_hours: null
+  estimated_cost_usd: null
+
+# --- LLM block (delete entirely if no model was called) ----------------------
+llm:
+  model: "relay default-model: Gemma 4 31B, operator-stated 2026-11-24; self-report 'a large language model, trained by Google'"
+  temperature: 0.2
+  nondeterminism_note: >
+    No sampling seed is sent. Three repetitions per question and arm; the
+    interval is a bootstrap over questions.
+
+# --- Results block -----------------------------------------------------------
+# Single-run numbers still declare n so a reader is never guessing.
+metrics:
+  primary: paired_difference_full_credit_code_minus_prompt
+  values: {}
+baselines_compared: ["prompt arm (gate bypassed, policy in the system prompt)"]
+statistical_test: "paired bootstrap over questions, 10,000 resamples, seed 20261115"
+
+# --- Linkage -----------------------------------------------------------------
+supports_claims: []
+refutes_claims: []
+figures: []
+supersedes: null
+superseded_by: null
+related: [EXP-2026-11-018, EXP-2026-11-011, EXP-2026-11-027]
