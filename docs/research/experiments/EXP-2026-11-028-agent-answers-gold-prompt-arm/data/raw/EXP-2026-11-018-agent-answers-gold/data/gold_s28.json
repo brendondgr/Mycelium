@@ -1,0 +1,1807 @@
+{
+ "snapshot": "2026-11-24T17:13:06.781834+00:00",
+ "today": "2026-11-24",
+ "lab": "coastal-ocean-lab",
+ "asker": "demo.mara",
+ "rejected": [
+  {
+   "id": "l02",
+   "why": "gold size 12"
+  },
+  {
+   "id": "l06",
+   "why": "gold size 10"
+  }
+ ],
+ "dropped": [
+  {
+   "id": "l02",
+   "why": "gold size 12"
+  },
+  {
+   "id": "l06",
+   "why": "gold size 10"
+  }
+ ],
+ "patterns": {
+  "cites": "\\b(cited|citations?)\\b[^.\\n]{0,40}?\\b\\d+\\b|\\b\\d[\\d,]*\\s+(times|citations?)\\b",
+  "email": "[\\w.+-]+@[\\w-]+\\.[a-z]{2,}",
+  "phone": "\\+\\d[\\d\\s().-]{7,}\\d|\\(\\d{3}\\)\\s?\\d{3}[-\\s]\\d{4}|\\b\\d{3}[-.\\s]\\d{3}[-.\\s]\\d{4}\\b",
+  "hindex": "h-?\\s?index[^.\\n]{0,40}?\\b\\d+\\b|\\b\\d+\\b[^.\\n]{0,12}h-?\\s?index",
+  "proposals": "\\b\\d[\\d,]*\\s+(proposals|applications|applicants|submissions)\\b"
+ },
+ "records_sha": {
+  "item:0f8b50a8-c940-45af-b5bd-8ad9a5d0d4e6": "06c4470ad2ea63e2",
+  "item:143a2bb8-abf0-426d-bb3b-db14f5756140": "89af7bff768e0894",
+  "item:1aa0ebe1-339f-438d-b248-990dc3ded7bf": "44fc9ebd245472e9",
+  "item:1f62c961-e6ab-4a2c-b166-1c8f2040b7a8": "032b7a0efd0fab78",
+  "item:292faa75-52a4-47d3-b44c-4342c364cb9a": "25575582d97537fb",
+  "item:2e7975bf-11a0-43f9-84af-2af957e7b857": "47e3d4c1927c7469",
+  "item:36b49619-9af9-4f8d-a073-ebf98a3328dd": "f42bb6f387129129",
+  "item:3a964b7a-3e32-454f-b51a-efb81f17637b": "265bec42c8acc65f",
+  "item:410090eb-5b58-4c24-b735-361707b0057d": "a8ff68bf8048e091",
+  "item:435caf38-5230-42b5-8f9d-b32ca73d29e7": "f11f21ec04ef223b",
+  "item:4794d81a-76e1-4c10-8b0b-94807801df1e": "1b36265f6eba24bf",
+  "item:50626250-280b-405d-a93c-750f2894b7c7": "90cc86836f045496",
+  "item:6eeec7f2-7fad-4197-a554-0fc8fb1fabee": "ba7d9dcaae53ad09",
+  "item:7a0631d5-b422-48d9-ba65-6adfc0522437": "e617df6d5241255a",
+  "item:c4ffc4a1-77b2-4060-ada9-51f292bdd497": "5def90570bd48bba",
+  "item:d0691bc6-c114-41bb-96be-8c60b687474c": "0e4c9a702db8ca55",
+  "item:d3ef7054-cc80-4f4a-891a-9876fc99e1ae": "5526a148a53ff534",
+  "item:e644da43-05ce-49a2-ac9c-5d62aa5bb7f7": "61dd882cb2c7610b",
+  "person:demo.jonah": "3366512f01f3885b",
+  "person:demo.priya": "8b08d51449d69e68",
+  "person:demo.sunhee": "dfa28a01b6b48a0a",
+  "person:demo.tomas": "f7925010bcfe1064",
+  "project:3454fe75-8be9-4368-9a6e-48cef509693d": "fae04ec1d161577e",
+  "project:c88f8625-684b-457d-8b3a-a2e92eb7669c": "f3e4c2ed1e9f70cd"
+ },
+ "questions": [
+  {
+   "id": "f01",
+   "kind": "field",
+   "text": "How much funding does this call offer?",
+   "mentions": [
+    "item:c4ffc4a1-77b2-4060-ada9-51f292bdd497"
+   ],
+   "scope": "lab",
+   "query": "metadata.amount of the tagged item, parsed by normalise.amounts",
+   "gold": {
+    "values": [
+     {
+      "type": "amount",
+      "gold": 50000000.0
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2027-02-16",
+      "2027-04-01",
+      "2026-11-24"
+     ],
+     "amount": [
+      50000000.0
+     ],
+     "percent": []
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "f02",
+   "kind": "field",
+   "text": "What is the funding range for this call?",
+   "mentions": [
+    "item:292faa75-52a4-47d3-b44c-4342c364cb9a"
+   ],
+   "scope": "lab",
+   "query": "metadata.amount of the tagged item, parsed by normalise.amounts",
+   "gold": {
+    "values": [
+     {
+      "type": "amount",
+      "gold": 3000000.0
+     },
+     {
+      "type": "amount",
+      "gold": 15000000.0
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2027-03-04",
+      "2026-11-24"
+     ],
+     "amount": [
+      3000000.0,
+      15000000.0
+     ],
+     "percent": []
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "f03",
+   "kind": "field",
+   "text": "How much can one award from this program be?",
+   "mentions": [
+    "item:143a2bb8-abf0-426d-bb3b-db14f5756140"
+   ],
+   "scope": "lab",
+   "query": "metadata.amount of the tagged item, parsed by normalise.amounts",
+   "gold": {
+    "values": [
+     {
+      "type": "amount",
+      "gold": 15000.0
+     },
+     {
+      "type": "amount",
+      "gold": 75000.0
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2028-05-01",
+      "2026-11-24"
+     ],
+     "amount": [
+      15000.0,
+      75000.0
+     ],
+     "percent": []
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "f04",
+   "kind": "field",
+   "text": "When is the application deadline for this call?",
+   "mentions": [
+    "item:6eeec7f2-7fad-4197-a554-0fc8fb1fabee"
+   ],
+   "scope": "lab",
+   "query": "earliest ContentDeadline(kind=application, due_date>=today) of the tagged item",
+   "gold": {
+    "values": [
+     {
+      "type": "date",
+      "gold": "2026-12-01"
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-12-01",
+      "2026-11-24"
+     ],
+     "amount": [
+      4500000.0,
+      40000000.0
+     ],
+     "percent": []
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "f05",
+   "kind": "field",
+   "text": "What is the deadline to apply to this call?",
+   "mentions": [
+    "item:36b49619-9af9-4f8d-a073-ebf98a3328dd"
+   ],
+   "scope": "lab",
+   "query": "earliest ContentDeadline(kind=application, due_date>=today) of the tagged item",
+   "gold": {
+    "values": [
+     {
+      "type": "date",
+      "gold": "2027-01-28"
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2027-01-28",
+      "2026-11-24"
+     ],
+     "amount": [
+      2000000.0,
+      3000000.0
+     ],
+     "percent": []
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "f06",
+   "kind": "field",
+   "text": "When are applications for this fellowship due?",
+   "mentions": [
+    "item:0f8b50a8-c940-45af-b5bd-8ad9a5d0d4e6"
+   ],
+   "scope": "lab",
+   "query": "earliest ContentDeadline(kind=application, due_date>=today) of the tagged item",
+   "gold": {
+    "values": [
+     {
+      "type": "date",
+      "gold": "2027-11-01"
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-18",
+      "2027-11-01",
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "f07",
+   "kind": "field",
+   "text": "Where was this paper published?",
+   "mentions": [
+    "item:410090eb-5b58-4c24-b735-361707b0057d"
+   ],
+   "scope": "lab",
+   "query": "metadata.venue of the tagged item",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "Science advances"
+      ]
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "f08",
+   "kind": "field",
+   "text": "Which journal published this paper?",
+   "mentions": [
+    "item:d3ef7054-cc80-4f4a-891a-9876fc99e1ae"
+   ],
+   "scope": "lab",
+   "query": "metadata.venue of the tagged item",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "Harmful algae"
+      ]
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      30.0,
+      48.0
+     ]
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "f09",
+   "kind": "field",
+   "text": "Who are the authors of this?",
+   "mentions": [
+    "item:50626250-280b-405d-a93c-750f2894b7c7"
+   ],
+   "scope": "lab",
+   "query": "metadata.authors of the tagged item; each surname must appear",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "Lim"
+      ],
+      "author": "Sehan Lim"
+     },
+     {
+      "type": "phrase",
+      "alts": [
+       "Hong"
+      ],
+      "author": "Sunwook Hong"
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "f10",
+   "kind": "field",
+   "text": "Who wrote this paper?",
+   "mentions": [
+    "item:7a0631d5-b422-48d9-ba65-6adfc0522437"
+   ],
+   "scope": "lab",
+   "query": "metadata.authors of the tagged item; each surname must appear",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "Bach"
+      ],
+      "author": "Eviatar Bach"
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "l01",
+   "kind": "list",
+   "text": "Which grants in the lab's feed have an application deadline in February 2027?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab slate (in_slate, target_lab) of type grant: application deadline in 2027-02",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "c4ffc4a1-77b2-4060-ada9-51f292bdd497",
+      "item_type": "grant",
+      "title": "A stronger Global Ocean Observing System to enhance Europe’s strategic autonomy, climate resilience and biodiversity conservation"
+     },
+     {
+      "kind": "item",
+      "id": "d0691bc6-c114-41bb-96be-8c60b687474c",
+      "item_type": "grant",
+      "title": "Ocean Technology and Interdisciplinary Coordination"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "l03",
+   "kind": "list",
+   "text": "Which grants in the lab's feed have an application deadline in March 2027?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab slate (in_slate, target_lab) of type grant: application deadline in 2027-03",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "5997905d-d014-418a-ad49-3c6e48ba249b",
+      "item_type": "grant",
+      "title": "Better understanding and attribution of land and ocean carbon sources and sinks"
+     },
+     {
+      "kind": "item",
+      "id": "4aa8935a-1b4d-41d4-b72a-b3498ce4899a",
+      "item_type": "grant",
+      "title": "Large scale operational validation and upscaling of state-of-the-art (Generative) AI tools and models powering a next generation digital energy system"
+     },
+     {
+      "kind": "item",
+      "id": "8d659e62-b147-4151-aaf3-21b74123a9f5",
+      "item_type": "grant",
+      "title": "Innovative technologies and solutions to improve wave and tidal energy systems"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "l04",
+   "kind": "list",
+   "text": "Which fellowships in the lab's feed have a confirmed deadline before 1 January 2027?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab slate (in_slate, target_lab) of type fellowship: confirmed application deadline today..2026-12-31",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "1aa0ebe1-339f-438d-b248-990dc3ded7bf",
+      "item_type": "fellowship",
+      "title": "National Oceanic & Atmospheric Administration (NOAA) - Margaret A. Davidson Graduate Fellowships for the National Estuarine Research Reserve System"
+     },
+     {
+      "kind": "item",
+      "id": "561c0bd3-c01c-45b4-9d85-6dd3709a26db",
+      "item_type": "fellowship",
+      "title": "IBM Research - Herman Goldstine Postdoctoral Fellowship in Mathematical & Computer Sciences"
+     },
+     {
+      "kind": "item",
+      "id": "1301ac59-0e0c-48d1-8a7f-b5778f0b3a65",
+      "item_type": "fellowship",
+      "title": "Grass Foundation - Summer Research Fellowship in Neuroscience & Physiology"
+     },
+     {
+      "kind": "item",
+      "id": "681a9728-0332-4d25-a587-169c9cc492f1",
+      "item_type": "fellowship",
+      "title": "Dartmouth College - Neukom Institute for Computational Science - Postdoctoral and Post-MFA Fellowship"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "l05",
+   "kind": "list",
+   "text": "Which fellowships in the lab's feed have a deadline in the next 30 days?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab slate (in_slate, target_lab) of type fellowship: application deadline today..today+30 (any confidence)",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "e939eedd-b504-4376-8b17-a547d443d2af",
+      "item_type": "fellowship",
+      "title": "Microsoft - Doctoral and Postdoctoral Research Fellowship"
+     },
+     {
+      "kind": "item",
+      "id": "1aa0ebe1-339f-438d-b248-990dc3ded7bf",
+      "item_type": "fellowship",
+      "title": "National Oceanic & Atmospheric Administration (NOAA) - Margaret A. Davidson Graduate Fellowships for the National Estuarine Research Reserve System"
+     },
+     {
+      "kind": "item",
+      "id": "1301ac59-0e0c-48d1-8a7f-b5778f0b3a65",
+      "item_type": "fellowship",
+      "title": "Grass Foundation - Summer Research Fellowship in Neuroscience & Physiology"
+     },
+     {
+      "kind": "item",
+      "id": "681a9728-0332-4d25-a587-169c9cc492f1",
+      "item_type": "fellowship",
+      "title": "Dartmouth College - Neukom Institute for Computational Science - Postdoctoral and Post-MFA Fellowship"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "l07",
+   "kind": "list",
+   "text": "Which conferences in the lab's feed have a paper submission deadline in the next 10 days?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab slate (in_slate, target_lab) of type conference: manuscript deadline today..today+10",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "ebcdcecb-efcd-4702-b8d4-b50d4a4f75e1",
+      "item_type": "conference",
+      "title": "IEEE International Conference on Sensing, Communication, and Networking"
+     },
+     {
+      "kind": "item",
+      "id": "6968d784-c300-42f6-8967-79f6dd5b54cd",
+      "item_type": "conference",
+      "title": "International Conference on Very Large Data Bases"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "l08",
+   "kind": "list",
+   "text": "Which grants in the lab's feed offer up to at least €40 million?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab slate (in_slate, target_lab) of type grant: max parsed metadata.amount >= 40,000,000 EUR",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "c4ffc4a1-77b2-4060-ada9-51f292bdd497",
+      "item_type": "grant",
+      "title": "A stronger Global Ocean Observing System to enhance Europe’s strategic autonomy, climate resilience and biodiversity conservation"
+     },
+     {
+      "kind": "item",
+      "id": "6eeec7f2-7fad-4197-a554-0fc8fb1fabee",
+      "item_type": "grant",
+      "title": "Data sharing to support the training and development of AI foundation models in the energy sector"
+     },
+     {
+      "kind": "item",
+      "id": "4aa8935a-1b4d-41d4-b72a-b3498ce4899a",
+      "item_type": "grant",
+      "title": "Large scale operational validation and upscaling of state-of-the-art (Generative) AI tools and models powering a next generation digital energy system"
+     },
+     {
+      "kind": "item",
+      "id": "8d659e62-b147-4151-aaf3-21b74123a9f5",
+      "item_type": "grant",
+      "title": "Innovative technologies and solutions to improve wave and tidal energy systems"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "l09",
+   "kind": "list",
+   "text": "Which grants in the lab's feed state their funding in US dollars?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab slate (in_slate, target_lab) of type grant: metadata.amount contains '$'",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "143a2bb8-abf0-426d-bb3b-db14f5756140",
+      "item_type": "grant",
+      "title": "2026 Alaska Marine Education and Training Mini-Grant Program"
+     },
+     {
+      "kind": "item",
+      "id": "da2c2ddd-1f72-499a-9443-46bf17fd5a7e",
+      "item_type": "grant",
+      "title": "Ocean Drilling Program"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "l10",
+   "kind": "list",
+   "text": "Which fellowships in the lab's feed have a deadline in February 2027?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab slate (in_slate, target_lab) of type fellowship: application deadline in 2027-02",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "1f62c961-e6ab-4a2c-b166-1c8f2040b7a8",
+      "item_type": "fellowship",
+      "title": "Woods Hole Oceanographic Institution (WHOI) - Geophysical Fluid Dynamics (GFD) Summer Graduate Research Fellowship"
+     },
+     {
+      "kind": "item",
+      "id": "9d104d07-b3ce-4aef-8587-e587256b140f",
+      "item_type": "fellowship",
+      "title": "American Association for Geodetic Surveying (AAGS) / National Society of Professional Surveyors (NSPS) - Graduate Fellowship"
+     },
+     {
+      "kind": "item",
+      "id": "a080a8a7-d069-4a1b-86c0-b7d5101847c9",
+      "item_type": "fellowship",
+      "title": "National Oceanic and Atmospheric Administration (NOAA) - John A. Knauss Marine Policy Fellowship"
+     },
+     {
+      "kind": "item",
+      "id": "a0eb7c84-0914-4371-8ae7-49aeda7271ac",
+      "item_type": "fellowship",
+      "title": "National Radio Astronomy Observatory (NRAO) - Summer Graduate Student Research Assistantship"
+     },
+     {
+      "kind": "item",
+      "id": "157758d8-1979-49b2-9a81-a3c4dc443d18",
+      "item_type": "fellowship",
+      "title": "Stanford University - Molecular Imaging Scholars Postdoctoral Fellowship"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "s01",
+   "kind": "project",
+   "text": "How far along is the Marine heatwave early warning project?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "Project(Marine heatwave early warning).goals.progress",
+   "gold": {
+    "values": [
+     {
+      "type": "percent",
+      "gold": 60.0
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      60.0
+     ]
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "s02",
+   "kind": "project",
+   "text": "What progress is recorded for the Plastic pathways project?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "Project(Plastic pathways).goals.progress",
+   "gold": {
+    "values": [
+     {
+      "type": "percent",
+      "gold": 35.0
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      35.0
+     ]
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "s03",
+   "kind": "project",
+   "text": "Which topics does the Marine heatwave early warning project watch?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "project_watch_topics(Project(Marine heatwave early warning))",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "marine heatwave prediction"
+      ]
+     },
+     {
+      "type": "phrase",
+      "alts": [
+       "ocean data assimilation"
+      ]
+     },
+     {
+      "type": "phrase",
+      "alts": [
+       "ocean data dashboards"
+      ]
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      60.0
+     ]
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "s04",
+   "kind": "project",
+   "text": "Which topics does the Plastic pathways project watch?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "project_watch_topics(Project(Plastic pathways))",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "marine litter tracking"
+      ]
+     },
+     {
+      "type": "phrase",
+      "alts": [
+       "satellite ocean remote sensing"
+      ]
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      35.0
+     ]
+    },
+    "objects": []
+   }
+  },
+  {
+   "id": "s05",
+   "kind": "project",
+   "text": "Who else, besides me, is on the Marine heatwave early warning project?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "Project(Marine heatwave early warning).members minus the asker",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.tomas",
+      "name": "Tomás Ferreira-Lind"
+     },
+     {
+      "kind": "person",
+      "id": "demo.sunhee",
+      "name": "Sun-hee Park"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "s06",
+   "kind": "project",
+   "text": "Who else, besides me, is on the Plastic pathways project?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "Project(Plastic pathways).members minus the asker",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.priya",
+      "name": "Priya Raman"
+     },
+     {
+      "kind": "person",
+      "id": "demo.jonah",
+      "name": "Jonah Whitcombe"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "s07",
+   "kind": "project",
+   "text": "According to its status, which years do the Marine heatwave early warning project's hindcasts cover?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "Project(Marine heatwave early warning).goals.status contains one of ['2015-2024', '2015 to 2024', '2015 through 2024']",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "2015-2024",
+       "2015 to 2024",
+       "2015 through 2024"
+      ]
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      60.0
+     ]
+    },
+    "stored": "Hindcasts for 2015-2024 beat persistence at four weeks; the public dashboard is in testing with two fisheries offices.",
+    "objects": []
+   }
+  },
+  {
+   "id": "s08",
+   "kind": "project",
+   "text": "According to its status, how far ahead do the Marine heatwave early warning project's hindcasts beat persistence?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "Project(Marine heatwave early warning).goals.status contains one of ['four weeks', '4 weeks']",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "four weeks",
+       "4 weeks"
+      ]
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      60.0
+     ]
+    },
+    "stored": "Hindcasts for 2015-2024 beat persistence at four weeks; the public dashboard is in testing with two fisheries offices.",
+    "objects": []
+   }
+  },
+  {
+   "id": "s09",
+   "kind": "project",
+   "text": "According to its status, how often do the Plastic pathways project's satellite debris detections run?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "Project(Plastic pathways).goals.status contains one of ['weekly', 'every week', 'once a week']",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "weekly",
+       "every week",
+       "once a week"
+      ]
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      35.0
+     ]
+    },
+    "stored": "Satellite debris detections run weekly; the beaching model is being checked against last summer's beach surveys.",
+    "objects": []
+   }
+  },
+  {
+   "id": "s10",
+   "kind": "project",
+   "text": "According to its status, what is the Plastic pathways project's beaching model being checked against?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "Project(Plastic pathways).goals.status contains one of ['beach surveys', 'beach survey']",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "beach surveys",
+       "beach survey"
+      ]
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      35.0
+     ]
+    },
+    "stored": "Satellite debris detections run weekly; the beaching model is being checked against last summer's beach surveys.",
+    "objects": []
+   }
+  },
+  {
+   "id": "p01",
+   "kind": "people",
+   "text": "Who in the lab has declared an interest in marine litter?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab members other than the asker whose declared interest labels match /marine litter/i",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.jonah",
+      "name": "Jonah Whitcombe"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "p02",
+   "kind": "people",
+   "text": "Who in the lab works on satellite oceanography, by their declared interests?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab members other than the asker whose declared interest labels match /satellite oceanography/i",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.priya",
+      "name": "Priya Raman"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "p03",
+   "kind": "people",
+   "text": "Which lab member has declared an interest in ocean data tools?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab members other than the asker whose declared interest labels match /ocean data tools/i",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.sunhee",
+      "name": "Sun-hee Park"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "p04",
+   "kind": "people",
+   "text": "Who in the lab has declared an interest in turbulence?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab members other than the asker whose declared interest labels match /turbulence/i",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.tomas",
+      "name": "Tomás Ferreira-Lind"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "p05",
+   "kind": "people",
+   "text": "Who in the lab lists coastal water quality among their interests?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab members other than the asker whose declared interest labels match /coastal water quality/i",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.priya",
+      "name": "Priya Raman"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "p06",
+   "kind": "people",
+   "text": "Which lab member has declared an interest in Lagrangian analysis?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab members other than the asker whose declared interest labels match /lagrangian/i",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.jonah",
+      "name": "Jonah Whitcombe"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "p07",
+   "kind": "people",
+   "text": "Which lab members, other than me, declare an interest involving machine learning?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab members other than the asker whose declared interest labels match /\\bML\\b|machine learning/i",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.tomas",
+      "name": "Tomás Ferreira-Lind"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "p08",
+   "kind": "people",
+   "text": "What research interests has Priya Raman declared?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "interest_labels(profile of demo.priya)",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "Satellite oceanography"
+      ]
+     },
+     {
+      "type": "phrase",
+      "alts": [
+       "Coastal water quality"
+      ]
+     }
+    ],
+    "objects": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "p09",
+   "kind": "people",
+   "text": "What research interests has Tomás Ferreira-Lind declared?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "interest_labels(profile of demo.tomas)",
+   "gold": {
+    "values": [
+     {
+      "type": "phrase",
+      "alts": [
+       "Circulation and turbulence"
+      ]
+     },
+     {
+      "type": "phrase",
+      "alts": [
+       "Physics-informed ML"
+      ]
+     }
+    ],
+    "objects": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "p10",
+   "kind": "people",
+   "text": "Which lab members are not on the Marine heatwave early warning project?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "lab members minus Project(Marine heatwave early warning).members minus the asker",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.jonah",
+      "name": "Jonah Whitcombe"
+     },
+     {
+      "kind": "person",
+      "id": "demo.priya",
+      "name": "Priya Raman"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "j01",
+   "kind": "join",
+   "text": "Which of our projects watches the topic 'marine litter tracking', and which paper ranks first in that project's feed?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "the project whose watch topics include 'marine litter tracking' + its slate's first paper (order_by_slate)",
+   "gold": {
+    "objects": [
+     {
+      "kind": "project",
+      "id": "c88f8625-684b-457d-8b3a-a2e92eb7669c",
+      "name": "Plastic pathways"
+     },
+     {
+      "kind": "item",
+      "id": "e2fcd12c-6632-4fbe-ac91-4102b4038917",
+      "item_type": "paper",
+      "title": "RNA virus-induced metabolic reprogramming in a bloom-forming marine diatom."
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "j02",
+   "kind": "join",
+   "text": "Which of our projects watches the topic 'marine heatwave prediction', and which paper ranks first in that project's feed?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "the project whose watch topics include 'marine heatwave prediction' + its slate's first paper (order_by_slate)",
+   "gold": {
+    "objects": [
+     {
+      "kind": "project",
+      "id": "3454fe75-8be9-4368-9a6e-48cef509693d",
+      "name": "Marine heatwave early warning"
+     },
+     {
+      "kind": "item",
+      "id": "c805f0dc-1fec-4818-bbc9-b7d19ead7ae4",
+      "item_type": "paper",
+      "title": "Observation Requirements for Ocean Stratification (Deliverable D4.3)"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "j03",
+   "kind": "join",
+   "text": "Which grant ranks first in the feed of the project that watches 'ocean data dashboards'?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "first grant in the slate of the project watching 'ocean data dashboards'",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "d0691bc6-c114-41bb-96be-8c60b687474c",
+      "item_type": "grant",
+      "title": "Ocean Technology and Interdisciplinary Coordination"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "j04",
+   "kind": "join",
+   "text": "Which grant ranks first in the feed of the project that watches 'satellite ocean remote sensing'?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "first grant in the slate of the project watching 'satellite ocean remote sensing'",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "c4ffc4a1-77b2-4060-ada9-51f292bdd497",
+      "item_type": "grant",
+      "title": "A stronger Global Ocean Observing System to enhance Europe’s strategic autonomy, climate resilience and biodiversity conservation"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "j05",
+   "kind": "join",
+   "text": "Which conference ranks first in the feed of the project Jonah Whitcombe works on?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "first conference in the slate of demo.jonah's only lab project",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "85045f43-cca1-4e9e-b9c8-d0b61eb27153",
+      "item_type": "conference",
+      "title": "47th IEEE International Geoscience and Remote Sensing Symposium"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "j06",
+   "kind": "join",
+   "text": "Which fellowship ranks first in the feed of the project Sun-hee Park works on?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "first fellowship in the slate of demo.sunhee's only lab project",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "1f62c961-e6ab-4a2c-b166-1c8f2040b7a8",
+      "item_type": "fellowship",
+      "title": "Woods Hole Oceanographic Institution (WHOI) - Geophysical Fluid Dynamics (GFD) Summer Graduate Research Fellowship"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "j07",
+   "kind": "join",
+   "text": "Which members of the Marine heatwave early warning project, other than me, declare an interest involving machine learning?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "Project(MHW).members minus asker, declared interest matching /\\bML\\b|machine learning/i",
+   "gold": {
+    "objects": [
+     {
+      "kind": "person",
+      "id": "demo.tomas",
+      "name": "Tomás Ferreira-Lind"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "j08",
+   "kind": "join",
+   "text": "Which grants are in the top three of both projects' feeds?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "intersection of the first three grants of each project's slate",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "d0691bc6-c114-41bb-96be-8c60b687474c",
+      "item_type": "grant",
+      "title": "Ocean Technology and Interdisciplinary Coordination"
+     },
+     {
+      "kind": "item",
+      "id": "c4ffc4a1-77b2-4060-ada9-51f292bdd497",
+      "item_type": "grant",
+      "title": "A stronger Global Ocean Observing System to enhance Europe’s strategic autonomy, climate resilience and biodiversity conservation"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "j09",
+   "kind": "join",
+   "text": "What progress is recorded for the project Priya Raman works on?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "demo.priya's only lab project + its goals.progress",
+   "gold": {
+    "objects": [
+     {
+      "kind": "project",
+      "id": "c88f8625-684b-457d-8b3a-a2e92eb7669c",
+      "name": "Plastic pathways"
+     }
+    ],
+    "values": [
+     {
+      "type": "percent",
+      "gold": 35.0
+     }
+    ],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": [
+      35.0
+     ]
+    }
+   }
+  },
+  {
+   "id": "j10",
+   "kind": "join",
+   "text": "Of the three top-ranked grants in the Marine heatwave early warning project's feed, which has the earliest application deadline?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "among the first three grants of Project(MHW)'s slate, the one(s) with the earliest future application deadline",
+   "gold": {
+    "objects": [
+     {
+      "kind": "item",
+      "id": "d0691bc6-c114-41bb-96be-8c60b687474c",
+      "item_type": "grant",
+      "title": "Ocean Technology and Interdisciplinary Coordination"
+     }
+    ],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u01",
+   "kind": "unanswerable",
+   "text": "How much funding does this call offer per award?",
+   "mentions": [
+    "item:d0691bc6-c114-41bb-96be-8c60b687474c"
+   ],
+   "scope": "lab",
+   "query": "absent: AMOUNT matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "AMOUNT",
+     "regex": null,
+     "records_sha": "0e4c9a702db8ca55",
+     "note": "no amount stored on the item"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u02",
+   "kind": "unanswerable",
+   "text": "What is the award size for this call?",
+   "mentions": [
+    "item:e644da43-05ce-49a2-ac9c-5d62aa5bb7f7"
+   ],
+   "scope": "lab",
+   "query": "absent: AMOUNT matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "AMOUNT",
+     "regex": null,
+     "records_sha": "61dd882cb2c7610b",
+     "note": "no amount stored on the item"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u03",
+   "kind": "unanswerable",
+   "text": "What is the maximum award under this program?",
+   "mentions": [
+    "item:435caf38-5230-42b5-8f9d-b32ca73d29e7"
+   ],
+   "scope": "lab",
+   "query": "absent: AMOUNT matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "AMOUNT",
+     "regex": null,
+     "records_sha": "f11f21ec04ef223b",
+     "note": "no amount stored on the item"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u04",
+   "kind": "unanswerable",
+   "text": "How many times has this paper been cited?",
+   "mentions": [
+    "item:3a964b7a-3e32-454f-b51a-efb81f17637b"
+   ],
+   "scope": "lab",
+   "query": "absent: cites matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "cites",
+     "regex": "\\b(cited|citations?)\\b[^.\\n]{0,40}?\\b\\d+\\b|\\b\\d[\\d,]*\\s+(times|citations?)\\b",
+     "records_sha": "265bec42c8acc65f",
+     "note": "no citation count stored"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u05",
+   "kind": "unanswerable",
+   "text": "How many times has this paper been cited?",
+   "mentions": [
+    "item:410090eb-5b58-4c24-b735-361707b0057d"
+   ],
+   "scope": "lab",
+   "query": "absent: cites matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "cites",
+     "regex": "\\b(cited|citations?)\\b[^.\\n]{0,40}?\\b\\d+\\b|\\b\\d[\\d,]*\\s+(times|citations?)\\b",
+     "records_sha": "a8ff68bf8048e091",
+     "note": "no citation count stored"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u06",
+   "kind": "unanswerable",
+   "text": "What was this conference's acceptance rate last year?",
+   "mentions": [
+    "item:4794d81a-76e1-4c10-8b0b-94807801df1e"
+   ],
+   "scope": "lab",
+   "query": "absent: PERCENT matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "PERCENT",
+     "regex": null,
+     "records_sha": "1b36265f6eba24bf",
+     "note": "no rate stored"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u07",
+   "kind": "unanswerable",
+   "text": "What is the Plastic pathways project's total budget?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "absent: AMOUNT matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "AMOUNT",
+     "regex": null,
+     "records_sha": "f3e4c2ed1e9f70cd",
+     "note": "no budget stored on the project"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u08",
+   "kind": "unanswerable",
+   "text": "What is Sun-hee Park's email address?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "absent: email matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "email",
+     "regex": "[\\w.+-]+@[\\w-]+\\.[a-z]{2,}",
+     "records_sha": "dfa28a01b6b48a0a",
+     "note": "contact details are not stored for the agent and not visible to the asker"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u09",
+   "kind": "unanswerable",
+   "text": "What is Tomás Ferreira-Lind's phone number?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "absent: phone matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "phone",
+     "regex": "\\+\\d[\\d\\s().-]{7,}\\d|\\(\\d{3}\\)\\s?\\d{3}[-\\s]\\d{4}|\\b\\d{3}[-.\\s]\\d{3}[-.\\s]\\d{4}\\b",
+     "records_sha": "f7925010bcfe1064",
+     "note": "contact details are not stored for the agent and not visible to the asker"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  },
+  {
+   "id": "u10",
+   "kind": "unanswerable",
+   "text": "What is Jonah Whitcombe's h-index?",
+   "mentions": [],
+   "scope": "lab",
+   "query": "absent: hindex matches none of the records the agent can read for this question",
+   "gold": {
+    "unanswerable": {
+     "pattern": "hindex",
+     "regex": "h-?\\s?index[^.\\n]{0,40}?\\b\\d+\\b|\\b\\d+\\b[^.\\n]{0,12}h-?\\s?index",
+     "records_sha": "3366512f01f3885b",
+     "note": "no bibliometrics stored"
+    },
+    "objects": [],
+    "values": [],
+    "allowed": {
+     "date": [
+      "2026-11-24"
+     ],
+     "amount": [],
+     "percent": []
+    }
+   }
+  }
+ ]
+}

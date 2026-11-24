@@ -77,13 +77,13 @@ deleted dead end is a dead end you walk into twice.
 | `EXP-2026-11-025` | 2026-11-19 | One problem slot per listed topic in typed collaborator questions (Q-102) | complete | multi_seekers_with_any_suggestion 12.0000 | — | [folder](experiments/EXP-2026-11-025-collab-self-query-problem-slots/RESULTS.md) |
 | `EXP-2026-11-026` | 2026-11-22 | The paper's Mylo evaluation repeated on Inkling 2 Mini (26B-A3B, NVFP4) | complete | — | C-037, C-038, C-044, C-052, C-053, C-054 | [folder](experiments/EXP-2026-11-026-inkling-2-mini-rerun/RESULTS.md) |
 | `EXP-2026-11-027` | 2026-11-24 | Access test at three temperatures, rules in code against rules in the prompt | complete | — | C-058, C-059 | [folder](experiments/EXP-2026-11-027-agent-gate-temperature/RESULTS.md) |
-| `EXP-2026-11-028` | 2026-11-24 | Answer accuracy with the rules in code against the rules in the prompt, on a demo-only sandbox | planned | — | — | [folder](experiments/EXP-2026-11-028-agent-answers-gold-prompt-arm/RESULTS.md) |
+| `EXP-2026-11-028` | 2026-11-24 | Answer accuracy with the rules in code against the rules in the prompt, on a demo-only sandbox | complete | — | C-060 | [folder](experiments/EXP-2026-11-028-agent-answers-gold-prompt-arm/RESULTS.md) |
 
 ## Status counts
 
 | Status | Count |
 |---|---:|
-| complete | 64 |
-| planned | 4 |
+| complete | 65 |
+| planned | 3 |
 | running | 1 |
 | **total** | **69** |

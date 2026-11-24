@@ -1,0 +1,3 @@
+ Container a-model-1790432 Creating 
+ Container a-model-1790432 Created 
+{"at": "2026-11-24T17:41:48Z", "relay_model": "default-model", "stated": "Gemma 4 31B", "relay_listing": [{"id": "auto", "relay": {"routing": "active endpoint (hot-swap)"}}, {"id": "default-model", "relay": {"endpoint": "default-model", "health": "healthy", "protocol": "openai", "upstream_model": "default-model"}}, {"id": "default-model-2", "relay": {"endpoint": "default-model-2", "health": "healthy", "protocol": "openai", "upstream_model": "default-model-2"}}, {"id": "default-model-3", "relay": {"endpoint": "default-model-3", "health": "failed", "protocol": "openai", "upstream_model": "Inklin

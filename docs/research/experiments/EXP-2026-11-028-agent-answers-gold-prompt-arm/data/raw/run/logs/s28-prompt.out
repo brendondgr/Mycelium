@@ -1,0 +1,212 @@
+ Container a-s28-prompt Creating 
+ Container a-s28-prompt Created 
+sandbox check {"must_be_zero": {"accounts_outside_the_demo_domain": 0, "labs_other_than_the_demo_lab": 0, "departments_other_than_the_demo_department": 0, "projects_outside_the_demo_lab": 0, "chat_threads_not_made_by_this_experiment": 0, "chat_threads_of_a_non_demo_account": 0, "ambient_rows_all_tables": 0, "integration_rows_all_tables": 0, "rankings_for_a_non_demo_target": 0, "knowledge_edges_for_a_non_demo_owner": 0, "concepts_scoped_to_a_non_demo_owner": 0, "author_works_and_coauthorships": 0, "collaboration_settings": 0, "sessions_invitations_and_email_verifications": 0}, "present": {"database": "mycelium_sandbox_exp028", "demo_accounts": 6, "labs": 1, "departments": 1, "projects": 2, "corpus_items": 246338, "rankings": 25715, "threads_of_this_experiment": 36}, "ok": true}
+{"arm": "prompt", "jobs": 174, "questions": 58, "out": "runs_s28_prompt.jsonl", "asker": "demo.mara", "lab": "Coastal Ocean Intelligence Lab"}
+attempt 1: 174 jobs
+agent function corpus_item failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ["“'#1'” is not a valid UUID."]
+prompt 3 f07 1 31.448  
+prompt 1 f10 1 50.5  
+prompt 2 f09 1 53.543  
+prompt 1 u03 1 54.03  
+prompt 2 u06 1 55.944  
+prompt 3 f05 1 56.051  
+prompt 3 u05 1 56.323  
+agent function corpus_item failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ["“'#1'” is not a valid UUID."]
+prompt 2 s09 1 79.339  
+prompt 1 s09 1 79.441  
+prompt 2 f05 1 45.503  
+prompt 1 p09 1 79.982  
+prompt 2 u01 1 80.344  
+prompt 3 s04 1 80.732  
+prompt 3 s01 1 80.619  
+prompt 3 u01 1 80.306  
+prompt 3 f04 1 81.23  
+prompt 1 f06 1 81.795  
+prompt 3 u07 1 83.008  
+prompt 3 s09 1 83.299  
+prompt 1 p02 1 83.941  
+prompt 3 s10 1 93.45  
+prompt 2 p04 1 95.837  
+prompt 1 p07 1 96.889  
+prompt 2 f03 1 41.777  
+prompt 3 u02 1 110.517  
+prompt 2 s07 1 127.995  
+prompt 3 f09 1 62.023  
+prompt 2 f02 1 64.019  
+prompt 2 u07 1 89.896  
+prompt 2 p06 1 89.859  
+prompt 2 p10 1 148.081  
+prompt 1 p04 1 89.454  
+prompt 3 j03 1 153.621  
+prompt 1 f05 1 55.117  
+prompt 1 u04 1 101.954  
+prompt 2 l05 1 155.32  
+prompt 3 l03 1 155.462  
+prompt 2 f08 1 35.097  
+prompt 1 p01 1 98.564  
+prompt 2 s10 1 104.595  
+prompt 2 j10 1 195.362  
+prompt 3 p09 1 115.641  
+prompt 1 f02 1 61.466  
+prompt 1 u08 1 127.32  
+prompt 1 l09 1 125.726  
+prompt 2 j01 1 209.643  
+prompt 3 u03 1 62.523  
+prompt 1 l01 1 128.469  
+prompt 2 f06 1 108.874  
+prompt 3 l07 1 124.084  
+prompt 2 l07 1 127.483  
+prompt 1 j09 1 152.376  
+prompt 1 l05 1 117.349  
+prompt 2 l04 1 131.313  
+prompt 3 l10 1 116.503  
+prompt 2 u02 1 35.087  
+prompt 1 u01 1 78.551  
+prompt 3 u09 1 119.129  
+prompt 3 p06 1 83.409  
+prompt 1 u07 1 82.792  
+prompt 3 p01 1 86.603  
+agent function corpus_item failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ["“'#1'” is not a valid UUID."]
+prompt 1 f04 1 106.988  
+prompt 1 u10 1 110.517  
+prompt 1 u05 1 56.604  
+prompt 2 f07 1 38.298  
+prompt 1 s08 1 118.886  
+prompt 3 f02 1 57.717  
+prompt 1 s10 1 74.784  
+prompt 2 j04 1 184.835  
+prompt 3 j04 1 184.482  
+prompt 1 s01 1 73.037  
+prompt 1 l04 1 125.983  
+prompt 2 f10 1 41.815  
+agent function corpus_item failed
+Traceback (most recent call last):
+ValueError: badly formed hexadecimal UUID string
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+django.core.exceptions.ValidationError: ["“'#1'” is not a valid UUID."]
+prompt 3 s07 1 109.681  
+prompt 3 p07 1 114.222  
+prompt 2 f01 1 113.759  
+prompt 1 u09 1 122.826  
+prompt 1 s06 1 123.369  
+prompt 3 u10 1 118.45  
+prompt 1 j06 1 191.431  
+prompt 3 l05 1 151.646  
+prompt 2 l08 1 129.33  
+prompt 2 l10 1 129.965  
+prompt 1 f08 1 139.527  
+prompt 3 p03 1 104.515  
+prompt 3 u08 1 145.979  
+prompt 3 s03 1 107.835  
+prompt 1 s04 1 115.742  
+prompt 2 p03 1 108.916  
+prompt 3 f01 1 54.431  
+prompt 2 s05 1 120.008  
+prompt 2 j05 1 225.094  
+prompt 1 s02 1 112.999  
+prompt 2 j08 1 175.68  
+prompt 2 l09 1 116.494  
+prompt 2 l03 1 123.746  
+prompt 3 f10 1 58.512  
+prompt 2 u05 1 152.092  
+prompt 3 p10 1 160.241  
+prompt 2 s06 1 154.606  
+prompt 1 p06 1 117.646  
+prompt 2 j03 1 236.403  
+prompt 3 p08 1 137.303  
+prompt 1 f01 1 127.564  
+prompt 3 j05 1 230.298  
+prompt 1 p05 1 107.638  
+prompt 3 p04 1 99.674  
+prompt 1 j05 1 237.571  
+prompt 1 p10 1 158.897  
+prompt 2 s03 1 142.876  
+prompt 3 f08 1 92.693  
+prompt 1 p03 1 105.355  
+prompt 3 j10 1 288.881  
+prompt 2 s04 1 122.997  
+prompt 3 s02 1 158.424  
+prompt 1 f09 1 50.643  
+prompt 2 u04 1 111.298  
+prompt 3 s08 1 166.588  
+prompt 2 p09 1 122.212  
+prompt 3 p02 1 119.368  
+prompt 1 u06 1 53.926  
+prompt 2 j07 1 169.774  
+prompt 2 u09 1 116.388  
+prompt 2 j06 1 271.025  
+prompt 1 l07 1 162.455  
+prompt 2 u08 1 112.166  
+prompt 2 u03 1 43.522  
+prompt 1 l10 1 209.416  
+prompt 1 j02 1 167.115  
+prompt 2 l01 1 152.454  
+prompt 3 l04 1 156.052  
+prompt 1 l08 1 156.002  
+prompt 3 u04 1 72.129  
+prompt 2 s01 1 70.667  
+prompt 3 f03 1 58.978  
+prompt 1 f03 1 71.685  
+prompt 3 p05 1 69.889  
+prompt 3 s05 1 95.942  
+prompt 1 s05 1 103.762  
+prompt 2 s08 1 99.66  
+prompt 2 p07 1 87.219  
+prompt 3 j09 1 131.21  
+prompt 3 j08 1 93.703  
+prompt 2 j09 1 141.532  
+prompt 3 j06 1 163.774  
+prompt 2 p01 1 111.749  
+prompt 1 u02 1 77.403  
+prompt 2 p08 1 122.514  
+prompt 1 f07 1 40.421  
+prompt 1 p08 1 122.51  
+prompt 2 p02 1 119.536  
+prompt 3 u06 1 55.836  
+prompt 1 s03 1 95.652  
+prompt 3 s06 1 95.665  
+prompt 1 j07 1 137.515  
+prompt 3 j02 1 141.603  
+prompt 2 j02 1 161.084  
+prompt 3 l09 1 95.473  
+prompt 3 l01 1 97.607  
+prompt 3 l08 1 101.687  
+prompt 2 f04 1 100.831  
+prompt 1 s07 1 106.759  
+prompt 2 p05 1 87.993  
+prompt 2 u10 1 97.609  
+prompt 1 j08 1 93.09  
+prompt 1 l03 1 130.392  
+prompt 3 f06 1 83.506  
+prompt 1 j03 1 135.694  
+prompt 3 j07 1 116.232  
+prompt 2 s02 1 83.168  
+prompt 1 j04 1 106.606  
+prompt 3 j01 1 100.054  
+prompt 1 j01 1 135.311  
+prompt 1 j10 1 135.273  
+attempt 2: 0 jobs

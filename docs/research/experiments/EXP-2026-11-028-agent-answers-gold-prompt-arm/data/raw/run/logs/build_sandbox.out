@@ -1,0 +1,35 @@
+2026-11-24T17:07:24Z create mycelium_sandbox_exp028
+2026-11-24T17:07:25Z migrate with the frozen code (a99e1a01)
+ Container mycelium-backend-run-4f490fb1f950 Creating 
+ Container mycelium-backend-run-4f490fb1f950 Created 
+migrated mycelium_sandbox_exp028
+2026-11-24T17:08:28Z copied auth_user: 6 rows
+2026-11-24T17:08:29Z copied accounts_department: 1 rows
+2026-11-24T17:08:30Z copied accounts_lab: 1 rows
+2026-11-24T17:08:31Z copied accounts_profile: 6 rows
+2026-11-24T17:08:32Z copied accounts_watchpreference: 6 rows
+2026-11-24T17:08:34Z copied accounts_deptprofile: 1 rows
+2026-11-24T17:08:35Z copied accounts_deptmembership: 6 rows
+2026-11-24T17:08:36Z copied accounts_labprofile: 1 rows
+2026-11-24T17:08:37Z copied accounts_labwatchpreference: 1 rows
+2026-11-24T17:08:38Z copied accounts_labmembership: 5 rows
+2026-11-24T17:08:39Z copied research_project: 2 rows
+2026-11-24T17:08:41Z copied research_projectmember: 6 rows
+2026-11-24T17:08:42Z copied demo_demoworld: 1 rows
+2026-11-24T17:12:17Z copied content_contentitem: 246338 rows
+2026-11-24T17:12:18Z copied content_contentdeadline: 3383 rows
+2026-11-24T17:12:20Z copied content_itemcomprehension: 18898 rows
+2026-11-24T17:12:22Z copied collab_requirementslots: 1739 rows
+2026-11-24T17:12:25Z copied content_relevancescore: 25715 rows
+2026-11-24T17:12:27Z copied content_projectprofile: 2 rows
+2026-11-24T17:12:28Z copied content_dailybriefing: 119 rows
+2026-11-24T17:12:29Z copied content_savedopportunity: 5 rows
+2026-11-24T17:12:30Z copied content_remindersubscription: 2 rows
+2026-11-24T17:12:31Z copied content_reminderoffset: 4 rows
+2026-11-24T17:12:32Z copied content_projectshare: 1 rows
+2026-11-24T17:12:34Z copied content_membersuggestion: 2 rows
+2026-11-24T17:12:35Z copied knowledge_concept: 40 rows
+2026-11-24T17:12:36Z copied knowledge_conceptalias: 52 rows
+2026-11-24T17:12:37Z copied knowledge_edge: 55 rows
+2026-11-24T17:12:37Z reset sequences
+2026-11-24T17:12:41Z done: mycelium_sandbox_exp028 (2224 MB)

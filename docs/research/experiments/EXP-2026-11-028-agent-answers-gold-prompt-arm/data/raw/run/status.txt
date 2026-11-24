@@ -1,0 +1,12 @@
+2026-11-24T17:13:01Z sandbox check rc=0
+2026-11-24T17:13:13Z gold (s28) rc=0 {"wrote": "data/gold_s28.json", "kept": 58, "dropped": [{"id": "l02", "why": "gold size 12"}, {"id": "l06", "why": "gold size 10"}], "today": "2026-11-24"}
+2026-11-24T17:13:55Z smoke: jobs 1:p01,1:j01,1:f01 per arm
+2026-11-24T17:14:49Z smoke code rc=0 rows=3
+2026-11-24T17:14:49Z smoke prompt rc=0 rows=3
+2026-11-24T17:41:47Z EXP-2026-11-027 driver exited; starting
+2026-11-24T17:41:47Z driver start pid 1790432: Gemma 4 31B on default-model, tag s28, 30 threads per arm, sandbox mycelium_sandbox_exp028, snapshot a99e1a01
+2026-11-24T17:54:29Z s28 code rc=0 rows=174
+2026-11-24T17:54:29Z s28 prompt rc=0 rows=174
+2026-11-24T17:54:34Z grading: 3 of 3 steps rc=0
+2026-11-24T17:54:39Z sandbox check at the end rc=0
+2026-11-24T17:54:39Z driver finished

@@ -1,0 +1,410 @@
+{
+  "gemma": {
+    "model": "Gemma 4 31B",
+    "tag": "s28",
+    "questions": 58,
+    "arms": {
+      "code": {
+        "jobs": 174,
+        "failed_jobs_after_retry": 0,
+        "failed_first_attempts": 0,
+        "failed_first_attempts_by_reason": {},
+        "attempts": 174,
+        "attempts_with_policy_in_prompt": 0,
+        "attempts_with_prompt_seen": 174,
+        "calls_gate_did_not_allow": 37,
+        "attempts_with_a_call_gate_did_not_allow": 37,
+        "calls_denied_in_the_turn": 37,
+        "function_calls": 494,
+        "gate_errors": 0,
+        "wall_s_median": 120.05,
+        "primary": {
+          "answerable_full": {
+            "k": 136,
+            "n": 144,
+            "rate": 0.9444,
+            "boot95_questions": [
+              0.875,
+              1.0
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 28,
+              "n": 30
+            },
+            "list": {
+              "k": 21,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 30,
+              "n": 30
+            },
+            "join": {
+              "k": 27,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 15,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 6,
+            "n": 30
+          }
+        },
+        "secondary": {
+          "answerable_full": {
+            "k": 136,
+            "n": 144,
+            "rate": 0.9444,
+            "boot95_questions": [
+              0.875,
+              1.0
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 28,
+              "n": 30
+            },
+            "list": {
+              "k": 21,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 30,
+              "n": 30
+            },
+            "join": {
+              "k": 27,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 15,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 6,
+            "n": 30
+          }
+        }
+      },
+      "prompt": {
+        "jobs": 174,
+        "failed_jobs_after_retry": 0,
+        "failed_first_attempts": 0,
+        "failed_first_attempts_by_reason": {},
+        "attempts": 174,
+        "attempts_with_policy_in_prompt": 174,
+        "attempts_with_prompt_seen": 174,
+        "calls_gate_did_not_allow": 10,
+        "attempts_with_a_call_gate_did_not_allow": 10,
+        "calls_denied_in_the_turn": 0,
+        "function_calls": 429,
+        "gate_errors": 0,
+        "wall_s_median": 108.89,
+        "primary": {
+          "answerable_full": {
+            "k": 139,
+            "n": 144,
+            "rate": 0.9653,
+            "boot95_questions": [
+              0.9097,
+              1.0
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 30,
+              "n": 30
+            },
+            "list": {
+              "k": 21,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 30,
+              "n": 30
+            },
+            "join": {
+              "k": 28,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 19,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 3,
+            "n": 30
+          }
+        },
+        "secondary": {
+          "answerable_full": {
+            "k": 139,
+            "n": 144,
+            "rate": 0.9653,
+            "boot95_questions": [
+              0.9097,
+              1.0
+            ]
+          },
+          "by_kind": {
+            "field": {
+              "k": 30,
+              "n": 30
+            },
+            "list": {
+              "k": 21,
+              "n": 24
+            },
+            "project": {
+              "k": 30,
+              "n": 30
+            },
+            "people": {
+              "k": 30,
+              "n": 30
+            },
+            "join": {
+              "k": 28,
+              "n": 30
+            },
+            "unanswerable": {
+              "k": 19,
+              "n": 30
+            }
+          },
+          "unanswerable_states_fact": {
+            "k": 3,
+            "n": 30
+          }
+        }
+      }
+    },
+    "differences": {
+      "primary": {
+        "answerable": {
+          "diff": -0.0208,
+          "boot95": [
+            -0.0556,
+            0.0
+          ],
+          "n_questions": 48,
+          "code": 0.9444,
+          "prompt": 0.9653,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 2
+        },
+        "all": {
+          "diff": -0.0402,
+          "boot95": [
+            -0.0862,
+            -0.0057
+          ],
+          "n_questions": 58,
+          "code": 0.8678,
+          "prompt": 0.908,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 4
+        },
+        "field": {
+          "diff": -0.0667,
+          "boot95": [
+            -0.2,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.9333,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "list": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 8,
+          "code": 0.875,
+          "prompt": 0.875,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "project": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "people": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "join": {
+          "diff": -0.0333,
+          "boot95": [
+            -0.1,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.9,
+          "prompt": 0.9333,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "unanswerable": {
+          "diff": -0.1333,
+          "boot95": [
+            -0.3333,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.5,
+          "prompt": 0.6333,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 2
+        }
+      },
+      "secondary": {
+        "answerable": {
+          "diff": -0.0208,
+          "boot95": [
+            -0.0556,
+            0.0
+          ],
+          "n_questions": 48,
+          "code": 0.9444,
+          "prompt": 0.9653,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 2
+        },
+        "all": {
+          "diff": -0.0402,
+          "boot95": [
+            -0.0862,
+            -0.0057
+          ],
+          "n_questions": 58,
+          "code": 0.8678,
+          "prompt": 0.908,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 4
+        },
+        "field": {
+          "diff": -0.0667,
+          "boot95": [
+            -0.2,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.9333,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "list": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 8,
+          "code": 0.875,
+          "prompt": 0.875,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "project": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "people": {
+          "diff": 0,
+          "boot95": [
+            0.0,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 1,
+          "prompt": 1,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 0
+        },
+        "join": {
+          "diff": -0.0333,
+          "boot95": [
+            -0.1,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.9,
+          "prompt": 0.9333,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 1
+        },
+        "unanswerable": {
+          "diff": -0.1333,
+          "boot95": [
+            -0.3333,
+            0.0
+          ],
+          "n_questions": 10,
+          "code": 0.5,
+          "prompt": 0.6333,
+          "questions_code_higher": 0,
+          "questions_prompt_higher": 2
+        }
+      }
+    },
+    "claim_C060": {
+      "diff": -0.0208,
+      "boot95": [
+        -0.0556,
+        0.0
+      ],
+      "n_questions": 48,
+      "holds": true
+    }
+  }
+}
