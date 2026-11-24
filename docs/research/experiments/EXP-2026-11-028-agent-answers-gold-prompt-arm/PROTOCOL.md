@@ -179,3 +179,17 @@ was written.
   sandbox checks. `code/analyse.py` gains the second model's row.
 - **Order today:** this experiment's Qwen run goes before
   EXP-2026-11-027's, because its gold depends on the date.
+
+## Amendment 2 (2026-11-24 18:50 UTC, during the Qwen run, no Qwen result read; before any Inkling turn)
+
+A third model: **Inkling 2 Mini**, which the operator is loading onto the
+relay's `default-model` in place of Gemma 4 31B (operator-stated 2026-11-24;
+quantisation and GPU not restated for this run). Same harness, commit, arms,
+repetitions, threads and metrics; tag `i28` (smoke: `ismoke`); its own
+sandbox copy `mycelium_sandbox_exp028i`, made and emptied of threads as in
+Amendment 1; sandbox check and gold (tag `i28`) on the copy, the same UTC
+day. The driver runs with `NAME="Inkling 2 Mini" WHO="inkling|thinking
+machines" TAG=i28 SMOKE=ismoke SANDBOX_DB=mycelium_sandbox_exp028i` and does
+not start unless the self-report matches. It starts after the Qwen runs have
+freed their database connections. C-060 is reported per model; the
+hypothesis is the same. The Gemma results were known when this was written.

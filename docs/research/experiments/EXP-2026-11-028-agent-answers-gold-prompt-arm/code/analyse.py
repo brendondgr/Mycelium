@@ -24,7 +24,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parents[1]
 RAW = HERE / "data" / "raw" / "EXP-2026-11-018-agent-answers-gold" / "data"
 #: (model as the operator states it, key in metric names, tag)
-MODELS = [("Gemma 4 31B", "gemma", "s28"), ("Qwen 3.8 27B", "qwen", "q28")]
+MODELS = [("Gemma 4 31B", "gemma", "s28"), ("Qwen 3.8 27B", "qwen", "q28"),
+          ("Inkling 2 Mini", "inkling", "i28")]
 ARMS = ("code", "prompt")
 ANSWERABLE = ("field", "list", "project", "people", "join")
 KINDS = ANSWERABLE + ("unanswerable",)
